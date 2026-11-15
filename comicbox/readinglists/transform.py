@@ -30,6 +30,7 @@ from comicbox.readinglists.schema import (
     SERIES_KEY,
     ReadingListYamlSchema,
 )
+from comicbox.readinglists.syntax import describe_syntax_error
 
 # What the render modules raise for text they cannot parse: simplejson's
 # JSONDecodeError is a ValueError, ruamel's errors are YAMLErrors and
@@ -94,8 +95,7 @@ class ReadingListTransform:
         try:
             document = self._schema.opts.render_module.loads(text)
         except _PARSE_ERRORS as exc:
-            reason = f"Cannot parse the document: {exc}"
-            raise ReadingListFormatError(reason) from exc
+            raise ReadingListFormatError(describe_syntax_error(exc)) from exc
         if not isinstance(document, Mapping) or self.root_tag not in document:
             reason = f"No '{self.root_tag}' root found."
             raise ReadingListFormatError(reason)

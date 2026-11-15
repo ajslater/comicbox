@@ -7,6 +7,7 @@ building a normal run; unlike it, a parser of its own with subcommands.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 from typing import TYPE_CHECKING
@@ -15,7 +16,7 @@ import pytest
 
 from comicbox import cli, logger
 from comicbox.readinglists import cli as readinglist_cli
-from comicbox.readinglists import load
+from comicbox.readinglists import load, loads
 from tests.const import CIX_CBZ_SOURCE_PATH, TEST_FILES_DIR
 
 if TYPE_CHECKING:
@@ -94,7 +95,7 @@ def test_validate_fails_on_any_bad_file(
     assert out.count("✓") == 1
     assert out.count("✗") == 3
     assert "'seriesStartYear' is a required property" in out
-    assert "not a reading list" in out
+    assert "Not a reading list in any format" in out
 
 
 def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
@@ -123,7 +124,7 @@ def test_convert_never_overwrites_its_input(
     before = source.read_text()
     code, _, err = _run(capsys, "rl", "convert", "--to", "json", str(source))
     assert code == 1
-    assert "overwrite the input" in err
+    assert "is one of the inputs" in err
     assert source.read_text() == before
 
 
@@ -268,3 +269,257 @@ def test_validate_prints_what_a_read_drops(
     code, out, _ = _run(capsys, "rl", "validate", str(typo))
     assert code == 0
     assert f"warning: {misspelled}: 'The superhuman registration act" in out
+
+
+def test_convert_writes_nothing_when_a_destination_is_an_input(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """a.cbl would become a.json, which is the other input."""
+    cbl, json_cbl = tmp_path / "a.cbl", tmp_path / "a.json"
+    shutil.copy(COMMON_CBL, cbl)
+    shutil.copy(FULL_JSON_CBL, json_cbl)
+    before = json_cbl.read_bytes()
+    code, _, err = _run(
+        capsys, "rl", "convert", "--to", "json", "--overwrite", str(cbl), str(json_cbl)
+    )
+    assert code == 1
+    assert f"{json_cbl}: is one of the inputs" in err
+    assert json_cbl.read_bytes() == before
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["a.cbl", "a.json"]
+
+
+def test_convert_refuses_two_inputs_for_one_destination(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    for folder in ("d1", "d2"):
+        (tmp_path / folder).mkdir()
+        shutil.copy(COMMON_CBL, tmp_path / folder / "x.cbl")
+    output = tmp_path / "out"
+    code, _, err = _run(
+        capsys,
+        "rl",
+        "convert",
+        "-o",
+        str(output),
+        str(tmp_path / "d1" / "x.cbl"),
+        str(tmp_path / "d2" / "x.cbl"),
+    )
+    assert code == 1
+    assert "would be written by 2 inputs" in err
+    assert not output.exists()
+
+
+def test_an_existing_file_is_kept_without_overwrite(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    taken = tmp_path / "common.yaml"
+    taken.write_text("mine")
+    argv = ("rl", "convert", "-o", str(tmp_path), str(COMMON_CBL))
+    code, _, err = _run(capsys, *argv)
+    assert code == 1
+    assert f"{taken}: exists; --overwrite replaces it" in err
+    assert taken.read_text() == "mine"
+    assert _run(capsys, *argv[:2], "--overwrite", *argv[2:])[0] == 0
+    assert load(taken).reading_list["name"] == "[Marvel] Civil War (Hand Written)"
+
+
+def test_combine_output_is_checked_first(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    taken = tmp_path / "out.yaml"
+    taken.write_text("mine")
+    paths = (str(TWO_DATABASES_CBL), str(COMMON_CBL))
+    code, out, err = _run(capsys, "rl", "combine", "-o", str(taken), *paths)
+    assert (code, out) == (1, "")
+    assert "exists; --overwrite replaces it" in err
+    assert taken.read_text() == "mine"
+    assert (
+        _run(capsys, "rl", "combine", "--overwrite", "-o", str(taken), *paths)[0] == 0
+    )
+    assert len(load(taken).reading_list["entries"]) == 3
+    # An input is never written over, even with --overwrite.
+    copy = tmp_path / "copy.cbl"
+    shutil.copy(COMMON_CBL, copy)
+    code, _, err = _run(
+        capsys,
+        "rl",
+        "combine",
+        "--overwrite",
+        "--to",
+        "cbl",
+        "-o",
+        str(copy),
+        str(copy),
+        str(TWO_DATABASES_CBL),
+    )
+    assert code == 1
+    assert "is one of the inputs" in err
+    assert copy.read_bytes() == COMMON_CBL.read_bytes()
+
+
+def _tag_arcs(path: Path, *names: str) -> None:
+    from comicbox.readinglists import arc_patch
+    from comicbox.write import write_metadata
+
+    for name in names:
+        write_metadata(path, arc_patch(name, 1), formats=["comicbox_json"])
+
+
+def _arcs_output(tmp_path: Path) -> tuple[Path, Path]:
+    """Tag a comic with two arcs whose names make one file name."""
+    comics = tmp_path / "comics"
+    comics.mkdir()
+    shutil.copy(CIX_CBZ_SOURCE_PATH, comics / "a.cbz")
+    _tag_arcs(comics / "a.cbz", "War/Peace", "War:Peace")
+    return comics, tmp_path / "lists"
+
+
+def test_from_arcs_never_writes_one_list_over_another(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    comics, output = _arcs_output(tmp_path)
+    code, _, _ = _run(capsys, "rl", "from-arcs", "-o", str(output), str(comics))
+    assert code == 0
+    written = {path.name for path in output.iterdir()}
+    assert {"War_Peace.yaml", "War_Peace 2.yaml"} <= written
+
+
+def test_from_arcs_keeps_existing_files(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    comics, output = _arcs_output(tmp_path)
+    args = ("rl", "from-arcs", "-o", str(output), str(comics))
+    _run(capsys, *args)
+    before = {path: path.read_bytes() for path in output.iterdir()}
+    code, _, err = _run(capsys, *args)
+    assert code == 1
+    assert err.count("exists; --overwrite replaces it") == len(before)
+    assert {path: path.read_bytes() for path in output.iterdir()} == before
+    assert _run(capsys, *args[:2], "--overwrite", *args[2:])[0] == 0
+    assert {path.name for path in output.iterdir()} == {path.name for path in before}
+
+
+def test_stdout_carries_only_the_list(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """Warnings, losses, the report and log lines all go to stderr."""
+    from loguru import logger as comicbox_logger
+
+    noisy = tmp_path / "noisy.yaml"
+    noisy.write_text(
+        "reading_list:\n  name: Civil War\n  descripton: x\n  entries:\n"  # codespell:ignore
+        "    - series: {name: Civil War, start_year: 2006}\n"
+        "      volume: {number: -1}\n      issue: {name: '1'}\n"
+    )
+    code = 0
+    try:
+        cli.main(("comicbox", "rl", "combine", str(noisy), str(COMMON_CBL)))
+    except SystemExit as exc:
+        code = int(exc.code or 0)
+    comicbox_logger.warning("a log line")
+    comicbox_logger.complete()
+    captured = capsys.readouterr()
+    assert code == 0
+    assert loads(captured.out).reading_list["name"] == "Civil War"
+    assert "a log line" in captured.err
+    assert "read as 0" not in captured.out
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ("convert", "-o", "{file}", str(COMMON_CBL)),
+        ("combine", "-o", "{missing}/x.yaml", str(COMMON_CBL), str(TWO_DATABASES_CBL)),
+        ("print", "{missing}"),
+    ],
+    ids=["output-is-a-file", "output-in-a-missing-dir", "missing-input"],
+)
+def test_file_errors_are_one_line(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, argv: tuple[str, ...]
+) -> None:
+    a_file = tmp_path / "a-file"
+    a_file.write_text("")
+    args = [arg.format(file=a_file, missing=tmp_path / "missing") for arg in argv]
+    code = 0
+    try:
+        cli.main(("comicbox", "rl", *args))
+    except SystemExit as exc:
+        code = int(exc.code or 0)
+    captured = capsys.readouterr()
+    assert code == 1
+    assert "Traceback" not in captured.err
+    assert len(captured.err.strip().splitlines()) == 1
+
+
+def test_a_failed_write_leaves_no_file(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    destination = tmp_path / "list.yaml"
+
+    def no_rename(*_args: object) -> None:
+        reason = "disk full"
+        raise OSError(reason)
+
+    monkeypatch.setattr(type(destination), "replace", no_rename)
+    with pytest.raises(OSError, match="disk full"):
+        readinglist_cli.write_text(destination, "reading_list: {name: A}\n")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_files_are_written_as_utf8(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    source = tmp_path / "pokemon.yaml"
+    source.write_bytes("reading_list:\n  name: Pokémon ワンピース\n".encode())
+    output = tmp_path / "o"
+    code, _, _ = _run(capsys, "rl", "convert", "-o", str(output), str(source))
+    assert code == 0
+    text = (output / "pokemon.yaml").read_bytes().decode("utf-8")
+    assert "Pokémon ワンピース" in text
+
+
+@pytest.mark.parametrize(
+    ("text", "message"),
+    [
+        ("key: [unclosed\n", "Not valid YAML: expected ',' or ']'"),
+        ('{"a": }', "Not valid JSON: Expecting value at line 1, column 7."),
+        ("<ReadingList><Name>x</Name>", "Not valid XML: no element found: line 1"),
+        ("just: text\n", "Not a reading list in any format comicbox reads."),
+    ],
+    ids=["yaml", "json", "xml", "not-a-list"],
+)
+def test_a_syntax_error_says_what_and_where(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, text: str, message: str
+) -> None:
+    path = tmp_path / "junk.txt"
+    path.write_text(text)
+    code, _, err = _run(capsys, "rl", "print", str(path))
+    assert code == 1
+    assert message in err
+    assert err.count(str(path)) == 1
+
+
+def test_the_title_is_not_wrapped(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    name = "A Reading List With A Rather Long Name Of Fifty Chars"
+    path = tmp_path / "long.yaml"
+    path.write_text(f"reading_list:\n  name: {name}\n  notes: n\n")
+    with contextlib.suppress(SystemExit):
+        cli.main(("comicbox", "rl", "print", str(path)))
+    assert name in capsys.readouterr().out.splitlines()
+
+
+def test_keyless_entries_are_counted(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    keyless = tmp_path / "keyless.yaml"
+    keyless.write_text(
+        "reading_list:\n  name: A\n  entries:\n"
+        "    - series: {name: Civil War}\n      issue: {name: '1'}\n"
+        "    - series: {name: Civil War}\n      issue: {name: '2'}\n"
+    )
+    for action in ("combine", "compare"):
+        code, _, err = _run(capsys, "rl", action, str(keyless), str(COMMON_CBL))
+        assert code == 0
+        assert f"{keyless}: 2 entries have no key and match nothing" in err

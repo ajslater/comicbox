@@ -7,7 +7,8 @@
 - Reading lists: `comicbox readinglist` (or `rl`) and the
   `comicbox.readinglists` API read, validate and write ComicRack CBL, json-cbl
   and comicbox YAML or JSON lists, combine and compare lists of one event, and
-  build lists from story arc tags.
+  build lists from story arc tags. They never write over an existing file
+  without `--overwrite`.
 
 ### 🧑‍💻 Developer
 

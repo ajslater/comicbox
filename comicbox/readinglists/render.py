@@ -61,7 +61,8 @@ _ERROR = Style(color="red", bold=True)
 
 def console(*, stderr: bool = False) -> Console:
     """Get a console that prints text as given."""
-    return Console(highlight=False, stderr=stderr)
+    # soft_wrap: a long path stays on its line; the terminal wraps it.
+    return Console(highlight=False, soft_wrap=True, stderr=stderr)
 
 
 def _text(value: Any, style: Style = _PLAIN) -> Text:
@@ -144,13 +145,7 @@ def _header_rows(reading_list: Mapping[str, Any]) -> list[tuple[str, Any]]:
 
 def header_table(reading_list: Mapping[str, Any]) -> Table:
     """Tabulate a list's header."""
-    table = Table(
-        title=_text(reading_list.get(NAME_KEY) or "(unnamed)", _TITLE),
-        title_justify="left",
-        box=None,
-        show_header=False,
-        pad_edge=False,
-    )
+    table = Table(box=None, show_header=False, pad_edge=False)
     table.add_column(style=_LABEL)
     table.add_column()
     for label, value in _header_rows(reading_list):
@@ -165,17 +160,22 @@ def print_messages(out: Console, messages: Sequence[str], label: str) -> None:
 
 
 def print_error(out: Console, path: Path | str | None, error: BaseException) -> None:
-    """Print a failure without a traceback."""
+    """Print a failure in one line, naming its file once."""
+    message = str(error)
+    if isinstance(error, OSError) and error.strerror:
+        path = error.filename if error.filename is not None else path
+        message = error.strerror
     prefix = f"{path}: " if path else ""
-    out.print(Text.assemble((prefix, _PLAIN), (str(error), _ERROR)))
+    out.print(Text.assemble((prefix, _PLAIN), (message, _ERROR)))
 
 
 def print_reading_list(out: Console, path: Path, result: ReadingListResult) -> None:
-    """Print a list's header, entries and read warnings."""
+    """Print a list's name, header and entries."""
     out.print(_text(f"{path} ({result.fmt.value.label})", _DIM))
+    # The name on a line of its own: as a table title it wraps to the table.
+    out.print(_text(result.reading_list.get(NAME_KEY) or "(unnamed)", _TITLE))
     out.print(header_table(result.reading_list))
     out.print(entries_table(result.reading_list))
-    print_messages(out, result.warnings, "warning")
 
 
 def print_status(out: Console, path: Path | str, ok: bool, detail: str) -> None:  # noqa: FBT001

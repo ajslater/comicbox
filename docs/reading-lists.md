@@ -65,8 +65,14 @@ comicbox rl from-arcs -o lists/ ~/Comics/Marvel
 ```
 
 `--to` takes a format token from the table above; the default is `yaml`.
-`combine` writes to stdout without `-o`, and its report goes to stderr. A
-command exits 1 when any file fails.
+`combine` writes to stdout without `-o`. stdout only ever holds the list or
+table asked for: warnings, what a format loses, the combine report and log lines
+go to stderr. A command exits 1 when any file fails.
+
+Nothing is written over an existing file unless `--overwrite` is given to
+`convert`, `combine` or `from-arcs`, and nothing is ever written over an input.
+`convert` checks every destination before it writes any, so two inputs that
+would make one file, or a file that would replace an input, write nothing.
 
 A comic file named `readinglist` or `rl` has to be given to comicbox as
 `./readinglist` or `./rl`.

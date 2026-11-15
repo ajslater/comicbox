@@ -31,6 +31,7 @@ from comicbox.readinglists.schema import (
     EntrySchema,
     ReadingListYamlSchema,
 )
+from comicbox.readinglists.syntax import syntax_error
 
 # A year, or a year and month: a date that names no day.
 _PARTIAL_DATE_RE = re.compile(r"^(\d{4})(?:-(\d{1,2}))?$")
@@ -154,9 +155,9 @@ def _loads(
 ) -> ReadingListResult:
     resolved = get_format(fmt) if fmt else detect_format(text)
     if resolved is None:
-        reason = "Not a reading list in any format comicbox reads."
-        if path:
-            reason = f"{path}: {reason}"
+        reason = (
+            syntax_error(text) or "Not a reading list in any format comicbox reads."
+        )
         raise ReadingListFormatError(reason)
     transform = resolved.value.transform_class(path)
     document = transform.parse(text)
