@@ -179,11 +179,15 @@ class ReadingListSession:
 
         Redirects are followed and the download is capped at
         ``readinglists.max_download_bytes``. Its source is of kind ``url``.
+        A user name and password in the URL are sent, and never recorded.
         """
-        from comicbox.readinglists.sources.url import fetch
+        from comicbox.readinglists.sources.url import fetch, without_userinfo
 
         kind = SourceKind.URL.value
-        with self.fetching(kind, url):
+        # A user name and password in the URL go with the request; they are
+        # never recorded on the list, nor shown in an event or an error.
+        shown = without_userinfo(url)
+        with self.fetching(kind, shown):
             max_bytes = self._settings.readinglists.max_download_bytes
             data, revision = fetch(
                 self.http(), url, max_bytes, cancelled=self._cancelled.is_set
@@ -191,8 +195,8 @@ class ReadingListSession:
             self.check_cancelled()
             source = {
                 SOURCE_KIND_KEY: kind,
-                SOURCE_KEY_KEY: url,
-                SOURCE_URL_KEY: url,
+                SOURCE_KEY_KEY: shown,
+                SOURCE_URL_KEY: shown,
                 SOURCE_REVISION_KEY: revision,
             }
             return self.load_fetched(data, source)

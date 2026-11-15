@@ -406,8 +406,12 @@ class FetchSpec:
 
     @override
     def __str__(self) -> str:
-        """Spell it as it was given."""
-        return self.target if self.kind == _URL_KIND else f"{self.kind}:{self.target}"
+        """Spell it as it was given, but a URL's user name and password."""
+        if self.kind == _URL_KIND:
+            from comicbox.readinglists.sources.url import without_userinfo
+
+            return without_userinfo(self.target)
+        return f"{self.kind}:{self.target}"
 
 
 def fetch_spec(text: str) -> FetchSpec:

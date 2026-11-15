@@ -10,13 +10,14 @@ chunks.
 
 from __future__ import annotations
 
+import re
 import time
 import zlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Final
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 from comicbox.exceptions import OnlineLookupAbortedError, ReadingListFetchError
 from comicbox.readinglists.changes import quote_value
@@ -27,6 +28,8 @@ if TYPE_CHECKING:
     import httpx
 
 _SCHEMES = frozenset({"http", "https"})
+# The userinfo of a URL too broken for urlsplit.
+_USERINFO_RE = re.compile(r"(//)[^/@\s]*@")
 _ETAG = "etag"
 _LAST_MODIFIED = "last-modified"
 _CONTENT_LENGTH = "content-length"
@@ -80,10 +83,33 @@ class Download:
         )
 
 
+def without_userinfo(url: str) -> str:
+    """
+    Drop a URL's user name and password, keeping the rest of the address.
+
+    They are sent with the request and never recorded or shown. The query
+    string stays: it is part of the address.
+    """
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return _USERINFO_RE.sub(r"\1", url)
+    if "@" not in parts.netloc:
+        return url
+    host = parts.netloc.rpartition("@")[2]
+    return urlunsplit((parts.scheme, host, parts.path, parts.query, parts.fragment))
+
+
+def _scrub(text: str, url: str) -> str:
+    """Take a URL's userinfo out of a message that may quote it."""
+    shown = without_userinfo(url)
+    return text if shown == url else text.replace(url, shown)
+
+
 def check_url(url: str) -> str:
     """Refuse anything but an http or https URL."""
     if urlsplit(url).scheme.lower() not in _SCHEMES:
-        reason = f"Only http and https URLs can be fetched: {url}"
+        reason = f"Only http and https URLs can be fetched: {without_userinfo(url)}"
         raise ReadingListFetchError(reason)
     return url
 
@@ -221,22 +247,24 @@ def download(
     import httpx
 
     check_url(url)
+    # What every message shows: the userinfo is for the request alone.
+    shown = without_userinfo(url)
     request_headers = {**(headers or {}), "Accept-Encoding": _ACCEPT_ENCODING}
     try:
         with client.stream("GET", url, headers=request_headers) as response:
             check_url(str(response.url))
             if response.is_error:
-                raise HttpStatusError(url, response)
+                raise HttpStatusError(shown, response)
             body = (
                 b""
                 if response.status_code == HTTPStatus.NOT_MODIFIED
-                else _BoundedBody(response, url, max_bytes, cancelled).read()
+                else _BoundedBody(response, shown, max_bytes, cancelled).read()
             )
             return Download(response.status_code, response.headers, body)
     except (httpx.HTTPError, httpx.InvalidURL, httpx.StreamError) as exc:
         # InvalidURL is not an HTTPError: a URL with a newline, a bad host
         # name, or a redirect to one, such as "javascript:...".
-        reason = f"Cannot fetch {url}: {exc}"
+        reason = f"Cannot fetch {shown}: {_scrub(str(exc), url)}"
         raise ReadingListFetchError(reason) from exc
 
 

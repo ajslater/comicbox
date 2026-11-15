@@ -150,7 +150,13 @@ the same sha instead.
 ### URLs
 
 Any http or https URL, redirects included, in any format above. The format is
-detected from the content.
+detected from the content. A download is read in gzip or deflate, never past
+`readinglists.max_download_bytes` once inflated, and within two minutes.
+
+A user name and password in the URL, as in `https://user:pass@host/list.cbl`,
+are sent with the request and never recorded on the list or printed. The query
+string is kept, because it is part of the address, so a token there is recorded
+with the list. Any host is fetched, your own network's included.
 
 ### Settings
 

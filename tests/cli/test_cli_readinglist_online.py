@@ -58,6 +58,8 @@ def _web(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_TREE, headers={"ETag": '"v1"'})
     if url.host == "raw.githubusercontent.com" or str(url) == _URL:
         return httpx.Response(200, content=_CBL)
+    if url.path == "/civil-war.cbl":
+        return httpx.Response(200, content=_CBL)
     if url.path == "/broken.cbl":
         return httpx.Response(200, content=b"<ReadingList><Name>")
     return httpx.Response(404)
@@ -428,3 +430,18 @@ def test_a_download_that_will_not_read_names_its_url(
 
     assert code == 1
     assert "https://lists.example/broken.cbl: Not valid XML" in err
+
+
+# ---------------------------------------- credentials in a URL (E7)
+
+
+@pytest.mark.parametrize("path", ["/civil-war.cbl", "/missing.cbl"])
+def test_the_cli_never_prints_a_urls_credentials(
+    capsys: pytest.CaptureFixture[str], path: str
+) -> None:
+    url = f"https://user:secret@lists.example{path}?token=abc"
+
+    _, out, err = _run(capsys, "fetch", url)
+
+    assert "secret" not in out + err
+    assert f"https://lists.example{path}?token=abc" in out + err

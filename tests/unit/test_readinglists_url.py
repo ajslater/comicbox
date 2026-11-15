@@ -374,3 +374,68 @@ def test_a_cancel_while_the_body_arrives_returns_no_list() -> None:
         session._transport = httpx.MockTransport(cancel_then_answer)
         with pytest.raises(OnlineLookupAbortedError):
             session.fetch_url(f"{_BASE}/civil-war.yaml")
+
+
+# ---------------------------------------- credentials in a URL (R2-E E7)
+
+_SECRET_URL = "https://user:secret@lists.example/civil-war.yaml?token=abc"
+_SHOWN_URL = "https://lists.example/civil-war.yaml?token=abc"
+
+
+def test_a_urls_credentials_are_sent_and_never_recorded(
+    events: list[Event],
+) -> None:
+    seen: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return _serve(request)
+
+    with ReadingListSession(on_event=events.append) as session:
+        session._transport = httpx.MockTransport(answer)
+        result = session.fetch_url(_SECRET_URL)
+
+    (request,) = seen
+    assert request.headers["Authorization"] == "Basic dXNlcjpzZWNyZXQ="
+    (source,) = (
+        item for item in result.reading_list["sources"] if item["kind"] == "url"
+    )
+    assert source["key"] == source["url"] == _SHOWN_URL
+    fetch_events = (ReadingListFetchStarted, ReadingListFetchFinished)
+    keys = {event.key for event in events if isinstance(event, fetch_events)}
+    assert keys == {_SHOWN_URL}
+    assert "secret" not in repr(result)
+
+
+@pytest.mark.parametrize(
+    ("path", "status"), [("/missing.yaml", 404), ("/civil-war.yaml", 200)]
+)
+def test_an_error_never_shows_a_urls_credentials(path: str, status: int) -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        if status == 200:
+            reason = "connection reset by peer"
+            raise httpx.ReadError(reason, request=request)
+        return httpx.Response(status)
+
+    with ReadingListSession() as session:
+        session._transport = httpx.MockTransport(answer)
+        with pytest.raises(ReadingListFetchError) as caught:
+            session.fetch_url(f"https://user:secret@lists.example{path}?token=abc")
+
+    message = str(caught.value)
+    assert "secret" not in message
+    assert "user:" not in message
+    assert f"https://lists.example{path}?token=abc" in message
+
+
+@pytest.mark.parametrize(
+    ("url", "shown"),
+    [
+        (_SECRET_URL, _SHOWN_URL),
+        ("https://user@lists.example:8080/a", "https://lists.example:8080/a"),
+        ("https://lists.example/a?user=x@y", "https://lists.example/a?user=x@y"),
+        ("https://a:b@[broken/x", "https://[broken/x"),
+    ],
+)
+def test_without_userinfo(url: str, shown: str) -> None:
+    assert url_source.without_userinfo(url) == shown
