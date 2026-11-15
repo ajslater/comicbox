@@ -11,6 +11,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from comicbox.empty import is_empty
+from comicbox.formats.comicbox.schema import (
+    COVER_DATE_KEY,
+    DAY_KEY,
+    MONTH_KEY,
+    STORE_DATE_KEY,
+    YEAR_KEY,
+)
 from comicbox.readinglists.schema import (
     DATE_KEY,
     DESCRIPTION_KEY,
@@ -33,8 +40,10 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
 )
 
-# Merged leaf by leaf, one level down.
-_NESTED_KEYS = frozenset({DATE_KEY, ISSUE_KEY, SERIES_KEY, VOLUME_KEY})
+# Merged leaf by leaf, one level down. Dates are merged on their own terms.
+_NESTED_KEYS = frozenset({ISSUE_KEY, SERIES_KEY, VOLUME_KEY})
+# The date leaves that name a day, and the parts of a cover date they match.
+_DATE_PARTS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
 # Taken whole from the first input that has them.
 _FIRST_HEADER_KEYS = (
     DESCRIPTION_KEY,
@@ -73,6 +82,40 @@ def _merge_one_level(dest: Mapping[str, Any], source: Mapping[str, Any]) -> dict
     return result
 
 
+def _date_parts(entry_date: Mapping[str, Any]) -> dict[str, int]:
+    """Get the year, month and day a date sets, as leaves or in its cover date."""
+    parts = {key: entry_date[key] for key in _DATE_PARTS if key in entry_date}
+    if cover_date := entry_date.get(COVER_DATE_KEY):
+        cover_parts = (cover_date.year, cover_date.month, cover_date.day)
+        for key, value in zip(_DATE_PARTS, cover_parts, strict=True):
+            parts.setdefault(key, value)
+    return parts
+
+
+def _merge_dates(dest: Mapping[str, Any], source: Mapping[str, Any]) -> dict:
+    """
+    Fill a date's missing leaves only from a date that agrees with it.
+
+    The first date wins whole. A later one fills its gaps only when every
+    part both set is the same, so a year from one list and a cover date of
+    another year from the next never make one contradictory date. The store
+    date is a separate fact and is merged on its own.
+    """
+    result = dict(dest)
+    if (store_date := source.get(STORE_DATE_KEY)) is not None:
+        result.setdefault(STORE_DATE_KEY, store_date)
+    dest_parts, source_parts = _date_parts(dest), _date_parts(source)
+    if any(
+        source_parts[key] != value
+        for key, value in dest_parts.items()
+        if key in source_parts
+    ):
+        return result
+    for key, value in source.items():
+        result.setdefault(key, value)
+    return result
+
+
 def merge_entry(entries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Merge the rows of one group, in rank order."""
     merged: dict[str, Any] = {}
@@ -80,6 +123,8 @@ def merge_entry(entries: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
         for key, value in entry.items():
             if key == IDENTIFIERS_KEY:
                 merged[key] = _union_ids(merged.get(key), value)
+            elif key == DATE_KEY and isinstance(value, Mapping):
+                merged[key] = _merge_dates(merged.get(key) or {}, value)
             elif key in _NESTED_KEYS and isinstance(value, Mapping):
                 merged[key] = _merge_one_level(merged.get(key) or {}, value)
             else:

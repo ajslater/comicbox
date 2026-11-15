@@ -5,9 +5,15 @@ Every row is a node ``(input index, row index)`` carrying its
 ``entry_keys``. A key is qualified by how many earlier rows of its own input
 carry it, so the first occurrence of a repeated issue lines up with the
 first in another list and the second with the second, and two rows of one
-input never share a qualified key. Rows that share a qualified key are
-joined with a union-find, so a ComicVine id joining A and B and a Metron id
-joining B and C put all three together.
+input never share a qualified key.
+
+Two rows of different inputs that share a qualified key are linked, and
+links join groups transitively: a ComicVine id joining A and B and a Metron
+id joining B and C put all three together. Links are applied strongest
+first, ids in ``ranked_id_sources`` order and then names, and within one
+strength by input rank and row. A link that would put two rows of one input
+in one group is refused, so a name match never takes a row an id match
+wanted, and nothing is cut apart afterwards.
 """
 
 from collections import Counter
@@ -16,15 +22,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from comicbox.enums.comicbox import IdSources
-from comicbox.readinglists.identity import (
-    ID_KEY_KIND,
-    NAME_KEY_KIND,
-    EntryKey,
-    entry_keys,
-)
+from comicbox.identifiers import ID_SOURCE_VALUES
+from comicbox.readinglists.identity import ID_KEY_KIND, EntryKey, entry_keys
 
 Node = tuple[int, int]
 QualifiedKey = tuple[EntryKey, int]
+_Link = tuple[tuple[int, int], Node, Node]
 
 # A barcode differing between two rows of one issue is a variant cover, a
 # printing or an edition, not a bad mapping.
@@ -36,6 +39,8 @@ _BARCODE_SOURCES = frozenset(
         IdSources.UPC.value,
     }
 )
+_ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
+_NAME_STRENGTH = (1, 0)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,31 +71,43 @@ class Grouping:
     name_joins: frozenset[int]
 
 
-class _UnionFind:
-    """Disjoint sets of nodes; the smallest node is a set's root."""
+class _Groups:
+    """Disjoint sets of nodes, each holding at most one row per input."""
 
-    __slots__ = ("_parent",)
+    __slots__ = ("_inputs", "_parent")
 
-    def __init__(self) -> None:
-        self._parent: dict[Node, Node] = {}
+    def __init__(self, nodes: Sequence[Node]) -> None:
+        self._parent: dict[Node, Node] = {node: node for node in nodes}
+        self._inputs: dict[Node, set[int]] = {node: {node[0]} for node in nodes}
 
     def find(self, node: Node) -> Node:
         """Return the node's root, compressing the path to it."""
         root = node
-        while (parent := self._parent.setdefault(root, root)) != root:
+        while (parent := self._parent[root]) != root:
             root = parent
         while node != root:
             node, self._parent[node] = self._parent[node], root
         return root
 
-    def union(self, one: Node, other: Node) -> None:
-        """Join two nodes' sets."""
+    def link(self, one: Node, other: Node) -> None:
+        """Join two nodes' groups, unless both hold a row of one input."""
         roots = sorted((self.find(one), self.find(other)))
-        self._parent[roots[1]] = roots[0]
+        root, child = roots
+        if root == child or self._inputs[root] & self._inputs[child]:
+            return
+        self._parent[child] = root
+        self._inputs[root] |= self._inputs.pop(child)
+
+    def groups(self) -> list[list[Node]]:
+        """List the groups, each in node order, by their first node."""
+        groups: dict[Node, list[Node]] = {}
+        for node in sorted(self._parent):
+            groups.setdefault(self.find(node), []).append(node)
+        return sorted(groups.values())
 
 
 def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
-    """Each row's keys, qualified by their count in earlier rows."""
+    """Qualify each row's keys by their count in earlier rows."""
     counts: Counter[EntryKey] = Counter()
     qualified = []
     for entry in entries:
@@ -100,54 +117,24 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
     return qualified
 
 
-def _nodes(qualified: Sequence[Sequence[Sequence[QualifiedKey]]]) -> Iterator[Node]:
-    for input_index, rows in enumerate(qualified):
-        for row in range(len(rows)):
-            yield (input_index, row)
-
-
-def _join(
-    qualified: Sequence[Sequence[Sequence[QualifiedKey]]],
-    apart: frozenset[Node],
-) -> list[list[Node]]:
-    """Group the nodes that share a qualified key; keep ``apart`` alone."""
-    union_find = _UnionFind()
-    holders: dict[QualifiedKey, Node] = {}
-    for node in _nodes(qualified):
-        union_find.find(node)
-        if node in apart:
-            continue
-        for key in qualified[node[0]][node[1]]:
-            if (holder := holders.setdefault(key, node)) != node:
-                union_find.union(holder, node)
-    groups: dict[Node, list[Node]] = {}
-    for node in _nodes(qualified):
-        groups.setdefault(union_find.find(node), []).append(node)
-    return list(groups.values())
-
-
-def _later_rows_of_one_input(groups: list[list[Node]]) -> dict[Node, list[Node]]:
-    """Map each row a chain put beside an earlier row of its input to its group."""
-    later: dict[Node, list[Node]] = {}
-    for members in groups:
-        inputs_seen: set[int] = set()
-        for node in members:
-            if node[0] in inputs_seen:
-                later[node] = members
-            inputs_seen.add(node[0])
-    return later
-
-
-def _key_source(key: EntryKey) -> str:
-    return key[1] if key[0] == ID_KEY_KIND else NAME_KEY_KIND
-
-
-def _key_value(key: EntryKey) -> str:
+def _strength(key: EntryKey) -> tuple[int, int]:
+    """Rank a key: ids before names, better ranked databases first."""
     if key[0] == ID_KEY_KIND:
-        return str(key[2])
-    _, series, discriminator, number, suffix = key
-    number = "" if number is None else number
-    return f"{series} ({discriminator}) #{number}{suffix}"
+        return (0, _ID_SOURCE_RANKS.get(key[1], len(_ID_SOURCE_RANKS)))
+    return _NAME_STRENGTH
+
+
+def _links(holders: Mapping[QualifiedKey, Sequence[Node]]) -> list[_Link]:
+    """List every pair of rows sharing a key, strongest first."""
+    links: list[_Link] = []
+    for (key, _), nodes in holders.items():
+        strength = _strength(key)
+        links.extend(
+            (strength, one, other)
+            for index, one in enumerate(nodes)
+            for other in nodes[index + 1 :]
+        )
+    return sorted(links)
 
 
 class _Grouper:
@@ -158,42 +145,27 @@ class _Grouper:
         self._qualified = [_qualify(entries) for entries in inputs]
         self._conflicts: list[GroupIdConflict] = []
 
+    def _nodes(self) -> Iterator[Node]:
+        for input_index, rows in enumerate(self._qualified):
+            for row in range(len(rows)):
+                yield (input_index, row)
+
     def _keys(self, node: Node) -> list[QualifiedKey]:
         return self._qualified[node[0]][node[1]]
 
     def _id_keys(self, node: Node) -> list[QualifiedKey]:
         return [qkey for qkey in self._keys(node) if qkey[0][0] == ID_KEY_KIND]
 
-    def _group_value(self, members: Sequence[Node], source: str) -> str:
-        """Get the value the best ranked member holds for a source."""
-        for member in members:
-            for key, _ in self._keys(member):
-                if _key_source(key) == source:
-                    return _key_value(key)
-        return ""
-
-    def _record_split(
-        self,
-        node: Node,
-        first_pass: Sequence[Node],
-        groups: Sequence[Sequence[Node]],
-        group_of: Mapping[Node, int],
-    ) -> None:
-        """Report a row kept apart, by the key that had linked it."""
-        others = {
-            qkey
-            for member in first_pass
-            if member != node
-            for qkey in self._keys(member)
-        }
-        key = next(key for key, n in self._keys(node) if (key, n) in others)
-        earliest = next(member for member in first_pass if member[0] == node[0])
-        group = group_of[earliest]
-        source = _key_source(key)
-        kept = self._group_value(groups[group], source)
-        self._conflicts.append(
-            GroupIdConflict(group, source, kept, _key_value(key), *node)
-        )
+    def _join(self) -> list[list[Node]]:
+        nodes = list(self._nodes())
+        holders: dict[QualifiedKey, list[Node]] = {}
+        for node in nodes:
+            for qkey in self._keys(node):
+                holders.setdefault(qkey, []).append(node)
+        groups = _Groups(nodes)
+        for _, one, other in _links(holders):
+            groups.link(one, other)
+        return groups.groups()
 
     def _record_disagreements(self, group: int, members: Sequence[Node]) -> None:
         """Keep the best ranked id per database and report the others."""
@@ -223,16 +195,11 @@ class _Grouper:
         )
 
     def group(self) -> Grouping:
-        """Join, keep later rows of one input apart, then report."""
-        first_pass = _join(self._qualified, frozenset())
-        later = _later_rows_of_one_input(first_pass)
-        groups = _join(self._qualified, frozenset(later)) if later else first_pass
-        groups.sort(key=lambda members: members[0])
+        """Join the rows, then report what the groups disagree on."""
+        groups = self._join()
         group_of = {
             node: index for index, members in enumerate(groups) for node in members
         }
-        for node in sorted(later):
-            self._record_split(node, later[node], groups, group_of)
         name_joins = set()
         for index, members in enumerate(groups):
             self._record_disagreements(index, members)

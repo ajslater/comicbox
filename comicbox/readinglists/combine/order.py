@@ -36,31 +36,55 @@ def _rebuild(merged: Sequence[int], insertions: dict[int, list[int]]) -> list[in
     return result
 
 
-def _insert_ordered(
-    merged: list[int], sequence: Sequence[int], input_index: int
-) -> tuple[list[int], list[GroupOrderConflict]]:
+class _OrderedInsert:
     """
-    Insert an ordered input's new groups after their nearest common anchor.
+    Insert an ordered input's new groups beside the entries both lists hold.
 
-    The anchor is the nearest preceding entry in the longest common
-    subsequence, not any shared entry: a shared entry outside it is where
-    the two orders disagree, so it is recorded and left where it is.
+    A new group goes after the nearest preceding entry of the longest common
+    subsequence; with none before it, just before the first one; with no
+    common entry at all, after the merged entries. A shared entry outside
+    the subsequence is where the two orders disagree, so it is recorded and
+    left where it is.
     """
-    present = set(merged)
-    insertions: dict[int, list[int]] = {}
-    conflicts: list[GroupOrderConflict] = []
-    anchor = 0
-    for opcode in LCSseq.opcodes(merged, sequence):
-        if opcode.tag == _EQUAL:
-            anchor = opcode.src_end
-            continue
-        for row in range(opcode.dest_start, opcode.dest_end):
-            group = sequence[row]
-            if group in present:
-                conflicts.append(GroupOrderConflict(group, input_index, row))
-            else:
-                insertions.setdefault(anchor, []).append(group)
-    return _rebuild(merged, insertions), conflicts
+
+    def __init__(
+        self, merged: Sequence[int], sequence: Sequence[int], input_index: int
+    ) -> None:
+        self._merged = merged
+        self._sequence = sequence
+        self._input_index = input_index
+        self._present = set(merged)
+        self._insertions: dict[int, list[int]] = {}
+        self.conflicts: list[GroupOrderConflict] = []
+        # None until the first common entry: groups before it wait for it.
+        self._anchor: int | None = None
+        self._waiting: list[int] = []
+
+    def _common(self, src_start: int, src_end: int) -> None:
+        if self._anchor is None and self._waiting:
+            self._insertions[src_start] = self._waiting
+        self._anchor = src_end
+
+    def _place(self, row: int) -> None:
+        group = self._sequence[row]
+        if group in self._present:
+            self.conflicts.append(GroupOrderConflict(group, self._input_index, row))
+        elif self._anchor is None:
+            self._waiting.append(group)
+        else:
+            self._insertions.setdefault(self._anchor, []).append(group)
+
+    def run(self) -> list[int]:
+        """Return the merged groups with this input's new ones inserted."""
+        for opcode in LCSseq.opcodes(self._merged, self._sequence):
+            if opcode.tag == _EQUAL:
+                self._common(opcode.src_start, opcode.src_end)
+                continue
+            for row in range(opcode.dest_start, opcode.dest_end):
+                self._place(row)
+        if self._anchor is None and self._waiting:
+            self._insertions[len(self._merged)] = self._waiting
+        return _rebuild(self._merged, self._insertions)
 
 
 def _date_positions(
@@ -128,8 +152,9 @@ def order_groups(
     merged = list(sequences[ordered_inputs[0]])
     conflicts: list[GroupOrderConflict] = []
     for input_index in ordered_inputs[1:]:
-        merged, found = _insert_ordered(merged, sequences[input_index], input_index)
-        conflicts.extend(found)
+        insert = _OrderedInsert(merged, sequences[input_index], input_index)
+        merged = insert.run()
+        conflicts.extend(insert.conflicts)
     for input_index, flag in enumerate(ordered):
         if not flag:
             merged = _insert_unordered(merged, sequences[input_index], sort_keys, dates)

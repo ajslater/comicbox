@@ -1,6 +1,9 @@
 """Combining reading lists: identity, order, fields and the report."""
 
+import random
 import time
+from collections import Counter
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from typing import Any
 
@@ -213,23 +216,176 @@ def test_an_id_disagreement_through_a_name_join() -> None:
     assert result.name_joins == (0,)
 
 
-def test_a_chain_never_merges_two_rows_of_one_input() -> None:
-    """A row of B carries the ids of two rows of A: one of them is wrong."""
+def test_a_row_shared_by_two_ids_goes_to_the_better_ranked_one() -> None:
+    """A row of B carries the ids of two rows of A; Metron outranks ComicVine."""
     first = _list(
         [_entry(1, year=None, comicvine="100"), _entry(2, year=None, metron="5")]
     )
     second = _list([_entry(1, year=None, comicvine="100", metron="5")])
     result = combine([first, second])
-    assert _issues(result.reading_list) == ["1", "2"]
     assert result.provenance == (
-        (EntryOrigin(0, 0), EntryOrigin(1, 0)),
+        (EntryOrigin(0, 0),),
+        (EntryOrigin(0, 1), EntryOrigin(1, 0)),
+    )
+    # A refused link is no disagreement: the joined rows' ids agree.
+    assert result.id_conflicts == ()
+
+
+def test_an_id_match_is_never_lost_to_a_name_match() -> None:
+    """C's one book shares a name with a's first and an id with a's third."""
+    books = [
+        _entry(1, comicvine="105747"),
+        _entry(2, comicvine="106000"),
+        _entry(1, comicvine="999001"),
+    ]
+    a, b = _list(books), _list(books)
+    c = _list([_entry(1, comicvine="999001")])
+    result = combine([a, b, c])
+    ids = [
+        entry["identifiers"]["comicvine"]["key"]
+        for entry in result.reading_list[ENTRIES_KEY]
+    ]
+    assert ids == ["105747", "106000", "999001"]
+    assert result.id_conflicts == ()
+    assert result.provenance[2] == (
+        EntryOrigin(0, 2),
+        EntryOrigin(1, 2),
+        EntryOrigin(2, 0),
+    )
+
+
+def test_an_id_match_takes_the_repeat_it_names() -> None:
+    """X and X' share a name key; C's row carries X' id, so it joins X'."""
+    first = _list(
+        [
+            _entry(1, comicvine="cv1"),
+            _entry(5, series="Other"),
+            _entry(1, comicvine="cv2"),
+        ]
+    )
+    second = _list([_entry(1, comicvine="cv2")])
+    result = combine([first, second])
+    assert result.provenance == (
+        (EntryOrigin(0, 0),),
         (EntryOrigin(0, 1),),
+        (EntryOrigin(0, 2), EntryOrigin(1, 0)),
     )
-    assert result.id_conflicts == (
-        IdConflict(
-            entry=0, source="metron", kept="5", dropped="5", input_index=0, row=1
-        ),
+    assert result.id_conflicts == ()
+
+
+@dataclass(frozen=True, slots=True)
+class _Issue:
+    series: str
+    number: int
+    year: int
+    comicvine: str
+    metron: str
+
+
+def _random_inputs(seed: int) -> list[dict[str, Any]]:
+    """
+    Build lists of one pool of issues with consistent ids, some dropped.
+
+    Every third issue has a twin with the same series, year and number and
+    ids of its own, as a reprint has: rows a name key cannot tell apart.
+    """
+    rng = random.Random(seed)  # noqa: S311 - a test fixture, not a secret
+    pool = [
+        _Issue(
+            f"Series {number % 4}",
+            number // 2 if number % 3 == 0 else number,
+            2000 + number % 3,
+            f"cv{number}",
+            f"m{number}",
+        )
+        for number in range(24)
+    ]
+    pool.extend(
+        replace(issue, comicvine=f"{issue.comicvine}t", metron=f"{issue.metron}t")
+        for issue in pool[::3]
     )
+    inputs = []
+    for _ in range(rng.randint(2, 4)):
+        rows = []
+        for issue in rng.sample(pool, rng.randint(6, 18)):
+            row = _random_row(rng, issue)
+            rows.extend([row, row] if rng.random() < 0.1 else [row])
+        inputs.append(_list(rows))
+    return inputs
+
+
+def _random_row(rng: random.Random, issue: _Issue) -> dict[str, Any]:
+    """Write one issue as a list might: some ids, maybe no year."""
+    row = _entry(
+        issue.number,
+        series=issue.series,
+        year=issue.year if rng.random() < 0.7 else None,
+    )
+    ids = (("comicvine", issue.comicvine), ("metron", issue.metron))
+    if identifiers := {
+        source: {"key": key} for source, key in ids if rng.random() < 0.6
+    }:
+        row["identifiers"] = identifiers
+    return row
+
+
+def _id_counts(entries: list[dict[str, Any]]) -> Counter[tuple[str, str]]:
+    return Counter(
+        (source, identifier["key"])
+        for entry in entries
+        for source, identifier in (entry.get("identifiers") or {}).items()
+    )
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_no_id_lands_on_two_entries_unless_an_input_repeats_it(seed: int) -> None:
+    inputs = _random_inputs(seed)
+    result = combine(inputs)
+    repeated = {
+        id_key
+        for reading_list in inputs
+        for id_key, count in _id_counts(reading_list[ENTRIES_KEY]).items()
+        if count > 1
+    }
+    for id_key, count in _id_counts(result.reading_list[ENTRIES_KEY]).items():
+        assert count == 1 or id_key in repeated, id_key
+    for members in result.provenance:
+        assert len({origin.input_index for origin in members}) == len(members)
+
+
+def test_new_entries_with_nothing_in_common_go_after_the_primary() -> None:
+    result = combine([_list(_numbers(1, 2, 3)), _list(_numbers(7, 8, 9))])
+    assert _issues(result.reading_list) == ["1", "2", "3", "7", "8", "9"]
+
+
+def test_new_entries_before_any_common_one_go_just_before_it() -> None:
+    result = combine([_list(_numbers(1, 2, 3, 4, 5)), _list(_numbers(9, 4))])
+    assert _issues(result.reading_list) == ["1", "2", "3", "9", "4", "5"]
+
+
+def test_a_merged_date_never_contradicts_itself() -> None:
+    year_only = _list([{**_entry(1), "date": {"year": 2006}}])
+    other_year = _list(
+        [
+            {
+                **_entry(1),
+                "date": {
+                    "cover_date": date(2007, 1, 1),
+                    "store_date": date(2006, 12, 20),
+                    "year": 2007,
+                    "month": 1,
+                    "day": 1,
+                },
+            }
+        ]
+    )
+    same_year = _list(
+        [{**_entry(1), "date": {"cover_date": date(2006, 3, 1), "month": 3}}]
+    )
+    (entry,) = combine([year_only, other_year]).reading_list[ENTRIES_KEY]
+    assert entry["date"] == {"year": 2006, "store_date": date(2006, 12, 20)}
+    (entry,) = combine([year_only, same_year]).reading_list[ENTRIES_KEY]
+    assert entry["date"] == {"year": 2006, "cover_date": date(2006, 3, 1), "month": 3}
 
 
 def test_an_unordered_input_is_placed_by_date() -> None:

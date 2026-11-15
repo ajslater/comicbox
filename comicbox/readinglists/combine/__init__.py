@@ -52,11 +52,9 @@ class IdConflict:
     """
     Two values for one source on one issue: one of the lists is wrong.
 
-    Combined entry ``entry`` keeps ``kept`` for ``source``; the row at
-    ``input_index`` and ``row`` had ``dropped``. ``source`` is a database,
-    or ``name`` for a series-name key. A row that a chain of keys joined to
-    an earlier row of its own input is kept apart as its own entry, and is
-    reported here with the key that linked it.
+    Combined entry ``entry`` keeps ``kept`` for ``source``, a database; the
+    row at ``input_index`` and ``row``, joined to it, had ``dropped``. A
+    barcode that differs is a printing or an edition, so it is never one.
     """
 
     entry: int
