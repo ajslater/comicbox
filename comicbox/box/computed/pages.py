@@ -35,6 +35,9 @@ class ComicboxComputedPages(ComicboxComputedUrls):
         if key in self._config.general.delete_keys or not sub_md or not self._path:
             return False
         formats = frozenset(self._config.all_write_formats | self._dict_formats)
+        if self._config.is_write_keep:
+            # The formats a keep write writes are known only per comic.
+            formats |= self.get_carried_formats().formats
         compute_attr, schema_attr = _ENABLE_PAGE_COMPUTE_ATTRS[key]
         return getattr(self._config.compute, compute_attr, False) and (
             any(getattr(fmt.value.schema_class, schema_attr, False) for fmt in formats)

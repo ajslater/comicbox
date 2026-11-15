@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -133,11 +133,24 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 old_path.unlink()
                 logger.info(f"Removed: {old_path}")
 
-    def _archive_remove_metadata_files(self, zf: ZipFile) -> None:
-        """Remove metadata files from archive."""
+    def _rewritten_names(self, files: Mapping[str, Any]) -> frozenset[str] | None:
+        """
+        Name, in lower case, the tag files a write replaces; None for all of them.
+
+        Under ``keep`` a write replaces only the files it writes, so a tag
+        file it did not read stays as it is.
+        """
+        if not self._config.write.keep_formats:
+            return None
+        return frozenset(Path(name).name.lower() for name in files)
+
+    def _archive_remove_metadata_files(
+        self, zf: ZipFile, only: frozenset[str] | None = None
+    ) -> None:
+        """Remove metadata files from archive: all, or ``only`` those named."""
         for path in self.namelist():
             fn = Path(path).name.lower()
-            if fn in _ALL_ARCHIVE_METADATA_FILENAMES:
+            if fn in _ALL_ARCHIVE_METADATA_FILENAMES and (only is None or fn in only):
                 # zipremove patches remove()/repack() onto the stdlib
                 # ZipFile, which lacks both through at least Python 3.14,
                 # so the typeshed stubs can't see either method.
@@ -160,8 +173,15 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             )
 
     @staticmethod
-    def _get_filename_from_info(info: InfoType) -> str | None:
-        """Get the filename to write."""
+    def _get_filename_from_info(
+        info: InfoType, rewritten: frozenset[str] | None = None
+    ) -> str | None:
+        """
+        Get the filename to write.
+
+        Old metadata files are not copied: all of them, or under ``keep``
+        only the ``rewritten`` ones, so a tag file not read is copied as is.
+        """
         # Do not write dirs.
         # Prevents empty dirs. Files write implicit parents.
         if ArchiveInfo.is_dir(info):
@@ -171,7 +191,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
         # Don't copy old metadata files to new archive.
         lower_name = Path(filename).name.lower()
-        if lower_name in _ALL_ARCHIVE_METADATA_FILENAMES:
+        if lower_name in _ALL_ARCHIVE_METADATA_FILENAMES and (
+            rewritten is None or lower_name in rewritten
+        ):
             return None
         return filename
 
@@ -185,7 +207,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             filename += suffix
         return filename
 
-    def _copy_archive_files_to_new_archive(self, zf: ZipFile) -> None:
+    def _copy_archive_files_to_new_archive(
+        self, zf: ZipFile, rewritten: frozenset[str] | None = None
+    ) -> None:
         # copy all files that are *not* metadata files into new archive.
         if not self._archive_cls or not self._path:
             reason = "Cannot write archive metadata without and archive path."
@@ -193,7 +217,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         filenames = tuple(
             filename
             for info in self.infolist()
-            if (filename := self._get_filename_from_info(info))
+            if (filename := self._get_filename_from_info(info, rewritten))
         )
         # Default pdf pages to whole-page jpegs: comic readers (and
         # comicbox's own page regex) don't recognize raw pixmap ppm
@@ -221,19 +245,30 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compresslevel=9,
             )
 
-    def _patch_zipfile(self, files: Mapping[str, bytes], comment: bytes) -> None:
-        """In place remove and append to existing zipfile."""
+    def _patch_zipfile(self, files: Mapping[str, bytes], comment: bytes | None) -> None:
+        """
+        In place remove and append to existing zipfile.
+
+        A ``comment`` of None, from a ``keep`` write, leaves the comment.
+        """
         if not self._path:
             reason = "No zipfile path to write to."
             raise ArchiveWriteError(reason)
+        rewritten = self._rewritten_names(files)
         self.close()
         with ZipFile(self._path, "a") as zf:
-            self._archive_remove_metadata_files(zf)
+            self._archive_remove_metadata_files(zf, rewritten)
             self._archive_write_metadata_files(zf, files)
-            zf.comment = comment
+            if comment is not None:
+                zf.comment = comment
 
-    def _create_zipfile(self, files: Mapping, comment: bytes) -> None:
-        """Create new zipfile."""
+    def _create_zipfile(self, files: Mapping, comment: bytes | None) -> None:
+        """
+        Create new zipfile.
+
+        A ``comment`` of None, from a ``keep`` write, carries the old
+        archive's comment over.
+        """
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
             raise ArchiveWriteError(reason)
@@ -252,9 +287,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             # interrupted partway can only damage bytes past the last page.
             # Metadata written first sat at offset 0 and made every subsequent
             # write slide the whole archive down over its own pages.
-            self._copy_archive_files_to_new_archive(zf)
+            self._copy_archive_files_to_new_archive(zf, self._rewritten_names(files))
             self._archive_write_metadata_files(zf, files)
-            zf.comment = comment
+            zf.comment = self._get_comment() if comment is None else comment
 
         # Cleanup
         self.close()
@@ -273,11 +308,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
             if delete_all_tags or files:
-                self._archive_remove_metadata_files(pf)
+                self._archive_remove_metadata_files(pf, self._rewritten_names(files))
                 self._archive_write_metadata_files(pf, files)
 
     def write_archive_metadata(
-        self, files: Mapping, comment: bytes, mupdf_metadata: Mapping
+        self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping
     ) -> None:
         """
         Write the metadata files and comment to an archive.

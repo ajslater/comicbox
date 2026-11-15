@@ -9,6 +9,8 @@
   and comicbox YAML or JSON lists, combine and compare lists of one event, and
   build lists from story arc tags. They never write over an existing file
   without `--overwrite`.
+- `-w keep` writes back the tag formats a comic already has, and `-w cix,keep`
+  adds ComicInfo to them, removing none.
 - `ReadingListSession` fetches reading lists from URLs, with a download size cap
   set by the new `readinglists` config group.
 - `ReadingListSession` searches and fetches Metron reading lists and story arcs

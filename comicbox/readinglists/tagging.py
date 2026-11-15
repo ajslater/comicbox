@@ -42,21 +42,6 @@ _FORMAT_NAMES = MappingProxyType(
 # Written in place of the archive's tag files and comment. The PDF metadata
 # is kept unless it is one of the formats written.
 _KEPT_UNLESS_WRITTEN = frozenset(MetadataSources.ARCHIVE_PDF.value.formats)
-# The -w key a suggestion names a format by; any other takes its shortest.
-_FORMAT_KEYS = MappingProxyType(
-    {
-        MetadataFormats.COMIC_INFO: "cix",
-        MetadataFormats.METRON_INFO: "mi",
-        MetadataFormats.COMICBOX_JSON: "json",
-        MetadataFormats.COMICBOX_YAML: "yaml",
-        MetadataFormats.COMIC_BOOK_INFO: "cbi",
-    }
-)
-
-
-def format_key(fmt: MetadataFormats) -> str:
-    """Name a format as ``-w`` takes it."""
-    return _FORMAT_KEYS.get(fmt) or min(fmt.value.config_keys, key=len)
 
 
 def removed_formats(
@@ -69,6 +54,11 @@ def removed_formats(
 def format_name(fmt: MetadataFormats) -> str:
     """Name a tag format as a comic carries it: its file, or what it is."""
     return _FORMAT_NAMES.get(fmt, fmt.value.filename)
+
+
+def format_names(formats: Collection[MetadataFormats]) -> str:
+    """Name some tag formats, in a stable order."""
+    return ", ".join(sorted(format_name(fmt) for fmt in formats))
 
 
 class ArcFit(StrEnum):
@@ -157,6 +147,43 @@ class ArcWrite:
         return self.change.path
 
 
+def _unwritable(comic: "Comic", destination: "WriteDestination | None") -> str | None:
+    """Say why a comic is not written whatever the formats, or None."""
+    if comic.unreadable:
+        return f"its {', '.join(comic.unreadable)} could not be read"
+    if destination is not None and destination.converts and destination.occupied:
+        return f"{destination.destination.name} already exists"
+    return None
+
+
+def _formats_written(
+    comic: "Comic", formats: frozenset[MetadataFormats], *, keep: bool
+) -> tuple[frozenset[MetadataFormats], frozenset[MetadataFormats]]:
+    """Get the formats a write writes, and those it removes from the comic."""
+    if keep:
+        return formats | comic.formats, frozenset()
+    return formats, removed_formats(comic.formats, formats)
+
+
+def _converts_to(destination: "WriteDestination | None") -> Path | None:
+    """Get the CBZ a write converts the comic to, or None for one in place."""
+    if destination is None or not destination.converts:
+        return None
+    return destination.destination
+
+
+def _none_holds(
+    comic: "Comic",
+    written: Collection[MetadataFormats],
+    fits: Callable[[MetadataFormats], ArcFit] | None,
+) -> str | None:
+    """Say why a keep write could not hold the arc in any format, or None."""
+    if fits is None or any(fits(fmt) is ArcFit.HOLDS for fmt in written):
+        return None
+    have = format_names(comic.formats) or "no tag file"
+    return f"it has {have}, none of which can hold the arc"
+
+
 def plan_write(
     change: ArcChange,
     comic: "Comic",
@@ -164,51 +191,33 @@ def plan_write(
     destination: "WriteDestination | None",
     *,
     delete_orig: bool = False,
+    keep: bool = False,
+    fits: Callable[[MetadataFormats], ArcFit] | None = None,
 ) -> ArcWrite:
     """
     Decide how to write one comic's arc change in ``formats``.
 
     ``destination`` is where comicbox would write it, as
     ``predict_write_destination`` says; None for a comic already tagged.
+    With ``keep`` the comic is written in ``formats`` and every format it
+    carries, and removes none; ``fits`` says whether a kept one can hold
+    the arc, which at least one written must.
     """
     if change.action is ArcAction.TAGGED:
         return ArcWrite(change)
-    if comic.unreadable:
-        reason = f"its {', '.join(comic.unreadable)} could not be read"
+    if reason := _unwritable(comic, destination):
         return ArcWrite(change, reason=reason)
-    converts_to = None
-    if destination is not None and destination.converts:
-        if destination.occupied:
-            reason = f"{destination.destination.name} already exists"
-            return ArcWrite(change, reason=reason)
-        converts_to = destination.destination
-    removes = sorted(
-        format_name(fmt) for fmt in removed_formats(comic.formats, formats)
-    )
+    written, removed = _formats_written(comic, formats, keep=keep)
+    if keep and (reason := _none_holds(comic, written, fits)):
+        return ArcWrite(change, reason=reason)
+    converts_to = _converts_to(destination)
     return ArcWrite(
         change,
-        formats,
-        removes=tuple(removes),
+        written,
+        removes=tuple(sorted(format_name(fmt) for fmt in removed)),
         converts_to=converts_to,
         deletes_original=converts_to is not None and delete_orig,
     )
-
-
-def keeping_formats(
-    formats: Collection[MetadataFormats],
-    carried: Collection[MetadataFormats],
-    fits: Callable[[MetadataFormats], ArcFit],
-) -> tuple[frozenset[MetadataFormats], frozenset[MetadataFormats]]:
-    """
-    Get the formats that lose no tag file, and those no ``-w`` can keep.
-
-    The formats named plus every format the comics carry that a write would
-    remove, less those that cannot hold the arc: ``-w`` refuses those, so a
-    comic that carries one loses it whatever ``-w`` says.
-    """
-    lost = removed_formats(carried, formats)
-    unkeepable = frozenset(fmt for fmt in lost if fits(fmt) is not ArcFit.HOLDS)
-    return frozenset(formats) | (lost - unkeepable), unkeepable
 
 
 def group_files(

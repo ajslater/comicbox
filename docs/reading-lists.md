@@ -68,9 +68,9 @@ comicbox rl match civil-war.yaml ~/Comics/Marvel
 
 # Show how tagging those comics with the list's arc would change them,
 # then do it. -w cix writes ComicInfo.xml and, as comicbox -w does, removes
-# every other tag file: the dry run names them, and the -w that keeps them.
+# every other tag file: the dry run names them. -w cix,keep keeps them.
 comicbox rl write-arcs -w cix civil-war.yaml ~/Comics/Marvel
-comicbox rl write-arcs --apply -w cix civil-war.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
 ```
 
 `--to` takes a format token from the table above; the default is `yaml`.
@@ -305,11 +305,16 @@ It needs `-w` with the tag formats to write, and `-w` means what it means for
 has is removed, the ComicBookInfo comment included. The PDF metadata of a PDF is
 kept. Each comic's line, in the dry run and in the real run, names the tag files
 its write removes, and the summary counts the comics that lose one. When any
-would, the dry run ends with the `-w` that loses nothing: the formats named and
-every one the matched comics carry. A `-w` format that cannot hold the arc
-refuses the run before any comic is read, ComicBookInfo and CoMet having no arcs
-and ComicInfo splitting a name with a comma in it into two arcs, so a comic that
-carries one loses it whatever `-w` says, and the dry run says that too:
+would, the dry run ends with the `-w` that keeps them: the same, with `keep`.
+
+With `keep` among the formats, as for `comicbox -w`, no tag file a comic has is
+removed: `-w keep` writes the arc into the formats each comic already has, and
+`-w cix,keep` adds ComicInfo to them. A comic with none that can hold the arc is
+not written, and says which it has. A `-w` format that cannot hold the arc
+refuses the run before any comic is read: ComicBookInfo and CoMet have no arcs,
+and ComicInfo splits a name with a comma in it into two arcs. `keep` still keeps
+a comic's ComicBookInfo comment or CoMet file, beside the formats that hold the
+arc:
 
 ```text
 · Marvel/Civil War 001.cbz would add 'Civil War' #1; would remove MetronInfo.xml
@@ -318,7 +323,7 @@ carries one loses it whatever `-w` says, and the dry run says that too:
 Dry run: 2 of 3 matched comics would change; --apply writes them.
 1 comic would lose a tag file.
 1 matched comic not written; see above.
--w cix,mi loses no tag file.
+Add keep to -w to keep them: -w cix,keep.
 ```
 
 A CBR, CBT or CB7 is converted to a CBZ beside it, as any comicbox write

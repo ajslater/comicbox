@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from loguru import logger
 
 from comicbox.box.pages import ComicboxPages
+from comicbox.exceptions import ArchiveWriteError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import EXT_KEY
 from comicbox.formats.sources import MetadataSources
@@ -37,23 +38,55 @@ def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mappi
 class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
+    def _get_keep_formats(self) -> frozenset[MetadataFormats]:
+        """
+        Get what a ``keep`` write writes: the formats named and those carried.
+
+        A tag file the comic carries that did not parse refuses the write:
+        what was read from the rest would be written without it.
+        """
+        carried = self.get_carried_formats()
+        if carried.unreadable:
+            names = ", ".join(carried.unreadable)
+            reason = (
+                f"Not writing {self._path}: its {names} could not be parsed,"
+                " so keep cannot keep it."
+            )
+            raise ArchiveWriteError(reason)
+        return self._config.write.formats | carried.formats
+
+    def get_write_formats(self) -> frozenset[MetadataFormats] | None:
+        """
+        Get the formats a write of this comic writes, as ``dump`` decides them.
+
+        Under ``keep``, the formats named and every tag format the comic
+        carries that was read. None when nothing is to be written.
+        """
+        return self._get_dump_formats()
+
+    def _get_loaded_formats(self) -> frozenset[MetadataFormats]:
+        """Get every format loaded, from any source: what --cbz writes back."""
+        loaded_data_lists = (
+            self.get_loaded_metadata(source) for source in MetadataSources
+        )
+        return frozenset(
+            loaded_data.fmt
+            for loaded_data_list in loaded_data_lists
+            if loaded_data_list
+            for loaded_data in loaded_data_list
+            if loaded_data and loaded_data.fmt is not None
+        )
+
     def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
         write = self._config.write
         convert = self._config.convert
         formats: frozenset[MetadataFormats] | None = frozenset()
-        if write.formats:
+        if write.keep_formats:
+            formats = self._get_keep_formats()
+        elif write.formats:
             formats = write.formats
         elif convert.cbz:
-            loaded_data_lists = (
-                self.get_loaded_metadata(source) for source in MetadataSources
-            )
-            formats = frozenset(
-                loaded_data.fmt
-                for loaded_data_list in loaded_data_lists
-                if loaded_data_list
-                for loaded_data in loaded_data_list
-                if loaded_data and loaded_data.fmt is not None
-            )
+            formats = self._get_loaded_formats()
         elif not write.delete_all_tags:
             reason = "No formats specified to write"
             logger.warning(reason)
@@ -83,7 +116,7 @@ class ComicboxDump(ComicboxPages):
         fmt: MetadataFormats,
         files: dict[str, Mapping],
         pdf_md: dict,
-        comment: dict[str, bytes],
+        comment: dict[str, bytes | None],
     ) -> None:
         if fmt not in ARCHIVE_FORMATS:
             return
@@ -99,6 +132,8 @@ class ComicboxDump(ComicboxPages):
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if isinstance(mupdf_md, Mapping):
                 pdf_md.update(mupdf_md.get(schema.ROOT_TAG, {}))
+        elif self._keeps_in_comment(fmt):
+            comment["c"] = schema.dumps(denormalized_metadata).encode(errors="replace")
         elif fmt in MetadataSources.ARCHIVE_FILE.value.formats:
             files[fmt.value.filename] = schema.dumps(
                 _without_filename_only_keys(schema, denormalized_metadata)
@@ -108,11 +143,22 @@ class ComicboxDump(ComicboxPages):
             cmnt = cmnt.encode(errors="replace")
             comment["c"] = cmnt
 
+    def _keeps_in_comment(self, fmt: MetadataFormats) -> bool:
+        """Whether ``keep`` writes this format back as the archive comment it was."""
+        return (
+            self._config.write.keep_formats
+            and fmt in MetadataSources.ARCHIVE_COMMENT.value.formats
+            and self.get_carried_formats().in_comment
+        )
+
     def _dump_to_archive(self, formats: frozenset[MetadataFormats]) -> None:
         """Prepare archive files and comment and write to archive."""
-        # Get files and comment.
+        # Get files and comment. Under keep, a comment not rewritten is kept:
+        # None leaves it as it is.
         files = {}
-        comment = {"c": b""}
+        comment: dict[str, bytes | None] = {
+            "c": None if self._config.write.keep_formats else b""
+        }
         pdf_md = {}
         if not self._config.write.delete_all_tags:
             formats = self._ensure_pdf_to_cbz_default_format(formats)
@@ -150,7 +196,10 @@ class ComicboxDump(ComicboxPages):
         """Return whether the config asks for no write at all."""
         write = self._config.write
         return self._config.general.dry_run or not (
-            write.formats or self._config.convert.cbz or write.delete_all_tags
+            write.formats
+            or write.keep_formats
+            or self._config.convert.cbz
+            or write.delete_all_tags
         )
 
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
@@ -177,8 +226,11 @@ class ComicboxDump(ComicboxPages):
             if formats is None:
                 return None
 
-        result = None
-        if formats or convert.cbz or write.delete_all_tags:
-            result = self._dump_to_archive(formats)
+        writes = bool(formats or convert.cbz or write.delete_all_tags)
+        if write.keep_formats and not writes:
+            # Not a failure: there is just nothing to keep, and none named.
+            logger.info(f"Nothing to keep in {self._path}: not writing it.")
+            return None
+        result = self._dump_to_archive(formats) if writes else None
         logger.info(f"Wrote metadata to: {self._path}")
         return result

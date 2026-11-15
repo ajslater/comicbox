@@ -919,17 +919,18 @@ def test_each_comic_names_the_tag_files_w_removes(
 
     assert "cw1.cbz would add 'Civil War' #1; would remove MetronInfo.xml" in _flat(dry)
     assert "1 comic would lose a tag file." in dry_err
-    assert dry_err.endswith("-w cix,mi loses no tag file.")
+    assert dry_err.endswith("Add keep to -w to keep them: -w cix,keep.")
     assert code == 0
     assert "cw1.cbz added 'Civil War' #1; removed MetronInfo.xml" in _flat(out)
     assert "1 comic lost a tag file." in err
-    assert "loses no tag file" not in err
+    assert "Add keep" not in err
     assert tag_files(path) == ["ComicInfo.xml"]
 
 
 def test_the_suggested_w_loses_nothing(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:
+    """The dry run's -w, with keep, keeps every tag file of every comic."""
     comics = tmp_path / "comics"
     paths = [
         make_comic(comics / "cw1.cbz", series="Civil War", number="1", start_year=2006),
@@ -954,19 +955,18 @@ def test_the_suggested_w_loses_nothing(
     before = {path: _tags(path) for path in paths}
 
     _, _, dry_err = _write(capsys, "-w", "cix", str(reading_list), str(comics))
-    suggested = dry_err.rsplit("-w ", 1)[1].removesuffix(" loses no tag file.")
+    suggested = dry_err.rsplit("-w ", 1)[1].removesuffix(".")
     code, out, err = _write(
         capsys, "-w", suggested, str(reading_list), str(comics), apply=True
     )
 
-    assert suggested == "cix,json,mi"
+    assert suggested == "cix,keep"
     assert code == 0
     assert "remove" not in out
     assert "lost a tag file" not in err
     for path in paths:
-        # Every format named is written, and none the comic had is gone.
-        assert tag_files(path) == ["ComicInfo.xml", "MetronInfo.xml", "comicbox.json"]
-        assert set(files[path]) <= set(tag_files(path))
+        # ComicInfo is added, and nothing the comic had is gone.
+        assert tag_files(path) == sorted({*files[path], "ComicInfo.xml"})
         after = _tags(path)
         arcs = after.pop("arcs")
         assert "Civil War" in arcs
@@ -977,10 +977,10 @@ def test_the_suggested_w_loses_nothing(
         assert after == old
 
 
-def test_a_format_no_w_can_keep_is_said(
+def test_keep_keeps_a_format_w_cannot_name(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:
-    """ComicBookInfo has no arcs, so -w refuses it: no -w keeps the comment."""
+    """ComicBookInfo has no arcs, so -w refuses it, but keep keeps the comment."""
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=(JSON, "COMIC_BOOK_INFO"),
@@ -990,13 +990,85 @@ def test_a_format_no_w_can_keep_is_said(
     )
 
     _, dry, err = _write(capsys, str(reading_list), str(path.parent))
+    code, out, _ = _write(
+        capsys, "-w", "json,keep", str(reading_list), str(path.parent), apply=True
+    )
 
     assert "would remove ComicBookInfo comment" in _flat(dry)
-    assert err.endswith(
-        "No -w keeps a comic's ComicBookInfo comment: it cannot hold the arc"
-        " 'Civil War'."
+    assert err.endswith("Add keep to -w to keep them: -w json,keep.")
+    assert code == 0
+    assert "remove" not in out
+    with zipfile.ZipFile(path) as archive:
+        assert json.loads(archive.comment)["ComicBookInfo/1.0"]["series"] == (
+            "Civil War"
+        )
+    assert _tags(path)["arcs"] == {"Civil War": {"number": 1}}
+
+
+def test_w_keep_writes_each_comic_in_its_own_formats(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    comics = tmp_path / "comics"
+    metron = make_comic(
+        comics / "cw1.cbz",
+        formats=(_MI,),
+        series="Civil War",
+        number="1",
+        start_year=2006,
     )
-    assert "loses no tag file" not in err
+    both = make_comic(
+        comics / "cw2.cbz",
+        formats=(_CIX, _MI),
+        series="Civil War",
+        number="2",
+        start_year=2006,
+        volume=2006,
+    )
+
+    _, dry, _ = _write(capsys, "-w", "keep", str(reading_list), str(comics))
+    code, out, _ = _write(
+        capsys, "-w", "keep", str(reading_list), str(comics), apply=True
+    )
+
+    assert "remove" not in dry
+    assert code == 0
+    assert "remove" not in out
+    assert tag_files(metron) == ["MetronInfo.xml"]
+    assert tag_files(both) == ["ComicInfo.xml", "MetronInfo.xml"]
+    assert _tags(metron)["arcs"] == {"Civil War": {"number": 1}}
+    assert _tags(both)["arcs"] == {"Civil War": {"number": 2}}
+
+
+def test_w_keep_does_not_write_a_comic_with_no_format_that_holds_the_arc(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    path = make_comic(
+        tmp_path / "comics" / "cw1.cbz",
+        formats=("COMIC_BOOK_INFO",),
+        series="Civil War",
+        number="1",
+        volume=2006,
+    )
+    untouched = path.read_bytes()
+
+    code, out, _ = _write(
+        capsys, "-w", "keep", str(reading_list), str(path.parent), apply=True
+    )
+
+    assert code == 1
+    assert (
+        "cw1.cbz not written: it has ComicBookInfo comment, none of which can"
+        " hold the arc"
+    ) in _flat(out)
+    assert path.read_bytes() == untouched
+
+
+def test_w_keep_alone_is_not_refused_for_naming_no_format(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, library: Path
+) -> None:
+    code, _, err = _write(capsys, "-w", "keep", str(reading_list), str(library))
+    assert code == 0
+    assert "-w names no format" not in err
 
 
 # ------------------------------------------------- write-arcs: conversions

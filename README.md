@@ -190,8 +190,14 @@ phases, and the online tagging tables. A few representative commands:
 # Print the merged metadata comicbox reads from a comic.
 comicbox -p "comic.cbz"
 
-# Set a field and write it as ComicInfo.xml inside the archive.
+# Set a field and write it as ComicInfo.xml inside the archive. -w writes only
+# the formats named and removes every other tag file.
 comicbox -m "{publisher: SmallComics}" -w cix "comic.cbz"
+
+# Set a field and write it back in every format the comic already has, or add
+# ComicInfo.xml to them: keep removes nothing.
+comicbox -m "{publisher: SmallComics}" -w keep "comic.cbz"
+comicbox -m "{publisher: SmallComics}" -w cix,keep "comic.cbz"
 
 # Recursively set a field across an entire library.
 comicbox --recurse -m "{publisher: 'SC Comics'}" -w cix ./comics/

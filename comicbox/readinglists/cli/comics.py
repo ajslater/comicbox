@@ -15,6 +15,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from comicbox.cli.parser import CSVAction
+from comicbox.config.formats import KEEP_KEYWORD, split_keep
 from comicbox.constants import ROOT_TAG
 from comicbox.exceptions import ReadingListError
 from comicbox.readinglists.arcs import arc_patch
@@ -47,10 +48,8 @@ from comicbox.readinglists.tagging import (
     ArcFit,
     ArcFits,
     ArcWrite,
-    format_key,
     format_name,
     group_files,
-    keeping_formats,
     plan_write,
 )
 
@@ -117,20 +116,25 @@ def _match(run: Run) -> None:
 # write-arcs
 
 
-def _requested_formats(run: Run) -> "frozenset[MetadataFormats]":
-    """Resolve -w to tag formats; a key that names none is a usage error."""
+def _requested_formats(run: Run) -> "tuple[frozenset[MetadataFormats], bool]":
+    """
+    Resolve -w to tag formats, and whether it says keep.
+
+    A key that names no tag format is a usage error.
+    """
     formats: set[MetadataFormats] = set()
-    for token in run.args.formats:
-        if (fmt := _FORMAT_KEYS.get(str(token).strip().lower())) is None:
+    tokens, keep = split_keep(run.args.formats)
+    for token in tokens:
+        if (fmt := _FORMAT_KEYS.get(token.lower())) is None:
             run.misuse(
                 f"-w {token}: not a tag format comicbox writes into a comic,"
                 " such as cix, mi or json"
             )
         else:
             formats.add(fmt)
-    if not formats and not run.misused:
+    if not formats and not keep and not run.misused:
         run.misuse("-w names no format")
-    return frozenset(formats)
+    return frozenset(formats), keep
 
 
 def _refuse_unfit(
@@ -158,9 +162,6 @@ class _Plan:
     # Comics not written because their entry fits them and comics of other
     # volumes alike: each with the entry's position and the volumes.
     ambiguous: tuple[tuple[Path, int, tuple[int, ...]], ...]
-    # The formats that lose no tag file, and those no -w can keep.
-    keep: "frozenset[MetadataFormats]" = frozenset()
-    unkeepable: "frozenset[MetadataFormats]" = frozenset()
 
     @property
     def todo(self) -> tuple[ArcWrite, ...]:
@@ -195,13 +196,7 @@ def _plan(run: Run, setup: "_Setup", library: Library) -> _Plan:
             for path, others in group_files(changes, file_key).items()
         ]
     )
-    carried = frozenset().union(
-        *(library.comics[write.path].formats for write in writes if write.formats)
-    )
-    keep, unkeepable = keeping_formats(
-        setup.formats, carried, lambda fmt: setup.fits(fmt, reading_list[NAME_KEY])
-    )
-    return _Plan(result, writes, *_left_out(result, changes), keep, unkeepable)
+    return _Plan(result, writes, *_left_out(result, changes))
 
 
 def _plan_one(change: ArcChange, library: Library, setup: "_Setup") -> ArcWrite:
@@ -218,12 +213,15 @@ def _plan_one(change: ArcChange, library: Library, setup: "_Setup") -> ArcWrite:
             )
         except (ComicboxError, OSError) as exc:
             return ArcWrite(change, reason=str(exc))
+    name = setup.reading_list[NAME_KEY]
     return plan_write(
         change,
         comic,
         setup.formats,
         destination,
         delete_orig=setup.write_config.general.delete_orig,
+        keep=setup.keep,
+        fits=lambda fmt: setup.fits(fmt, name),
     )
 
 
@@ -318,25 +316,25 @@ def _report(
     return problem is None
 
 
-def _apply(
-    run: Run,
-    todo: Sequence[ArcWrite],
-    write_config: "ComicboxSettings",
-    read_config: "ComicboxSettings",
-) -> list[ArcWrite]:
+def _apply(run: Run, todo: Sequence[ArcWrite], setup: "_Setup") -> list[ArcWrite]:
     """Make the writes, each additively; return those that hold."""
     from comicbox.write import BulkWriteItem, bulk_write
 
     by_path = {write.path: write for write in todo}
+    # Under keep, the write path decides each comic's formats itself.
+    keep = frozenset(fmt.name for fmt in setup.formats) | {KEEP_KEYWORD}
     items = [
         BulkWriteItem(
             write.path,
             arc_patch(write.change.arc, write.change.number),
             merge_mode=_ADDITIVE,
-            formats=frozenset(fmt.name for fmt in write.formats),
+            formats=keep
+            if setup.keep
+            else frozenset(fmt.name for fmt in write.formats),
         )
         for write in todo
     ]
+    write_config, read_config = setup.write_config, setup.read_config
     held: list[ArcWrite] = []
     cancel = threading.Event()
     with interrupts_ask(run, cancel.set):
@@ -386,7 +384,7 @@ def _summary(
             print_note(run.err, line)
     run.no_keys((run.args.file,), (reading_list,))
     if held is None and lose:
-        _suggest(run, plan, reading_list[NAME_KEY])
+        _suggest(run)
 
 
 def _verdict(
@@ -409,24 +407,11 @@ def _verdict(
     return f"{len(held)} of {files} written.", lose, lost
 
 
-def _suggest(run: Run, plan: _Plan, name: str) -> None:
-    """End a dry run with the -w that loses no tag file, as far as one can."""
-    named = [str(token).strip() for token in run.args.formats]
-    added = sorted(format_key(fmt) for fmt in plan.keep - _named_formats(named))
-    if added:
-        print_note(run.err, f"-w {','.join([*named, *added])} loses no tag file.")
-    if plan.unkeepable:
-        names = ", ".join(sorted(format_name(fmt) for fmt in plan.unkeepable))
-        print_note(
-            run.err,
-            f"No -w keeps a comic's {names}: it cannot hold the arc {name!r}.",
-        )
-
-
-def _named_formats(tokens: Sequence[str]) -> "frozenset[MetadataFormats]":
-    return frozenset(
-        fmt for token in tokens if (fmt := _FORMAT_KEYS.get(token.lower()))
-    )
+def _suggest(run: Run) -> None:
+    """End a dry run that would lose tag files with the -w that keeps them."""
+    tokens = [str(token).strip() for token in run.args.formats]
+    value = ",".join([*tokens, KEEP_KEYWORD])
+    print_note(run.err, f"Add keep to -w to keep them: -w {value}.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -438,6 +423,8 @@ class _Setup:
     read_config: "ComicboxSettings"
     write_config: "ComicboxSettings"
     fits: ArcFits
+    # -w said keep: each comic keeps the formats it carries.
+    keep: bool = False
 
 
 def _setup(run: Run) -> _Setup | None:
@@ -447,7 +434,7 @@ def _setup(run: Run) -> _Setup | None:
     A -w format that is not a tag format, or cannot hold the arc, is a
     usage error.
     """
-    formats = _requested_formats(run)
+    formats, keep = _requested_formats(run)
     if run.misused or (loaded := run.load(run.args.file)) is None:
         return None
     reading_list = loaded.reading_list
@@ -459,7 +446,7 @@ def _setup(run: Run) -> _Setup | None:
     fits = ArcFits(ordered=is_ordered(reading_list), config=write_config)
     if _refuse_unfit(run, formats, name, fits):
         return None
-    return _Setup(reading_list, formats, read_config, write_config, fits)
+    return _Setup(reading_list, formats, read_config, write_config, fits, keep)
 
 
 def _print_plan(run: Run, plan: _Plan, *, applying: bool) -> None:
@@ -485,7 +472,7 @@ def _write_arcs(run: Run) -> None:
     _print_plan(run, plan, applying=applying)
     held = None
     if applying:
-        held = _apply(run, plan.todo, setup.write_config, setup.read_config)
+        held = _apply(run, plan.todo, setup)
     _summary(run, setup.reading_list, plan, held)
     if run.cancelled:
         raise KeyboardInterrupt
@@ -531,8 +518,9 @@ def add_comic_actions(actions: Any) -> None:
         help=(
             "The tag formats to write, as comicbox -w takes them: cix, mi,"
             " json... Each must be able to hold the arc. Every other tag file a"
-            " comic has is removed: each comic's line names them, and the dry run"
-            " ends with the -w that keeps them."
+            " comic has is removed, and each comic's line names them, unless keep"
+            " is among them: -w keep writes each comic in the formats it has, and"
+            " -w cix,keep adds ComicInfo to them."
         ),
     )
     sub.add_argument(

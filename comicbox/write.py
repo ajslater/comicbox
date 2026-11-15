@@ -37,6 +37,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 from comicbox.box import Comicbox
 from comicbox.box.archive.write import file_key
 from comicbox.config import get_config
+from comicbox.config.formats import KEEP_KEYWORD
 from comicbox.config.settings import MergeMode
 from comicbox.events import (
     BatchFinished,
@@ -160,9 +161,15 @@ def write_metadata(
     ``general.delete_keys``; unknown keys are ignored. The patch may be
     empty when ``delete_keys`` is non-empty (a pure-clear write).
 
+    ``formats`` may include ``"keep"``: the write then removes no tag
+    format the comic already carries, and writes the ones it read back
+    beside those named, so ``["keep"]`` alone rewrites what the comic has.
+    A comic with nothing to keep and none named is not written, without
+    an error.
+
     With ``dry_run=True`` no archive is touched; the result's
     ``dry_run_payload`` carries the serialized would-be-written content
-    per requested format (keyed by format name).
+    per format written (keyed by format name).
     """
     patch = _unwrap_root_tag(patch) if patch else {}
     delete_key_set = _normalize_delete_keys(delete_keys)
@@ -173,9 +180,13 @@ def write_metadata(
         )
         raise WriteValidationError(msg)
     mode_enum = _validate_merge_mode(merge_mode) if merge_mode is not None else None
-    fmt_set = _resolve_formats(formats)
+    fmt_set, keep = _resolve_formats(formats)
     settings = _build_write_settings(
-        mode_enum, fmt_set, delete_keys=delete_key_set, base_config=base_config
+        mode_enum,
+        fmt_set,
+        delete_keys=delete_key_set,
+        base_config=base_config,
+        keep=keep,
     )
     # A delete-only write passes no API metadata; the archive's own
     # sources minus delete_keys are what gets rewritten.
@@ -184,19 +195,51 @@ def write_metadata(
     )
 
     try:
-        with Comicbox(path, config=settings, metadata=wrapped) as cb:
-            if dry_run:
-                payload = {fmt.name: cb.to_string(fmt) for fmt in fmt_set}
-                return WriteResult(path=path, written=False, dry_run_payload=payload)
-            cb.dump()
-            # Capture before the context closes: dump() repacks unwritable
-            # archives (CBR/CBT/CB7) into a CBZ and moves the box onto the
-            # new path. Callers tracking files on disk need where the
-            # archive actually ended up, not where it was submitted.
-            final_path = cb.get_path() or path
+        return _write_comic(
+            path, settings, wrapped, fmt_set, keep=keep, dry_run=dry_run
+        )
     except Exception as exc:
         return WriteResult(path=path, error=exc)
+
+
+def _write_comic(
+    path: Path,
+    settings: ComicboxSettings,
+    wrapped: dict[str, Any] | None,
+    fmt_set: frozenset[MetadataFormats],
+    *,
+    keep: bool,
+    dry_run: bool,
+) -> WriteResult:
+    """Write, or with ``dry_run`` serialize, one comic; raise what fails."""
+    with Comicbox(path, config=settings, metadata=wrapped) as cb:
+        written = _keep_formats(cb, settings) if keep else fmt_set
+        if dry_run:
+            payload = {fmt.name: cb.to_string(fmt) for fmt in written or ()}
+            return WriteResult(path=path, written=False, dry_run_payload=payload)
+        if written is None:
+            return WriteResult(path=path, written=False)
+        cb.dump()
+        # Capture before the context closes: dump() repacks unwritable
+        # archives (CBR/CBT/CB7) into a CBZ and moves the box onto the
+        # new path. Callers tracking files on disk need where the
+        # archive actually ended up, not where it was submitted.
+        final_path = cb.get_path() or path
     return WriteResult(path=path, written=True, final_path=final_path)
+
+
+def _keep_formats(
+    cb: Comicbox, settings: ComicboxSettings
+) -> frozenset[MetadataFormats] | None:
+    """
+    Get what a ``keep`` write of this comic writes, or None when nothing.
+
+    Raises when a tag file it carries could not be parsed.
+    """
+    formats = cb.get_write_formats() or frozenset()
+    if formats or settings.convert.cbz or settings.write.delete_all_tags:
+        return formats
+    return None
 
 
 def _run_bulk_write(
@@ -570,23 +613,31 @@ def _validate_merge_mode(merge_mode: Mode) -> MergeMode:
 
 def _resolve_formats(
     formats: Iterable[FormatName] | None,
-) -> frozenset[MetadataFormats]:
-    """Convert a mixed iterable of names / enum values to MetadataFormats."""
+) -> tuple[frozenset[MetadataFormats], bool]:
+    """
+    Convert a mixed iterable of names / enum values to MetadataFormats.
+
+    Returns the formats and whether the ``keep`` keyword was among them.
+    """
     if not formats:
         msg = "write_metadata(): at least one format is required"
         raise WriteValidationError(msg)
     resolved: set[MetadataFormats] = set()
+    keep = False
     for f in formats:
         if isinstance(f, MetadataFormats):
             resolved.add(f)
+            continue
+        if str(f).strip().lower() == KEEP_KEYWORD:
+            keep = True
             continue
         try:
             resolved.add(MetadataFormats[str(f).upper()])
         except KeyError as exc:
             valid = ", ".join(m.name for m in MetadataFormats)
-            msg = f"Unknown format {f!r}; expected one of: {valid}"
+            msg = f"Unknown format {f!r}; expected one of: {valid}, or {KEEP_KEYWORD}"
             raise WriteValidationError(msg) from exc
-    return frozenset(resolved)
+    return frozenset(resolved), keep
 
 
 def _normalize_delete_keys(delete_keys: Iterable[str] | None) -> frozenset[str]:
@@ -603,8 +654,14 @@ def _build_write_settings(
     *,
     delete_keys: frozenset[str],
     base_config: ComicboxSettings | None,
+    keep: bool = False,
 ) -> ComicboxSettings:
-    """Layer write.merge_mode / write.formats / general.delete_keys over a base."""
+    """
+    Layer write.merge_mode / write.formats / general.delete_keys over a base.
+
+    ``keep`` sets write.keep_formats, as the formats given replace the
+    base's: a base config's own ``keep`` does not carry over.
+    """
     base = base_config or get_config()
     # replace() carries every other WriteSettings field forward; the old
     # field-by-field copy silently reset any newly added field to its
@@ -615,9 +672,11 @@ def _build_write_settings(
     # config file or --merge-mode had established, making those surfaces
     # dead for every API caller.
     new_write = (
-        replace(base.write, formats=formats)
+        replace(base.write, formats=formats, keep_formats=keep)
         if merge_mode is None
-        else replace(base.write, formats=formats, merge_mode=merge_mode)
+        else replace(
+            base.write, formats=formats, keep_formats=keep, merge_mode=merge_mode
+        )
     )
     if not delete_keys:
         return replace(base, write=new_write)

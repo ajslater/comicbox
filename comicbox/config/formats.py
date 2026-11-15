@@ -75,11 +75,26 @@ def _resolve_formats(
     return frozenset(fmts)
 
 
+# Among the write format keys, not a format: keep the formats a comic
+# already carries, writing them back beside those named.
+KEEP_KEYWORD = "keep"
+
+
+def split_keep(keys: Iterable[Any]) -> tuple[list[str], bool]:
+    """Take the ``keep`` keyword out of format keys; say whether it was there."""
+    stripped = [str(key).strip() for key in keys]
+    formats = [key for key in stripped if key.lower() != KEEP_KEYWORD]
+    return formats, len(formats) != len(stripped)
+
+
 def transform_keys_to_formats(config: Subview) -> None:
     """Transform schema config keys to format enums."""
     if config["write"]["delete_all_tags"].get(bool):
         config["read"]["formats"].set(frozenset())
         config["write"]["formats"].set(frozenset())
+        # Deleting all tags wins over keeping them. Set either way: the key
+        # has no default in the YAML, and compute_config reads it.
+        config["write"]["keep_formats"].set(False)
         config["convert"]["export_formats"].set(frozenset())
         return
 
@@ -91,8 +106,12 @@ def transform_keys_to_formats(config: Subview) -> None:
         read_fmts -= except_fmts
     config["read"]["formats"].set(read_fmts)
 
+    write_keys, keep = split_keep(_raw_or_empty(config["write"]["formats"]))
+    config["write"]["formats"].set(write_keys)
     write_fmts = _resolve_formats(config["write"]["formats"], "write")
     config["write"]["formats"].set(write_fmts)
+    # Only the keyword sets it, whatever a config file says.
+    config["write"]["keep_formats"].set(keep)
 
     export_fmts = _resolve_formats(
         config["convert"]["export_formats"], "convert.export_formats"

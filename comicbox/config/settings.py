@@ -127,6 +127,10 @@ class WriteSettings:
     stamp: bool = False
     stamp_notes: bool = True
     delete_all_tags: bool = False
+    # Set by ``keep`` among the formats: a write removes no tag format the
+    # comic already carries, and writes the ones it read back beside those
+    # named.
+    keep_formats: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,6 +195,8 @@ class ComicboxSettings:
     # Computed (derived in compute_config(); kept flat for ergonomics —
     # they're read by many call sites and the flat names are clearer).
     all_write_formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    # Whether the formats given said keep, as the config was built.
+    is_write_keep: bool = False
     read_filename_formats: "frozenset[MetadataFormats]" = field(
         default_factory=frozenset
     )

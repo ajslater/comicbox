@@ -12,45 +12,30 @@ the read. Before, every worker printed its own traceback.
 
 import os
 import signal
-from collections import Counter
 from collections.abc import Callable, Generator, Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from comicbox.box import Comicbox
+from comicbox.box.load import TAG_SOURCES
 from comicbox.constants import ROOT_TAG
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.formats import MetadataFormats
-from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
-    from comicbox.box.init import SourceData
     from comicbox.config.settings import ComicboxSettings
 
 OnError = Callable[[Path, BaseException], None]
 
-# The sources that are files in, or metadata of, the archive itself.
-_TAG_SOURCES = (
-    MetadataSources.ARCHIVE_FILE,
-    MetadataSources.ARCHIVE_COMMENT,
-    MetadataSources.ARCHIVE_PDF,
-)
 TAG_FORMATS = frozenset(
-    fmt for source in _TAG_SOURCES for fmt in source.value.formats if fmt.value.enabled
+    fmt for source in TAG_SOURCES for fmt in source.value.formats if fmt.value.enabled
 )
 _COMIC_SUFFIXES = frozenset(f".{file_type.value.lower()}" for file_type in FileTypeEnum)
-_SOURCE_NAMES = MappingProxyType(
-    {
-        MetadataSources.ARCHIVE_COMMENT: "archive comment",
-        MetadataSources.ARCHIVE_PDF: "PDF metadata",
-    }
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,43 +61,6 @@ class Library:
     unread_directories: dict[Path, OSError] = field(default_factory=dict)
 
 
-def _source_name(source: MetadataSources, data: "SourceData") -> str:
-    if source is MetadataSources.ARCHIVE_FILE and data.path:
-        return Path(data.path).name
-    return _SOURCE_NAMES.get(source, source.value.label)
-
-
-def _is_json(text: Any) -> bool:
-    """Tell an archive comment that tries to be JSON from free text."""
-    if isinstance(text, bytes):
-        text = text.decode(errors="replace")
-    return isinstance(text, str) and text.lstrip().startswith("{")
-
-
-def _tag_files(box: Comicbox) -> tuple[frozenset[MetadataFormats], tuple[str, ...]]:
-    """
-    Get the tag formats a comic carries, and name the files that did not parse.
-
-    An archive comment of free text is not a tag file, so it is neither.
-    """
-    formats: set[MetadataFormats] = set()
-    unreadable: list[str] = []
-    for source in _TAG_SOURCES:
-        loaded = Counter(
-            (str(metadata.path), metadata.fmt)
-            for metadata in box.get_loaded_metadata(source) or ()
-        )
-        for data in box.get_source_metadata(source) or ():
-            key = (str(data.path), data.fmt)
-            if loaded[key]:
-                loaded[key] -= 1
-                if data.fmt is not None:
-                    formats.add(data.fmt)
-            elif source is not MetadataSources.ARCHIVE_COMMENT or _is_json(data.data):
-                unreadable.append(_source_name(source, data))
-    return frozenset(formats), tuple(unreadable)
-
-
 def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
     """Read one comic's tags and tag files (runs in a worker process)."""
     with Comicbox(path, config=config) as box:
@@ -121,10 +69,10 @@ def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
         # warned of again: the read above has warned of it once.
         logger.disable("comicbox")
         try:
-            formats, unreadable = _tag_files(box)
+            carried = box.get_carried_formats()
         finally:
             logger.enable("comicbox")
-        return Comic(dict(tags), formats, unreadable)
+        return Comic(dict(tags), carried.formats, carried.unreadable)
 
 
 def _init_worker(log_level: str) -> None:

@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 from comicbox._pdf import PAGE_FORMAT_VALUES
+from comicbox.config.formats import KEEP_KEYWORD
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 
 _TABLE_ARGS = MappingProxyType(
@@ -272,6 +273,10 @@ def _get_help_format_table() -> Table:
             label = Text(label, style=style)
         keys = ", ".join(sorted(fmt.value.config_keys))
         table.add_row(label, keys)
+    table.add_row(
+        Text("Keep what the comic has (--write only)", style=Style(italic=True)),
+        KEEP_KEYWORD,
+    )
 
     return table
 

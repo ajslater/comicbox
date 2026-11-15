@@ -266,7 +266,9 @@ def _add_write_group(parser: ArgumentParser) -> None:
         default=None,
         dest="write.formats",
         help=(
-            "Write comic metadata formats back to the archive. cbt and cbr files are always"
+            "Write comic metadata formats back to the archive, removing every other tag"
+            " file, unless 'keep' is among them: '-w keep' writes back the formats the"
+            " comic has, '-w cix,keep' adds ComicInfo to them. cbt and cbr files are always"
             " exported to a cbz file. Format keys listed below."
         ),
     )
