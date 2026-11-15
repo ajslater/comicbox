@@ -29,10 +29,12 @@ from comicbox.readinglists.schema import (
     DATE_KEY,
     ENTRIES_KEY,
     READING_LIST_KEY,
+    TAGS_KEY,
     EntrySchema,
     ReadingListYamlSchema,
 )
 from comicbox.readinglists.syntax import refuse_yaml_aliases, syntax_error
+from comicbox.readinglists.text import clean_tree
 
 # A year, or a year and month: a date that names no day.
 _PARTIAL_DATE_RE = re.compile(r"^(\d{4})(?:-(\d{1,2}))?$")
@@ -141,6 +143,20 @@ def _load_entries(raw_entries: Any, warnings: list[str]) -> list[dict[str, Any]]
     return entries
 
 
+def _string_tags(raw: dict[str, Any], warnings: list[str]) -> None:
+    """Keep only the tags that are strings; anything else is a warning."""
+    tags = raw.get(TAGS_KEY)
+    if not isinstance(tags, list | tuple | set | frozenset):
+        return
+    kept = [tag for tag in tags if isinstance(tag, str)]
+    warnings.extend(
+        f"{TAGS_KEY}: {quote_value(tag)} is not a string; dropped"
+        for tag in tags
+        if not isinstance(tag, str)
+    )
+    raw[TAGS_KEY] = kept
+
+
 def load_model_with_warnings(
     reading_list: Mapping[str, Any], path: Path | None = None
 ) -> tuple[dict[str, Any], tuple[str, ...]]:
@@ -150,15 +166,18 @@ def load_model_with_warnings(
     Each warning starts with the path of what was dropped or changed:
     ``start_year``, ``entries #3.series``. They are returned, not logged.
     """
-    raw = dict(unwrap(reading_list))
-    raw_entries = raw.pop(ENTRIES_KEY, None)
-    schema = get_schema(ReadingListYamlSchema, path=path)
-    with readable_depth(), unlogged_drops():
-        loaded: dict[str, Any] = schema.load({READING_LIST_KEY: raw})  # pyright: ignore[reportAssignmentType]
-        header = dict(loaded.get(READING_LIST_KEY) or {})
-        warnings = list(describe_changes(raw, header))
-        if entries := _load_entries(raw_entries, warnings):
-            header[ENTRIES_KEY] = entries
+    warnings: list[str] = []
+    with readable_depth():
+        raw = dict(clean_tree(unwrap(reading_list), warnings))
+        _string_tags(raw, warnings)
+        raw_entries = raw.pop(ENTRIES_KEY, None)
+        schema = get_schema(ReadingListYamlSchema, path=path)
+        with unlogged_drops():
+            loaded: dict[str, Any] = schema.load({READING_LIST_KEY: raw})  # pyright: ignore[reportAssignmentType]
+            header = dict(loaded.get(READING_LIST_KEY) or {})
+            warnings.extend(describe_changes(raw, header))
+            if entries := _load_entries(raw_entries, warnings):
+                header[ENTRIES_KEY] = entries
     return header, tuple(warnings)
 
 
@@ -190,13 +209,26 @@ def resolve_format(
     return resolved
 
 
+def _decode(data: str | bytes | bytearray) -> tuple[str, bool]:
+    """Decode bytes as UTF-8; say whether any had to be replaced."""
+    if not isinstance(data, bytes | bytearray):
+        return as_text(data), False
+    try:
+        return bytes(data).decode("utf-8-sig"), False
+    except UnicodeDecodeError:
+        return as_text(data), True
+
+
 def _loads(
-    text: str, fmt: ReadingListFormats | str | None, path: Path | None
+    data: str | bytes | bytearray,
+    fmt: ReadingListFormats | str | None,
+    path: Path | None,
 ) -> ReadingListResult:
+    text, replaced = _decode(data)
     resolved = resolve_format(text, fmt)
     transform = resolved.value.transform_class(path)
     with readable_depth():
-        document = transform.parse(text)
+        document = transform.parse_data(data, text, replaced=replaced)
         reading_list, warnings = load_model_with_warnings(
             transform.to_reading_list(document), path
         )
@@ -209,8 +241,12 @@ def _loads(
 def loads(
     data: str | bytes | bytearray, *, fmt: ReadingListFormats | str | None = None
 ) -> ReadingListResult:
-    """Read a reading list from a string, detecting its format if not given."""
-    return _loads(as_text(data), fmt, None)
+    """
+    Read a reading list from a string or bytes, detecting its format.
+
+    Bytes are UTF-8, except XML, which is read in the encoding it declares.
+    """
+    return _loads(data, fmt, None)
 
 
 def load(
@@ -218,7 +254,7 @@ def load(
 ) -> ReadingListResult:
     """Read a reading list from a file, detecting its format if not given."""
     path = Path(path)
-    return _loads(as_text(path.read_bytes()), fmt, path)
+    return _loads(path.read_bytes(), fmt, path)
 
 
 def _model_for_write(reading_list: Mapping[str, Any]) -> dict[str, Any]:

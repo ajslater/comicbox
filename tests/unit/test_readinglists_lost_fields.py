@@ -116,7 +116,24 @@ def test_fixtures(path: Any, fmt: ReadingListFormats) -> None:
     _check(load(path).reading_list, fmt)
 
 
-_WORDS = ("Civil War", "Pokémon", "X-Men", "ワンピース", "Batman")
+# Plain names, and the ones outside text brings: control characters, markup,
+# a CDATA end, zero-width and combining characters, an emoji, padding.
+_WORDS = (
+    "Civil War",
+    "Pokémon",
+    "X-Men",
+    "ワンピース",
+    "Batman",
+    "a\x1b[0m",
+    "Tom & Jerry <b>meet</b>",
+    "]]> & <!--",
+    "zero\u200bwidth",
+    "e\u0301 combined",
+    "😀 Emoji",
+    "tab\tand\nnewline",
+    "  padded  ",
+    "bell\x07 and \x7f del",
+)
 _SOURCES = ("comicvine", "metron", "grandcomicsdatabase", "isbn", "upc", "marvel")
 
 
@@ -168,7 +185,7 @@ def _entry(rng: random.Random) -> dict[str, Any]:
         "date": _maybe(rng, _date(rng), 0.8),
         "identifiers": _maybe(rng, _ids(rng)),
         "entry_type": _maybe(rng, rng.choice(("core", "tie-in", "prologue"))),
-        "notes": _maybe(rng, "Read this.", 0.2),
+        "notes": _maybe(rng, rng.choice(("Read this.", *_WORDS)), 0.2),
     }
 
 
@@ -180,8 +197,8 @@ def _header(rng: random.Random) -> dict[str, Any]:
         {"kind": "tags"},
     ]
     return {
-        "name": _maybe(rng, "A List", 0.9),
-        "description": _maybe(rng, "About."),
+        "name": _maybe(rng, rng.choice(("A List", *_WORDS)), 0.9),
+        "description": _maybe(rng, rng.choice(("About.", *_WORDS))),
         "list_type": _maybe(rng, rng.choice(("event", "story", "teams", "creator"))),
         "ordered": _maybe(rng, rng.random() < 0.5),
         "start_year": _maybe(rng, rng.choice((1890, 2006))),

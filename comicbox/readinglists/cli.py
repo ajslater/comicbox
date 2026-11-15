@@ -234,7 +234,8 @@ def _validate_one(run: _Run, path: Path) -> None:
     """Check a file against its format's schema, if any, then read it."""
     from comicbox.validate.spec import build_validator, validation_failure_exceptions
 
-    text = as_text(path.read_bytes())
+    data = path.read_bytes()
+    text = as_text(data)
     fmt = resolve_format(text)  # Raises with the reason: syntax, or no list.
     if spec := fmt.value.validator_spec:
         # The validator's message pretty-prints the value it rejects, which
@@ -249,7 +250,7 @@ def _validate_one(run: _Run, path: Path) -> None:
                 )
                 run.failed = True
                 return
-    result = loads(text, fmt=fmt)
+    result = loads(data, fmt=fmt)
     entries = result.reading_list.get(ENTRIES_KEY) or ()
     detail = f"{fmt.value.label}, {len(entries)} entries"
     print_status(run.out, path, ok=True, detail=detail)

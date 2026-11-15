@@ -48,6 +48,7 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
 )
 from comicbox.readinglists.serialize import ReadingListResult
+from comicbox.readinglists.text import printable
 from comicbox.readinglists.transform import entry_issue_name
 
 if TYPE_CHECKING:
@@ -70,7 +71,9 @@ def console(*, stderr: bool = False) -> Console:
 
 
 def _text(value: Any, style: Style = _PLAIN) -> Text:
-    return Text("" if value is None else str(value), style=style)
+    # printable: names, paths and errors come from outside, and an escape
+    # sequence in one would reach the terminal.
+    return Text("" if value is None else printable(str(value)), style=style)
 
 
 def _ids(identifiers: Mapping[str, Any] | None) -> str:
@@ -160,7 +163,7 @@ def header_table(reading_list: Mapping[str, Any]) -> Table:
 def print_messages(out: Console, messages: Sequence[str], label: str) -> None:
     """Print warnings or losses, one per line."""
     for message in messages:
-        out.print(Text.assemble((f"{label}: ", _WARN), (message, _PLAIN)))
+        out.print(Text.assemble((f"{label}: ", _WARN), (printable(message), _PLAIN)))
 
 
 def print_note(out: Console, message: str) -> None:
@@ -175,7 +178,7 @@ def print_error(out: Console, path: Path | str | None, error: BaseException) -> 
         path = error.filename if error.filename is not None else path
         message = error.strerror
     prefix = f"{path}: " if path else ""
-    out.print(Text.assemble((prefix, _PLAIN), (message, _ERROR)))
+    out.print(Text.assemble((printable(prefix), _PLAIN), (printable(message), _ERROR)))
 
 
 def print_reading_list(out: Console, path: Path, result: ReadingListResult) -> None:
@@ -191,7 +194,11 @@ def print_reading_list(out: Console, path: Path, result: ReadingListResult) -> N
 def print_status(out: Console, path: Path | str, ok: bool, detail: str) -> None:  # noqa: FBT001
     """Print one line: a mark, the path and what was found."""
     mark = Text("✓ ", style=_OK) if ok else Text("✗ ", style=_ERROR)
-    out.print(Text.assemble(mark, (str(path), _PLAIN), (f" {detail}", _DIM)))
+    out.print(
+        Text.assemble(
+            mark, (printable(str(path)), _PLAIN), (printable(f" {detail}"), _DIM)
+        )
+    )
 
 
 def _order_text(order_agreement: float | None) -> str:
@@ -234,7 +241,11 @@ def print_combine_report(
         added[origins[0].input_index] += 1
     for path, count in zip(paths, added, strict=True):
         noun = "entry" if count == 1 else "entries"
-        out.print(Text.assemble((str(path), _DIM), (f": {count} {noun} added", _PLAIN)))
+        out.print(
+            Text.assemble(
+                (printable(str(path)), _DIM), (f": {count} {noun} added", _PLAIN)
+            )
+        )
     for conflict in result.order_conflicts:
         message = (
             f"{_entry_label(reading_list, conflict.entry)}: {paths[conflict.input_index]}"

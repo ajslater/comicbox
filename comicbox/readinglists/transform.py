@@ -36,6 +36,7 @@ from comicbox.readinglists.syntax import describe_syntax_error
 # JSONDecodeError is a ValueError, ruamel's errors are YAMLErrors and
 # xmltodict lets expat's through.
 _PARSE_ERRORS = (ValueError, YAMLError, ExpatError)
+NOT_UTF8 = "text: not valid UTF-8; the bytes that are not were replaced with U+FFFD"
 _ENTRIES_PREFIX = f"{ENTRIES_KEY}."
 
 
@@ -96,6 +97,28 @@ class ReadingListTransform:
             document = self._schema.opts.render_module.loads(text)
         except _PARSE_ERRORS as exc:
             raise ReadingListFormatError(describe_syntax_error(exc)) from exc
+        return self.from_document(document)
+
+    def parse_data(
+        self,
+        data: str | bytes | bytearray,  # noqa: ARG002 - the CBL transform reads it
+        text: str,
+        *,
+        replaced: bool,
+    ) -> dict[str, Any]:
+        """
+        Parse a document as it was read: its bytes, and the text they decode to.
+
+        ``replaced`` says the bytes were not UTF-8, so the text has U+FFFD
+        in their place; that is a warning. A format that decodes its own
+        bytes, as XML does by its declaration, parses ``data`` instead.
+        """
+        if replaced:
+            self.warnings.append(NOT_UTF8)
+        return self.parse(text)
+
+    def from_document(self, document: Any) -> dict[str, Any]:
+        """Load a parsed document through this format's schema."""
         if not isinstance(document, Mapping) or self.root_tag not in document:
             reason = f"No '{self.root_tag}' root found."
             raise ReadingListFormatError(reason)

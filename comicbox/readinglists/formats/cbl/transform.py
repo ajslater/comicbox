@@ -11,10 +11,13 @@ from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import Any
+from xml.parsers.expat import ExpatError
+
+import xmltodict
 
 from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import get_id_source_by_alias
-from comicbox.exceptions import SmartListError
+from comicbox.exceptions import ReadingListFormatError, SmartListError
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     SERIES_START_YEAR_KEY,
@@ -54,6 +57,7 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
     SourceKind,
 )
+from comicbox.readinglists.syntax import describe_syntax_error
 from comicbox.readinglists.transform import (
     ReadingListTransform,
     entry_issue_name,
@@ -123,6 +127,23 @@ class CblTransform(ReadingListTransform):
     IGNORED_KEYS = _IGNORED_KEYS
 
     # Read
+
+    @override
+    def parse_data(
+        self, data: str | bytes | bytearray, text: str, *, replaced: bool
+    ) -> dict[str, Any]:
+        """Parse XML from its bytes, so the encoding it declares is honoured."""
+        if isinstance(data, bytes | bytearray):
+            try:
+                document = xmltodict.parse(bytes(data))
+            except ExpatError as exc:
+                if not replaced:
+                    raise ReadingListFormatError(describe_syntax_error(exc)) from exc
+                # Bytes not in the encoding they declare, or undeclared and
+                # not UTF-8: read the text they were replaced in, and say so.
+            else:
+                return self.from_document(document)
+        return super().parse_data(data, text, replaced=replaced)
 
     @override
     def load_document(self, document: Mapping[str, Any]) -> dict[str, Any]:
