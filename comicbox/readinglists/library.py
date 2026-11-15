@@ -2,7 +2,8 @@
 Read a directory of comics, to match a list against them and tag them.
 
 Each comic is read in a pool of worker processes. Besides its tags, a read
-records the tag files comicbox could not parse: a write would replace
+records the tag formats the comic carries, so a write can name the ones it
+removes, and the tag files comicbox could not parse: a write would replace
 them with what was read from the rest, so such a comic is never written.
 
 The workers never take Ctrl-C: it goes to this process alone, which stops
@@ -25,6 +26,7 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.constants import ROOT_TAG
 from comicbox.enums.comicbox import FileTypeEnum
+from comicbox.formats import MetadataFormats
 from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
@@ -53,9 +55,16 @@ _SOURCE_NAMES = MappingProxyType(
 
 @dataclass(frozen=True, slots=True)
 class Comic:
-    """One comic's tags, and the tag files it has that comicbox could not parse."""
+    """
+    One comic's tags, and its tag files.
+
+    ``formats`` are the tag formats it carries that comicbox read, and
+    ``unreadable`` names the tag files it carries that comicbox could not
+    parse.
+    """
 
     tags: dict[str, Any]
+    formats: frozenset[MetadataFormats] = frozenset()
     unreadable: tuple[str, ...] = ()
 
 
@@ -80,12 +89,13 @@ def _is_json(text: Any) -> bool:
     return isinstance(text, str) and text.lstrip().startswith("{")
 
 
-def _unreadable(box: Comicbox) -> tuple[str, ...]:
+def _tag_files(box: Comicbox) -> tuple[frozenset[MetadataFormats], tuple[str, ...]]:
     """
-    Name the tag files of a comic that comicbox found and could not parse.
+    Get the tag formats a comic carries, and name the files that did not parse.
 
-    An archive comment of free text is not a tag file, so it is not one.
+    An archive comment of free text is not a tag file, so it is neither.
     """
+    formats: set[MetadataFormats] = set()
     unreadable: list[str] = []
     for source in _TAG_SOURCES:
         loaded = Counter(
@@ -96,9 +106,11 @@ def _unreadable(box: Comicbox) -> tuple[str, ...]:
             key = (str(data.path), data.fmt)
             if loaded[key]:
                 loaded[key] -= 1
+                if data.fmt is not None:
+                    formats.add(data.fmt)
             elif source is not MetadataSources.ARCHIVE_COMMENT or _is_json(data.data):
                 unreadable.append(_source_name(source, data))
-    return tuple(unreadable)
+    return frozenset(formats), tuple(unreadable)
 
 
 def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
@@ -109,10 +121,10 @@ def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
         # warned of again: the read above has warned of it once.
         logger.disable("comicbox")
         try:
-            unreadable = _unreadable(box)
+            formats, unreadable = _tag_files(box)
         finally:
             logger.enable("comicbox")
-        return Comic(dict(tags), unreadable)
+        return Comic(dict(tags), formats, unreadable)
 
 
 def _init_worker(log_level: str) -> None:

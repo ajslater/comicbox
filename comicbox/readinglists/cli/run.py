@@ -254,7 +254,9 @@ def read_tagged_comics(
     return library
 
 
-def _library_config(read_keys: Sequence[str]) -> "ComicboxSettings":
+def _library_config(
+    read_keys: Sequence[str], *, delete_orig: bool = False
+) -> "ComicboxSettings":
     from comicbox.config import get_config
 
     args = {
@@ -264,12 +266,18 @@ def _library_config(read_keys: Sequence[str]) -> "ComicboxSettings":
     }
     settings = get_config(Namespace(comicbox=Namespace(**args)))
     general = replace(
-        settings.general, metadata=None, metadata_cli=None, delete_keys=frozenset()
+        settings.general,
+        metadata=None,
+        metadata_cli=None,
+        delete_keys=frozenset(),
+        delete_orig=settings.general.delete_orig or delete_orig,
     )
     return replace(settings, general=general)
 
 
-def library_configs() -> tuple["ComicboxSettings", "ComicboxSettings"]:
+def library_configs(
+    *, delete_orig: bool = False
+) -> tuple["ComicboxSettings", "ComicboxSettings"]:
     """
     Get the configs to read and to write a directory of comics with.
 
@@ -279,6 +287,8 @@ def library_configs() -> tuple["ComicboxSettings", "ComicboxSettings"]:
     config reads the file name as the user's config says; the write config
     never does, so a write adds only the arc. Neither adds the config's
     ``metadata``, deletes its ``delete_keys`` or deletes all tags.
+    ``delete_orig`` sets ``general.delete_orig`` for the writes, as the
+    main CLI's ``--delete-orig`` does.
     """
     from comicbox.config import get_config
     from comicbox.formats import MetadataFormats
@@ -288,7 +298,9 @@ def library_configs() -> tuple["ComicboxSettings", "ComicboxSettings"]:
     read_keys = list(tag_keys)
     if MetadataFormats.FILENAME in user.read.formats:
         read_keys.append(min(MetadataFormats.FILENAME.value.config_keys))
-    return _library_config(read_keys), _library_config(tag_keys)
+    return _library_config(read_keys), _library_config(
+        tag_keys, delete_orig=delete_orig
+    )
 
 
 _JOIN_POLL_SECONDS = 0.1

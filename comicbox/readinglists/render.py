@@ -392,14 +392,33 @@ def _dim_line(out: Console, path: Path | str, detail: str) -> None:
     )
 
 
-def _change_text(write: "ArcWrite", *, done: bool) -> str:
+def _change_text(
+    write: "ArcWrite", *, done: bool, moved: Path | None, deleted: bool
+) -> str:
     change = write.change
     verb = _ARC_VERBS[change.action.value, done]
     detail = f"{verb} {arc_text(change.arc, change.number)}"
     if change.action.value == "renumber":
         had = "had no number" if change.current is None else f"was #{change.current}"
         detail += f", {had}"
+    detail += _conversion_text(write, done=done, moved=moved, deleted=deleted)
+    if write.removes:
+        removes = "removed" if done else "would remove"
+        detail += f"; {removes} {', '.join(write.removes)}"
     return detail
+
+
+def _conversion_text(
+    write: "ArcWrite", *, done: bool, moved: Path | None, deleted: bool
+) -> str:
+    """Say what converting a CBR, CBT or CB7 to a CBZ did, or would do."""
+    kind = write.path.suffix[1:].upper()
+    if done and moved is not None:
+        return f" as {moved.name}" + (f"; deleted the {kind}" if deleted else "")
+    if not done and write.converts_to is not None:
+        then = "delete" if write.deletes_original else "keep"
+        return f"; would convert to {write.converts_to.name} and {then} the {kind}"
+    return ""
 
 
 def _failed_line(out: Console, path: Path, detail: str) -> None:
@@ -419,13 +438,14 @@ def print_arc_write(
     done: bool,
     problem: str | None = None,
     moved: Path | None = None,
+    deleted: bool = False,
 ) -> None:
     """
     Print what tagging one file with an arc did, or would do, or why not.
 
-    ``problem`` says why a write that was made did not hold, and ``moved``
-    is the CBZ a write converted the file to. The file's other paths
-    follow, each on its own line.
+    ``problem`` says why a write that was made did not hold, ``moved`` is
+    the CBZ a write converted the file to, and ``deleted`` whether the
+    original then went. The file's other paths follow, each on its own line.
     """
     change = write.change
     if change.action.value == "tagged":
@@ -441,8 +461,13 @@ def print_arc_write(
             Text.assemble(
                 mark,
                 (printable(str(change.path)), _PLAIN),
-                (printable(f" {_change_text(write, done=done)}"), _DIM),
-                (printable(f" as {moved.name}" if moved else ""), _DIM),
+                (
+                    printable(
+                        " "
+                        + _change_text(write, done=done, moved=moved, deleted=deleted)
+                    ),
+                    _DIM,
+                ),
             )
         )
     for other in write.same_file:

@@ -858,7 +858,7 @@ def test_an_archive_comicbox_cannot_write_is_converted(
     converted = copy.with_suffix(".cbz")
     assert code == 0
     assert "'Captain Arc' #1" in _flat(out)
-    assert _flat(out).endswith(f" as {converted.name}")
+    assert f" as {converted.name}" in _flat(out)
     assert copy.read_bytes() == untouched
     assert _tags(converted)["arcs"]["Captain Arc"] == {"number": 1}
 
@@ -891,8 +891,196 @@ def test_a_pdf_is_written_in_place(
 
     assert code == 0
     assert f"{pdf} added 'Captain Arc' #1" in _flat(out)
+    # The PDF metadata stays, so it is not named as removed.
+    assert "remove" not in out
     assert sorted(path.name for path in comics.iterdir()) == [pdf.name]
     assert _tags(pdf)["arcs"] == {"Captain Arc": {"number": 1}}
+
+
+# ------------------------------------------- write-arcs: what -w removes
+
+
+def test_each_comic_names_the_tag_files_w_removes(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    """A MetronInfo comic under -w cix loses MetronInfo.xml, and is told so."""
+    path = make_comic(
+        tmp_path / "comics" / "cw1.cbz",
+        formats=(_MI,),
+        series="Civil War",
+        number="1",
+        start_year=2006,
+    )
+
+    _, dry, dry_err = _write(capsys, "-w", "cix", str(reading_list), str(path.parent))
+    code, out, err = _write(
+        capsys, "-w", "cix", str(reading_list), str(path.parent), apply=True
+    )
+
+    assert "cw1.cbz would add 'Civil War' #1; would remove MetronInfo.xml" in _flat(dry)
+    assert "1 comic would lose a tag file." in dry_err
+    assert dry_err.endswith("-w cix,mi loses no tag file.")
+    assert code == 0
+    assert "cw1.cbz added 'Civil War' #1; removed MetronInfo.xml" in _flat(out)
+    assert "1 comic lost a tag file." in err
+    assert "loses no tag file" not in err
+    assert tag_files(path) == ["ComicInfo.xml"]
+
+
+def test_the_suggested_w_loses_nothing(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    comics = tmp_path / "comics"
+    paths = [
+        make_comic(comics / "cw1.cbz", series="Civil War", number="1", start_year=2006),
+        make_comic(
+            comics / "cw2.cbz",
+            formats=(_MI,),
+            series="Civil War",
+            number="2",
+            start_year=2006,
+            arcs={"Other": 3},
+        ),
+        make_comic(
+            comics / "cw7.cbz",
+            formats=(_CIX, _MI),
+            series="Civil War",
+            number="7",
+            start_year=2006,
+            volume=2006,
+        ),
+    ]
+    files = {path: tag_files(path) for path in paths}
+    before = {path: _tags(path) for path in paths}
+
+    _, _, dry_err = _write(capsys, "-w", "cix", str(reading_list), str(comics))
+    suggested = dry_err.rsplit("-w ", 1)[1].removesuffix(" loses no tag file.")
+    code, out, err = _write(
+        capsys, "-w", suggested, str(reading_list), str(comics), apply=True
+    )
+
+    assert suggested == "cix,json,mi"
+    assert code == 0
+    assert "remove" not in out
+    assert "lost a tag file" not in err
+    for path in paths:
+        # Every format named is written, and none the comic had is gone.
+        assert tag_files(path) == ["ComicInfo.xml", "MetronInfo.xml", "comicbox.json"]
+        assert set(files[path]) <= set(tag_files(path))
+        after = _tags(path)
+        arcs = after.pop("arcs")
+        assert "Civil War" in arcs
+        old = before[path]
+        assert {name: arc for name, arc in arcs.items() if name != "Civil War"} == (
+            old.pop("arcs", None) or {}
+        )
+        assert after == old
+
+
+def test_a_format_no_w_can_keep_is_said(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    """ComicBookInfo has no arcs, so -w refuses it: no -w keeps the comment."""
+    path = make_comic(
+        tmp_path / "comics" / "cw1.cbz",
+        formats=(JSON, "COMIC_BOOK_INFO"),
+        series="Civil War",
+        number="1",
+        start_year=2006,
+    )
+
+    _, dry, err = _write(capsys, str(reading_list), str(path.parent))
+
+    assert "would remove ComicBookInfo comment" in _flat(dry)
+    assert err.endswith(
+        "No -w keeps a comic's ComicBookInfo comment: it cannot hold the arc"
+        " 'Civil War'."
+    )
+    assert "loses no tag file" not in err
+
+
+# ------------------------------------------------- write-arcs: conversions
+
+
+@pytest.fixture
+def cbr(tmp_path: Path) -> Path:
+    comics = tmp_path / "comics"
+    comics.mkdir()
+    copy = comics / CBI_CBR_SOURCE_PATH.name
+    shutil.copy(CBI_CBR_SOURCE_PATH, copy)
+    return copy
+
+
+def test_the_dry_run_shows_a_conversion(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    before = digests(cbr.parent)
+
+    _, out, _ = _write(capsys, "-w", "cix", str(captain_list), str(cbr.parent))
+    _, deleting, _ = _write(
+        capsys, "-w", "cix", "--delete-orig", str(captain_list), str(cbr.parent)
+    )
+
+    cbz = cbr.with_suffix(".cbz").name
+    assert f"would convert to {cbz} and keep the CBR" in _flat(out)
+    assert f"would convert to {cbz} and delete the CBR" in _flat(deleting)
+    assert digests(cbr.parent) == before
+
+
+def test_a_conversion_onto_a_file_already_there_is_refused_up_front(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    """The 5.2.0 refusal, named by the dry run, not only by the write."""
+    occupied = cbr.with_suffix(".cbz")
+    occupied.write_bytes(b"someone else's comic")
+    before = digests(cbr.parent)
+
+    _, dry, _ = _write(capsys, "-w", "cix", str(captain_list), str(cbr.parent))
+    code, out, _ = _write(
+        capsys, "-w", "cix", str(captain_list), str(cbr.parent), apply=True
+    )
+
+    reason = f"{cbr} not written: {occupied.name} already exists"
+    assert reason in _flat(dry)
+    assert reason in _flat(out)
+    assert code == 1
+    assert digests(cbr.parent) == before
+
+
+def test_two_conversions_onto_one_cbz_are_shown_by_the_dry_run(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    cbt = cbr.with_suffix(".cbt")
+    shutil.copy(CIX_CBT_SOURCE_PATH, cbt)
+
+    _, dry, _ = _write(capsys, "-w", "cix", str(captain_list), str(cbr.parent))
+
+    first, second = sorted((cbr, cbt))
+    assert f"{first.name} would " in _flat(dry)
+    assert (
+        f"{second} not written: {cbr.with_suffix('.cbz').name} is also the"
+        f" destination of {first}"
+    ) in _flat(dry)
+
+
+def test_delete_orig_removes_the_original_after_a_good_conversion(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    code, out, _ = _write(
+        capsys,
+        "-w",
+        "cix",
+        "--delete-orig",
+        str(captain_list),
+        str(cbr.parent),
+        apply=True,
+    )
+
+    cbz = cbr.with_suffix(".cbz")
+    assert code == 0
+    assert f"as {cbz.name}; deleted the CBR" in _flat(out)
+    assert not cbr.exists()
+    assert _tags(cbz)["arcs"] == {"Captain Arc": {"number": 1}}
 
 
 @pytest.mark.parametrize("link", ["symlink", "hardlink"])

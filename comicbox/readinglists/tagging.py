@@ -3,8 +3,12 @@ Decide how ``write-arcs`` writes each comic, or why it does not.
 
 A format that cannot hold the arc is refused before anything is read: the
 check writes a comic holding only the arc to the format, reads it back and
-compares. A comic with a tag file comicbox could not parse is not written,
-and a file found under several paths is written once.
+compares. ``-w`` means what it means for comicbox: the formats named are
+written and every other tag file is removed, so each write names what it
+removes. A CBR, CBT or CB7 is converted to a CBZ, as comicbox converts it.
+A comic with a tag file comicbox could not parse is not written, nor one
+whose CBZ would land on a file already there, and a file found under
+several paths is written once.
 """
 
 from collections.abc import Callable, Collection, Mapping
@@ -17,11 +21,13 @@ from typing import TYPE_CHECKING, Any
 from comicbox.constants import ROOT_TAG
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ARCS_KEY
+from comicbox.formats.sources import MetadataSources
 from comicbox.readinglists.match import ArcAction, ArcChange
 from comicbox.readinglists.schema import ISSUE_KEY, NAME_KEY, NUMBER_KEY, SERIES_KEY
 
 if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
+    from comicbox.predict import WriteDestination
     from comicbox.readinglists.library import Comic
 
 # What a tag format is called in a message, when not its file's name.
@@ -31,6 +37,33 @@ _FORMAT_NAMES = MappingProxyType(
         MetadataFormats.PDF: "PDF metadata",
     }
 )
+
+
+# Written in place of the archive's tag files and comment. The PDF metadata
+# is kept unless it is one of the formats written.
+_KEPT_UNLESS_WRITTEN = frozenset(MetadataSources.ARCHIVE_PDF.value.formats)
+# The -w key a suggestion names a format by; any other takes its shortest.
+_FORMAT_KEYS = MappingProxyType(
+    {
+        MetadataFormats.COMIC_INFO: "cix",
+        MetadataFormats.METRON_INFO: "mi",
+        MetadataFormats.COMICBOX_JSON: "json",
+        MetadataFormats.COMICBOX_YAML: "yaml",
+        MetadataFormats.COMIC_BOOK_INFO: "cbi",
+    }
+)
+
+
+def format_key(fmt: MetadataFormats) -> str:
+    """Name a format as ``-w`` takes it."""
+    return _FORMAT_KEYS.get(fmt) or min(fmt.value.config_keys, key=len)
+
+
+def removed_formats(
+    carried: Collection[MetadataFormats], written: Collection[MetadataFormats]
+) -> frozenset[MetadataFormats]:
+    """Get the tag formats a write of ``written`` removes from a comic."""
+    return frozenset(carried) - frozenset(written) - _KEPT_UNLESS_WRITTEN
 
 
 def format_name(fmt: MetadataFormats) -> str:
@@ -104,14 +137,19 @@ class ArcWrite:
     How one file gets its arc: the formats to write, or why it is not.
 
     ``formats`` is empty when nothing is written, and ``reason`` then says
-    why, unless the comic already has the arc. ``same_file`` lists the
-    other paths that are this file.
+    why, unless the comic already has the arc. ``removes`` names the tag
+    files the write takes out of the comic. ``converts_to`` is the CBZ a
+    CBR, CBT or CB7 is converted to, and ``deletes_original`` whether the
+    original then goes. ``same_file`` lists the other paths of this file.
     """
 
     change: ArcChange
     formats: frozenset[MetadataFormats] = frozenset()
     reason: str | None = None
     same_file: tuple[Path, ...] = ()
+    removes: tuple[str, ...] = ()
+    converts_to: Path | None = None
+    deletes_original: bool = False
 
     @property
     def path(self) -> Path:
@@ -120,15 +158,57 @@ class ArcWrite:
 
 
 def plan_write(
-    change: ArcChange, comic: "Comic", formats: frozenset[MetadataFormats]
+    change: ArcChange,
+    comic: "Comic",
+    formats: frozenset[MetadataFormats],
+    destination: "WriteDestination | None",
+    *,
+    delete_orig: bool = False,
 ) -> ArcWrite:
-    """Decide how to write one comic's arc change in ``formats``."""
+    """
+    Decide how to write one comic's arc change in ``formats``.
+
+    ``destination`` is where comicbox would write it, as
+    ``predict_write_destination`` says; None for a comic already tagged.
+    """
     if change.action is ArcAction.TAGGED:
         return ArcWrite(change)
     if comic.unreadable:
         reason = f"its {', '.join(comic.unreadable)} could not be read"
         return ArcWrite(change, reason=reason)
-    return ArcWrite(change, formats)
+    converts_to = None
+    if destination is not None and destination.converts:
+        if destination.occupied:
+            reason = f"{destination.destination.name} already exists"
+            return ArcWrite(change, reason=reason)
+        converts_to = destination.destination
+    removes = sorted(
+        format_name(fmt) for fmt in removed_formats(comic.formats, formats)
+    )
+    return ArcWrite(
+        change,
+        formats,
+        removes=tuple(removes),
+        converts_to=converts_to,
+        deletes_original=converts_to is not None and delete_orig,
+    )
+
+
+def keeping_formats(
+    formats: Collection[MetadataFormats],
+    carried: Collection[MetadataFormats],
+    fits: Callable[[MetadataFormats], ArcFit],
+) -> tuple[frozenset[MetadataFormats], frozenset[MetadataFormats]]:
+    """
+    Get the formats that lose no tag file, and those no ``-w`` can keep.
+
+    The formats named plus every format the comics carry that a write would
+    remove, less those that cannot hold the arc: ``-w`` refuses those, so a
+    comic that carries one loses it whatever ``-w`` says.
+    """
+    lost = removed_formats(carried, formats)
+    unkeepable = frozenset(fmt for fmt in lost if fits(fmt) is not ArcFit.HOLDS)
+    return frozenset(formats) | (lost - unkeepable), unkeepable
 
 
 def group_files(

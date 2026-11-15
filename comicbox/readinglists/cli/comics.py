@@ -27,6 +27,8 @@ from comicbox.readinglists.cli.run import (
 from comicbox.readinglists.combine.fields import is_ordered
 from comicbox.readinglists.library import TAG_FORMATS, Library
 from comicbox.readinglists.match import (
+    ArcAction,
+    ArcChange,
     MatchResult,
     find_arc,
     match_comics,
@@ -45,8 +47,10 @@ from comicbox.readinglists.tagging import (
     ArcFit,
     ArcFits,
     ArcWrite,
+    format_key,
     format_name,
     group_files,
+    keeping_formats,
     plan_write,
 )
 
@@ -154,6 +158,9 @@ class _Plan:
     # Comics not written because their entry fits them and comics of other
     # volumes alike: each with the entry's position and the volumes.
     ambiguous: tuple[tuple[Path, int, tuple[int, ...]], ...]
+    # The formats that lose no tag file, and those no -w can keep.
+    keep: "frozenset[MetadataFormats]" = frozenset()
+    unkeepable: "frozenset[MetadataFormats]" = frozenset()
 
     @property
     def todo(self) -> tuple[ArcWrite, ...]:
@@ -166,14 +173,10 @@ class _Plan:
         return tuple(write for write in self.writes if write.reason is not None)
 
 
-def _plan(
-    run: Run,
-    reading_list: Mapping[str, Any],
-    library: Library,
-    formats: "frozenset[MetadataFormats]",
-) -> _Plan:
+def _plan(run: Run, setup: "_Setup", library: Library) -> _Plan:
     from comicbox.box.archive.write import file_key
 
+    reading_list = setup.reading_list
     tags = _tags(library)
     result = match_comics(reading_list, tags)
     changes = {
@@ -186,14 +189,68 @@ def _plan(
             variants=run.args.variants,
         )
     }
-    writes = tuple(
-        replace(
-            plan_write(changes[path], library.comics[path], formats),
-            same_file=others,
-        )
-        for path, others in group_files(changes, file_key).items()
+    writes = _one_per_destination(
+        [
+            replace(_plan_one(changes[path], library, setup), same_file=others)
+            for path, others in group_files(changes, file_key).items()
+        ]
     )
-    return _Plan(result, writes, *_left_out(result, changes))
+    carried = frozenset().union(
+        *(library.comics[write.path].formats for write in writes if write.formats)
+    )
+    keep, unkeepable = keeping_formats(
+        setup.formats, carried, lambda fmt: setup.fits(fmt, reading_list[NAME_KEY])
+    )
+    return _Plan(result, writes, *_left_out(result, changes), keep, unkeepable)
+
+
+def _plan_one(change: ArcChange, library: Library, setup: "_Setup") -> ArcWrite:
+    """Plan one file's write, with where comicbox would write it."""
+    from comicbox.exceptions import ComicboxError
+    from comicbox.predict import predict_write_destination
+
+    comic = library.comics[change.path]
+    destination = None
+    if change.action is not ArcAction.TAGGED and not comic.unreadable:
+        try:
+            destination = predict_write_destination(
+                change.path, base_config=setup.write_config
+            )
+        except (ComicboxError, OSError) as exc:
+            return ArcWrite(change, reason=str(exc))
+    return plan_write(
+        change,
+        comic,
+        setup.formats,
+        destination,
+        delete_orig=setup.write_config.general.delete_orig,
+    )
+
+
+def _one_per_destination(writes: Sequence[ArcWrite]) -> tuple[ArcWrite, ...]:
+    """
+    Refuse a conversion whose CBZ another one in the run converts to.
+
+    ``Foo.cbr`` and ``Foo.cbt`` both convert to ``Foo.cbz``; the first in
+    path order is written, as ``bulk_write`` decides it.
+    """
+    from comicbox.box.archive.write import file_key
+
+    claimed: dict[Any, Path] = {}
+    kept: list[ArcWrite] = []
+    for write in writes:
+        if write.converts_to is None:
+            kept.append(write)
+            continue
+        first = claimed.setdefault(file_key(write.converts_to), write.path)
+        if first == write.path:
+            kept.append(write)
+        else:
+            reason = f"{write.converts_to.name} is also the destination of {first}"
+            kept.append(
+                ArcWrite(write.change, reason=reason, same_file=write.same_file)
+            )
+    return tuple(kept)
 
 
 def _left_out(
@@ -252,7 +309,10 @@ def _report(
     final = written.final_path or write.path
     problem = _held(final, write, config)
     moved = final if final != write.path else None
-    print_arc_write(run.out, write, done=True, problem=problem, moved=moved)
+    deleted = moved is not None and not write.path.exists()
+    print_arc_write(
+        run.out, write, done=True, problem=problem, moved=moved, deleted=deleted
+    )
     if problem is not None:
         run.failed = True
     return problem is None
@@ -294,19 +354,10 @@ def _summary(
     held: Sequence[ArcWrite] | None,
 ) -> None:
     """Sum the run up on stderr; ``held`` is None for a dry run."""
-    files = _count(len(plan.writes), "matched comic")
-    if held is None:
-        verdict = f"Dry run: {len(plan.todo)} of {files} would change"
-        if run.args.apply:
-            verdict += "; general.dry_run is set in the config, so nothing was written."
-        else:
-            verdict += "; --apply writes them."
-    elif not plan.todo:
-        verdict = f"Nothing to write among {files}."
-    else:
-        verdict = f"{len(held)} of {files} written."
+    verdict, lose, lost = _verdict(run, plan, held)
     print_note(run.err, verdict)
     counted = (
+        (lose, f"{_count(lose, 'comic')} {lost}"),
         (
             len(plan.refused),
             f"{_count(len(plan.refused), 'matched comic')} not written; see above.",
@@ -334,6 +385,48 @@ def _summary(
         if number:
             print_note(run.err, line)
     run.no_keys((run.args.file,), (reading_list,))
+    if held is None and lose:
+        _suggest(run, plan, reading_list[NAME_KEY])
+
+
+def _verdict(
+    run: Run, plan: _Plan, held: Sequence[ArcWrite] | None
+) -> tuple[str, int, str]:
+    """Say what the run did; count the comics that lose a tag file, and say it."""
+    files = _count(len(plan.writes), "matched comic")
+    if held is None:
+        verdict = f"Dry run: {len(plan.todo)} of {files} would change"
+        if run.args.apply:
+            verdict += "; general.dry_run is set in the config, so nothing was written."
+        else:
+            verdict += "; --apply writes them."
+        lose = sum(bool(write.removes) for write in plan.todo)
+        return verdict, lose, f"would lose a tag file{'' if lose == 1 else 's'}."
+    if not plan.todo:
+        return f"Nothing to write among {files}.", 0, ""
+    lose = sum(bool(write.removes) for write in held)
+    lost = f"lost a tag file{'' if lose == 1 else 's'}."
+    return f"{len(held)} of {files} written.", lose, lost
+
+
+def _suggest(run: Run, plan: _Plan, name: str) -> None:
+    """End a dry run with the -w that loses no tag file, as far as one can."""
+    named = [str(token).strip() for token in run.args.formats]
+    added = sorted(format_key(fmt) for fmt in plan.keep - _named_formats(named))
+    if added:
+        print_note(run.err, f"-w {','.join([*named, *added])} loses no tag file.")
+    if plan.unkeepable:
+        names = ", ".join(sorted(format_name(fmt) for fmt in plan.unkeepable))
+        print_note(
+            run.err,
+            f"No -w keeps a comic's {names}: it cannot hold the arc {name!r}.",
+        )
+
+
+def _named_formats(tokens: Sequence[str]) -> "frozenset[MetadataFormats]":
+    return frozenset(
+        fmt for token in tokens if (fmt := _FORMAT_KEYS.get(token.lower()))
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -344,6 +437,7 @@ class _Setup:
     formats: "frozenset[MetadataFormats]"
     read_config: "ComicboxSettings"
     write_config: "ComicboxSettings"
+    fits: ArcFits
 
 
 def _setup(run: Run) -> _Setup | None:
@@ -361,11 +455,11 @@ def _setup(run: Run) -> _Setup | None:
         reason = "the list has no name to tag its arc with"
         run.fail(run.args.file, ReadingListError(reason))
         return None
-    read_config, write_config = library_configs()
+    read_config, write_config = library_configs(delete_orig=run.args.delete_orig)
     fits = ArcFits(ordered=is_ordered(reading_list), config=write_config)
     if _refuse_unfit(run, formats, name, fits):
         return None
-    return _Setup(reading_list, formats, read_config, write_config)
+    return _Setup(reading_list, formats, read_config, write_config, fits)
 
 
 def _print_plan(run: Run, plan: _Plan, *, applying: bool) -> None:
@@ -384,7 +478,7 @@ def _write_arcs(run: Run) -> None:
         return
     if (library := _library(run, setup.read_config)) is None:
         return
-    plan = _plan(run, setup.reading_list, library, setup.formats)
+    plan = _plan(run, setup, library)
     if plan.refused or plan.ambiguous:
         run.failed = True
     applying = run.args.apply and not setup.write_config.general.dry_run
@@ -422,7 +516,9 @@ def add_comic_actions(actions: Any) -> None:
             " nothing is written: each comic's change is shown. Only comics"
             " matched by id or by series, year or volume and issue are tagged,"
             " unless --variants. A comic that already has the arc with that number"
-            " is left alone, as is one with a tag file comicbox cannot read."
+            " is left alone, as is one with a tag file comicbox cannot read. A"
+            " CBR, CBT or CB7 is converted to a CBZ beside it, as comicbox converts"
+            " it, and is not written when that CBZ already exists."
         ),
     )
     sub.add_argument(
@@ -434,7 +530,17 @@ def add_comic_actions(actions: Any) -> None:
         dest="formats",
         help=(
             "The tag formats to write, as comicbox -w takes them: cix, mi,"
-            " json... Each must be able to hold the arc."
+            " json... Each must be able to hold the arc. Every other tag file a"
+            " comic has is removed: each comic's line names them, and the dry run"
+            " ends with the -w that keeps them."
+        ),
+    )
+    sub.add_argument(
+        "--delete-orig",
+        action="store_true",
+        help=(
+            "Delete a CBR, CBT or CB7 once it is converted to a CBZ, as comicbox"
+            " --delete-orig does."
         ),
     )
     sub.add_argument(
