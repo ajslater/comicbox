@@ -54,7 +54,7 @@ from comicbox.readinglists.transform import entry_issue_name
 
 if TYPE_CHECKING:
     from comicbox.readinglists.formats.metron_api import MetronListSummary
-    from comicbox.readinglists.match import Found, MatchResult
+    from comicbox.readinglists.match import Found, FoundComic, MatchResult
     from comicbox.readinglists.sources.catalog import CatalogEntry
     from comicbox.readinglists.tagging import ArcWrite
 
@@ -332,8 +332,8 @@ def print_matches(
     """
     Tabulate a list's entries with the comics that are them, or missing.
 
-    Each comic is a row of its own, with how it matched and its note. The
-    comics of an entry that fits several volumes are marked ambiguous.
+    Each comic is a row of its own, with how it matched and its note. A
+    cover-year match of one of several volumes is marked ambiguous.
     """
     notes = notes or {}
     found = {match.position: match for match in result.found}
@@ -344,17 +344,19 @@ def print_matches(
             table.add_row(*cells, _text("missing", _WARN), _text(""))
             continue
         for comic in match.comics:
-            shown = _comic_cell(comic.path, directory, notes.get(comic.path), match)
+            shown = _comic_cell(comic, directory, notes.get(comic.path), match)
             table.add_row(*cells, shown, _text(comic.by.value, _DIM))
             cells = [_text("")] * len(cells)
     out.print(table)
 
 
-def _comic_cell(path: Path, directory: Path, note: str | None, match: "Found") -> Text:
-    """Show a found comic's path, its note, and whether its entry is ambiguous."""
-    shown = Text(printable(_shown_path(path, directory)))
+def _comic_cell(
+    comic: "FoundComic", directory: Path, note: str | None, match: "Found"
+) -> Text:
+    """Show a found comic's path, its note, and whether it is ambiguous."""
+    shown = Text(printable(_shown_path(comic.path, directory)))
     notes = [note] if note else []
-    if match.ambiguous:
+    if comic.ambiguous:
         notes.append(f"ambiguous: {volumes_text(match.volumes)}")
     for text in notes:
         shown.append(f" ({printable(text)})", style=_WARN)
@@ -450,7 +452,7 @@ def print_arc_write(
 def print_ambiguous(
     out: Console, path: Path, position: int, volumes: Sequence[int]
 ) -> None:
-    """Say a comic is not tagged: its entry fits comics of several volumes."""
+    """Say a comic is not tagged: its entry fits it and a comic of another volume."""
     _failed_line(
         out,
         path,

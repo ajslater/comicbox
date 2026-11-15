@@ -235,6 +235,61 @@ def test_an_entry_that_fits_two_volumes_is_listed_and_never_tagged(
     assert "Dry run: 0 of 0 matched comics would change" in dry_err
 
 
+def test_a_cover_year_match_of_another_volume_is_not_a_match(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """Beside the id's 2016 comic, the 2011 comic is neither listed nor tagged."""
+    listed = tmp_path / "avengers.yaml"
+    listed.write_text(_AVENGERS + "      identifiers: {comicvine: {key: '7'}}\n")
+    comics = tmp_path / "comics"
+    v2011 = _volumes(comics, 2011)[0]
+    v2016 = make_comic(
+        comics / "id-avengers-2016.cbz",
+        series="Avengers",
+        number="1",
+        start_year=2016,
+        cover_date="2016-08-01",
+        ids={"comicvine": "7"},
+    )
+    untouched = v2011.read_bytes()
+
+    _, matched, _ = _run(capsys, "match", str(listed), str(comics))
+    code, out, _ = _write(capsys, str(listed), str(comics), apply=True)
+
+    assert v2011.name not in matched
+    assert code == 0
+    assert f"{v2016} added 'Avengers Firsts' #1" in _flat(out)
+    assert v2011.name not in out
+    assert v2011.read_bytes() == untouched
+
+
+def test_a_volume_number_entry_tags_its_comic_and_not_two_other_volumes(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    listed = tmp_path / "avengers.yaml"
+    listed.write_text(_AVENGERS.replace("issue:", "volume: {number: 2}\n      issue:"))
+    comics = tmp_path / "comics"
+    others = _volumes(comics, 2011, 2016)
+    vol2 = make_comic(
+        comics / "vol2-avengers.cbz",
+        series="Avengers",
+        number="1",
+        volume=2,
+        cover_date="2016-08-01",
+    )
+
+    _, matched, _ = _run(capsys, "match", str(listed), str(comics))
+    code, out, _ = _write(capsys, str(listed), str(comics), apply=True)
+
+    assert _flat(matched).count("(ambiguous: the 2011 and 2016 volumes)") == 2
+    assert code == 1
+    assert f"{vol2} added 'Avengers Firsts' #1" in _flat(out)
+    for path in others:
+        assert f"{path} not written: entry #1 fits the 2011 and 2016 volumes" in (
+            _flat(out)
+        )
+
+
 @pytest.mark.parametrize(
     "start_years",
     [

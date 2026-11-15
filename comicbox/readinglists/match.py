@@ -7,18 +7,19 @@ passes. First every entry takes each comic it shares a strict key with
 issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
 among the comics no entry took strictly. Either way a comic is refused when
 it carries an id from a database the entry has a different id from, or a
-cover year more than a year off the entry's; found by the cover year alone,
-also when its series year differs from the entry's. An entry with no key matches
+cover year more than a year off the entry's. A comic that shares only the
+cover-year key is refused for another series year than the entry's or its
+strong matches', and is ambiguous beside cover-year matches of another
+volume: listed, never tagged. An entry with no key matches
 nothing. The matching is pure; reading the directory is separate.
 """
 
 from collections import defaultdict
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from enum import StrEnum
 from pathlib import Path
-from types import MappingProxyType
 from typing import Any
 
 from comicbox.constants import ROOT_TAG
@@ -54,18 +55,18 @@ class FoundBy(StrEnum):
         return self is not FoundBy.VARIANT
 
 
-# How a key's kind finds a comic; every other strict key is a name.
-_FOUND_BY_KIND = MappingProxyType(
-    {ID_KEY_KIND: FoundBy.ID, NAME_YEAR_KEY_KIND: FoundBy.NAME_YEAR}
-)
-
-
 @dataclass(frozen=True, slots=True)
 class FoundComic:
-    """One comic an entry was found in, and how."""
+    """
+    One comic an entry was found in, and how.
+
+    ``ambiguous`` marks a cover-year match beside others of another
+    volume: ``match`` lists it, and does not choose between them.
+    """
 
     path: Path
     by: FoundBy
+    ambiguous: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,9 +74,8 @@ class Found:
     """
     The comics that are entry ``position`` (from 0), in path order.
 
-    ``volumes`` holds the series years of the comics when the entry was
-    found by its cover-year key alone and they hold more than one: the
-    entry fits comics of several volumes, and ``match`` does not choose.
+    ``volumes`` holds the series years its ambiguous cover-year matches
+    carry, when it has any.
     """
 
     position: int
@@ -84,7 +84,7 @@ class Found:
 
     @property
     def ambiguous(self) -> bool:
-        """Whether the entry fits comics of more than one volume."""
+        """Whether some of the entry's comics are of volumes it cannot tell apart."""
         return bool(self.volumes)
 
     @property
@@ -165,39 +165,83 @@ class _Index:
             for key in variant_keys(entry):
                 self.variants[key].append(path)
 
-    def find_strict(self, entry: Mapping[str, Any]) -> tuple[FoundComic, ...]:
-        """Find every comic that shares a strict key with an entry."""
+    def find_strict(self, entry: Mapping[str, Any]) -> Found | None:
+        """
+        Find the comics that share a strict key with an entry, at position -1.
+
+        Strong matches share an id or a name key, and are always found. A
+        cover-year match shares only the cover-year key, and is judged by
+        ``_cover_year_matches``. None when nothing is found.
+        """
         keys = entry_keys(entry)
         facts = _Facts.of(entry, keys)
-        found: dict[Path, FoundBy] = {}
+        strong: dict[Path, FoundBy] = {}
         # The strongest key comes first, so a comic found by two is found by it.
         for key in keys:
-            by = _FOUND_BY_KIND.get(key[0], FoundBy.NAME)
+            if key[0] == NAME_YEAR_KEY_KIND:
+                continue
+            by = FoundBy.ID if key[0] == ID_KEY_KIND else FoundBy.NAME
             for path in self.strict.get(key, ()):
-                comic = self.facts[path]
-                if path in found or facts.contradicts(comic):
-                    continue
-                # The cover year joins rows lacking a series year, not volumes.
-                if by is FoundBy.NAME_YEAR and facts.other_volume(comic):
-                    continue
-                found[path] = by
-        return tuple(FoundComic(path, found[path]) for path in sorted(found))
+                if path not in strong and not facts.contradicts(self.facts[path]):
+                    strong[path] = by
+        cover, volumes = self._cover_year_matches(keys, facts, strong)
+        comics = [FoundComic(path, by) for path, by in strong.items()]
+        comics += [
+            FoundComic(path, FoundBy.NAME_YEAR, ambiguous=bool(volumes))
+            for path in cover
+        ]
+        if not comics:
+            return None
+        return Found(-1, tuple(sorted(comics, key=lambda comic: comic.path)), volumes)
 
-    def volumes(self, comics: Sequence[FoundComic]) -> tuple[int, ...]:
+    def _cover_year_matches(
+        self,
+        keys: Sequence[EntryKey],
+        facts: "_Facts",
+        strong: Collection[Path],
+    ) -> tuple[list[Path], tuple[int, ...]]:
         """
-        Name the volumes an entry found by its cover year alone fits, if several.
+        Judge the comics that share only an entry's cover-year key.
 
-        A comic with no series year names none, so copies of one volume, or
-        such a comic beside them, are no choice to make.
+        Each is refused when its series year differs from the entry's. Beside
+        strong matches that carry series years, it is refused unless its
+        series year is one of theirs or it has none. Otherwise they are
+        judged together: of more than one series year, they are all
+        ambiguous, and the years are returned with them.
         """
-        if not comics or any(comic.by is not FoundBy.NAME_YEAR for comic in comics):
-            return ()
-        years = {
-            year
-            for comic in comics
-            if (year := self.facts[comic.path].series_year) is not None
+        cover = self._cover_year_candidates(keys, facts, strong)
+        if strong_years := self._series_years(strong):
+            kept = [
+                path
+                for path in cover
+                if (year := self.facts[path].series_year) is None
+                or year in strong_years
+            ]
+            return kept, ()
+        years = self._series_years(cover)
+        return cover, tuple(sorted(years)) if len(years) > 1 else ()
+
+    def _cover_year_candidates(
+        self,
+        keys: Sequence[EntryKey],
+        facts: "_Facts",
+        strong: Collection[Path],
+    ) -> list[Path]:
+        """List the comics sharing only the cover-year key, after the vetoes."""
+        key = next((key for key in keys if key[0] == NAME_YEAR_KEY_KIND), None)
+        return [
+            path
+            for path in (self.strict.get(key, ()) if key else ())
+            if path not in strong
+            and not facts.contradicts(self.facts[path])
+            and not facts.other_volume(self.facts[path])
+        ]
+
+    def _series_years(self, paths: Collection[Path]) -> set[int]:
+        """Get the series years some comics carry, leaving out those with none."""
+        return {
+            year for path in paths if (year := self.facts[path].series_year) is not None
         }
-        return tuple(sorted(years)) if len(years) > 1 else ()
 
     def find_variant(
         self, entry: Mapping[str, Any], taken: Collection[Path]
@@ -241,18 +285,21 @@ def match_comics(
     holds them. Strict matches are settled for the whole list first, so a
     comic one entry is strictly is never another entry's variant. A comic
     of one issue in several files is found in all, and an issue the list
-    holds twice is found in the same comics both times. An entry found by
-    its cover year alone in comics of several volumes is marked so.
+    holds twice is found in the same comics both times. A cover-year match
+    is refused beside strong matches of another volume, and is ambiguous
+    beside cover-year matches of another volume; see ``_Index``.
     """
     index = _Index(comics)
     entries = tuple(reading_list.get(ENTRIES_KEY) or ())
     strict = [index.find_strict(entry) for entry in entries]
-    taken = frozenset(comic.path for found in strict for comic in found)
+    taken = frozenset(path for found in strict if found for path in found.paths)
     found: list[Found] = []
     missing: list[int] = []
-    for position, (entry, comics_found) in enumerate(zip(entries, strict, strict=True)):
-        if hits := comics_found or index.find_variant(entry, taken):
-            found.append(Found(position, hits, index.volumes(hits)))
+    for position, (entry, strong) in enumerate(zip(entries, strict, strict=True)):
+        if strong is not None:
+            found.append(replace(strong, position=position))
+        elif variants := index.find_variant(entry, taken):
+            found.append(Found(position, variants))
         else:
             missing.append(position)
     return MatchResult(tuple(found), tuple(missing))
@@ -326,15 +373,13 @@ def plan_arcs(
     The arc is named ``name``; its number is the entry's place in an
     ordered list, the first place for an issue the list reads twice, in
     every copy of it. Only strict matches are planned, unless ``variants``,
-    and never the comics of an entry that fits several volumes.
+    and never an ambiguous one.
     """
     ordered = is_ordered(reading_list)
     numbers: dict[Path, int | None] = {}
     for found in result.found:
-        if found.ambiguous:
-            continue
         for comic in found.comics:
-            if variants or comic.by.strict:
+            if (variants or comic.by.strict) and not comic.ambiguous:
                 numbers.setdefault(comic.path, found.position + 1 if ordered else None)
     return tuple(
         _change(path, _tags(comics[path]), name, numbers[path])

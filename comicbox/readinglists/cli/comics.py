@@ -151,8 +151,8 @@ class _Plan:
     result: MatchResult
     writes: tuple[ArcWrite, ...]
     variant_only: tuple[Path, ...]
-    # Comics not written because their entry fits several volumes: each
-    # with the entry's position and the volumes.
+    # Comics not written because their entry fits them and comics of other
+    # volumes alike: each with the entry's position and the volumes.
     ambiguous: tuple[tuple[Path, int, tuple[int, ...]], ...]
 
     @property
@@ -211,9 +211,8 @@ def _left_out(
     ambiguous = tuple(
         (comic.path, found.position, found.volumes)
         for found in result.found
-        if found.ambiguous
         for comic in found.comics
-        if comic.path not in planned
+        if comic.ambiguous and comic.path not in planned
     )
     return tuple(variant_only), ambiguous
 

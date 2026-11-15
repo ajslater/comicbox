@@ -261,6 +261,13 @@ def test_a_cover_year_match_never_finds_another_volume() -> None:
     assert found.paths == (Path("v2011.cbz"),)
 
 
+def test_a_cover_year_match_of_another_volume_than_the_entry_is_refused() -> None:
+    """With no strong match to judge by, the entry's own start year decides."""
+    comics = {Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1))}
+    entry = _entry(start_year=2011, year=2016)
+    assert match_comics(_list(entry), comics).found == ()
+
+
 def test_an_entry_that_fits_two_volumes_is_ambiguous() -> None:
     """Avengers #1 dated 2016, no start year: the 2011 and 2016 volumes alike."""
     comics = {
@@ -278,8 +285,8 @@ def test_an_entry_that_fits_two_volumes_is_ambiguous() -> None:
     assert plan_arcs(reading_list, comics, result, "Avengers") == ()
 
 
-def test_an_entry_found_by_a_stronger_key_is_not_ambiguous() -> None:
-    """Only an entry found by its cover year alone is: its id names the issue."""
+def test_a_cover_year_match_of_another_volume_is_refused_beside_a_strong_one() -> None:
+    """The id says 2016: the 2011 comic, found by cover year, was tagged too."""
     comics = {
         Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
         Path("v2016.cbz"): _tags(
@@ -291,9 +298,59 @@ def test_an_entry_found_by_a_stronger_key_is_not_ambiguous() -> None:
     result = match_comics(reading_list, comics)
 
     (found,) = result.found
+    assert found.paths == (Path("v2016.cbz"),)
     assert not found.ambiguous
     changes = plan_arcs(reading_list, comics, result, "Avengers")
-    assert Path("v2016.cbz") in [change.path for change in changes]
+    assert [change.path for change in changes] == [Path("v2016.cbz")]
+
+
+@pytest.mark.parametrize(
+    "start_year",
+    [
+        # The strong match's own volume.
+        2016,
+        # No series year: nothing to compare.
+        None,
+    ],
+)
+def test_a_cover_year_match_beside_a_strong_one_is_kept(start_year: int | None) -> None:
+    comics = {
+        Path("cover.cbz"): _tags(start_year=start_year, cover=date(2016, 8, 1)),
+        Path("v2016.cbz"): _tags(
+            start_year=2016, cover=date(2016, 8, 1), comicvine="7"
+        ),
+    }
+    reading_list = _list(_entry(year=2016, comicvine="7"))
+
+    (found,) = match_comics(reading_list, comics).found
+
+    assert {comic.path: comic.by for comic in found.comics} == {
+        Path("cover.cbz"): FoundBy.NAME_YEAR,
+        Path("v2016.cbz"): FoundBy.ID,
+    }
+    assert not found.ambiguous
+
+
+def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
+    """Volume 2 finds its comic by name, and two volumes' comics by cover year."""
+    comics = {
+        Path("vol2.cbz"): _tags(volume=2, cover=date(2016, 8, 1)),
+        Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
+        Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
+    }
+    reading_list = _list(_entry(volume=2, year=2016))
+
+    result = match_comics(reading_list, comics)
+
+    (found,) = result.found
+    assert {comic.path: comic.ambiguous for comic in found.comics} == {
+        Path("v2011.cbz"): True,
+        Path("v2016.cbz"): True,
+        Path("vol2.cbz"): False,
+    }
+    assert found.volumes == (2011, 2016)
+    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    assert [change.path for change in changes] == [Path("vol2.cbz")]
 
 
 @pytest.mark.parametrize(
