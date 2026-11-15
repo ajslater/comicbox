@@ -28,7 +28,7 @@
 - ComicInfo keeps every story arc's number when another arc has none.
 - Online summaries no longer show HTML entities such as `&amp;`.
 - A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
-  config from loading, and an unparsable one again warns "defaulting to 7d".
+  config from loading.
 
 ### 🧑‍💻 Developer
 
