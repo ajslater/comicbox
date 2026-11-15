@@ -5,7 +5,8 @@
 ### ✨ Added
 
 - Reading lists: the `comicbox.readinglists` API reads and writes reading orders
-  as comicbox YAML or JSON, with a published JSON Schema.
+  as ComicRack CBL, json-cbl or comicbox YAML and JSON, combines and compares
+  lists of one event, and builds lists from comics' story arc tags.
 
 ### 🧑‍💻 Developer
 

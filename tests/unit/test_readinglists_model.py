@@ -24,6 +24,15 @@ from comicbox.readinglists.formats.cbl.schema import (
     CblDatabaseSchema,
     CblSubSchema,
 )
+from comicbox.readinglists.formats.json_cbl.schema import (
+    JsonCblFileDetailsSchema,
+    JsonCblIdSchema,
+    JsonCblIssueSchema,
+    JsonCblListDetailsSchema,
+    JsonCblRelationshipSchema,
+    JsonCblSchema,
+    JsonCblSourceSchema,
+)
 from comicbox.readinglists.schema import (
     EntrySchema,
     JsonEntrySchema,
@@ -56,6 +65,13 @@ def _reading_list(**header: Any) -> dict[str, Any]:
         CblDatabaseSchema,
         CblSubSchema,
         EntrySchema,
+        JsonCblFileDetailsSchema,
+        JsonCblIdSchema,
+        JsonCblIssueSchema,
+        JsonCblListDetailsSchema,
+        JsonCblRelationshipSchema,
+        JsonCblSchema,
+        JsonCblSourceSchema,
         JsonEntrySchema,
         ListRefSchema,
         ReadingListJsonSubSchema,

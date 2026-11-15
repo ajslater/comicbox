@@ -19,10 +19,17 @@ from comicbox.empty import is_empty
 from comicbox.exceptions import ReadingListFormatError
 from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.comicbox.schema import ISSUE_SUFFIX_KEY
+from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.readinglists.schema import (
     ENTRIES_KEY,
+    IDENTIFIERS_KEY,
+    ISSUE_KEY,
+    NAME_KEY,
+    NUMBER_KEY,
     ORDERED_KEY,
     PRIVATE_KEY,
+    SERIES_KEY,
     ReadingListYamlSchema,
 )
 
@@ -42,6 +49,31 @@ def _get_path(data: Any, keys: tuple[str, ...]) -> Any:
             return None
         data = data.get(key)
     return data
+
+
+def issue_id(entry: Mapping[str, Any], source: str) -> str:
+    """Get an entry's issue id for a database, ignoring other id types."""
+    identifier = (entry.get(IDENTIFIERS_KEY) or {}).get(source) or {}
+    if (identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE) != DEFAULT_ID_TYPE:
+        return ""
+    return str(identifier.get(ID_KEY_KEY) or "")
+
+
+def series_id(entry: Mapping[str, Any], source: str) -> str:
+    """Get an entry's series id for a database."""
+    series = entry.get(SERIES_KEY) or {}
+    identifier = (series.get(IDENTIFIERS_KEY) or {}).get(source) or {}
+    return str(identifier.get(ID_KEY_KEY) or "")
+
+
+def entry_issue_name(entry: Mapping[str, Any]) -> str:
+    """Get an entry's issue name, or build it from the number and suffix."""
+    issue = entry.get(ISSUE_KEY) or {}
+    if name := issue.get(NAME_KEY):
+        return str(name)
+    number = issue.get(NUMBER_KEY)
+    number = "" if number is None else number
+    return f"{number}{issue.get(ISSUE_SUFFIX_KEY) or ''}".strip()
 
 
 def skipped_entries(positions: Iterable[int]) -> str:

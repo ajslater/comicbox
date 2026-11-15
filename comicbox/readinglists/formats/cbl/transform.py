@@ -18,13 +18,12 @@ from comicbox.exceptions import SmartListError
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DAY_KEY,
-    ISSUE_SUFFIX_KEY,
     MONTH_KEY,
     SERIES_START_YEAR_KEY,
     STORE_DATE_KEY,
     YEAR_KEY,
 )
-from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
+from comicbox.identifiers import ID_KEY_KEY
 from comicbox.readinglists.formats.cbl.schema import (
     BOOK_TAG,
     BOOKS_TAG,
@@ -67,7 +66,13 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
     SourceKind,
 )
-from comicbox.readinglists.transform import ReadingListTransform, skipped_entries
+from comicbox.readinglists.transform import (
+    ReadingListTransform,
+    entry_issue_name,
+    issue_id,
+    series_id,
+    skipped_entries,
+)
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -98,31 +103,8 @@ def _int(value: Any) -> int | None:
         return None
 
 
-def _issue_id(entry: Mapping[str, Any], source: str) -> str:
-    """Get an entry's issue id for a database, ignoring other id types."""
-    identifier = (entry.get(IDENTIFIERS_KEY) or {}).get(source) or {}
-    if (identifier.get(ID_TYPE_KEY) or DEFAULT_ID_TYPE) != DEFAULT_ID_TYPE:
-        return ""
-    return str(identifier.get(ID_KEY_KEY) or "")
-
-
-def _series_id(entry: Mapping[str, Any], source: str) -> str:
-    series = entry.get(SERIES_KEY) or {}
-    identifier = (series.get(IDENTIFIERS_KEY) or {}).get(source) or {}
-    return str(identifier.get(ID_KEY_KEY) or "")
-
-
-def _issue_name(entry: Mapping[str, Any]) -> str:
-    issue = entry.get(ISSUE_KEY) or {}
-    if name := issue.get(NAME_KEY):
-        return str(name)
-    number = issue.get(NUMBER_KEY)
-    number = "" if number is None else number
-    return f"{number}{issue.get(ISSUE_SUFFIX_KEY) or ''}".strip()
-
-
 def _writable(entry: Mapping[str, Any]) -> bool:
-    return bool((entry.get(SERIES_KEY) or {}).get(NAME_KEY) and _issue_name(entry))
+    return bool((entry.get(SERIES_KEY) or {}).get(NAME_KEY) and entry_issue_name(entry))
 
 
 def _entry_year(entry: Mapping[str, Any]) -> int | None:
@@ -259,9 +241,9 @@ class CblTransform(ReadingListTransform):
         databases = []
         for source, name in _DATABASE_NAMES.items():
             database = {NAME_ATTR: name}
-            if series_key := _series_id(entry, source):
+            if series_key := series_id(entry, source):
                 database[SERIES_ATTR] = series_key
-            if issue_key := _issue_id(entry, source):
+            if issue_key := issue_id(entry, source):
                 database[ISSUE_ATTR] = issue_key
             if len(database) > 1:
                 databases.append(database)
@@ -271,7 +253,7 @@ class CblTransform(ReadingListTransform):
     def _book(cls, entry: Mapping[str, Any]) -> dict[str, Any]:
         book: dict[str, Any] = {
             SERIES_ATTR: entry[SERIES_KEY][NAME_KEY],
-            NUMBER_ATTR: _issue_name(entry),
+            NUMBER_ATTR: entry_issue_name(entry),
         }
         if (volume := _volume(entry)) is not None:
             book[VOLUME_ATTR] = str(volume)
