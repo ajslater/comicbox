@@ -175,7 +175,10 @@ def test_volume_number_alone_does_not_meet_a_start_year() -> None:
     ("name", "normalized"),
     [
         ("Pokémon", "pokemon"),
-        ("ワンピース", "ワンヒース"),
+        ("ワンピース", "ワンピース"),
+        ("ガンダム", "ガンダム"),
+        ("Ελληνικά", "ελληνικα"),
+        ("Crème Brûlée", "creme brulee"),
         ("Æon Flux", "æon flux"),
         ("Batman Vol. 2", "batman"),
         ("The Amazing Spider-Man (Volume 3)", "the amazing spider man"),
@@ -230,3 +233,9 @@ def test_minus_one_by_name_or_number_is_one_key() -> None:
     assert _name_keys(_entry(issue={"name": "-1"})) != _name_keys(
         _entry(issue={"name": "1"})
     )
+
+
+def test_kana_voicing_is_part_of_the_letter() -> None:
+    """パ, バ and ハ are three syllables; accents on Latin letters fold."""
+    assert len({normalize_series(name) for name in ("パン", "バン", "ハン")}) == 3
+    assert normalize_series("Pokémon") == normalize_series("Pokemon")

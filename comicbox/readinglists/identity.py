@@ -40,6 +40,10 @@ from comicbox.readinglists.schema import (
     VOLUME_KEY,
 )
 
+# The Combining Diacritical Marks block: the accents on Latin, Greek and
+# Cyrillic letters.
+_DIACRITICS_START = "\u0300"
+_DIACRITICS_END = "\u036f"
 # The online matcher's volume suffix rule: "Vol. 2", "(Volume 3)".
 _VOLUME_SUFFIX_RE = re.compile(
     r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
@@ -75,16 +79,19 @@ def normalize_series(name: str) -> str:
     """
     Normalize a series name for comparing.
 
-    Accents are dropped (``Pokémon`` is ``pokemon``), case is folded, a
-    volume suffix is stripped as the online matcher strips it, and every run
-    of characters that are not letters or digits, in any script, becomes one
-    space, so ``ワンピース`` keeps a name. ASCII names normalize as the
-    online matcher's rule does.
+    Latin accents are dropped (``Pokémon`` is ``pokemon``), case is folded,
+    a volume suffix is stripped as the online matcher strips it, and every
+    run of characters that are not letters or digits, in any script, becomes
+    one space, so ``ワンピース`` keeps a name. Only the Combining Diacritical
+    Marks block is dropped: other combining marks, such as kana voicing
+    (``ピ`` is not ``ヒ``), are part of the letter and recompose with it.
+    ASCII names normalize as the online matcher's rule does.
     """
     decomposed = unicodedata.normalize("NFKD", name)
-    folded = "".join(
-        char for char in decomposed if not unicodedata.combining(char)
-    ).casefold()
+    stripped = "".join(
+        char for char in decomposed if not _DIACRITICS_START <= char <= _DIACRITICS_END
+    )
+    folded = unicodedata.normalize("NFC", stripped).casefold()
     folded = _VOLUME_SUFFIX_RE.sub(" ", folded)
     spaced = "".join(char if char.isalnum() else " " for char in folded)
     return " ".join(spaced.split())
