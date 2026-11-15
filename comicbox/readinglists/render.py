@@ -54,8 +54,9 @@ from comicbox.readinglists.transform import entry_issue_name
 
 if TYPE_CHECKING:
     from comicbox.readinglists.formats.metron_api import MetronListSummary
-    from comicbox.readinglists.match import ArcChange, MatchResult
+    from comicbox.readinglists.match import MatchResult
     from comicbox.readinglists.sources.catalog import CatalogEntry
+    from comicbox.readinglists.tagging import ArcWrite
 
 _PLAIN = Style()
 _TITLE = Style(bold=True)
@@ -66,10 +67,24 @@ _WARN = Style(color="yellow")
 _ERROR = Style(color="red", bold=True)
 
 
+# Wide enough that a table written to a file or a pipe is never wrapped.
+_UNWRAPPED_WIDTH = 10_000
+
+
 def console(*, stderr: bool = False) -> Console:
-    """Get a console that prints text as given."""
-    # soft_wrap: a long path stays on its line; the terminal wraps it.
-    return Console(highlight=False, soft_wrap=True, stderr=stderr)
+    """
+    Get a console that prints text as given.
+
+    Text is not wrapped: a long path stays on its line, and a terminal
+    wraps it. A table fits a terminal's width; written anywhere else, it is
+    not wrapped at all, so each row stays one line for a script to read.
+    """
+    out = Console(highlight=False, soft_wrap=True, stderr=stderr)
+    if out.is_terminal:
+        return out
+    return Console(
+        highlight=False, soft_wrap=True, stderr=stderr, width=_UNWRAPPED_WIDTH
+    )
 
 
 def _text(value: Any, style: Style = _PLAIN) -> Text:
@@ -312,18 +327,27 @@ def print_matches(
     reading_list: Mapping[str, Any],
     result: "MatchResult",
     directory: Path,
+    notes: Mapping[Path, str] | None = None,
 ) -> None:
-    """Tabulate a list's entries with the comics that are them, or missing."""
+    """
+    Tabulate a list's entries with the comics that are them, or missing.
+
+    Each comic is a row of its own, with how it matched and its note.
+    """
+    notes = notes or {}
     found = {match.position: match for match in result.found}
     table = _results_table(("#", "Series", "Year/Vol", "Issue", "Comic", "By"))
     for position, entry in enumerate(reading_list.get(ENTRIES_KEY) or ()):
         cells = _entry_cells(position + 1, entry)[:4]
-        if match := found.get(position):
-            paths = "\n".join(_shown_path(path, directory) for path in match.paths)
-            cells += [_text(paths), _text(match.by.value, _DIM)]
-        else:
-            cells += [_text("missing", _WARN), _text("")]
-        table.add_row(*cells)
+        if (match := found.get(position)) is None:
+            table.add_row(*cells, _text("missing", _WARN), _text(""))
+            continue
+        for comic in match.comics:
+            shown = Text(printable(_shown_path(comic.path, directory)))
+            if note := notes.get(comic.path):
+                shown.append(f" ({printable(note)})", style=_WARN)
+            table.add_row(*cells, shown, _text(comic.by.value, _DIM))
+            cells = [_text("")] * len(cells)
     out.print(table)
 
 
@@ -338,32 +362,74 @@ _ARC_VERBS = MappingProxyType(
 )
 
 
-def _arc_text(name: str, number: int | None) -> str:
+def arc_text(name: str, number: int | None) -> str:
+    """Name an arc and its number, as a line about it shows them."""
     return f"{name!r}" if number is None else f"{name!r} #{number}"
 
 
-def print_arc_change(
-    out: Console, change: "ArcChange", *, done: bool, suffix: str = ""
-) -> None:
-    """Print what tagging one comic with an arc did, or would do."""
-    arc = _arc_text(change.arc, change.number)
-    if change.action.value == "tagged":
-        detail = f"already has {arc}; left alone"
-        out.print(
-            Text.assemble(
-                (printable(str(change.path)), _DIM), (f": {printable(detail)}", _DIM)
-            )
-        )
-        return
+def _dim_line(out: Console, path: Path | str, detail: str) -> None:
+    out.print(
+        Text.assemble((printable(str(path)), _DIM), (f": {printable(detail)}", _DIM))
+    )
+
+
+def _change_text(write: "ArcWrite", *, done: bool) -> str:
+    change = write.change
     verb = _ARC_VERBS[change.action.value, done]
-    detail = f"{verb} {arc}"
+    detail = f"{verb} {arc_text(change.arc, change.number)}"
     if change.action.value == "renumber":
-        detail += f", was #{change.current}"
-    mark = Text("✓ ", style=_OK) if done else Text("· ", style=_DIM)
+        had = "had no number" if change.current is None else f"was #{change.current}"
+        detail += f", {had}"
+    return detail
+
+
+def _failed_line(out: Console, path: Path, detail: str) -> None:
     out.print(
         Text.assemble(
-            mark,
-            (printable(str(change.path)), _PLAIN),
-            (printable(f" {detail}{suffix}"), _DIM),
+            Text("✗ ", style=_ERROR),
+            (printable(str(path)), _PLAIN),
+            (printable(f" {detail}"), _DIM),
         )
     )
+
+
+def print_arc_write(
+    out: Console,
+    write: "ArcWrite",
+    *,
+    done: bool,
+    problem: str | None = None,
+    moved: Path | None = None,
+) -> None:
+    """
+    Print what tagging one file with an arc did, or would do, or why not.
+
+    ``problem`` says why a write that was made did not hold, and ``moved``
+    is the CBZ a write converted the file to. The file's other paths
+    follow, each on its own line.
+    """
+    change = write.change
+    if change.action.value == "tagged":
+        arc = arc_text(change.arc, change.number)
+        _dim_line(out, change.path, f"already has {arc}; left alone")
+    elif write.reason is not None:
+        _failed_line(out, change.path, f"not written: {write.reason}")
+    elif problem is not None:
+        _failed_line(out, change.path, f"the write did not hold: {problem}")
+    else:
+        mark = Text("✓ ", style=_OK) if done else Text("· ", style=_DIM)
+        out.print(
+            Text.assemble(
+                mark,
+                (printable(str(change.path)), _PLAIN),
+                (printable(f" {_change_text(write, done=done)}"), _DIM),
+                (printable(f" as {moved.name}" if moved else ""), _DIM),
+            )
+        )
+    for other in write.same_file:
+        _dim_line(out, other, f"same file as {change.path}")
+
+
+def print_variant_only(out: Console, path: Path) -> None:
+    """Say a comic was found only by a name variant, so is not tagged."""
+    _dim_line(out, path, "found only by a name variant; --variants tags it")

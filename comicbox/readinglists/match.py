@@ -1,14 +1,18 @@
 """
 Match a reading list against the comics in a directory.
 
-Each comic becomes an entry with ``entry_from_comic``. An entry is found by
-its ids first, then by its strict name key, then by its name variants in
-order; the cover year breaks ties. An entry with no key matches nothing.
-The matching is pure; reading the directory is separate.
+Each comic becomes an entry with ``entry_from_comic``. Matching goes in two
+passes. First every entry takes each comic it shares a strict key with
+(``entry_keys``: an issue id, or the series name, year or volume, and
+issue). Then each entry that found none tries its name variants in order,
+among the comics no entry took strictly. Either way a comic is refused when
+it carries an id from a database the entry has a different id from, or a
+cover year more than a year off the entry's. An entry with no key matches
+nothing. The matching is pure; reading the directory is separate.
 """
 
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 from enum import StrEnum
@@ -28,22 +32,42 @@ from comicbox.readinglists.identity import (
 )
 from comicbox.readinglists.schema import ENTRIES_KEY, NUMBER_KEY
 
+# Cover years further apart than this are two different issues.
+_COVER_YEAR_SLACK = 1
+
 
 class FoundBy(StrEnum):
-    """How an entry was found: the strength of the key that matched."""
+    """How a comic was found: the strength of the key that matched."""
 
     ID = "id"
     NAME = "name"
     VARIANT = "variant"
 
+    @property
+    def strict(self) -> bool:
+        """Whether this is an ``entry_keys`` match, not a name variant."""
+        return self is not FoundBy.VARIANT
+
+
+@dataclass(frozen=True, slots=True)
+class FoundComic:
+    """One comic an entry was found in, and how."""
+
+    path: Path
+    by: FoundBy
+
 
 @dataclass(frozen=True, slots=True)
 class Found:
-    """The comics that are entry ``position`` (from 0), and how they matched."""
+    """The comics that are entry ``position`` (from 0), in path order."""
 
     position: int
-    paths: tuple[Path, ...]
-    by: FoundBy
+    comics: tuple[FoundComic, ...]
+
+    @property
+    def paths(self) -> tuple[Path, ...]:
+        """Get the paths of the comics found."""
+        return tuple(comic.path for comic in self.comics)
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,43 +84,94 @@ def _year(entry: Mapping[str, Any]) -> int | None:
     return when.year if isinstance(when, date) else None
 
 
+@dataclass(frozen=True, slots=True)
+class _Facts:
+    """What vetoes a match: an entry's or comic's issue ids and cover year."""
+
+    ids: Mapping[str, str]
+    year: int | None
+
+    @classmethod
+    def of(cls, entry: Mapping[str, Any], keys: Sequence[EntryKey]) -> "_Facts":
+        ids = {key[1]: key[2] for key in keys if key[0] == ID_KEY_KIND}
+        return cls(ids, _year(entry))
+
+    def contradicts(self, other: "_Facts") -> bool:
+        """Tell whether two sides cannot be one issue, whatever their keys."""
+        for source, key in self.ids.items():
+            if other.ids.get(source, key) != key:
+                return True
+        return (
+            self.year is not None
+            and other.year is not None
+            and abs(self.year - other.year) > _COVER_YEAR_SLACK
+        )
+
+
 class _Index:
     """The comics, by every key that can find them."""
 
     def __init__(self, comics: Mapping[Path, Mapping[str, Any]]) -> None:
-        self.ids: defaultdict[EntryKey, list[Path]] = defaultdict(list)
-        self.names: defaultdict[EntryKey, list[Path]] = defaultdict(list)
+        self.strict: defaultdict[EntryKey, list[Path]] = defaultdict(list)
         self.variants: defaultdict[EntryKey, list[Path]] = defaultdict(list)
-        self.years: dict[Path, int | None] = {}
+        self.facts: dict[Path, _Facts] = {}
+        # Each comic's strict name key, telling one series from another.
+        self.series: dict[Path, EntryKey | None] = {}
         for path in sorted(comics):
             entry = entry_from_comic(comics[path])
-            self.years[path] = _year(entry)
-            for key in entry_keys(entry):
-                (self.ids if key[0] == ID_KEY_KIND else self.names)[key].append(path)
+            keys = entry_keys(entry)
+            self.facts[path] = _Facts.of(entry, keys)
+            self.series[path] = next(
+                (key for key in keys if key[0] != ID_KEY_KIND), None
+            )
+            for key in keys:
+                self.strict[key].append(path)
             for key in variant_keys(entry):
                 self.variants[key].append(path)
 
-    def _tie_break(self, paths: list[Path], year: int | None) -> tuple[Path, ...]:
-        """Keep the comics of the entry's year, when that tells them apart."""
-        if year is not None and len(paths) > 1:
-            same_year = [path for path in paths if self.years[path] == year]
-            if same_year:
-                return tuple(same_year)
-        return tuple(paths)
-
-    def find(self, entry: Mapping[str, Any]) -> tuple[tuple[Path, ...], FoundBy] | None:
-        """Find an entry's comics by its strongest key that matches any."""
-        year = _year(entry)
+    def find_strict(self, entry: Mapping[str, Any]) -> tuple[FoundComic, ...]:
+        """Find every comic that shares a strict key with an entry."""
         keys = entry_keys(entry)
-        searches: Iterable[tuple[EntryKey, Mapping[EntryKey, list[Path]], FoundBy]] = (
-            *((key, self.ids, FoundBy.ID) for key in keys if key[0] == ID_KEY_KIND),
-            *((key, self.names, FoundBy.NAME) for key in keys if key[0] != ID_KEY_KIND),
-            *((key, self.variants, FoundBy.VARIANT) for key in variant_keys(entry)),
-        )
-        for key, index, by in searches:
-            if paths := index.get(key):
-                return self._tie_break(paths, year), by
-        return None
+        facts = _Facts.of(entry, keys)
+        found: dict[Path, FoundBy] = {}
+        # Ids come first, so a comic found by both is found by id.
+        for key in keys:
+            by = FoundBy.ID if key[0] == ID_KEY_KIND else FoundBy.NAME
+            for path in self.strict.get(key, ()):
+                if path not in found and not facts.contradicts(self.facts[path]):
+                    found[path] = by
+        return tuple(FoundComic(path, found[path]) for path in sorted(found))
+
+    def find_variant(
+        self, entry: Mapping[str, Any], taken: Collection[Path]
+    ) -> tuple[FoundComic, ...]:
+        """Find an entry by its first name variant that some untaken comic has."""
+        facts = _Facts.of(entry, entry_keys(entry))
+        for key in variant_keys(entry):
+            paths = [
+                path
+                for path in self.variants.get(key, ())
+                if path not in taken and not facts.contradicts(self.facts[path])
+            ]
+            if paths:
+                return tuple(
+                    FoundComic(path, FoundBy.VARIANT)
+                    for path in self._tie_break(paths, facts.year)
+                )
+        return ()
+
+    def _tie_break(self, paths: list[Path], year: int | None) -> list[Path]:
+        """
+        Keep the series with a comic of the entry's year, among several.
+
+        Copies of one issue in one series are all kept, whatever their years.
+        """
+        if year is None or len({self.series[path] for path in paths}) <= 1:
+            return paths
+        same_year = {
+            self.series[path] for path in paths if self.facts[path].year == year
+        }
+        return [path for path in paths if self.series[path] in same_year] or paths
 
 
 def match_comics(
@@ -106,16 +181,22 @@ def match_comics(
     Find each of a list's entries among some comics' tags.
 
     ``comics`` maps each comic's path to its tags, as a ``ReadResult``
-    holds them. A comic of one issue in several files is found in all.
+    holds them. Strict matches are settled for the whole list first, so a
+    comic one entry is strictly is never another entry's variant. A comic
+    of one issue in several files is found in all, and an issue the list
+    holds twice is found in the same comics both times.
     """
     index = _Index(comics)
+    entries = tuple(reading_list.get(ENTRIES_KEY) or ())
+    strict = [index.find_strict(entry) for entry in entries]
+    taken = frozenset(comic.path for found in strict for comic in found)
     found: list[Found] = []
     missing: list[int] = []
-    for position, entry in enumerate(reading_list.get(ENTRIES_KEY) or ()):
-        if (hit := index.find(entry)) is None:
-            missing.append(position)
+    for position, (entry, comics_found) in enumerate(zip(entries, strict, strict=True)):
+        if hits := comics_found or index.find_variant(entry, taken):
+            found.append(Found(position, hits))
         else:
-            found.append(Found(position, *hit))
+            missing.append(position)
     return MatchResult(tuple(found), tuple(missing))
 
 
@@ -148,7 +229,7 @@ class ArcChange:
     current: int | None = None
 
 
-def _current_arc(
+def find_arc(
     tags: Mapping[str, Any], name: str
 ) -> tuple[str, Mapping[str, Any]] | None:
     """Find a comic's arc of this name, in any case."""
@@ -163,7 +244,7 @@ def _current_arc(
 def _change(
     path: Path, tags: Mapping[str, Any], name: str, number: int | None
 ) -> ArcChange:
-    if (current := _current_arc(tags, name)) is None:
+    if (current := find_arc(tags, name)) is None:
         return ArcChange(path, name, number, ArcAction.ADD)
     arc_name, arc = current
     has = arc.get(NUMBER_KEY)
@@ -178,18 +259,22 @@ def plan_arcs(
     comics: Mapping[Path, Mapping[str, Any]],
     result: MatchResult,
     name: str,
+    *,
+    variants: bool = False,
 ) -> tuple[ArcChange, ...]:
     """
     Plan the arc each found comic should carry, in path order.
 
     The arc is named ``name``; its number is the entry's place in an
-    ordered list, the first place for an issue the list reads twice.
+    ordered list, the first place for an issue the list reads twice, in
+    every copy of it. Only strict matches are planned, unless ``variants``.
     """
     ordered = is_ordered(reading_list)
     numbers: dict[Path, int | None] = {}
     for found in result.found:
-        for path in found.paths:
-            numbers.setdefault(path, found.position + 1 if ordered else None)
+        for comic in found.comics:
+            if variants or comic.by.strict:
+                numbers.setdefault(comic.path, found.position + 1 if ordered else None)
     return tuple(
         _change(path, _tags(comics[path]), name, numbers[path])
         for path in sorted(numbers)
@@ -199,46 +284,3 @@ def plan_arcs(
 def _tags(metadata: Mapping[str, Any]) -> Mapping[str, Any]:
     inner = metadata.get(ROOT_TAG)
     return inner if isinstance(inner, Mapping) else metadata
-
-
-# Reading a directory.
-
-
-class _Unlogged:
-    """
-    A logger that drops the reader's own reports of failed comics.
-
-    ``read_comics`` hands each failure to its caller, which reports it once;
-    the reader would otherwise log it again.
-    """
-
-    def warning(self, *_args: object, **_kwargs: object) -> None:
-        """Drop a failed comic's warning."""
-
-    def exception(self, *_args: object, **_kwargs: object) -> None:
-        """Drop a failed comic's traceback."""
-
-
-def read_comics(
-    directory: Path,
-    config: Any = None,
-    on_error: Callable[[Path, BaseException], None] | None = None,
-) -> dict[Path, dict[str, Any]]:
-    """
-    Read the tags of every comic under a directory, in path order.
-
-    A comic that cannot be read goes to ``on_error`` and the rest are read.
-    A comic with no tags is left out: there is nothing to match it by.
-    """
-    from comicbox.process import iter_process_files
-    from comicbox.run import iter_recurse
-
-    tags: dict[Path, dict[str, Any]] = {}
-    reads = iter_process_files(iter_recurse(directory), config, logger=_Unlogged())
-    for path, (result, error) in reads:
-        if error is not None:
-            if on_error is not None:
-                on_error(path, error)
-        elif result["tags"]:
-            tags[path] = result["tags"]
-    return {path: tags[path] for path in sorted(tags)}

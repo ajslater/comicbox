@@ -209,8 +209,13 @@ def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
     return (NAME_KEY_KIND, name, discriminator, *issue)
 
 
-# A trailing parenthetical: "Batman (2016)", "Saga (Image)".
-_TRAILING_PARENS_RE = re.compile(r"\s*\([^()]*\)\s*$")
+# A trailing year or volume in parentheses: "Batman (2016)", "X (Vol. 2)",
+# "X (v2)", "X (Volume 2)". Not "Transformers (UK)": that names another
+# series. No leading whitespace run, which would make a run of spaces
+# quadratic; the name is stripped after.
+_TRAILING_YEAR_OR_VOLUME_RE = re.compile(
+    r"\(\s*(?:\d{4}|v(?:ol(?:ume)?)?\.?\s*\d+)\s*\)\s*$", re.IGNORECASE
+)
 _LEADING_ARTICLE_RE = re.compile(r"^(?:the|an|a)\s+", re.IGNORECASE)
 # Collected-edition words that end a series name, normalized.
 _REPRINT_SUFFIXES = (
@@ -234,27 +239,27 @@ def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
     """
     List the series names to try for an entry, normalized, in order.
 
-    The name as given; its ``Name (Volume)`` form, or the name without a
-    trailing parenthetical when it has one; the name without a leading
-    article; and the name without a reprint suffix such as TPB or Omnibus.
-    For matching a list against comics only: ``entry_keys`` stays strict, so
-    ``combine`` never joins on a variant.
+    The name as given; the name without a trailing year or volume in
+    parentheses (``Batman (2016)``, ``X (Vol. 2)``), when it has one; the
+    name without a leading article; and the name without a reprint suffix
+    such as TPB or Omnibus. A year or volume is never added: ``Iron Man``
+    is not the series ``Iron Man 2020``. For matching a list against
+    comics only: ``entry_keys`` stays strict, so ``combine`` never joins on
+    a variant.
     """
     raw = str((entry.get(SERIES_KEY) or {}).get(NAME_KEY) or "").strip()
     if not raw:
         return ()
-    normalized = [normalize_series(name) for name in _spelled_variants(raw, entry)]
+    normalized = [normalize_series(name) for name in _spelled_variants(raw)]
     normalized += [_without_reprint_suffix(name) for name in normalized]
     return tuple(dict.fromkeys(name for name in normalized if name))
 
 
-def _spelled_variants(raw: str, entry: Mapping[str, Any]) -> list[str]:
-    """Spell the name as given, with or without its volume, and its article."""
+def _spelled_variants(raw: str) -> list[str]:
+    """Spell the name as given, without its year or volume, and its article."""
     names = [raw]
-    if _TRAILING_PARENS_RE.search(raw):
-        names.append(_TRAILING_PARENS_RE.sub("", raw))
-    elif (discriminator := _discriminator(entry)) is not None:
-        names.append(f"{raw} ({discriminator})")
+    if match := _TRAILING_YEAR_OR_VOLUME_RE.search(raw):
+        names.append(raw[: match.start()].rstrip())
     if _LEADING_ARTICLE_RE.match(raw):
         names.append(_LEADING_ARTICLE_RE.sub("", raw))
     return names

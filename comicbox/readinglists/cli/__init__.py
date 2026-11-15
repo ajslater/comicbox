@@ -28,7 +28,6 @@ from comicbox.readinglists.cli.run import EXIT_CANCELLED, Run, write_text
 from comicbox.readinglists.render import print_note
 
 PROG = "comicbox readinglist"
-_QUIET_LOGLEVELS = MappingProxyType({1: "WARNING", 2: "ERROR"})
 
 _DESCRIPTION = """Read, convert, combine and compare reading lists.
 
@@ -65,9 +64,8 @@ def main(params: Sequence[str]) -> int:
     from comicbox.logger import init_logging
 
     args = build_parser().parse_args(params)
-    level = _QUIET_LOGLEVELS.get(args.quiet, "CRITICAL") if args.quiet else "INFO"
-    init_logging(level, sink="stderr")
     run = Run(args)
+    init_logging(run.log_level, sink="stderr")
     try:
         _ACTIONS[args.action](run)
     except (OSError, ReadingListError, ConfigError, ConfigurationError) as exc:

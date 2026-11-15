@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -44,21 +45,22 @@ def _list(*entries: dict[str, Any], **header: Any) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("series", "start_year", "variants"),
     [
-        ("Civil War", 2006, ("civil war", "civil war 2006")),
+        # A year or volume is never added to the name.
+        ("Civil War", 2006, ("civil war",)),
         ("Batman (2016)", 2016, ("batman 2016", "batman")),
+        ("Saga (v2)", 2012, ("saga v2", "saga")),
+        ("Saga (Vol. 2)", 2012, ("saga",)),
+        # Only a year or volume is taken off: "(UK)" names another series.
+        ("Transformers (UK)", 1984, ("transformers uk",)),
         (
             "The Amazing Spider-Man",
             1963,
-            (
-                "the amazing spider man",
-                "the amazing spider man 1963",
-                "amazing spider man",
-            ),
+            ("the amazing spider man", "amazing spider man"),
         ),
-        ("Saga TPB", 2012, ("saga tpb", "saga tpb 2012", "saga")),
+        ("Saga TPB", 2012, ("saga tpb", "saga")),
         ("Saga Omnibus", None, ("saga omnibus", "saga")),
         # A hyphenated "A" is part of the name, not an article.
-        ("A-Force", 2015, ("a force", "a force 2015")),
+        ("A-Force", 2015, ("a force",)),
     ],
 )
 def test_name_variants_in_design_order(
@@ -72,24 +74,105 @@ def test_entry_keys_stay_strict() -> None:
     """Variants are for matching comics only: combine never joins on them."""
     entry = _entry("The Amazing Spider-Man", "1", start_year=1963)
     assert entry_keys(entry) == (
-        ("name", "the amazing spider man", 1963, *entry_keys(entry)[0][3:]),
+        ("name", "the amazing spider man", 1963, Decimal(1), ""),
     )
 
 
 # ---------------------------------------------------------------- match
 
 
-def test_an_id_is_the_strongest_match() -> None:
+def _found(result: Any) -> dict[int, dict[str, FoundBy]]:
+    return {
+        found.position: {comic.path.name: comic.by for comic in found.comics}
+        for found in result.found
+    }
+
+
+def test_an_id_and_a_name_both_find_their_comics() -> None:
     comics = {
         Path("by-id.cbz"): _tags("Other Name", "9", ids={"comicvine": "105747"}),
         Path("by-name.cbz"): _tags("Civil War", "1", start_year=2006),
     }
     entry = _entry("Civil War", "1", start_year=2006, ids={"comicvine": "105747"})
 
+    result = match_comics(_list(entry), comics)
+
+    assert _found(result) == {0: {"by-id.cbz": FoundBy.ID, "by-name.cbz": FoundBy.NAME}}
+
+
+def test_a_copy_without_the_id_is_found_beside_one_with_it() -> None:
+    """The id match used to end the search, dropping the copy without one."""
+    comics = {
+        Path("a/cw1.cbz"): _tags(
+            "Civil War", "1", start_year=2006, ids={"comicvine": "1"}
+        ),
+        Path("b/cw1.cbz"): _tags("Civil War", "1", start_year=2006),
+    }
+    entry = _entry("Civil War", "1", start_year=2006, ids={"comicvine": "1"})
+
     (found,) = match_comics(_list(entry), comics).found
 
-    assert found.paths == (Path("by-id.cbz"),)
-    assert found.by is FoundBy.ID
+    assert found.paths == (Path("a/cw1.cbz"), Path("b/cw1.cbz"))
+
+
+def test_every_copy_of_an_issue_is_found_whatever_its_year() -> None:
+    """The cover year cut three copies of one issue down to one."""
+    comics = {
+        Path("a.cbz"): _tags("Civil War", "1", start_year=2006, year=2006),
+        Path("b.cbz"): _tags("Civil War", "1", start_year=2006, year=2007),
+        Path("c.cbz"): _tags("Civil War", "1", start_year=2006),
+    }
+    entry = _entry("Civil War", "1", start_year=2006, year=2006)
+
+    (found,) = match_comics(_list(entry), comics).found
+
+    assert found.paths == (Path("a.cbz"), Path("b.cbz"), Path("c.cbz"))
+
+
+@pytest.mark.parametrize(
+    ("comic_ids", "year"),
+    [
+        ({"comicvine": "2"}, 2006),
+        # One database agrees, another does not: still two issues.
+        ({"comicvine": "1", "metron": "8"}, 2006),
+        # Cover years more than a year apart.
+        ({}, 2008),
+    ],
+)
+def test_a_contradiction_vetoes_a_match(comic_ids: dict[str, str], year: int) -> None:
+    comics = {
+        Path("cw1.cbz"): _tags(
+            "Civil War", "1", start_year=2006, ids=comic_ids, year=year
+        )
+    }
+    entry = _entry(
+        "Civil War",
+        "1",
+        start_year=2006,
+        ids={"comicvine": "1", "metron": "7"},
+        year=2006,
+    )
+
+    result = match_comics(_list(entry), comics)
+
+    assert result.found == ()
+    assert result.missing == (0,)
+
+
+def test_cover_years_a_year_apart_still_match() -> None:
+    comics = {Path("cw1.cbz"): _tags("Civil War", "1", start_year=2006, year=2007)}
+    entry = _entry("Civil War", "1", start_year=2006, year=2006)
+    assert _found(match_comics(_list(entry), comics)) == {0: {"cw1.cbz": FoundBy.NAME}}
+
+
+def test_a_contradiction_vetoes_a_variant_too() -> None:
+    comics = {
+        Path("asm.cbz"): _tags(
+            "The Amazing Spider-Man", "1", start_year=1963, ids={"metron": "2"}
+        )
+    }
+    entry = _entry("Amazing Spider-Man", "1", start_year=1963, ids={"metron": "1"})
+    assert match_comics(_list(entry), comics).found == ()
 
 
 @pytest.mark.parametrize(
@@ -108,9 +191,26 @@ def test_a_name_variant_matches(entry_series: str, comic_series: str) -> None:
 
     result = match_comics(_list(_entry(entry_series, "1", start_year=year)), comics)
 
-    (found,) = result.found
-    assert found.by is FoundBy.VARIANT
+    assert _found(result) == {0: {"comic.cbz": FoundBy.VARIANT}}
     assert result.missing == ()
+
+
+@pytest.mark.parametrize(
+    ("entry_series", "comic_series"),
+    [
+        # "(UK)" is not a year or volume, so it is never taken off.
+        ("Transformers", "Transformers (UK)"),
+        ("Transformers (UK)", "Transformers"),
+        # A year is never added: Iron Man (2020) is not the series Iron Man 2020.
+        ("Iron Man", "Iron Man 2020"),
+    ],
+)
+def test_a_name_that_is_another_series_never_matches(
+    entry_series: str, comic_series: str
+) -> None:
+    comics = {Path("comic.cbz"): _tags(comic_series, "1", start_year=2020)}
+    entry = _entry(entry_series, "1", start_year=2020)
+    assert match_comics(_list(entry), comics).found == ()
 
 
 def test_the_exact_name_beats_a_variant() -> None:
@@ -118,19 +218,45 @@ def test_the_exact_name_beats_a_variant() -> None:
         Path("a/the.cbz"): _tags("The Flash", "1", start_year=2016),
         Path("b/plain.cbz"): _tags("Flash", "1", start_year=2016),
     }
-    (found,) = match_comics(_list(_entry("Flash", "1", start_year=2016)), comics).found
-    assert found.paths == (Path("b/plain.cbz"),)
-    assert found.by is FoundBy.NAME
+    result = match_comics(_list(_entry("Flash", "1", start_year=2016)), comics)
+    assert _found(result) == {0: {"plain.cbz": FoundBy.NAME}}
 
 
-def test_the_cover_year_breaks_a_tie() -> None:
+def test_strict_matches_are_settled_before_any_variant() -> None:
+    """saga1.cbz used to be an earlier "Saga TPB" entry's variant, not its own."""
+    comics = {Path("saga1.cbz"): _tags("Saga", "1", start_year=2012)}
+    entries = [
+        _entry("Saga TPB", "1", start_year=2012),
+        _entry("Saga", "1", start_year=2012),
+    ]
+
+    result = match_comics(_list(*entries), comics)
+
+    assert _found(result) == {1: {"saga1.cbz": FoundBy.NAME}}
+    assert result.missing == (0,)
+
+
+def test_the_cover_year_breaks_a_tie_between_series() -> None:
     comics = {
-        Path("a.cbz"): _tags("Saga", "1", start_year=2012, year=2012),
-        Path("b.cbz"): _tags("Saga", "1", start_year=2012, year=2019),
+        Path("a.cbz"): _tags("The Flash", "1", start_year=2016, year=2016),
+        Path("b.cbz"): _tags("Flash TPB", "1", start_year=2016, year=2017),
     }
-    entry = _entry("Saga", "1", start_year=2012, year=2019)
+    entry = _entry("Flash", "1", start_year=2016, year=2016)
     (found,) = match_comics(_list(entry), comics).found
-    assert found.paths == (Path("b.cbz"),)
+    assert found.paths == (Path("a.cbz"),)
+
+
+@pytest.mark.parametrize("other_series", [False, True])
+def test_the_cover_year_keeps_every_copy_of_one_series(other_series: bool) -> None:
+    comics = {
+        Path("a.cbz"): _tags("The Flash", "1", start_year=2016, year=2016),
+        Path("b.cbz"): _tags("The Flash", "1", start_year=2016, year=2017),
+    }
+    if other_series:
+        comics[Path("c.cbz")] = _tags("Flash TPB", "1", start_year=2016, year=2017)
+    entry = _entry("Flash", "1", start_year=2016, year=2016)
+    (found,) = match_comics(_list(entry), comics).found
+    assert found.paths == (Path("a.cbz"), Path("b.cbz"))
 
 
 def test_two_files_of_one_issue_are_both_found() -> None:
@@ -208,18 +334,50 @@ def test_a_comic_that_has_the_arc(
     assert (change.action, change.current, change.arc) == (action, current, arc)
 
 
-def test_an_issue_read_twice_takes_its_first_place() -> None:
-    comics = {Path("cw1.cbz"): _tags("Civil War", "1", start_year=2006)}
+def test_an_issue_read_twice_takes_its_first_place_in_every_copy() -> None:
+    comics = {
+        Path(f"{copy}/cw1.cbz"): _tags("Civil War", "1", start_year=2006)
+        for copy in "ab"
+    }
     entries = [
         _entry("Civil War", "1", start_year=2006),
         _entry("Civil War", "2", start_year=2006),
         _entry("Civil War", "1", start_year=2006),
     ]
-    (change,) = _plan(_list(*entries), comics)
-    assert change.number == 1
+    reading_list = _list(*entries)
+
+    result = match_comics(reading_list, comics)
+
+    # The later entry is found in the same comics.
+    assert {found.position: found.paths for found in result.found} == {
+        0: (Path("a/cw1.cbz"), Path("b/cw1.cbz")),
+        2: (Path("a/cw1.cbz"), Path("b/cw1.cbz")),
+    }
+    assert [change.number for change in _plan(reading_list, comics)] == [1, 1]
 
 
-def test_a_cover_date_that_is_not_a_date_breaks_no_tie() -> None:
+def test_a_variant_is_planned_only_when_asked() -> None:
+    comics = {
+        Path("asm.cbz"): _tags("The Amazing Spider-Man", "1", start_year=1963),
+        Path("cw1.cbz"): _tags("Civil War", "1", start_year=2006),
+    }
+    reading_list = _list(
+        _entry("Civil War", "1", start_year=2006),
+        _entry("Amazing Spider-Man", "1", start_year=1963),
+    )
+    result = match_comics(reading_list, comics)
+
+    def planned(*, variants: bool) -> list[str]:
+        changes = plan_arcs(
+            reading_list, comics, result, "Civil War", variants=variants
+        )
+        return [change.path.name for change in changes]
+
+    assert planned(variants=False) == ["cw1.cbz"]
+    assert planned(variants=True) == ["asm.cbz", "cw1.cbz"]
+
+
+def test_a_cover_date_that_is_not_a_date_vetoes_nothing() -> None:
     comics = {
         Path("a.cbz"): _tags("Saga", "1", start_year=2012),
         Path("b.cbz"): _tags("Saga", "1", start_year=2012),

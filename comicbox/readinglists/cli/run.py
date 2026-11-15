@@ -7,22 +7,22 @@ worker that makes Ctrl-C a clean cancel.
 """
 
 import os
-import sys
+import signal
 import threading
 from argparse import ArgumentParser, Namespace
 from collections import Counter
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Generator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass, replace
 from pathlib import Path
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from comicbox.exceptions import (
     ReadingListError,
 )
 from comicbox.readinglists.identity import entry_keys
-from comicbox.readinglists.match import (
-    read_comics,
-)
+from comicbox.readinglists.library import TAG_FORMATS, Library, read_comics
 from comicbox.readinglists.registry import (
     ReadingListFormats,
 )
@@ -41,16 +41,16 @@ from comicbox.readinglists.serialize import (
     lost_fields,
 )
 
-if sys.version_info >= (3, 12):
-    pass  # pyright: ignore[reportUnreachable]
-else:
-    pass
-
 if TYPE_CHECKING:
     from rich.console import Console
 
+    from comicbox.config.settings import ComicboxSettings
+
 
 _T = TypeVar("_T")
+
+EXIT_USAGE = 2
+_QUIET_LOGLEVELS = MappingProxyType({1: "WARNING", 2: "ERROR"})
 
 DEFAULT_FORMAT = ReadingListFormats.YAML
 FORMAT_TOKENS = tuple(
@@ -139,13 +139,27 @@ class Run:
         self.out: Console = console()
         self.err: Console = console(stderr=True)
         self.failed = False
+        # A usage error found after parsing, such as a -w format that
+        # cannot hold the arc: exit 2, as argparse would.
+        self.misused = False
         # Set by the user's Ctrl-C, so a spent quota is not taken for one.
         self.cancelled = False
+
+    @property
+    def log_level(self) -> str:
+        """Get the logging level -Q asks for."""
+        quiet = getattr(self.args, "quiet", 0)
+        return _QUIET_LOGLEVELS.get(quiet, "CRITICAL") if quiet else "INFO"
 
     def fail(self, path: Path | None, error: BaseException) -> None:
         """Report one failure on stderr and carry on."""
         print_error(self.err, path, error)
         self.failed = True
+
+    def misuse(self, message: str) -> None:
+        """Report a usage error; the command exits 2."""
+        print_error(self.err, None, ReadingListError(message))
+        self.misused = True
 
     def load(self, path: Path) -> ReadingListResult | None:
         """Read a list and report what the read dropped, or why it failed."""
@@ -193,23 +207,96 @@ class Run:
 
     @property
     def exit_code(self) -> int:
-        """1 when any file failed."""
-        return int(self.failed)
+        """2 for a usage error, 1 when any file failed."""
+        return EXIT_USAGE if self.misused else int(self.failed)
 
 
-def read_tagged_comics(run: Run, directory: Path) -> dict[Path, dict[str, Any]]:
-    """Read every comic's tags under a directory, in path order."""
+def _stop_reading(run: Run) -> Callable[[int, object], None]:
+    """
+    Make the first Ctrl-C stop a read, and the rest do nothing.
+
+    The command exits after it, and a second press, such as the one
+    ``uv run`` passes on, interrupted the reader pool's shutdown: the
+    process hung with its workers. So the rest are ignored from the first.
+    """
+
+    def stop(_signum: int, _frame: object) -> None:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        run.cancelled = True
+        raise KeyboardInterrupt
+
+    return stop
+
+
+def read_tagged_comics(
+    run: Run, directory: Path, config: "ComicboxSettings | None" = None
+) -> Library:
+    """
+    Read every comic under a directory, in path order.
+
+    A comic that cannot be read is one error line, and a directory one
+    warning line; either way the command exits 1 and the rest are read.
+    """
+    if config is None:
+        from comicbox.config import get_config
+
+        config = get_config(Namespace(comicbox=Namespace()))
+    previous = signal.signal(signal.SIGINT, _stop_reading(run))
+    try:
+        library = read_comics(directory, config, run.fail, log_level=run.log_level)
+    finally:
+        if not run.cancelled:
+            signal.signal(signal.SIGINT, previous)
+    for path, error in library.unread_directories.items():
+        reason = error.strerror or str(error)
+        print_messages(run.err, (f"{path}: {reason}; not searched",), "warning")
+        run.failed = True
+    return library
+
+
+def _library_config(read_keys: Sequence[str]) -> "ComicboxSettings":
     from comicbox.config import get_config
 
-    config = get_config(Namespace(comicbox=Namespace()))
-    return read_comics(directory, config, run.fail)
+    args = {
+        "read.formats": list(read_keys),
+        "read.except": [],
+        "write.delete_all_tags": False,
+    }
+    settings = get_config(Namespace(comicbox=Namespace(**args)))
+    general = replace(
+        settings.general, metadata=None, metadata_cli=None, delete_keys=frozenset()
+    )
+    return replace(settings, general=general)
+
+
+def library_configs() -> tuple["ComicboxSettings", "ComicboxSettings"]:
+    """
+    Get the configs to read and to write a directory of comics with.
+
+    Both read every tag format a comic can carry, whatever ``read.formats``
+    says, so a tag file comicbox cannot parse is found wherever it is, and
+    the formats written are built from all of the comic's tags. The read
+    config reads the file name as the user's config says; the write config
+    never does, so a write adds only the arc. Neither adds the config's
+    ``metadata``, deletes its ``delete_keys`` or deletes all tags.
+    """
+    from comicbox.config import get_config
+    from comicbox.formats import MetadataFormats
+
+    tag_keys = sorted(min(fmt.value.config_keys) for fmt in TAG_FORMATS)
+    user = get_config(Namespace(comicbox=Namespace()))
+    read_keys = list(tag_keys)
+    if MetadataFormats.FILENAME in user.read.formats:
+        read_keys.append(min(MetadataFormats.FILENAME.value.config_keys))
+    return _library_config(read_keys), _library_config(tag_keys)
 
 
 _JOIN_POLL_SECONDS = 0.1
 EXIT_CANCELLED = 130
 
 FETCH_CANCELLING = "Cancelling before the next request; Ctrl-C again quits now."
-WRITE_CANCELLING = "Stopping after the writes under way; Ctrl-C again quits now."
+WRITE_CANCELLING = "Stopping after the writes under way."
+WRITE_STILL_CANCELLING = "Still finishing the writes under way; they are not cut short."
 
 
 def cancellable(
@@ -253,6 +340,32 @@ def cancellable(
     if not ok:
         raise value
     return value
+
+
+@contextmanager
+def interrupts_ask(run: Run, cancel: Callable[[], None]) -> Generator[None]:
+    """
+    Make Ctrl-C only ask the writes to stop, however often it is pressed.
+
+    The first press calls ``cancel``: no new write starts, and the writes
+    under way finish. No press raises, so the process never exits with a
+    write half done. Must be entered on the main thread.
+    """
+
+    def ask(_signum: int, _frame: object) -> None:
+        if run.cancelled:
+            print_note(run.err, WRITE_STILL_CANCELLING)
+            return
+        run.cancelled = True
+        cancel()
+        print_note(run.err, WRITE_CANCELLING)
+
+    previous = signal.signal(signal.SIGINT, ask)
+    try:
+        yield
+    finally:
+        # Cancelled, the command now exits: still no press may interrupt it.
+        signal.signal(signal.SIGINT, signal.SIG_IGN if run.cancelled else previous)
 
 
 def add_write_options(parser: ArgumentParser, output: str, help_text: str) -> None:

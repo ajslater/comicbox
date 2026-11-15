@@ -254,28 +254,47 @@ comic to a list.
 ## Matching a list against your comics
 
 `match` reads every comic under a directory and finds each of a list's issues
-among them, trying in turn:
+among them, in two passes:
 
-1. An issue id from the same database.
-2. The series name, start year or volume, and issue number.
-3. Variants of the series name: the name with or without its volume in
-   parentheses (`Batman (2016)`), without a leading article
-   (`The Amazing Spider-Man`), and without a reprint suffix such as TPB or
-   Omnibus.
+1. Every comic that shares a key with an entry: an issue id from the same
+   database, or the series name, start year or volume, and issue number. Every
+   copy of an issue is found.
+2. For each entry the first pass did not find, variants of its series name,
+   among the comics no entry found in the first pass: the name without a
+   trailing year or volume in parentheses (`Batman (2016)`, `X-Men (Vol. 2)`),
+   without a leading article (`The Amazing Spider-Man`), and without a reprint
+   suffix such as TPB or Omnibus. A year or volume is never added, so `Iron Man`
+   is not the series `Iron Man 2020`. When a variant finds comics of more than
+   one series, the cover year picks the series.
 
-The cover year breaks a tie between comics of one key, and two files of one
-issue are both found. An entry with no id and no start year or volume matches
-nothing, as in `combine`. `match` prints each entry with the comics that are it,
-and how they matched, or `missing`; the count goes to stderr.
+A comic is never matched to an entry when both carry an id from one database and
+the ids differ, or both have cover years more than a year apart. An entry with
+no id and no start year or volume matches nothing, as in `combine`. `match`
+prints each entry with each comic that is it on a row of its own, and how it
+matched (`id`, `name` or `variant`), or `missing`; a comic with a tag file
+comicbox could not read is marked. The count goes to stderr. Linked directories
+are not searched, as with comicbox's `--recurse`, and a directory that cannot be
+read is a warning: the command then exits 1.
 
-`write-arcs` tags each matched comic with the list's name as a story arc,
-numbered by its place when the list is ordered. It needs `-w` with the tag
-formats to write, as `comicbox -w` takes them, and writes nothing without
-`--apply`: by default it shows each comic's change. A comic that already has the
-arc with that number is left alone, and one with another number is renumbered. A
-comic that cannot be written is reported, and the rest are still written; Ctrl-C
-stops before the writes not yet started. CBR, CBT and CB7 files are converted to
-CBZ when written, as with any comicbox write.
+`write-arcs` tags each comic matched by id or name with the list's name as a
+story arc, numbered by its place when the list is ordered. `--variants` also
+tags the comics found only by a name variant. It needs `-w` with the tag formats
+to write, as `comicbox -w` takes them, and writes nothing without `--apply`: by
+default it shows each comic's change. A `-w` format that cannot hold the arc
+refuses the run before any comic is read: ComicBookInfo has no arcs, and
+ComicInfo splits a name with a comma in it into two arcs.
+
+The arc is merged into each comic's tags, whatever `write.merge_mode` says, and
+the comic is read back to check that it holds the arc. A comic that already has
+the arc with that number is left alone, and one with another number is
+renumbered. A comic with a tag file comicbox could not read is listed and not
+written, and a file found under two names, through a symbolic or hard link, is
+written once. With `general.dry_run` set in the config, `--apply` is a dry run
+and says so. A comic that is not written for any reason but having the arc makes
+the command exit 1, and the rest are still written. Ctrl-C stops before the
+writes not yet started and lets those under way finish, however often it is
+pressed. CBR, CBT and CB7 files are converted to CBZ when written, as with any
+comicbox write.
 
 ## Python API
 

@@ -190,8 +190,9 @@ def arc_patch(list_name: str, number: int | None = None) -> dict[str, Any]:
     """
     Build the patch that tags one comic as part of a list.
 
-    For ``write_metadata``, which merges additively by default, so the patch
-    adds the arc and keeps the comic's others.
+    For ``write_metadata`` with ``merge_mode="additive"``, so the patch adds
+    the arc and keeps the comic's others; under ``update`` it would replace
+    them.
     """
     arc = {} if number is None else {NUMBER_KEY: number}
     return {ARCS_KEY: {list_name: arc}}

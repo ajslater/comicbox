@@ -1,165 +1,374 @@
-"""The actions on a directory of comics: match a list, and write its arcs."""
+"""
+The actions on a directory of comics: match a list, and write its arcs.
 
-import sys
+``write-arcs`` merges the arc into each comic's tags, never writes a comic
+with a tag file comicbox could not parse, writes each file once, and checks
+each write by reading the comic back. Ctrl-C while comics are read stops at
+once; while they are written it only asks, and the writes under way finish.
+"""
+
 import threading
-from argparse import Namespace
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
-from comicbox.cli.parser import (
-    CSVAction,
-)
-from comicbox.exceptions import (
-    ReadingListError,
-)
+from comicbox.cli.parser import CSVAction
+from comicbox.constants import ROOT_TAG
+from comicbox.exceptions import ReadingListError
 from comicbox.readinglists.arcs import arc_patch
+from comicbox.readinglists.cli.run import (
+    Run,
+    interrupts_ask,
+    library_configs,
+    read_tagged_comics,
+)
+from comicbox.readinglists.combine.fields import is_ordered
+from comicbox.readinglists.library import TAG_FORMATS, Library
 from comicbox.readinglists.match import (
-    ArcAction,
-    ArcChange,
+    MatchResult,
+    find_arc,
     match_comics,
     plan_arcs,
 )
 from comicbox.readinglists.render import (
-    print_arc_change,
+    arc_text,
+    print_arc_write,
     print_matches,
     print_note,
-    print_status,
+    print_variant_only,
 )
-from comicbox.readinglists.schema import ENTRIES_KEY, NAME_KEY
-
-if sys.version_info >= (3, 12):
-    pass  # pyright: ignore[reportUnreachable]
-else:
-    pass
+from comicbox.readinglists.schema import ENTRIES_KEY, NAME_KEY, NUMBER_KEY
+from comicbox.readinglists.tagging import (
+    ArcFit,
+    ArcFits,
+    ArcWrite,
+    format_name,
+    group_files,
+    plan_write,
+)
 
 if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
-from comicbox.readinglists.cli.run import (
-    WRITE_CANCELLING,
-    Run,
-    cancellable,
-    read_tagged_comics,
+    from comicbox.formats import MetadataFormats
+    from comicbox.write import WriteResult
+
+# -w takes the tag formats comicbox writes into a comic, by config key.
+_FORMAT_KEYS = MappingProxyType(
+    {key: fmt for fmt in TAG_FORMATS for key in fmt.value.config_keys}
 )
+_ADDITIVE = "additive"
 
 
-def _comics(run: Run) -> dict[Path, dict[str, Any]] | None:
+def _count(number: int, noun: str, plural: str | None = None) -> str:
+    return f"{number} {noun}" if number == 1 else f"{number} {plural or noun + 's'}"
+
+
+def _library(run: Run, config: "ComicboxSettings") -> Library | None:
     """Read the comics under the command's directory, or say why not."""
     directory: Path = run.args.directory
     if not directory.is_dir():
         run.fail(directory, ReadingListError("not a directory"))
         return None
-    comics = read_tagged_comics(run, directory)
-    if not comics:
+    library = read_tagged_comics(run, directory, config)
+    if not library.comics and not library.unread_directories:
         print_note(run.err, f"No tagged comics in {directory}.")
-    return comics
+    return library
+
+
+def _tags(library: Library) -> dict[Path, Mapping[str, Any]]:
+    return {path: comic.tags for path, comic in library.comics.items()}
+
+
+def _unreadable(library: Library) -> dict[Path, str]:
+    return {
+        path: f"unreadable {', '.join(comic.unreadable)}"
+        for path, comic in library.comics.items()
+        if comic.unreadable
+    }
 
 
 def _match(run: Run) -> None:
     if (loaded := run.load(run.args.file)) is None:
         return
-    if (comics := _comics(run)) is None:
+    read_config, _ = library_configs()
+    if (library := _library(run, read_config)) is None:
         return
     reading_list = loaded.reading_list
-    result = match_comics(reading_list, comics)
-    print_matches(run.out, reading_list, result, run.args.directory)
+    result = match_comics(reading_list, _tags(library))
+    print_matches(
+        run.out, reading_list, result, run.args.directory, _unreadable(library)
+    )
     total = len(reading_list.get(ENTRIES_KEY) or ())
     print_note(
         run.err,
-        f"{len(result.found)} of {total} entries found in {len(comics)} comics;"
-        f" {len(result.missing)} missing.",
+        f"{len(result.found)} of {total} entries found in"
+        f" {_count(len(library.comics), 'comic')}; {len(result.missing)} missing.",
     )
     run.no_keys((run.args.file,), (reading_list,))
 
 
-def _write_formats(run: Run) -> "tuple[frozenset[str], ComicboxSettings] | None":
-    """Resolve ``-w`` as the main CLI does; refuse it when none is known."""
-    from comicbox.config import get_config
-
-    dests = {"write.formats": run.args.formats}
-    settings = get_config(Namespace(comicbox=Namespace(**dests)))
-    if not (formats := frozenset(fmt.name for fmt in settings.write.formats)):
-        reason = "-w names no format comicbox writes, such as cix, mi or json"
-        run.fail(None, ReadingListError(reason))
-        return None
-    return formats, settings
+# write-arcs
 
 
-def _report_write(run: Run, change: ArcChange, written: Any) -> None:
-    """Say what one write did, or why it did not."""
-    if written.error is not None:
-        run.fail(change.path, written.error)
-    elif written.cancelled:
-        print_status(run.out, change.path, ok=False, detail="not written: cancelled")
-    elif written.written:
-        final = written.final_path
-        moved = f" as {final.name}" if final and final != change.path else ""
-        print_arc_change(run.out, change, done=True, suffix=moved)
-    else:
-        print_status(run.out, change.path, ok=False, detail="not written")
-        run.failed = True
+def _requested_formats(run: Run) -> "frozenset[MetadataFormats]":
+    """Resolve -w to tag formats; a key that names none is a usage error."""
+    formats: set[MetadataFormats] = set()
+    for token in run.args.formats:
+        if (fmt := _FORMAT_KEYS.get(str(token).strip().lower())) is None:
+            run.misuse(
+                f"-w {token}: not a tag format comicbox writes into a comic,"
+                " such as cix, mi or json"
+            )
+        else:
+            formats.add(fmt)
+    if not formats and not run.misused:
+        run.misuse("-w names no format")
+    return frozenset(formats)
 
 
-def _apply_arcs(
+def _refuse_unfit(
+    run: Run, formats: "frozenset[MetadataFormats]", name: str, fits: ArcFits
+) -> bool:
+    """Refuse the run when a -w format cannot hold the arc; say whether."""
+    for fmt in sorted(formats, key=lambda fmt: fmt.name):
+        if (fit := fits(fmt, name)) is not ArcFit.HOLDS:
+            why = (
+                "has no story arcs"
+                if fit is ArcFit.NONE
+                else "reads it back as other arcs"
+            )
+            run.misuse(f"-w: {format_name(fmt)} cannot hold the arc {name!r}: it {why}")
+    return run.misused
+
+
+@dataclass(frozen=True, slots=True)
+class _Plan:
+    """What write-arcs will do: one write per file, and what it leaves alone."""
+
+    result: MatchResult
+    writes: tuple[ArcWrite, ...]
+    variant_only: tuple[Path, ...]
+
+    @property
+    def todo(self) -> tuple[ArcWrite, ...]:
+        """Get the writes to make."""
+        return tuple(write for write in self.writes if write.formats)
+
+    @property
+    def refused(self) -> tuple[ArcWrite, ...]:
+        """Get the files that are not written, and not for having the arc."""
+        return tuple(write for write in self.writes if write.reason is not None)
+
+
+def _plan(
     run: Run,
-    changes: Sequence[ArcChange],
-    formats: frozenset[str],
-    settings: "ComicboxSettings",
-) -> None:
-    """Write the changes; one comic that fails does not stop the rest."""
+    reading_list: Mapping[str, Any],
+    library: Library,
+    formats: "frozenset[MetadataFormats]",
+) -> _Plan:
+    from comicbox.box.archive.write import file_key
+
+    tags = _tags(library)
+    result = match_comics(reading_list, tags)
+    changes = {
+        change.path: change
+        for change in plan_arcs(
+            reading_list,
+            tags,
+            result,
+            reading_list[NAME_KEY],
+            variants=run.args.variants,
+        )
+    }
+    writes = tuple(
+        replace(
+            plan_write(changes[path], library.comics[path], formats),
+            same_file=others,
+        )
+        for path, others in group_files(changes, file_key).items()
+    )
+    variant_only = sorted(
+        {
+            comic.path
+            for found in result.found
+            for comic in found.comics
+            if comic.path not in changes
+        }
+    )
+    return _Plan(result, writes, tuple(variant_only))
+
+
+def _held(path: Path, write: ArcWrite, config: "ComicboxSettings") -> str | None:
+    """Read a written comic back from ``path``; say how it lacks its arc, or None."""
+    from comicbox.box import Comicbox
+
+    change = write.change
+    try:
+        with Comicbox(path, config=config) as box:
+            tags = box.to_dict().get(ROOT_TAG) or {}
+    except Exception as exc:
+        return f"it could not be read back: {exc}"
+    if (arc := find_arc(tags, change.arc)) is None:
+        return f"it reads back without {change.arc!r}"
+    has = arc[1].get(NUMBER_KEY)
+    if change.number is not None and has != change.number:
+        return f"it reads back with {arc_text(arc[0], has)}"
+    return None
+
+
+def _report(
+    run: Run, write: ArcWrite, written: "WriteResult", config: "ComicboxSettings"
+) -> bool:
+    """Say what one write did; whether the comic now holds its arc."""
+    if written.error is not None:
+        run.fail(write.path, written.error)
+        return False
+    if written.cancelled or not written.written:
+        why = "cancelled" if written.cancelled else "comicbox wrote nothing"
+        print_arc_write(run.out, replace(write, reason=why), done=True)
+        # A cancelled run exits 130 whatever else happened.
+        run.failed = run.failed or not written.cancelled
+        return False
+    # A CBR, CBT or CB7 is converted to a CBZ beside it, as any write does.
+    final = written.final_path or write.path
+    problem = _held(final, write, config)
+    moved = final if final != write.path else None
+    print_arc_write(run.out, write, done=True, problem=problem, moved=moved)
+    if problem is not None:
+        run.failed = True
+    return problem is None
+
+
+def _apply(
+    run: Run,
+    todo: Sequence[ArcWrite],
+    write_config: "ComicboxSettings",
+    read_config: "ComicboxSettings",
+) -> list[ArcWrite]:
+    """Make the writes, each additively; return those that hold."""
     from comicbox.write import BulkWriteItem, bulk_write
 
-    cancel = threading.Event()
-    by_path = {change.path: change for change in changes}
+    by_path = {write.path: write for write in todo}
     items = [
         BulkWriteItem(
-            change.path, arc_patch(change.arc, change.number), formats=formats
+            write.path,
+            arc_patch(write.change.arc, write.change.number),
+            merge_mode=_ADDITIVE,
+            formats=frozenset(fmt.name for fmt in write.formats),
         )
-        for change in changes
+        for write in todo
     ]
+    held: list[ArcWrite] = []
+    cancel = threading.Event()
+    with interrupts_ask(run, cancel.set):
+        for written in bulk_write(items, cancel=cancel, base_config=write_config):
+            write = by_path[written.path]
+            if _report(run, write, written, read_config):
+                held.append(write)
+    return held
 
-    def write_all() -> None:
-        for written in bulk_write(items, cancel=cancel, base_config=settings):
-            _report_write(run, by_path[written.path], written)
 
-    cancellable(run, cancel.set, write_all, WRITE_CANCELLING)
-    if run.cancelled:
-        raise KeyboardInterrupt
+def _summary(
+    run: Run,
+    reading_list: Mapping[str, Any],
+    plan: _Plan,
+    held: Sequence[ArcWrite] | None,
+) -> None:
+    """Sum the run up on stderr; ``held`` is None for a dry run."""
+    files = _count(len(plan.writes), "matched comic")
+    if held is None:
+        verdict = f"Dry run: {len(plan.todo)} of {files} would change"
+        if run.args.apply:
+            verdict += "; general.dry_run is set in the config, so nothing was written."
+        else:
+            verdict += "; --apply writes them."
+    elif not plan.todo:
+        verdict = f"Nothing to write among {files}."
+    else:
+        verdict = f"{len(held)} of {files} written."
+    print_note(run.err, verdict)
+    counted = (
+        (
+            len(plan.refused),
+            f"{_count(len(plan.refused), 'matched comic')} not written; see above.",
+        ),
+        (
+            len(plan.variant_only),
+            (
+                f"{_count(len(plan.variant_only), 'comic')} found only by a name"
+                " variant; --variants tags them."
+            ),
+        ),
+        (
+            len(plan.result.missing),
+            f"{_count(len(plan.result.missing), 'entry', 'entries')} matched nothing.",
+        ),
+    )
+    for number, line in counted:
+        if number:
+            print_note(run.err, line)
+    run.no_keys((run.args.file,), (reading_list,))
 
 
-def _plan_arcs(run: Run) -> tuple[ArcChange, ...] | None:
-    """Plan each matched comic's arc, or say why there is no plan."""
-    if (loaded := run.load(run.args.file)) is None:
+@dataclass(frozen=True, slots=True)
+class _Setup:
+    """The list, its arc's name, the configs, and the formats asked for."""
+
+    reading_list: Mapping[str, Any]
+    formats: "frozenset[MetadataFormats]"
+    read_config: "ComicboxSettings"
+    write_config: "ComicboxSettings"
+
+
+def _setup(run: Run) -> _Setup | None:
+    """
+    Load the list and check -w, before any comic is read; None to stop.
+
+    A -w format that is not a tag format, or cannot hold the arc, is a
+    usage error.
+    """
+    formats = _requested_formats(run)
+    if run.misused or (loaded := run.load(run.args.file)) is None:
         return None
     reading_list = loaded.reading_list
     if not (name := reading_list.get(NAME_KEY)):
         reason = "the list has no name to tag its arc with"
         run.fail(run.args.file, ReadingListError(reason))
         return None
-    if (comics := _comics(run)) is None:
+    read_config, write_config = library_configs()
+    fits = ArcFits(ordered=is_ordered(reading_list), config=write_config)
+    if _refuse_unfit(run, formats, name, fits):
         return None
-    result = match_comics(reading_list, comics)
-    return plan_arcs(reading_list, comics, result, name)
+    return _Setup(reading_list, formats, read_config, write_config)
+
+
+def _print_plan(run: Run, plan: _Plan, *, applying: bool) -> None:
+    """Show each file's change; when applying, only those not to be written."""
+    for write in plan.writes:
+        if not (applying and write.formats):
+            print_arc_write(run.out, write, done=False)
+    for path in plan.variant_only:
+        print_variant_only(run.out, path)
 
 
 def _write_arcs(run: Run) -> None:
-    if (resolved := _write_formats(run)) is None:
+    if (setup := _setup(run)) is None:
         return
-    if (changes := _plan_arcs(run)) is None:
+    if (library := _library(run, setup.read_config)) is None:
         return
-    todo = [change for change in changes if change.action is not ArcAction.TAGGED]
-    for change in changes:
-        if change.action is ArcAction.TAGGED or not run.args.apply:
-            print_arc_change(run.out, change, done=False)
-    if not run.args.apply:
-        print_note(
-            run.err,
-            f"Dry run: {len(todo)} of {len(changes)} matched comics would change;"
-            " --apply writes them.",
-        )
-        return
-    _apply_arcs(run, todo, *resolved)
+    plan = _plan(run, setup.reading_list, library, setup.formats)
+    if plan.refused:
+        run.failed = True
+    applying = run.args.apply and not setup.write_config.general.dry_run
+    _print_plan(run, plan, applying=applying)
+    held = None
+    if applying:
+        held = _apply(run, plan.todo, setup.write_config, setup.read_config)
+    _summary(run, setup.reading_list, plan, held)
+    if run.cancelled:
+        raise KeyboardInterrupt
 
 
 def add_comic_actions(actions: Any) -> None:
@@ -167,6 +376,12 @@ def add_comic_actions(actions: Any) -> None:
     sub = actions.add_parser(
         "match",
         help="Say which of a list's issues the comics in DIR are, and which are missing.",
+        description=(
+            "Find each of a list's issues among the comics in DIR: by an issue id,"
+            " then by series, year or volume and issue, then by a variant of the"
+            " series name. Each comic found is a row, with how it was found."
+            " Linked directories are not searched."
+        ),
     )
     sub.add_argument("file", type=Path, metavar="FILE", help="The reading list.")
     sub.add_argument(
@@ -178,8 +393,10 @@ def add_comic_actions(actions: Any) -> None:
         description=(
             "Tag each comic in DIR that a list matches with the list's name as a"
             " story arc, numbered by its place in an ordered list. Without --apply"
-            " nothing is written: each comic's change is shown. A comic that already"
-            " has the arc with that number is left alone."
+            " nothing is written: each comic's change is shown. Only comics"
+            " matched by id or by series, year or volume and issue are tagged,"
+            " unless --variants. A comic that already has the arc with that number"
+            " is left alone, as is one with a tag file comicbox cannot read."
         ),
     )
     sub.add_argument(
@@ -189,7 +406,15 @@ def add_comic_actions(actions: Any) -> None:
         required=True,
         metavar="FORMATS",
         dest="formats",
-        help="The tag formats to write, as comicbox -w takes them: cix, mi, json...",
+        help=(
+            "The tag formats to write, as comicbox -w takes them: cix, mi,"
+            " json... Each must be able to hold the arc."
+        ),
+    )
+    sub.add_argument(
+        "--variants",
+        action="store_true",
+        help="Also tag the comics found only by a variant of the series name.",
     )
     sub.add_argument(
         "--apply",

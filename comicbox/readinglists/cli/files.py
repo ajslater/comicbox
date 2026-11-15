@@ -1,7 +1,6 @@
 """The actions on list files: print, validate, convert, combine, compare, from-arcs."""
 
 import re
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import MappingProxyType
@@ -11,6 +10,12 @@ from comicbox.exceptions import (
     ReadingListError,
 )
 from comicbox.readinglists.arcs import reading_lists_from_comics
+from comicbox.readinglists.cli.run import (
+    Run,
+    add_write_options,
+    destination_problems,
+    read_tagged_comics,
+)
 from comicbox.readinglists.combine import combine
 from comicbox.readinglists.compare import compare
 from comicbox.readinglists.registry import (
@@ -30,18 +35,6 @@ from comicbox.readinglists.serialize import (
     loads,
     readable_depth,
     resolve_format,
-)
-
-if sys.version_info >= (3, 12):
-    pass  # pyright: ignore[reportUnreachable]
-else:
-    pass
-
-from comicbox.readinglists.cli.run import (
-    Run,
-    add_write_options,
-    destination_problems,
-    read_tagged_comics,
 )
 
 _UNSAFE_FILENAME_RE = re.compile(r'[\x00-\x1f/\\:*?"<>|]+')
@@ -164,7 +157,7 @@ def _from_arcs(run: Run) -> None:
             ),
         )
         for reading_list in reading_lists_from_comics(
-            read_tagged_comics(run, directory).values()
+            comic.tags for comic in read_tagged_comics(run, directory).comics.values()
         )
     ]
     destinations = [destination for _, destination in plan]
