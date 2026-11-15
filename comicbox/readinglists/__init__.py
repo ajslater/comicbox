@@ -16,6 +16,14 @@ from comicbox.readinglists.arcs import (
     entry_from_comic,
     reading_lists_from_comics,
 )
+from comicbox.readinglists.combine import (
+    CombineResult,
+    EntryOrigin,
+    IdConflict,
+    OrderConflict,
+    combine,
+)
+from comicbox.readinglists.compare import Comparison, Verdict, compare
 from comicbox.readinglists.formats import ReadingListFormat
 from comicbox.readinglists.identity import (
     EntryKey,
@@ -95,7 +103,12 @@ __all__ = (
     "START_YEAR_KEY",
     "TAGS_KEY",
     "VOLUME_KEY",
+    "CombineResult",
+    "Comparison",
     "EntryKey",
+    "EntryOrigin",
+    "IdConflict",
+    "OrderConflict",
     "ParsedIssue",
     "ReadingListError",
     "ReadingListFormat",
@@ -104,7 +117,10 @@ __all__ = (
     "ReadingListResult",
     "SmartListError",
     "SourceKind",
+    "Verdict",
     "arc_patch",
+    "combine",
+    "compare",
     "detect_format",
     "dumps",
     "entry_from_comic",
