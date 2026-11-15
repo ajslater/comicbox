@@ -24,6 +24,7 @@ from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.readinglists import cli as readinglist_cli
 from comicbox.readinglists import load, loads
+from comicbox.readinglists.cli import online as readinglist_online
 from tests.const import TEST_FILES_DIR
 from tests.util.metron_transport import (
     BURST_HEADERS,
@@ -79,7 +80,7 @@ def _restore_logging() -> Iterator[None]:
 def web(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
     """Give every session the CLI opens the fake web; record its requests."""
     requests_made: list[httpx.Request] = []
-    opened = readinglist_cli.open_session
+    opened = readinglist_online.open_session
 
     def handler(request: httpx.Request) -> httpx.Response:
         requests_made.append(request)
@@ -90,7 +91,7 @@ def web(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
         session._transport = httpx.MockTransport(handler)
         return session
 
-    monkeypatch.setattr(readinglist_cli, "open_session", open_on_fake_web)
+    monkeypatch.setattr(readinglist_online, "open_session", open_on_fake_web)
     return requests_made
 
 
@@ -301,8 +302,8 @@ def test_ctrl_c_cancels_the_fetch(
         saw_cancel.set()
         session.check_cancelled()
 
-    fetchers = {**readinglist_cli._FETCHERS, "url": wait_for_cancel}
-    monkeypatch.setattr(readinglist_cli, "_FETCHERS", MappingProxyType(fetchers))
+    fetchers = {**readinglist_online._FETCHERS, "url": wait_for_cancel}
+    monkeypatch.setattr(readinglist_online, "_FETCHERS", MappingProxyType(fetchers))
 
     code, out, err = _run(capsys, "fetch", _URL)
 
@@ -327,8 +328,8 @@ def test_a_second_ctrl_c_quits_at_once(
         reason = "left behind"
         raise OnlineLookupAbortedError(reason)
 
-    fetchers = {**readinglist_cli._FETCHERS, "url": stuck}
-    monkeypatch.setattr(readinglist_cli, "_FETCHERS", MappingProxyType(fetchers))
+    fetchers = {**readinglist_online._FETCHERS, "url": stuck}
+    monkeypatch.setattr(readinglist_online, "_FETCHERS", MappingProxyType(fetchers))
 
     try:
         code, _, err = _run(capsys, "fetch", _URL)
