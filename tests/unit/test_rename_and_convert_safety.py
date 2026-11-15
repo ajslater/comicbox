@@ -127,6 +127,39 @@ def test_a_claimed_destination_is_refused(tmp_path: Path) -> None:
     _release_destination(dest)
 
 
+def test_a_claim_holds_the_file_under_any_name(tmp_path: Path) -> None:
+    """A link to a file being written is refused, as its own name is."""
+    target = tmp_path / "cw1.cbz"
+    target.write_bytes(b"")
+    link = tmp_path / "lib" / "link0.cbz"
+    link.parent.mkdir()
+    link.symlink_to(target)
+    _claim_destination(target, target)
+    try:
+        with pytest.raises(DestinationOccupiedError) as exc_info:
+            _claim_destination(link, link)
+    finally:
+        _release_destination(target)
+    assert exc_info.value.destination == link
+    _claim_destination(link, link)
+    _release_destination(link)
+
+
+def test_a_claim_is_released_once_its_file_exists(tmp_path: Path) -> None:
+    """
+    A conversion claims a name with nothing there and releases a new file.
+
+    The release goes by the claiming path, since the file's key has changed
+    since the claim; released any other way, the name stays held for good.
+    """
+    dest = tmp_path / "Foo.cbz"
+    _claim_destination(dest, tmp_path / "Foo.cbr")
+    dest.write_bytes(b"")
+    _release_destination(dest)
+    _claim_destination(dest, tmp_path / "Foo.cbt")
+    _release_destination(dest)
+
+
 def test_conversion_temp_files_do_not_collide(tmp_path: Path) -> None:
     """Same-stem sources must not share one temp path."""
     cbt = tmp_path / "Temp v1 #001 (2001).cbt"

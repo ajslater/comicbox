@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
+from typing import TypeAlias
 
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -13,6 +14,8 @@ from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.exceptions import ArchiveWriteError, DestinationOccupiedError
 from comicbox.formats.sources import MetadataSources
 
+FileKey: TypeAlias = tuple[int, int] | Path
+
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
 # Destinations a conversion is currently writing to. Archives differing
@@ -21,23 +24,53 @@ _CBZ_SUFFIX = ".cbz"
 # a thread pool: without this the second writer replaces the first's
 # finished file and, under ``delete_orig``, both originals are unlinked —
 # one archive's contents gone for good. Claiming the destination turns the
-# loser into an ordinary per-file error instead.
-_INFLIGHT_DESTINATIONS: set[Path] = set()
+# loser into an ordinary per-file error instead. Each claim is held under
+# the path it was taken by, mapped to the file that path named then.
+_INFLIGHT_DESTINATIONS: dict[Path, FileKey] = {}
 _INFLIGHT_GUARD = Lock()
 
 
+def file_key(path: Path) -> FileKey:
+    """
+    Name the file a path points at, so two spellings of one file agree.
+
+    An existing file is its device and inode, which a symlink, a hard link
+    and the other case of its name on a case-insensitive disk all share.
+    A path with nothing there yet, such as a conversion's destination, is
+    its resolved spelling, which still sees through a linked directory.
+    """
+    try:
+        stat = path.stat()
+    except OSError:
+        return path.resolve()
+    return (stat.st_dev, stat.st_ino)
+
+
 def _claim_destination(destination: Path, source: Path) -> None:
-    """Take a conversion destination, refusing one already in flight."""
+    """
+    Take a write destination, refusing one already in flight.
+
+    The claim is on the file, not the spelling: ``lib/link.cbz``, a link to
+    ``cw1.cbz``, is refused while ``cw1.cbz`` is being written.
+    """
+    key = file_key(destination)
     with _INFLIGHT_GUARD:
-        if destination in _INFLIGHT_DESTINATIONS:
+        if destination in _INFLIGHT_DESTINATIONS or (
+            key in _INFLIGHT_DESTINATIONS.values()
+        ):
             raise DestinationOccupiedError(source, destination, "inflight")
-        _INFLIGHT_DESTINATIONS.add(destination)
+        _INFLIGHT_DESTINATIONS[destination] = key
 
 
 def _release_destination(path: Path) -> None:
-    """Release a claimed conversion destination."""
+    """
+    Release a claimed destination by the path that claimed it.
+
+    Not by its file key: a conversion's destination is a new file by the
+    time it is released, so its key has changed since the claim.
+    """
     with _INFLIGHT_GUARD:
-        _INFLIGHT_DESTINATIONS.discard(path)
+        _INFLIGHT_DESTINATIONS.pop(path, None)
 
 
 _ALL_ARCHIVE_METADATA_FILENAMES = frozenset(

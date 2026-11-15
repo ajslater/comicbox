@@ -33,6 +33,8 @@ from tests.const import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+_CIX = frozenset({"COMIC_INFO"})
+
 
 @pytest.fixture
 def tmp_cbz(tmp_path: Path) -> Path:
@@ -186,6 +188,37 @@ def test_bulk_write_refuses_one_path_named_twice(tmp_cbz: Path) -> None:
     assert refused.error.kind == "inflight"
     assert refused.error.occupant == tmp_cbz
     assert "already being written" in str(refused.error)
+
+
+@pytest.mark.parametrize("link", ["symlink", "hardlink"])
+def test_bulk_write_refuses_a_link_beside_its_target(tmp_cbz: Path, link: str) -> None:
+    """
+    A link and its target are one archive submitted twice.
+
+    The claim map keyed on the spelling, so ``lib/link.cbz`` and the
+    ``test.cbz`` it names were repacked at once and the archive failed its
+    CRC check in about half of runs.
+    """
+    other = tmp_cbz.parent / "lib" / "link.cbz"
+    other.parent.mkdir()
+    if link == "symlink":
+        other.symlink_to(tmp_cbz)
+    else:
+        other.hardlink_to(tmp_cbz)
+    items = [
+        BulkWriteItem(path=path, patch={"title": path.name}, formats=_CIX)
+        for path in (tmp_cbz, other)
+    ]
+
+    results = {r.path: r for r in bulk_write(items, workers=2)}
+
+    assert results[tmp_cbz].written
+    refused = results[other]
+    assert not refused.written
+    assert isinstance(refused.error, DestinationOccupiedError)
+    assert refused.error.kind == "inflight"
+    assert refused.error.occupant == tmp_cbz
+    assert refused.error.destination == other
 
 
 def test_bulk_write_preflight_false_restores_the_old_path(tmp_cbr: Path) -> None:

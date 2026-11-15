@@ -35,6 +35,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal, TypeAlias
 
 from comicbox.box import Comicbox
+from comicbox.box.archive.write import file_key
 from comicbox.config import get_config
 from comicbox.config.settings import MergeMode
 from comicbox.events import (
@@ -63,6 +64,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator, Iterable, Iterator
     from pathlib import Path
 
+    from comicbox.box.archive.write import FileKey
     from comicbox.config.settings import ComicboxSettings
     from comicbox.events import EventHandler
 
@@ -278,9 +280,9 @@ def _preflight_destinations(
     """
     cancel = options.cancel
     config = get_config(options.base_config)
-    # Destination -> the first item that claimed it. One item can't collide
-    # with itself, so a single-item batch needs no map.
-    claimed: dict[Path, Path] = {}
+    # Destination file -> the first item that claimed it. One item can't
+    # collide with itself, so a single-item batch needs no map.
+    claimed: dict[FileKey, Path] = {}
     use_claim_map = len(indexed_items) > 1
     survivors: list[tuple[int, BulkWriteItem]] = []
     failures: list[tuple[int, WriteResult]] = []
@@ -309,9 +311,15 @@ def _preflight_destinations(
 def _preflight_one(
     path: Path,
     config: ComicboxSettings,
-    claimed: dict[Path, Path] | None,
+    claimed: dict[FileKey, Path] | None,
 ) -> BaseException | None:
-    """Sniff one destination; return the error that refuses it, or None."""
+    """
+    Sniff one destination; return the error that refuses it, or None.
+
+    Destinations are told apart by the file they name (``file_key``), so a
+    symlink or hard link submitted beside its target is the same archive
+    twice: both written at once, it failed its CRC check in half of runs.
+    """
     try:
         dest = predict_write_destination(path, base_config=config)
     except (ComicboxError, OSError) as exc:
@@ -322,14 +330,16 @@ def _preflight_one(
         return DestinationOccupiedError(path, dest.destination, "convert")
     if claimed is None:
         return None
-    occupant = claimed.get(dest.destination)
+    key = file_key(dest.destination)
+    occupant = claimed.get(key)
     if occupant is None:
-        claimed[dest.destination] = path
+        claimed[key] = path
         return None
     if dest.converts:
         return DestinationOccupiedError(path, dest.destination, "convert", occupant)
     # Not a conversion, so the destination is the path itself: the same
-    # archive was submitted twice. The earlier submission is the writer in
+    # archive was submitted twice, perhaps by two names (a symlink or a hard
+    # link beside its target). The earlier submission is the writer in
     # flight for it, which is what the inflight message already says.
     return DestinationOccupiedError(path, dest.destination, "inflight", occupant)
 
