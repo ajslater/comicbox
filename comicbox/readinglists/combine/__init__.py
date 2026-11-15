@@ -121,19 +121,34 @@ def _shared_ids(
     entries: Sequence[Mapping[str, Any]],
 ) -> tuple[SharedId, ...]:
     """Find the ids on more than one combined entry that no input repeats."""
+    repeated = _repeated_ids(inputs)
+    return tuple(
+        SharedId(source, key, tuple(found))
+        for (source, key), found in sorted(_id_positions(entries).items())
+        if len(found) > 1 and (source, key) not in repeated
+    )
+
+
+def _repeated_ids(
+    inputs: Sequence[Sequence[Mapping[str, Any]]],
+) -> set[tuple[str, str]]:
+    """Find the ids some one input gives to more than one of its rows."""
     repeated: set[tuple[str, str]] = set()
     for rows in inputs:
         counts = Counter(id_key for row in rows for id_key in _ids(row))
         repeated |= {id_key for id_key, count in counts.items() if count > 1}
+    return repeated
+
+
+def _id_positions(
+    entries: Sequence[Mapping[str, Any]],
+) -> defaultdict[tuple[str, str], list[int]]:
+    """Map each id to the positions of the entries that carry it."""
     positions: defaultdict[tuple[str, str], list[int]] = defaultdict(list)
     for position, entry in enumerate(entries):
         for id_key in _ids(entry):
             positions[id_key].append(position)
-    return tuple(
-        SharedId(source, key, tuple(found))
-        for (source, key), found in sorted(positions.items())
-        if len(found) > 1 and (source, key) not in repeated
-    )
+    return positions
 
 
 def _only_in(

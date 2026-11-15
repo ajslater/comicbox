@@ -41,7 +41,7 @@ from comicbox.readinglists.schema import (
     SOURCE_URL_KEY,
     SourceKind,
 )
-from comicbox.readinglists.sources.url import HttpStatusError, download
+from comicbox.readinglists.sources.url import Download, HttpStatusError, download
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping
@@ -139,19 +139,7 @@ class Catalog:
         by_path = next((entry for entry in self.entries if entry.path == path), None)
         if by_path is not None or not sha:
             return by_path
-        candidates = [entry for entry in self.entries if entry.sha == sha]
-        old = PurePosixPath(path)
-        for same in (_same_name(old), _same_folder(old)):
-            if len(candidates) <= 1:
-                break
-            candidates = [entry for entry in candidates if same(entry)] or candidates
-        if len(candidates) > 1:
-            names = ", ".join(entry.path for entry in candidates)
-            reason = (
-                f"{path} is gone, and {len(candidates)} lists share its sha: {names}."
-            )
-            raise ReadingListFetchError(reason)
-        return candidates[0] if candidates else None
+        return _one_copy([entry for entry in self.entries if entry.sha == sha], path)
 
     def search(self, query: str) -> tuple[CatalogEntry, ...]:
         """Find the lists whose path holds every word of ``query``."""
@@ -162,6 +150,20 @@ class Catalog:
             for entry in self.entries
             if all(word in fold_text(entry.path) for word in words)
         )
+
+
+def _one_copy(candidates: list[CatalogEntry], path: str) -> CatalogEntry | None:
+    """Tell copies of one blob apart by the old path's name, then its folder."""
+    old = PurePosixPath(path)
+    for same in (_same_name(old), _same_folder(old)):
+        if len(candidates) <= 1:
+            break
+        candidates = [entry for entry in candidates if same(entry)] or candidates
+    if len(candidates) > 1:
+        names = ", ".join(entry.path for entry in candidates)
+        reason = f"{path} is gone, and {len(candidates)} lists share its sha: {names}."
+        raise ReadingListFetchError(reason)
+    return candidates[0] if candidates else None
 
 
 def _same_name(old: PurePosixPath) -> Callable[[CatalogEntry], bool]:
@@ -320,9 +322,21 @@ def _fetch_tree(
     headers = dict(_API_HEADERS)
     if cached is not None and cached.etag:
         headers["If-None-Match"] = cached.etag
+    fetched = _download_tree(context, url, headers, repo, ref)
+    now = datetime.now(tz=UTC)
+    if fetched.not_modified and cached is not None:
+        return Catalog(repo, ref, cached.etag, now, cached.entries)
+    entries = _entries_from_body(fetched.body, url, repo, ref)
+    return Catalog(repo, ref, fetched.headers.get("etag"), now, entries)
+
+
+def _download_tree(
+    context: FetchContext, url: str, headers: dict[str, str], repo: str, ref: str
+) -> Download:
+    """Download the tree, saying which repository or limit refused it."""
     max_bytes = context.settings.readinglists.max_download_bytes
     try:
-        fetched = download(
+        return download(
             context.http(), url, max_bytes, headers, cancelled=context.cancelled.is_set
         )
     except HttpStatusError as exc:
@@ -332,11 +346,14 @@ def _fetch_tree(
         if reason := _rate_limit_reason(exc):
             raise ReadingListFetchError(reason) from exc
         raise
-    now = datetime.now(tz=UTC)
-    if fetched.not_modified and cached is not None:
-        return Catalog(repo, ref, cached.etag, now, cached.entries)
+
+
+def _entries_from_body(
+    body: bytes, url: str, repo: str, ref: str
+) -> tuple[CatalogEntry, ...]:
+    """Index a tree's lists, or say why it is no git tree to index."""
     try:
-        tree = json.loads(fetched.body)
+        tree = json.loads(body)
         items = tree["tree"]
     except (ValueError, KeyError, TypeError) as exc:
         reason = f"{url}: not a git tree: {exc}"
@@ -349,11 +366,10 @@ def _fetch_tree(
         )
         raise ReadingListFetchError(reason)
     try:
-        entries = entries_from_tree(items)
+        return entries_from_tree(items)
     except (AttributeError, KeyError, TypeError, ValueError) as exc:
         reason = f"{url}: not a git tree: {quote_value(exc)}"
         raise ReadingListFetchError(reason) from exc
-    return Catalog(repo, ref, fetched.headers.get("etag"), now, entries)
 
 
 def load_catalog(
