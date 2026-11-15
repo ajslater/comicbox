@@ -20,6 +20,7 @@ from comicbox.enums.comicbox import IdSources
 from comicbox.enums.maps.identifiers import get_id_source_by_alias
 from comicbox.formats.comicbox import schema as comic
 from comicbox.identifiers import ID_KEY_KEY
+from comicbox.readinglists.changes import quote_value
 from comicbox.readinglists.formats.json_cbl.schema import (
     COVER_IMAGE_URLS_KEY,
     DESCRIPTION_KEY,
@@ -208,7 +209,9 @@ class _Reader:
             if source is None and (id_source := get_id_source_by_alias(name, None)):
                 source = id_source.value
             if source is None:
-                self._warnings.append(f"Issue {position}: unknown id name {name!r}.")
+                self._warnings.append(
+                    f"Issue {position}: unknown id name {quote_value(name)}."
+                )
                 continue
             yield source, item.get(SERIES_KEY), item.get(ISSUE_KEY)
 
@@ -266,7 +269,7 @@ class _Reader:
                 source[SOURCE_CURATOR_KEY] = _curator_code(name)
                 source[SOURCE_CURATOR_URL_KEY] = item.get(URL_KEY)
             else:
-                self._warnings.append(f"Source {name!r} dropped.")
+                self._warnings.append(f"Source {quote_value(name)} dropped.")
         return sources
 
     def relationships(self, items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
@@ -275,7 +278,9 @@ class _Reader:
         for item in items:
             key = _RELATIONSHIPS.get(str(item.get(RELATIONSHIP_KEY)))
             if key is None or key in refs:
-                self._warnings.append(f"Relationship {item.get(NAME_KEY)!r} dropped.")
+                self._warnings.append(
+                    f"Relationship {quote_value(item.get(NAME_KEY))} dropped."
+                )
                 continue
             refs[key] = {
                 model.NAME_KEY: item.get(NAME_KEY),

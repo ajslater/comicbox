@@ -15,7 +15,7 @@ import sys
 from datetime import date, datetime
 from enum import StrEnum
 from types import MappingProxyType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from marshmallow import ValidationError
 from marshmallow.fields import Constant, Nested
@@ -27,7 +27,7 @@ from comicbox.formats.base.fields.number_fields import BooleanField, IntegerFiel
 from comicbox.formats.base.fields.time_fields import DateField
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.base.schemas.json_schemas import JsonSchema
-from comicbox.formats.base.schemas.yaml import YamlSchema
+from comicbox.formats.base.schemas.yaml import YamlRenderModule, YamlSchema
 from comicbox.formats.comicbox.schema import DATE_KEY as _DATE_KEY
 from comicbox.formats.comicbox.schema import IDENTIFIERS_KEY as _IDENTIFIERS_KEY
 from comicbox.formats.comicbox.schema import ISSUE_KEY as _ISSUE_KEY
@@ -48,6 +48,9 @@ if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
+
+if TYPE_CHECKING:
+    from ruamel.yaml import YAML
 
 # The root tag of a serialized reading list.
 READING_LIST_KEY = "reading_list"
@@ -296,6 +299,19 @@ class ReadingListJsonSubSchema(ReadingListSubSchema):
     entries = ListField(Nested(JsonEntrySchema), sort=False)
 
 
+class ReadingListYamlRenderModule(YamlRenderModule):
+    """Comicbox's YAML, written without anchors or aliases."""
+
+    @override
+    @classmethod
+    def _config_yaml(cls, yaml: "YAML") -> None:
+        super()._config_yaml(yaml)
+        # ruamel aliases any object written twice, such as one date for a
+        # cover and a store date. Reading lists refuse aliases on read, so
+        # they must never write one.
+        yaml.representer.ignore_aliases = lambda *_data: True
+
+
 class ReadingListYamlSchema(YamlSchema):
     """A reading list serialized as YAML. Also the in-memory model."""
 
@@ -303,6 +319,11 @@ class ReadingListYamlSchema(YamlSchema):
     ROOT_KEYPATH = READING_LIST_KEY
 
     reading_list = Nested(ReadingListSubSchema)
+
+    class Meta(YamlSchema.Meta):
+        """Schema options."""
+
+        render_module = ReadingListYamlRenderModule
 
 
 class ReadingListJsonSchema(JsonSchema):

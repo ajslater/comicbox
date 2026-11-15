@@ -70,11 +70,9 @@ def get_format(fmt: ReadingListFormats | str | None) -> ReadingListFormats:
     raise ReadingListFormatError(reason)
 
 
-# The first element's name, past an XML declaration, comments and a doctype.
-_XML_ROOT_RE = re.compile(
-    r"\A\s*(?:<\?.*?\?>\s*)?(?:(?:<!--.*?-->|<!DOCTYPE[^>]*>)\s*)*<([A-Za-z_][\w.:-]*)",
-    re.DOTALL,
-)
+# What may come before an XML document's first element, and what ends it.
+_XML_PROLOG = (("<?", "?>"), ("<!--", "-->"), ("<!DOCTYPE", ">"))
+_XML_NAME_RE = re.compile(r"<([A-Za-z_][\w.:-]*)")
 # XML root element -> format.
 _XML_ROOTS: MappingProxyType[str, ReadingListFormats] = MappingProxyType(
     {READING_LIST_TAG: ReadingListFormats.CBL}
@@ -99,14 +97,14 @@ def as_text(data: str | bytes | bytearray) -> str:
 def _parse_json(text: str) -> Any:
     try:
         return simplejson.loads(text)
-    except ValueError:
+    except (ValueError, RecursionError):
         return None
 
 
 def _parse_yaml(text: str) -> Any:
     try:
         return YAML(typ="safe", pure=True).load(text)
-    except YAMLError:
+    except (YAMLError, RecursionError):
         return None
 
 
@@ -123,6 +121,29 @@ def _match_signature(
     return None
 
 
+def xml_root(text: str) -> str | None:
+    """
+    Name an XML document's first element, past its declaration and comments.
+
+    A scan, not one pattern: each part of the prolog is skipped by finding
+    its end, so the time is linear in the text however it is built.
+    """
+    position, size, skipped = 0, len(text), True
+    while skipped:
+        while position < size and text[position].isspace():
+            position += 1
+        skipped = False
+        for opener, closer in _XML_PROLOG:
+            if text.startswith(opener, position):
+                end = text.find(closer, position + len(opener))
+                if end < 0:
+                    return None
+                position, skipped = end + len(closer), True
+                break
+    match = _XML_NAME_RE.match(text, position)
+    return match.group(1) if match else None
+
+
 def detect_format(data: str | bytes | bytearray) -> ReadingListFormats | None:
     """
     Detect a reading list's format by its content, not its file name.
@@ -133,8 +154,8 @@ def detect_format(data: str | bytes | bytearray) -> ReadingListFormats | None:
     text = as_text(data)
     if not text.strip():
         return None
-    if match := _XML_ROOT_RE.match(text):
-        return _XML_ROOTS.get(match.group(1))
+    if (root := xml_root(text)) is not None:
+        return _XML_ROOTS.get(root)
     if (document := _parse_json(text)) is not None:
         return _match_signature(document, _JSON_SIGNATURES)
     return _match_signature(_parse_yaml(text), _YAML_SIGNATURES)

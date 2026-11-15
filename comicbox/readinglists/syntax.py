@@ -5,6 +5,9 @@ from xml.parsers.expat import ExpatError, ParserCreate
 import simplejson
 from ruamel.yaml import YAML
 from ruamel.yaml.error import MarkedYAMLError, YAMLError
+from ruamel.yaml.events import AliasEvent
+
+from comicbox.exceptions import ReadingListFormatError
 
 _JSON_OPENERS = ("{", "[")
 
@@ -50,3 +53,24 @@ def syntax_error(text: str) -> str | None:
     except YAMLError as exc:
         return describe_syntax_error(exc)
     return None
+
+
+def refuse_yaml_aliases(text: str) -> None:
+    """
+    Refuse a YAML document that uses an alias.
+
+    A few hundred bytes of aliases, each doubling the last, stand for
+    gigabytes once anything walks them. A reading list never needs one, and
+    comicbox never writes one. Only the parser's events are read, so the
+    check itself costs one pass over the text.
+    """
+    try:
+        for event in YAML(typ="safe", pure=True).parse(text):
+            if isinstance(event, AliasEvent):
+                mark = event.start_mark
+                where = f" at line {mark.line + 1}" if mark is not None else ""
+                reason = f"YAML aliases are not read: *{event.anchor}{where}."
+                raise ReadingListFormatError(reason)
+    except YAMLError:
+        # Not YAML: the parse proper says why.
+        return

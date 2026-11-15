@@ -7,6 +7,7 @@ meaning, such as ``1`` read as ``"1"``, ``Event`` read as ``event`` or a
 list of tags read as a set, is not a change.
 """
 
+import reprlib
 from collections.abc import Collection, Iterator, Mapping
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -16,15 +17,26 @@ from typing import Any
 from comicbox.empty import is_empty
 
 _MAX_REPR = 60
+# Bounds the work of quoting a value as well as its text. A plain repr of a
+# list nested 200,000 deep takes seconds once the stack allows it to finish,
+# as make's raised stack limit does.
+_REPR = reprlib.Repr()
+_REPR.maxlevel = 3
+_REPR.maxdict = _REPR.maxlist = _REPR.maxtuple = _REPR.maxset = 6
+_REPR.maxstring = _REPR.maxother = _MAX_REPR
 _CDATA_KEY = "#text"
 _NO_IGNORE: frozenset[str] = frozenset()
 # Scalars compared by value rather than by their text.
 _VALUE_TYPES = (date, Decimal, int, float)
 
 
-def _repr(value: Any) -> str:
-    text = repr(value)
+def quote_value(value: Any) -> str:
+    """Quote a value for a warning, cut to a bounded length."""
+    text = _REPR.repr(value)
     return text if len(text) <= _MAX_REPR else text[: _MAX_REPR - 1] + "…"
+
+
+_repr = quote_value
 
 
 def _join(path: str, key: Any) -> str:

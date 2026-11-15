@@ -21,6 +21,7 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.identifiers import ID_KEY_KEY
+from comicbox.readinglists.changes import quote_value
 from comicbox.readinglists.formats.cbl.schema import (
     BOOK_TAG,
     BOOKS_TAG,
@@ -146,7 +147,8 @@ class CblTransform(ReadingListTransform):
                 source = id_source.value
             if source is None:
                 self.warnings.append(
-                    f"Book {position}: unknown database {name!r}; its ids are dropped."
+                    f"Book {position}: unknown database {quote_value(name)};"
+                    " its ids are dropped."
                 )
                 continue
             if series_key := database.get(SERIES_ATTR):
@@ -170,7 +172,9 @@ class CblTransform(ReadingListTransform):
         if number is not None and number >= 0:
             return number
         if number != UNKNOWN_NUMBER:
-            self.warnings.append(f"Book {position}: {attr[1:]} {text!r} dropped.")
+            self.warnings.append(
+                f"Book {position}: {attr[1:]} {quote_value(text)} dropped."
+            )
         return None
 
     def _read_numbers(

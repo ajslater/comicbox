@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Final
 from urllib.parse import urlsplit
 
 from comicbox.exceptions import OnlineLookupAbortedError, ReadingListFetchError
+from comicbox.readinglists.changes import quote_value
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -143,7 +144,10 @@ class _BoundedBody:
         self._deadline = time.monotonic() + DEADLINE_SECONDS
         encoding = response.headers.get(_CONTENT_ENCODING, "").strip().lower()
         if encoding not in _IDENTITY and encoding not in _WINDOW_BITS:
-            reason = f"{url}: sent in the {encoding!r} encoding, which comicbox does not read."
+            reason = (
+                f"{url}: sent in the {quote_value(encoding)} encoding,"
+                " which comicbox does not read."
+            )
             raise ReadingListFetchError(reason)
         self._inflater = None if encoding in _IDENTITY else _Inflater(url, encoding)
         self._body = bytearray()

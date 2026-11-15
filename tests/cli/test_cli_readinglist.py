@@ -554,3 +554,46 @@ def test_one_keyless_entry_is_counted_in_the_singular(
     )
     _, _, err = _run(capsys, "rl", "compare", str(keyless), str(COMMON_CBL))
     assert f"{keyless}: 1 entry has no key and matches nothing" in err
+
+
+def test_validate_refuses_yaml_aliases_in_one_line(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    path = tmp_path / "hostile.yaml"
+    path.write_text("a: &a [x, x]\nb: [*a, *a]\nreading_list:\n  name: n\n")
+
+    code, out, err = _run(capsys, "rl", "validate", str(path))
+
+    assert code == 1
+    assert "YAML aliases" in out
+    assert "Traceback" not in out + err
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"reading_list": ' + "[" * 200_000 + "]" * 200_000 + "}",
+        '{"reading_list": {"name": "x", "notes": '
+        + "[" * 200_000
+        + "]" * 200_000
+        + "}}",
+    ],
+    ids=["root", "notes"],
+)
+def test_validate_reports_deep_nesting_in_one_line(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path, text: str
+) -> None:
+    """
+    Never a RecursionError, whatever the stack allows the parser.
+
+    Under ``make``'s 64 MiB stack the JSON parses, and it was the schema
+    error's message, pretty-printing the value, that recursed.
+    """
+    path = tmp_path / "deep.json"
+    path.write_text(text)
+
+    code, out, err = _run(capsys, "rl", "validate", str(path))
+
+    assert code == 1
+    assert "✗" in out
+    assert "Traceback" not in out + err

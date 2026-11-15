@@ -62,6 +62,7 @@ from comicbox.readinglists.serialize import (
     load,
     loads,
     lost_fields,
+    readable_depth,
     resolve_format,
 )
 from comicbox.readinglists.session import ReadingListSession
@@ -236,15 +237,18 @@ def _validate_one(run: _Run, path: Path) -> None:
     text = as_text(path.read_bytes())
     fmt = resolve_format(text)  # Raises with the reason: syntax, or no list.
     if spec := fmt.value.validator_spec:
-        try:
-            build_validator(spec).validate(text)
-        except validation_failure_exceptions() as exc:
-            message = " ".join(str(exc).split("\n", 1)[0].split())
-            print_status(
-                run.out, path, ok=False, detail=f"{fmt.value.label}: {message}"
-            )
-            run.failed = True
-            return
+        # The validator's message pretty-prints the value it rejects, which
+        # recurses as deeply as the value nests.
+        with readable_depth():
+            try:
+                build_validator(spec).validate(text)
+            except validation_failure_exceptions() as exc:
+                message = " ".join(str(exc).split("\n", 1)[0].split())
+                print_status(
+                    run.out, path, ok=False, detail=f"{fmt.value.label}: {message}"
+                )
+                run.failed = True
+                return
     result = loads(text, fmt=fmt)
     entries = result.reading_list.get(ENTRIES_KEY) or ()
     detail = f"{fmt.value.label}, {len(entries)} entries"

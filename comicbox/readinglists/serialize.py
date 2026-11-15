@@ -1,7 +1,8 @@
 """Read and write reading lists in any registered format."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -16,7 +17,7 @@ from comicbox.formats.comicbox.schema import (
     STORE_DATE_KEY,
     YEAR_KEY,
 )
-from comicbox.readinglists.changes import describe_changes
+from comicbox.readinglists.changes import describe_changes, quote_value
 from comicbox.readinglists.losses import describe_losses
 from comicbox.readinglists.registry import (
     ReadingListFormats,
@@ -31,10 +32,22 @@ from comicbox.readinglists.schema import (
     EntrySchema,
     ReadingListYamlSchema,
 )
-from comicbox.readinglists.syntax import syntax_error
+from comicbox.readinglists.syntax import refuse_yaml_aliases, syntax_error
 
 # A year, or a year and month: a date that names no day.
 _PARTIAL_DATE_RE = re.compile(r"^(\d{4})(?:-(\d{1,2}))?$")
+_YAML_LEXER = "yaml"
+
+
+@contextmanager
+def readable_depth() -> Generator[None]:
+    """Turn nesting too deep for the parsers into a format error."""
+    try:
+        yield
+    except RecursionError:
+        reason = "The document is nested too deeply to read."
+        # From None: the recursion's own traceback is thousands of frames.
+        raise ReadingListFormatError(reason) from None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +97,7 @@ def _partial_dates(
         ):
             continue
         del result[key]
-        here = f"{prefix}.{DATE_KEY}.{key}: {value!r} is not a whole date"
+        here = f"{prefix}.{DATE_KEY}.{key}: {quote_value(value)} is not a whole date"
         if key == STORE_DATE_KEY:
             warnings.append(f"{here}; dropped")
             continue
@@ -105,7 +118,9 @@ def _load_entries(raw_entries: Any, warnings: list[str]) -> list[dict[str, Any]]
     if isinstance(raw_entries, Mapping):
         raw_entries = [raw_entries]
     if not isinstance(raw_entries, list | tuple):
-        warnings.append(f"{ENTRIES_KEY}: {raw_entries!r} is not a list; dropped")
+        warnings.append(
+            f"{ENTRIES_KEY}: {quote_value(raw_entries)} is not a list; dropped"
+        )
         return []
     schema = get_schema(EntrySchema)
     entries = []
@@ -114,7 +129,9 @@ def _load_entries(raw_entries: Any, warnings: list[str]) -> list[dict[str, Any]]
         if is_empty(raw_entry):
             continue
         if not isinstance(raw_entry, Mapping):
-            warnings.append(f"{prefix}: {raw_entry!r} is not an entry; dropped")
+            warnings.append(
+                f"{prefix}: {quote_value(raw_entry)} is not an entry; dropped"
+            )
             continue
         dated = _partial_dates(raw_entry, prefix, warnings)
         entry: dict[str, Any] = schema.load(dated)  # pyright: ignore[reportAssignmentType]
@@ -136,7 +153,7 @@ def load_model_with_warnings(
     raw = dict(unwrap(reading_list))
     raw_entries = raw.pop(ENTRIES_KEY, None)
     schema = get_schema(ReadingListYamlSchema, path=path)
-    with unlogged_drops():
+    with readable_depth(), unlogged_drops():
         loaded: dict[str, Any] = schema.load({READING_LIST_KEY: raw})  # pyright: ignore[reportAssignmentType]
         header = dict(loaded.get(READING_LIST_KEY) or {})
         warnings = list(describe_changes(raw, header))
@@ -155,13 +172,21 @@ def load_model(
 def resolve_format(
     text: str, fmt: ReadingListFormats | str | None = None
 ) -> ReadingListFormats:
-    """Name the format given, else detect it, else raise with the reason."""
-    resolved = get_format(fmt) if fmt else detect_format(text)
-    if resolved is None:
-        reason = (
-            syntax_error(text) or "Not a reading list in any format comicbox reads."
-        )
-        raise ReadingListFormatError(reason)
+    """
+    Name the format given, else detect it, else raise with the reason.
+
+    A YAML document that uses an alias is refused here, before anything
+    parses or validates it whole.
+    """
+    with readable_depth():
+        resolved = get_format(fmt) if fmt else detect_format(text)
+        if resolved is None:
+            reason = (
+                syntax_error(text) or "Not a reading list in any format comicbox reads."
+            )
+            raise ReadingListFormatError(reason)
+    if resolved.value.lexer == _YAML_LEXER:
+        refuse_yaml_aliases(text)
     return resolved
 
 
@@ -170,10 +195,11 @@ def _loads(
 ) -> ReadingListResult:
     resolved = resolve_format(text, fmt)
     transform = resolved.value.transform_class(path)
-    document = transform.parse(text)
-    reading_list, warnings = load_model_with_warnings(
-        transform.to_reading_list(document), path
-    )
+    with readable_depth():
+        document = transform.parse(text)
+        reading_list, warnings = load_model_with_warnings(
+            transform.to_reading_list(document), path
+        )
     if not reading_list:
         reason = "The document holds no reading list."
         raise ReadingListFormatError(reason)

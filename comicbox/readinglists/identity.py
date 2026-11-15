@@ -44,9 +44,11 @@ from comicbox.readinglists.schema import (
 # Cyrillic letters.
 _DIACRITICS_START = "\u0300"
 _DIACRITICS_END = "\u036f"
-# The online matcher's volume suffix rule: "Vol. 2", "(Volume 3)".
+# The online matcher's volume suffix rule: "Vol. 2", "(Volume 3)". Without
+# its leading whitespace run, which made a long run of spaces quadratic:
+# the normalizer collapses whitespace afterwards anyway.
 _VOLUME_SUFFIX_RE = re.compile(
-    r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
+    r"(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
 )
 
 # The first element of every key says which kind it is.
