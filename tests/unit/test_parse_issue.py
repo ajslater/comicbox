@@ -18,3 +18,19 @@ def test_parse_issue() -> None:
     for result, issue_list in ISSUES.items():
         for issue in issue_list:
             assert result == IssueField.parse_issue(issue)
+
+
+SPLITS = {
+    "4AU": ("4", "AU"),
+    "1.MU": ("1.", "MU"),
+    ".5": (".5", ""),
+    "3.0": ("3.0", ""),
+    "Annual": ("", "Annual"),
+    "": ("", ""),
+}
+
+
+def test_split_issue() -> None:
+    """The leading number and the suffix after it."""
+    for name, parts in SPLITS.items():
+        assert IssueField.split_issue(name) == parts

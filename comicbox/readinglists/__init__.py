@@ -11,7 +11,19 @@ from comicbox.exceptions import (
     ReadingListFormatError,
     SmartListError,
 )
+from comicbox.readinglists.arcs import (
+    arc_patch,
+    entry_from_comic,
+    reading_lists_from_comics,
+)
 from comicbox.readinglists.formats import ReadingListFormat
+from comicbox.readinglists.identity import (
+    EntryKey,
+    ParsedIssue,
+    entry_keys,
+    normalize_series,
+    parse_issue,
+)
 from comicbox.readinglists.registry import (
     ReadingListFormats,
     detect_format,
@@ -83,6 +95,8 @@ __all__ = (
     "START_YEAR_KEY",
     "TAGS_KEY",
     "VOLUME_KEY",
+    "EntryKey",
+    "ParsedIssue",
     "ReadingListError",
     "ReadingListFormat",
     "ReadingListFormatError",
@@ -90,10 +104,16 @@ __all__ = (
     "ReadingListResult",
     "SmartListError",
     "SourceKind",
+    "arc_patch",
     "detect_format",
     "dumps",
+    "entry_from_comic",
+    "entry_keys",
     "get_format",
     "load",
     "loads",
     "lost_fields",
+    "normalize_series",
+    "parse_issue",
+    "reading_lists_from_comics",
 )
