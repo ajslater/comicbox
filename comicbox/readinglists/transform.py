@@ -7,15 +7,13 @@ list of nested rows, so each format converts with builder functions, and
 the result is a reading list.
 """
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from pathlib import Path
-from types import MappingProxyType
 from typing import Any
 from xml.parsers.expat import ExpatError
 
 from ruamel.yaml.error import YAMLError
 
-from comicbox.empty import is_empty
 from comicbox.exceptions import ReadingListFormatError
 from comicbox.formats.base.schemas.base import BaseSchema
 from comicbox.formats.base.schemas.cache import get_schema
@@ -29,8 +27,6 @@ from comicbox.readinglists.schema import (
     ISSUE_KEY,
     NAME_KEY,
     NUMBER_KEY,
-    ORDERED_KEY,
-    PRIVATE_KEY,
     SERIES_KEY,
     ReadingListYamlSchema,
 )
@@ -40,17 +36,6 @@ from comicbox.readinglists.schema import (
 # xmltodict lets expat's through.
 _PARSE_ERRORS = (ValueError, YAMLError, ExpatError)
 _ENTRIES_PREFIX = f"{ENTRIES_KEY}."
-# Flags whose default a format loses nothing by dropping.
-_FLAG_DEFAULTS = MappingProxyType({ORDERED_KEY: True, PRIVATE_KEY: False})
-
-
-def _get_path(data: Any, keys: tuple[str, ...]) -> Any:
-    """Get a nested value, or None when any step is missing."""
-    for key in keys:
-        if not isinstance(data, Mapping):
-            return None
-        data = data.get(key)
-    return data
 
 
 def issue_id(entry: Mapping[str, Any], source: str) -> str:
@@ -78,18 +63,6 @@ def entry_issue_name(entry: Mapping[str, Any]) -> str:
     return f"{number}{issue.get(ISSUE_SUFFIX_KEY) or ''}".strip()
 
 
-def skipped_entries(positions: Iterable[int]) -> str:
-    """Name the entries a write has to leave out, by position."""
-    return f"{ENTRIES_KEY}[{', '.join(str(position) for position in positions)}]"
-
-
-def _is_used(keypath: str, value: Any) -> bool:
-    """Whether a value carries anything: not empty, and not a flag's default."""
-    if keypath in _FLAG_DEFAULTS and value == _FLAG_DEFAULTS[keypath]:
-        return False
-    return not is_empty(value)
-
-
 class ReadingListTransform:
     """
     Convert one format's document to and from the reading-list model.
@@ -100,9 +73,6 @@ class ReadingListTransform:
     """
 
     SCHEMA_CLASS: type[BaseSchema] = ReadingListYamlSchema
-    # Model keypaths this format cannot carry. Entry keys are prefixed with
-    # ``entries.``. ``losses`` reports the ones a list actually uses.
-    LOSSY_KEYS: frozenset[str] = frozenset()
 
     def __init__(self, path: Path | str | None = None) -> None:
         """Get the schema and start an empty warnings list."""
@@ -158,19 +128,7 @@ class ReadingListTransform:
         """Convert the model's inner mapping to a document for this format."""
         return {self.root_tag: dict(reading_list)}
 
-    @staticmethod
-    def _uses(reading_list: Mapping[str, Any], keypath: str) -> bool:
-        """Whether the list, or any of its entries, uses a keypath."""
-        if keypath.startswith(_ENTRIES_PREFIX):
-            keys = tuple(keypath.removeprefix(_ENTRIES_PREFIX).split("."))
-            entries = reading_list.get(ENTRIES_KEY) or ()
-            return any(_is_used(keypath, _get_path(entry, keys)) for entry in entries)
-        return _is_used(keypath, _get_path(reading_list, tuple(keypath.split("."))))
-
-    def losses(self, reading_list: Mapping[str, Any]) -> tuple[str, ...]:
-        """List the model keypaths writing this list in this format would drop."""
-        return tuple(
-            keypath
-            for keypath in sorted(self.LOSSY_KEYS)
-            if self._uses(reading_list, keypath)
-        )
+    def unwritable(self, reading_list: Mapping[str, Any]) -> tuple[int, ...]:
+        """List the positions, from 0, of entries this format cannot write."""
+        del reading_list
+        return ()

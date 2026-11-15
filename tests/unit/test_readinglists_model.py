@@ -232,3 +232,9 @@ def test_entry_dates_have_the_comic_date_fields() -> None:
     fields = set(DateSchema().fields)
     assert set(EntryDateSchema().fields) == fields
     assert set(JsonEntryDateSchema().fields) == fields
+
+
+@pytest.mark.parametrize("fmt", [None, 3, ""])
+def test_a_missing_format_is_a_format_error(fmt: Any) -> None:
+    with pytest.raises(ReadingListFormatError):
+        dumps(_reading_list(), fmt)

@@ -43,8 +43,17 @@ def _entry(**fields: Any) -> dict[str, Any]:
     }
 
 
+# A list json-cbl can carry: its file's UUID survives a round trip.
+_SOURCE = {"kind": "json-cbl", "key": "4f1c0d5e-8b3a-4e2f-9d6c-7a1b2c3d4e5f"}
+
+
 def _list(*entries: dict[str, Any], **header: Any) -> dict[str, Any]:
-    return {"name": "Civil War", ENTRIES_KEY: list(entries or [_entry()]), **header}
+    return {
+        "name": "Civil War",
+        "sources": [_SOURCE],
+        ENTRIES_KEY: list(entries or [_entry()]),
+        **header,
+    }
 
 
 def _written(reading_list: dict[str, Any]) -> dict[str, Any]:
@@ -226,11 +235,14 @@ def test_a_cbl_list_written_as_json_cbl() -> None:
     )
     issues = _written(reading_list)["issueList"]
     assert [issue["issueCoverDate"] for issue in issues] == ["2006-01-01"] * 3
+    # The year is written as a cover date, the volume as the start year, and
+    # the file source becomes the json-cbl one; the fourth is not written.
     assert lost_fields(reading_list, "json-cbl") == (
-        "entries.volume.number",
         "sources",
-        "entries[0, 1, 2].date.cover_date",
-        "entries[3]",
+        "entries.date.cover_date",
+        "entries.date.year",
+        "entries.volume.number",
+        "entries #4",
     )
 
 
@@ -245,7 +257,7 @@ def test_a_volume_that_is_a_year_is_the_start_year() -> None:
     entry = _entry(series={"name": "Civil War"}, volume={"number": 1})
     reading_list = _list(entry)
     assert _written(reading_list)["issueList"] == []
-    assert "entries[0]" in lost_fields(reading_list, "json-cbl")
+    assert lost_fields(reading_list, "json-cbl") == ("entries #1",)
 
 
 def test_an_id_without_its_series_id_is_left_out() -> None:
@@ -285,7 +297,7 @@ def test_the_uuid_is_kept() -> None:
 
 
 def test_a_missing_uuid_is_minted() -> None:
-    reading_list = _list()
+    reading_list = _list(sources=[])
     first = _written(reading_list)["fileDetails"]["UUID"]
     second = _written(reading_list)["fileDetails"]["UUID"]
     assert uuid.UUID(first).version == 4
@@ -322,3 +334,39 @@ def test_a_newer_major_version_warns() -> None:
 def test_private_and_unordered_are_lost() -> None:
     reading_list = _list(private=True, ordered=False)
     assert lost_fields(reading_list, "json-cbl") == ("ordered", "private")
+
+
+def test_tags_keep_their_case() -> None:
+    reading_list = _list(tags={"Crossover", "marvel"})
+    assert _written(reading_list)["listDetails"]["tags"] == ["Crossover", "marvel"]
+    assert lost_fields(reading_list, "json-cbl") == ()
+
+
+@pytest.mark.parametrize(
+    ("source", "lost"),
+    [
+        ({"kind": "json-cbl", "key": "k", "url": "https://a.example"}, ("sources",)),
+        (
+            {"kind": "json-cbl", "key": "k", "curator": "x", "curator_url": "ftp://a"},
+            ("sources",),
+        ),
+        ({"kind": "json-cbl", "key": "k", "curator": "mg"}, ()),
+    ],
+    ids=["source-url", "non-http-curator-url", "known-curator"],
+)
+def test_sources_json_cbl_cannot_carry(
+    source: dict[str, str], lost: tuple[str, ...]
+) -> None:
+    assert lost_fields(_list(sources=[source]), "json-cbl") == lost
+
+
+def test_a_whole_date_in_parts_is_named_as_it_changes() -> None:
+    """Year, month and day are written as a cover date: no guessing, still a change."""
+    entry = _entry(date={"year": 2006, "month": 8, "day": 3})
+    assert _written(_list(entry))["issueList"][0]["issueCoverDate"] == "2006-08-03"
+    assert lost_fields(_list(entry), "json-cbl") == (
+        "entries.date.cover_date",
+        "entries.date.day",
+        "entries.date.month",
+        "entries.date.year",
+    )

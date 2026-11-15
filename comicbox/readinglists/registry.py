@@ -59,11 +59,11 @@ def _build_token_map() -> MappingProxyType[str, ReadingListFormats]:
 _TOKEN_MAP = _build_token_map()
 
 
-def get_format(fmt: ReadingListFormats | str) -> ReadingListFormats:
+def get_format(fmt: ReadingListFormats | str | None) -> ReadingListFormats:
     """Resolve a format token such as ``yaml``, or pass a member through."""
     if isinstance(fmt, ReadingListFormats):
         return fmt
-    if member := _TOKEN_MAP.get(fmt.strip().lower()):
+    if isinstance(fmt, str) and (member := _TOKEN_MAP.get(fmt.strip().lower())):
         return member
     tokens = ", ".join(sorted(_TOKEN_MAP))
     reason = f"Unknown reading-list format {fmt!r}. Known formats: {tokens}."

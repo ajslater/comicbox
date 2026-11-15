@@ -17,6 +17,7 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.readinglists.changes import describe_changes
+from comicbox.readinglists.losses import describe_losses
 from comicbox.readinglists.registry import (
     ReadingListFormats,
     as_text,
@@ -207,6 +208,16 @@ def dumps(reading_list: Mapping[str, Any], fmt: ReadingListFormats | str) -> str
 def lost_fields(
     reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
 ) -> tuple[str, ...]:
-    """List the model keypaths this list uses that the format cannot carry."""
-    transform = get_format(fmt).value.transform_class()
-    return transform.losses(_model_for_write(reading_list))
+    """
+    Name what writing this list in a format and reading it back would change.
+
+    Exact: the list is written, read back and compared. Header keys such as
+    ``sources``, entry paths such as ``entries.date.cover_date``, and
+    ``entries #2, #5`` for entries the format cannot write at all.
+    """
+    resolved = get_format(fmt)
+    model = _model_for_write(reading_list)
+    transform = resolved.value.transform_class()
+    text = transform.render(transform.from_reading_list(model))
+    back = _loads(text, resolved, None).reading_list
+    return describe_losses(model, back, transform.unwritable(model))

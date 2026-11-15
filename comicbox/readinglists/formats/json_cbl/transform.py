@@ -56,7 +56,6 @@ from comicbox.readinglists.schema import (
     SOURCE_CURATOR_URL_KEY,
     SOURCE_KEY_KEY,
     SOURCE_KIND_KEY,
-    SOURCE_REVISION_KEY,
     SOURCE_URL_KEY,
     SourceKind,
 )
@@ -65,7 +64,6 @@ from comicbox.readinglists.transform import (
     entry_issue_name,
     issue_id,
     series_id,
-    skipped_entries,
 )
 
 if sys.version_info >= (3, 12):
@@ -183,10 +181,6 @@ def _cover_date(entry: Mapping[str, Any]) -> str:
     """Write the cover date, or the first day the year and month allow."""
     when = entry_date(entry)
     return when.isoformat() if when else ""
-
-
-def _has_cover_date(entry: Mapping[str, Any]) -> bool:
-    return bool((entry.get(model.DATE_KEY) or {}).get(comic.COVER_DATE_KEY))
 
 
 def _writable(entry: Mapping[str, Any]) -> bool:
@@ -358,9 +352,7 @@ class _Writer:
             NAME_KEY: reading_list.get(model.NAME_KEY) or "",
             DESCRIPTION_KEY: reading_list.get(model.DESCRIPTION_KEY),
             TYPE_KEY: _LIST_TYPES.get(reading_list.get(model.LIST_TYPE_KEY, "")),
-            TAGS_KEY: sorted(
-                {tag.lower() for tag in reading_list.get(model.TAGS_KEY) or ()}
-            ),
+            TAGS_KEY: sorted(reading_list.get(model.TAGS_KEY) or ()),
             RELATIONSHIPS_KEY: self._relationships(),
             SOURCE_KEY: self._sources(),
         }
@@ -398,110 +390,10 @@ class _Writer:
         }
 
 
-class _Losses:
-    """What a json-cbl write of a list drops, beyond the lossy keys."""
-
-    def __init__(self, reading_list: Mapping[str, Any]) -> None:
-        self._reading_list = reading_list
-        self._entries: Sequence[Mapping[str, Any]] = (
-            reading_list.get(model.ENTRIES_KEY) or ()
-        )
-
-    @staticmethod
-    def _entry_ids(entry: Mapping[str, Any]) -> Iterator[str]:
-        """Name an entry's ids of other databases, or without a series id."""
-        series_ids = (entry.get(model.SERIES_KEY) or {}).get(
-            model.IDENTIFIERS_KEY
-        ) or {}
-        issue_ids = entry.get(model.IDENTIFIERS_KEY) or {}
-        for source in set(series_ids) | set(issue_ids):
-            if (
-                source in _ID_NAMES
-                and series_id(entry, source)
-                and issue_id(entry, source)
-            ):
-                continue
-            if source in issue_ids:
-                yield f"{model.ENTRIES_KEY}.{model.IDENTIFIERS_KEY}.{source}"
-            if source in series_ids:
-                yield (
-                    f"{model.ENTRIES_KEY}.{model.SERIES_KEY}"
-                    f".{model.IDENTIFIERS_KEY}.{source}"
-                )
-
-    def ids(self) -> set[str]:
-        """Name ids of other databases, and ids without their series id."""
-        return {lost for entry in self._entries for lost in self._entry_ids(entry)}
-
-    @staticmethod
-    def _has_uuid(ref: Mapping[str, Any]) -> bool:
-        return bool(
-            ref.get(SOURCE_KIND_KEY) == SourceKind.JSON_CBL.value
-            and ref.get(SOURCE_KEY_KEY)
-        )
-
-    def header(self) -> list[str]:
-        """Name header values with no json-cbl form."""
-        reading_list = self._reading_list
-        lost = []
-        list_type = reading_list.get(model.LIST_TYPE_KEY)
-        if list_type and list_type not in _LIST_TYPES:
-            lost.append(model.LIST_TYPE_KEY)
-        lost.extend(
-            key
-            for key in (model.START_YEAR_KEY, model.END_YEAR_KEY)
-            if (year := reading_list.get(key)) is not None and not _in_range(year)
-        )
-        lost.extend(
-            key
-            for key in (model.PREVIOUS_KEY, model.NEXT_KEY)
-            if (ref := reading_list.get(key)) and not self._has_uuid(ref)
-        )
-        return lost
-
-    def sources(self) -> bool:
-        """Whether a source holds what json-cbl cannot: another kind, a revision."""
-        kinds = {SourceKind.JSON_CBL.value, SourceKind.METRON_LIST.value}
-        return any(
-            source.get(SOURCE_KIND_KEY) not in kinds or source.get(SOURCE_REVISION_KEY)
-            for source in self._reading_list.get(model.SOURCES_KEY) or ()
-        )
-
-    def entry_types(self) -> bool:
-        return any(
-            (entry_type := entry.get(model.ENTRY_TYPE_KEY))
-            and entry_type not in _ISSUE_TYPES_WRITE
-            for entry in self._entries
-        )
-
-    def guessed_dates(self) -> list[int]:
-        """Positions of written entries whose cover date is made from a year."""
-        return [
-            index
-            for index, entry in enumerate(self._entries)
-            if _writable(entry) and not _has_cover_date(entry)
-        ]
-
-    def skipped(self) -> list[int]:
-        return [
-            index for index, entry in enumerate(self._entries) if not _writable(entry)
-        ]
-
-
 class JsonCblTransform(ReadingListTransform):
     """json-cbl 1.0."""
 
     SCHEMA_CLASS = JsonCblSchema
-    LOSSY_KEYS = frozenset(
-        {
-            model.PRIVATE_KEY,
-            # A json-cbl list is ordered by definition.
-            model.ORDERED_KEY,
-            f"{model.ENTRIES_KEY}.{model.DATE_KEY}.{comic.STORE_DATE_KEY}",
-            f"{model.ENTRIES_KEY}.{model.VOLUME_KEY}.{model.NUMBER_KEY}",
-            f"{model.ENTRIES_KEY}.{model.NOTES_KEY}",
-        }
-    )
 
     @override
     def to_reading_list(self, data: Mapping[str, Any]) -> dict[str, Any]:
@@ -549,25 +441,9 @@ class JsonCblTransform(ReadingListTransform):
         }
 
     @override
-    def losses(self, reading_list: Mapping[str, Any]) -> tuple[str, ...]:
-        """
-        Add values with no json-cbl form, and entries it cannot write whole.
-
-        ``entries[positions].date.cover_date`` names entries whose cover date
-        has to be made from their year and month, a day json-cbl requires.
-        ``entries[positions]`` names entries it cannot write at all.
-        """
-        losses = _Losses(reading_list)
-        lost = [*super().losses(reading_list), *losses.header()]
-        if losses.sources():
-            lost.append(model.SOURCES_KEY)
-        if losses.entry_types():
-            lost.append(f"{model.ENTRIES_KEY}.{model.ENTRY_TYPE_KEY}")
-        lost.extend(sorted(losses.ids()))
-        if guessed := losses.guessed_dates():
-            lost.append(
-                f"{skipped_entries(guessed)}.{model.DATE_KEY}.{comic.COVER_DATE_KEY}"
-            )
-        if skipped := losses.skipped():
-            lost.append(skipped_entries(skipped))
-        return tuple(lost)
+    def unwritable(self, reading_list: Mapping[str, Any]) -> tuple[int, ...]:
+        """List the entries without a series, issue, start year or year."""
+        entries = reading_list.get(model.ENTRIES_KEY) or ()
+        return tuple(
+            index for index, entry in enumerate(entries) if not _writable(entry)
+        )

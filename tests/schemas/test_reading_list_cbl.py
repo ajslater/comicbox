@@ -169,28 +169,35 @@ def test_write_counts_the_books_it_writes() -> None:
     text = dumps(reading_list, "cbl")
     assert "<NumIssues>2</NumIssues>" in text
     assert 'Number="2"' in text
-    assert lost_fields(reading_list, "cbl") == ("entries[1]",)
+    # The second is not written; the third's number is written as its name.
+    assert lost_fields(reading_list, "cbl") == (
+        "sources",
+        "entries.issue.name",
+        "entries.issue.number",
+        "entries #2",
+    )
 
 
 def test_lost_fields_name_what_a_round_trip_drops() -> None:
     reading_list = load(READING_LISTS_DIR / "civil-war.yaml").reading_list
     lost = lost_fields(reading_list, "cbl")
-    assert set(lost) == {
+    assert lost == (
         "description",
         "end_year",
-        "entries.date.cover_date",
-        "entries.date.month",
-        "entries.date.store_date",
-        "entries.entry_type",
-        "entries.notes",
-        "entries.volume.number",
         "list_type",
         "next",
         "notes",
         "previous",
         "sources",
         "tags",
-    }
+        "entries.date.cover_date",
+        "entries.date.month",
+        "entries.date.store_date",
+        "entries.date.year",
+        "entries.entry_type",
+        "entries.notes",
+        "entries.volume.number",
+    )
     round_tripped = loads(dumps(reading_list, "cbl")).reading_list
     for key in ("description", "end_year", "list_type", "next", "previous", "tags"):
         assert key in reading_list
@@ -221,6 +228,7 @@ def test_other_databases_are_lost() -> None:
         ],
     }
     assert lost_fields(reading_list, "cbl") == (
+        "sources",
         "entries.identifiers.grandcomicsdatabase",
         "entries.series.identifiers.grandcomicsdatabase",
     )
@@ -241,6 +249,7 @@ def test_only_a_flag_off_its_default_is_lost(
     """CBL lists are reading orders and public; only the opposite is lost."""
     reading_list = {
         "name": "A",
+        "sources": [{"kind": "file"}],
         ENTRIES_KEY: [{"series": {"name": "A"}, "issue": {"name": "1"}}],
         **flags,
     }

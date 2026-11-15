@@ -109,7 +109,7 @@ def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
         str(COMMON_CBL),
     )
     assert code == 0
-    assert "lost: entries[0, 1, 2].date.cover_date" in err
+    assert "lost: entries.date.cover_date" in err
     result = load(tmp_path / "common.json")
     assert result.fmt.name == "JSON_CBL"
     assert len(result.reading_list["entries"]) == 3

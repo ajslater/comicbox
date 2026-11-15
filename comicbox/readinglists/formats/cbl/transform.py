@@ -17,10 +17,7 @@ from comicbox.enums.maps.identifiers import get_id_source_by_alias
 from comicbox.exceptions import SmartListError
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
-    DAY_KEY,
-    MONTH_KEY,
     SERIES_START_YEAR_KEY,
-    STORE_DATE_KEY,
     YEAR_KEY,
 )
 from comicbox.identifiers import ID_KEY_KEY
@@ -43,26 +40,16 @@ from comicbox.readinglists.formats.cbl.schema import (
 )
 from comicbox.readinglists.schema import (
     DATE_KEY,
-    DESCRIPTION_KEY,
-    END_YEAR_KEY,
     ENTRIES_KEY,
-    ENTRY_TYPE_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
-    LIST_TYPE_KEY,
     NAME_KEY,
-    NEXT_KEY,
-    NOTES_KEY,
     NUMBER_KEY,
-    ORDERED_KEY,
-    PREVIOUS_KEY,
-    PRIVATE_KEY,
     SERIES_KEY,
     SOURCE_CURATOR_KEY,
     SOURCE_KIND_KEY,
     SOURCES_KEY,
     START_YEAR_KEY,
-    TAGS_KEY,
     VOLUME_KEY,
     SourceKind,
 )
@@ -71,7 +58,6 @@ from comicbox.readinglists.transform import (
     entry_issue_name,
     issue_id,
     series_id,
-    skipped_entries,
 )
 
 if sys.version_info >= (3, 12):
@@ -133,27 +119,6 @@ class CblTransform(ReadingListTransform):
     """ComicRack ``.cbl``."""
 
     SCHEMA_CLASS = CblSchema
-    LOSSY_KEYS = frozenset(
-        {
-            DESCRIPTION_KEY,
-            LIST_TYPE_KEY,
-            END_YEAR_KEY,
-            PRIVATE_KEY,
-            PREVIOUS_KEY,
-            NEXT_KEY,
-            TAGS_KEY,
-            NOTES_KEY,
-            ORDERED_KEY,
-            f"{ENTRIES_KEY}.{ENTRY_TYPE_KEY}",
-            f"{ENTRIES_KEY}.{NOTES_KEY}",
-            # Only the year is written.
-            f"{ENTRIES_KEY}.{DATE_KEY}.{COVER_DATE_KEY}",
-            f"{ENTRIES_KEY}.{DATE_KEY}.{STORE_DATE_KEY}",
-            f"{ENTRIES_KEY}.{DATE_KEY}.{MONTH_KEY}",
-            f"{ENTRIES_KEY}.{DATE_KEY}.{DAY_KEY}",
-        }
-    )
-
     IGNORED_KEYS = _IGNORED_KEYS
 
     # Read
@@ -315,52 +280,10 @@ class CblTransform(ReadingListTransform):
 
     # Losses
 
-    @staticmethod
-    def _other_ids(reading_list: Mapping[str, Any]) -> set[str]:
-        """Name the ids of databases CBL has no place for."""
-        lost = set()
-        for entry in reading_list.get(ENTRIES_KEY) or ():
-            series_ids = (entry.get(SERIES_KEY) or {}).get(IDENTIFIERS_KEY) or {}
-            for source in set(series_ids) - set(_DATABASE_NAMES):
-                lost.add(f"{ENTRIES_KEY}.{SERIES_KEY}.{IDENTIFIERS_KEY}.{source}")
-            for source in set(entry.get(IDENTIFIERS_KEY) or {}) - set(_DATABASE_NAMES):
-                lost.add(f"{ENTRIES_KEY}.{IDENTIFIERS_KEY}.{source}")
-        return lost
-
-    @staticmethod
-    def _volume_lost(reading_list: Mapping[str, Any]) -> bool:
-        """Whether a volume number differs from the start year written over it."""
-        for entry in reading_list.get(ENTRIES_KEY) or ():
-            start_year = (entry.get(SERIES_KEY) or {}).get(SERIES_START_YEAR_KEY)
-            number = (entry.get(VOLUME_KEY) or {}).get(NUMBER_KEY)
-            if None not in (start_year, number) and start_year != number:
-                return True
-        return False
-
-    @staticmethod
-    def _sources_lost(reading_list: Mapping[str, Any]) -> bool:
-        """Whether the sources hold more than the one curator CBL writes."""
-        sources = reading_list.get(SOURCES_KEY) or ()
-        if len(sources) > 1:
-            return True
-        return any(
-            source.get(SOURCE_KIND_KEY) != SourceKind.FILE.value
-            or set(source) - {SOURCE_KIND_KEY, SOURCE_CURATOR_KEY}
-            for source in sources
-        )
-
     @override
-    def losses(self, reading_list: Mapping[str, Any]) -> tuple[str, ...]:
-        """Add other databases' ids, sources, overwritten volumes, skipped rows."""
-        lost = [*super().losses(reading_list), *sorted(self._other_ids(reading_list))]
-        if self._sources_lost(reading_list):
-            lost.append(SOURCES_KEY)
-        if self._volume_lost(reading_list):
-            lost.append(f"{ENTRIES_KEY}.{VOLUME_KEY}.{NUMBER_KEY}")
+    def unwritable(self, reading_list: Mapping[str, Any]) -> tuple[int, ...]:
+        """List the entries with no series name or issue: a Book needs both."""
         entries = reading_list.get(ENTRIES_KEY) or ()
-        unwritable = [
+        return tuple(
             index for index, entry in enumerate(entries) if not _writable(entry)
-        ]
-        if unwritable:
-            lost.append(skipped_entries(unwritable))
-        return tuple(lost)
+        )
