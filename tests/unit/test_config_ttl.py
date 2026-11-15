@@ -18,7 +18,11 @@ if TYPE_CHECKING:
 @pytest.fixture
 def warnings() -> Iterator[list[str]]:
     messages: list[str] = []
-    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    handler = logger.add(
+        lambda message: messages.append(message.rstrip("\n")),
+        level="WARNING",
+        format="{message}",
+    )
     yield messages
     logger.remove(handler)
 
@@ -54,3 +58,29 @@ def test_a_number_that_is_no_lifetime_warns_and_defaults(
     _config(tmp_path, f"  online:\n    cache:\n      ttl: {value}\n")
     assert get_config().online.cache.ttl == timedelta(days=7)
     assert any(message.startswith("unparsable cache.ttl") for message in warnings)
+
+
+_FORMS = "(use forms like 7d, 24h, 60m, or 0)"
+
+
+@pytest.mark.parametrize(
+    ("body", "message"),
+    [
+        (
+            "  online:\n    cache:\n      ttl: soon\n",
+            f"unparsable cache.ttl 'soon', defaulting to 7d {_FORMS}",
+        ),
+        (
+            "  readinglists:\n    catalog_ttl: soon\n",
+            f"unparsable readinglists.catalog_ttl 'soon', defaulting to 4h {_FORMS}",
+        ),
+    ],
+    ids=["cache", "catalog"],
+)
+def test_the_fallback_warning_names_the_default_as_the_config_does(
+    tmp_path: Path, warnings: list[str], body: str, message: str
+) -> None:
+    """It said "defaulting to 1w" after the lifetime parser was shared."""
+    _config(tmp_path, body)
+    get_config()
+    assert message in warnings

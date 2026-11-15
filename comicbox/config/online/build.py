@@ -114,10 +114,15 @@ def parse_ttl(
         return _unparsable_ttl(text, default, label)
 
 
+# The units a lifetime is spelled in, largest first. Not weeks: the config
+# writes 7d, and the warning said "defaulting to 7d" before this was shared.
+_TTL_SPELLING_UNITS = (("d", 86400), ("h", 3600), ("m", 60))
+
+
 def _format_ttl(ttl: timedelta) -> str:
     """Spell a lifetime as the config does: 7d, 4h, 30m, or seconds."""
     seconds = int(ttl.total_seconds())
-    for suffix, unit in sorted(_TTL_UNIT_SECONDS.items(), key=lambda item: -item[1]):
+    for suffix, unit in _TTL_SPELLING_UNITS:
         if seconds and seconds % unit == 0:
             return f"{seconds // unit}{suffix}"
     return str(seconds)
