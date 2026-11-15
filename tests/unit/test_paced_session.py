@@ -11,6 +11,7 @@ fail rather than the behavior quietly disappearing.
 
 from __future__ import annotations
 
+import contextvars
 import sys
 import threading
 from datetime import UTC, datetime
@@ -474,12 +475,12 @@ def test_endpoint_names(url: str, expected: str) -> None:
 # as it did before they existed.
 
 
-def _hooks() -> tuple[Any, Any]:
-    return paced_session._abort_check.get(), paced_session._page_observer.get()
+def _hooks() -> Any:
+    return paced_session._fetch_hooks.get()
 
 
 def test_the_hooks_are_unset_by_default() -> None:
-    assert _hooks() == (None, None)
+    assert _hooks() is None
 
 
 def test_without_hooks_a_paged_call_is_unchanged(gate: _RecordingGate) -> None:
@@ -500,7 +501,7 @@ def test_without_hooks_a_paged_call_is_unchanged(gate: _RecordingGate) -> None:
 
 
 def test_the_hooks_are_unset_after_the_block_even_on_error() -> None:
-    seen: list[tuple[Any, Any]] = []
+    seen: list[Any] = []
 
     def fail_inside() -> None:
         with fetch_hooks(abort=lambda: True, on_page=lambda _response: None):
@@ -511,29 +512,36 @@ def test_the_hooks_are_unset_after_the_block_even_on_error() -> None:
     with pytest.raises(RuntimeError):
         fail_inside()
 
-    assert seen[0] != (None, None)
-    assert _hooks() == (None, None)
+    assert seen[0] is not None
+    assert _hooks() is None
 
 
-def test_hooks_set_on_one_thread_do_not_reach_another(gate: _RecordingGate) -> None:
-    """A fetch cancelling on one thread leaves a tagging worker alone."""
+def test_hooks_do_not_reach_a_thread_that_inherits_them(
+    gate: _RecordingGate,
+) -> None:
+    """
+    A thread started inside a fetch, in a copy of its context, is not hooked.
+
+    Free-threaded builds start threads in their creator's context, and
+    ``Context.run`` does the same anywhere: a tagging call on such a thread
+    must not be cancelled by, or report pages to, a reading-list fetch.
+    """
     session, adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
-    hooks_set = threading.Event()
+    pages: list[Any] = []
     results: list[Any] = []
 
     def tag() -> None:
-        hooks_set.wait()
+        assert _hooks() is not None  # It did inherit them.
         results.append(session.issues_list(params={"series_id": 7}))
 
-    # Started before the hooks are set, so it cannot inherit them.
-    worker = threading.Thread(target=tag)
-    worker.start()
-    with fetch_hooks(abort=lambda: True):
-        hooks_set.set()
+    with fetch_hooks(abort=lambda: True, on_page=pages.append):
+        worker = threading.Thread(target=contextvars.copy_context().run, args=(tag,))
+        worker.start()
         worker.join()
 
     assert [issue.id for issue in results[0]] == [1]
     assert len(adapter.urls) == 1
+    assert pages == []
 
 
 def test_the_abort_check_stops_a_call_before_its_send(gate: _RecordingGate) -> None:

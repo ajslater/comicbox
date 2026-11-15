@@ -63,9 +63,11 @@ ask U7.
 
 from __future__ import annotations
 
+import threading
 import time
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -143,13 +145,27 @@ def endpoint_from_url(url: str) -> str:
 # Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
 # mokkari fetches every page of a list inside that one blocking call, and it
 # is synchronous, so its rate-limiter and response hooks run on the calling
-# thread and see these. Both default to None: tagging neither cancels inside
-# a call nor counts pages, and behaves exactly as it did without them.
-_abort_check: ContextVar[Callable[[], bool] | None] = ContextVar(
-    "comicbox_metron_abort_check", default=None
-)
-_page_observer: ContextVar[Callable[[requests.Response], None] | None] = ContextVar(
-    "comicbox_metron_page_observer", default=None
+# thread and see these. Unset by default: tagging neither cancels inside a
+# call nor counts pages, and behaves exactly as it did without them.
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchHooks:
+    """The hooks one fetch set, and the thread they belong to."""
+
+    thread: int
+    abort: Callable[[], bool] | None
+    on_page: Callable[[requests.Response], None] | None
+
+    def here(self) -> bool:
+        """Whether this is the thread that set them."""
+        # A thread can inherit a context: a free-threaded build's threads
+        # do, as does one run with Context.run. The hooks are not its own.
+        return threading.get_ident() == self.thread
+
+
+_fetch_hooks: ContextVar[_FetchHooks | None] = ContextVar(
+    "comicbox_metron_fetch_hooks", default=None
 )
 
 
@@ -160,25 +176,30 @@ def fetch_hooks(
     on_page: Callable[[requests.Response], None] | None = None,
 ) -> Generator[None]:
     """
-    Watch the mokkari calls made inside the block, on this thread only.
+    Watch the mokkari calls this thread makes inside the block.
 
     ``abort`` is asked before each send: when it returns true, the call
     raises ``OnlineLookupAbortedError``. A cancel therefore waits for at
     most the one gate wait under way. ``on_page`` sees every raw response,
     after the gate has; it must not raise, and a raise is logged and
-    dropped like any other observer failure.
+    dropped like any other observer failure. Other threads never see
+    them, even one that inherits this context.
     """
-    abort_token = _abort_check.set(abort)
-    page_token = _page_observer.set(on_page)
+    token = _fetch_hooks.set(_FetchHooks(threading.get_ident(), abort, on_page))
     try:
         yield
     finally:
-        _page_observer.reset(page_token)
-        _abort_check.reset(abort_token)
+        _fetch_hooks.reset(token)
+
+
+def _here() -> _FetchHooks | None:
+    """Get the hooks this thread set, if any."""
+    hooks = _fetch_hooks.get()
+    return hooks if hooks is not None and hooks.here() else None
 
 
 def _abort_if_asked() -> None:
-    if (check := _abort_check.get()) is not None and check():
+    if (hooks := _here()) is not None and hooks.abort is not None and hooks.abort():
         reason = "Metron fetch cancelled."
         raise OnlineLookupAbortedError(reason)
 
@@ -283,8 +304,8 @@ def install_response_observer(session: Session, gate: RateGate) -> None:
         # so nothing in this hook may raise.
         try:
             _feed_gate(gate, response)
-            if (observer := _page_observer.get()) is not None:
-                observer(response)
+            if (hooks := _here()) is not None and hooks.on_page is not None:
+                hooks.on_page(response)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"metron: rate-limit observation failed: {exc!r}")
 
