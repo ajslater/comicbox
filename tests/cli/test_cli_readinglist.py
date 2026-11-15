@@ -523,3 +523,34 @@ def test_keyless_entries_are_counted(
         code, _, err = _run(capsys, "rl", action, str(keyless), str(COMMON_CBL))
         assert code == 0
         assert f"{keyless}: 2 entries have no key and match nothing" in err
+
+
+def test_every_action_reports_what_a_read_dropped(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    bad_year = tmp_path / "bad-year.cbl"
+    bad_year.write_text(
+        "<ReadingList><Name>A</Name><StartYear>abc</StartYear><Books>"
+        "<Book Series='Batman' Number='1' Volume='1940' /></Books>"
+        "<Matchers /></ReadingList>"
+    )
+    for argv in (
+        ("combine", str(bad_year), str(COMMON_CBL)),
+        ("compare", str(bad_year), str(COMMON_CBL)),
+        ("convert", "-o", str(tmp_path / "out"), str(bad_year)),
+    ):
+        code, _, err = _run(capsys, "rl", *argv)
+        assert code == 0
+        assert f"{bad_year}: warning: ReadingList.StartYear: 'abc' dropped" in err
+
+
+def test_one_keyless_entry_is_counted_in_the_singular(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    keyless = tmp_path / "keyless.yaml"
+    keyless.write_text(
+        "reading_list:\n  name: A\n  entries:\n"
+        "    - series: {name: Civil War}\n      issue: {name: '1'}\n"
+    )
+    _, _, err = _run(capsys, "rl", "compare", str(keyless), str(COMMON_CBL))
+    assert f"{keyless}: 1 entry has no key and matches nothing" in err

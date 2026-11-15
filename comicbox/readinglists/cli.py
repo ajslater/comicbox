@@ -149,12 +149,14 @@ class _Run:
         self.failed = True
 
     def load(self, path: Path) -> ReadingListResult | None:
-        """Read a list, or report why not and carry on."""
+        """Read a list and report what the read dropped, or why it failed."""
         try:
-            return load(path)
+            result = load(path)
         except (OSError, ReadingListError) as exc:
             self.fail(path, exc)
             return None
+        print_messages(self.err, result.warnings, f"{path}: warning")
+        return result
 
     def refuse(self, problems: Sequence[tuple[Path, str]]) -> bool:
         """Report every destination problem; whether there were any."""
@@ -182,7 +184,12 @@ class _Run:
         """Say how many entries of each input can match nothing."""
         for path, reading_list in zip(paths, lists, strict=True):
             if count := _no_key_count(reading_list):
-                message = f"{path}: {count} entries have no key and match nothing"
+                what = (
+                    "entry has no key and matches"
+                    if count == 1
+                    else "entries have no key and match"
+                )
+                message = f"{path}: {count} {what} nothing"
                 print_messages(self.err, (message,), "warning")
 
     @property
@@ -195,7 +202,6 @@ def _print(run: _Run) -> None:
     for path in run.args.files:
         if result := run.load(path):
             print_reading_list(run.out, path, result)
-            print_messages(run.err, result.warnings, f"{path}: warning")
 
 
 def _validate_one(run: _Run, path: Path) -> None:
