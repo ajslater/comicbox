@@ -108,6 +108,15 @@ class ConfigurationError(ComicboxError, ValueError):
     """
 
 
+class ComicNotFoundError(ComicboxError, FileNotFoundError):
+    """
+    A comic path names nothing on disk.
+
+    Also a FileNotFoundError, which is what this raised before this class
+    existed, so callers catching that keep working.
+    """
+
+
 class MetadataError(ComicboxError):
     """Metadata could not be loaded or routed through the source pipeline."""
 

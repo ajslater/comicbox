@@ -204,3 +204,31 @@ def test_an_unexpected_failure_keeps_its_traceback(
     assert code == 1
     assert "Traceback" in logged
     assert "RuntimeError: boom" in logged
+
+
+@pytest.mark.parametrize("jobs", ["1", "2"])
+def test_a_missing_path_fails_once_and_the_rest_still_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, jobs: str
+) -> None:
+    """A path naming nothing was logged twice and the run exited 0."""
+    good, _corrupt = _batch(tmp_path)
+    missing = tmp_path / "no_such.cbz"
+
+    code, out, logged = _logged(
+        monkeypatch, "-j", jobs, str(missing), *(str(p) for p in good)
+    )
+
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert logged.count(f"{missing} does not exist.") == 1
+    assert "Traceback" not in logged
+    assert logged.count("No action performed") == len(good)
+
+
+def test_a_lone_missing_path_exits_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code, out, logged = _logged(monkeypatch, "-j", "2", str(tmp_path / "no.cbz"))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert "No files to process" not in logged

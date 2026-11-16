@@ -83,6 +83,7 @@
 - `--rename` changes the case of a name on a case-insensitive disk, where it
   said "Renamed" and changed nothing, and says nothing for a comic already at
   its name.
+- A path that does not exist fails the run, logged once, where it exited 0.
 - An environment variable for a list setting reads a plain string as its CLI
   option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
 - ComicInfo keeps every story arc's number when another arc has none.

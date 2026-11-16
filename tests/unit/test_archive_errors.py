@@ -125,6 +125,7 @@ def test_directory_path_raises_is_a_directory(tmp_path: Path) -> None:
 
 
 def test_nonexistent_path_raises_file_not_found(tmp_path: Path) -> None:
-    """A nonexistent path is rejected with FileNotFoundError."""
-    with pytest.raises(FileNotFoundError):
+    """A nonexistent path is rejected with FileNotFoundError, as a ComicboxError."""
+    with pytest.raises(FileNotFoundError) as exc_info:
         Comicbox(tmp_path / "does-not-exist.cbz")
+    assert isinstance(exc_info.value, ComicboxError)
