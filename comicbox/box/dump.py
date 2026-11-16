@@ -12,6 +12,7 @@ from comicbox.box.pages import ComicboxPages
 from comicbox.exceptions import UnparsedTagFileError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import EXT_KEY
+from comicbox.formats.pdf.schema import MuPDFSubSchema
 from comicbox.formats.sources import MetadataSources
 
 ARCHIVE_FORMATS = frozenset(
@@ -21,6 +22,11 @@ ARCHIVE_FORMATS = frozenset(
 # The formats a write puts into an archive: its tag files, its comment, and a
 # PDF's own metadata.
 _WRITABLE_FORMATS = frozenset({*ARCHIVE_FORMATS, MetadataFormats.PDF})
+# Every field -w pdf maps, empty: what a PDF write that no longer has it sets.
+# A field it does not map, such as the creation date, is never sent.
+_CLEARED_PDF_METADATA = MappingProxyType(
+    {field.data_key or name: "" for name, field in MuPDFSubSchema().fields.items()}
+)
 _UNPARSED = "it could not be parsed"
 # Tag files are written in the order the formats are declared.
 _FORMAT_ORDER = MappingProxyType(
@@ -285,9 +291,24 @@ class ComicboxDump(ComicboxPages):
             for fmt in sorted(formats, key=_FORMAT_ORDER.__getitem__):
                 self._dump_format_to_archive(fmt, files, pdf_md, comment)
 
+        if self._writes_pdf_metadata(formats):
+            # pymupdf leaves a key it is not given: an empty value clears it.
+            pdf_md = {**_CLEARED_PDF_METADATA, **pdf_md}
         # write to the archive, then re-seed caches from the new bytes.
         self.write_archive_metadata(files, comment["c"], pdf_md)
         self._reset_caches_after_write()
+
+    def _writes_pdf_metadata(self, formats: frozenset[MetadataFormats]) -> bool:
+        """
+        Tell whether this write sets a PDF's own metadata in place.
+
+        It does under -w pdf, and under keep for a PDF that has some; and
+        --delete-all-tags clears it. A field it maps that the metadata no
+        longer has is then cleared, as a zip write drops a tag file.
+        """
+        if not self._archive_is_pdf or self._config.convert.cbz:
+            return False
+        return self._config.write.delete_all_tags or MetadataFormats.PDF in formats
 
     def _reset_caches_after_write(self) -> None:
         """

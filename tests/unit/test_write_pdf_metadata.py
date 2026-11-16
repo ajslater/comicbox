@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import shutil
+from argparse import Namespace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -11,6 +12,7 @@ import pymupdf
 import pytest
 
 from comicbox.box import Comicbox
+from comicbox.config import get_config
 from comicbox.write import write_metadata
 from tests.const import CIX_PDF_SOURCE_PATH, PDF_SOURCE_PATH
 
@@ -115,3 +117,82 @@ def test_what_w_pdf_writes_is_what_reads_back(
         assert (_CIX in names) is has_cix
         if has_cix:
             assert b"Second Title" in doc.embfile_get(_CIX)
+
+
+def _custom_key(path: Path, value: str | None = None) -> str:
+    """Set, or read, a key in the PDF's Info dictionary that -w pdf does not map."""
+    with pymupdf.open(path) as doc:
+        _, info = doc.xref_get_key(-1, "Info")
+        xref = int(info.split()[0])
+        if value is not None:
+            doc.xref_set_key(xref, "ScannerNote", pymupdf.get_pdf_str(value))
+            doc.saveIncr()
+        return doc.xref_get_key(xref, "ScannerNote")[1]
+
+
+def _info(path: Path) -> dict[str, str]:
+    with pymupdf.open(path) as doc:
+        return dict(doc.metadata or {})
+
+
+def test_w_pdf_clears_a_field_the_metadata_no_longer_has(tmp_path: Path) -> None:
+    """-w pdf -D tags,genres,credits,scan_info left all four in the PDF (D4)."""
+    path = tmp_path / "plain.pdf"
+    shutil.copy(PDF_SOURCE_PATH, path)
+    _custom_key(path, "kept")
+    before = _info(path)
+
+    result = write_metadata(
+        path,
+        {"title": "New Title"},
+        formats=["PDF"],
+        delete_keys=["tags", "genres", "credits", "scan_info"],
+    )
+
+    assert result.written, result.error
+    after = _info(path)
+    assert after["title"] == "New Title"
+    assert {
+        key: after[key] for key in ("keywords", "subject", "author", "creator")
+    } == {
+        "keywords": "",
+        "subject": "",
+        "author": "",
+        "creator": "",
+    }
+    assert after["creationDate"] == before["creationDate"]
+    assert after["trapped"] == before["trapped"]
+    assert _custom_key(path) == "kept"
+
+
+def test_delete_all_tags_clears_what_w_pdf_maps(tmp_path: Path) -> None:
+    """It left them, before this work too (D4)."""
+    path = tmp_path / "plain.pdf"
+    shutil.copy(PDF_SOURCE_PATH, path)
+    _custom_key(path, "kept")
+    before = _info(path)
+
+    result = write_metadata(
+        path,
+        {"title": "Ignored"},
+        formats=["PDF"],
+        base_config=get_config(
+            Namespace(comicbox=Namespace(**{"write.delete_all_tags": True}))
+        ),
+    )
+
+    assert result.written, result.error
+    after = _info(path)
+    mapped = (
+        "title",
+        "author",
+        "subject",
+        "keywords",
+        "creator",
+        "producer",
+        "modDate",
+    )
+    assert {key: after[key] for key in mapped} == dict.fromkeys(mapped, "")
+    assert after["creationDate"] == before["creationDate"]
+    assert after["trapped"] == before["trapped"]
+    assert _custom_key(path) == "kept"
