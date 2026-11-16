@@ -28,6 +28,9 @@ as a standalone command line tool for organizing a comic library.
   translates metadata between formats.
 - **Extracts images** — pulls cover art or arbitrary page ranges out of any
   supported archive.
+- **Works with reading lists** — reads, converts and combines ComicRack CBL,
+  json-cbl and its own lists, fetches them from Metron, Comic Vine and the
+  DieselTech catalog, and tags your comics with a list's story arc.
 - **Is scriptable and embeddable** — a rich CLI, a Python API, and published
   [schemas](https://comicbox.readthedocs.io/schema/) for every format.
 
@@ -249,6 +252,11 @@ paths, e.g. `-D series,reprints.0.series`.
   before its pages, as some other tools write them, is written once on a copy
   that then replaces it, every other member kept as it was and the tags moved
   last, and patched in place after that.
+- `-w` removes every tag file it does not name and a ComicBookInfo comment; a
+  free-text archive comment, such as a scanner's note, stays unless `-w cbi`
+  writes ComicBookInfo in its place. In a PDF, `-w` removes the embedded tag
+  files it does not name, as in a zip, and rewrites the PDF's own metadata only
+  for `pdf` or `keep`. `--delete-all-tags` clears all of these.
 - A write that fails while comicbox is running leaves the comic as it was.
 - A process killed in the middle of a re-tag can leave the tag files damaged;
   the pages are never touched.
@@ -265,16 +273,27 @@ paths, e.g. `-D series,reprints.0.series`.
 ### Reading Lists
 
 `comicbox readinglist`, or `comicbox rl`, reads, converts, combines and compares
-reading lists: ComicRack `.cbl`, json-cbl, and comicbox YAML and JSON.
+reading lists: ComicRack `.cbl`, json-cbl, and comicbox YAML and JSON. It
+fetches lists from Metron, Comic Vine story arcs, the DieselTech catalog and
+URLs, and tags the comics a list matches with its story arc.
 
 ```sh
 comicbox rl print "Civil War.cbl"
 comicbox rl convert --to json-cbl "Civil War.cbl"
 comicbox rl combine -o civil-war.yaml cbro.cbl locg.cbl
+
+# Find a list online and fetch it.
+comicbox rl search metron civil war
+comicbox rl fetch metron:123 -o civil-war.yaml
+
+# See which of its issues a directory has, then tag them with its arc: a dry
+# run until --apply.
+comicbox rl match civil-war.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
 ```
 
 See [Reading Lists](https://comicbox.readthedocs.io/reading-lists/) for the
-formats, what combining does, and the Python API.
+formats, the online sources, what combining and matching do, and the Python API.
 
 ## 🛠 API
 
@@ -323,10 +342,11 @@ print(dest.destination, dest.converts, dest.occupied)
 
 Every operational error these APIs raise derives from
 `comicbox.exceptions.ComicboxError` — `ArchiveError`, `ArchiveWriteError`,
-`DestinationOccupiedError`, `MetadataError`, `ExportError`,
-`WriteValidationError`, `OnlineConfigurationError`, `OnlineLookupAbortedError`,
-and `UnsupportedArchiveTypeError` — so consumers can `except ComicboxError`
-without swallowing unrelated programming errors.
+`DestinationOccupiedError`, `UnwritableFormatError`, `ComicNotFoundError`,
+`ConfigurationError`, `MetadataError`, `ExportError`, `WriteValidationError`,
+`OnlineConfigurationError`, `OnlineLookupAbortedError`, `ReadingListError`, and
+`UnsupportedArchiveTypeError` — so consumers can `except ComicboxError` without
+swallowing unrelated programming errors.
 
 ## ⚙️ Configuration
 
@@ -336,7 +356,7 @@ optional config file, in that order of precedence.
 - **Defaults** live in
   [`config_default.yaml`](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml),
   which also documents the nested config groups (`general`, `read`, `write`,
-  `convert`, `compute`, and `online`).
+  `print`, `convert`, `compute`, `online`, and `readinglists`).
 - **Config file** — point at one with `-c PATH`, or place it at
   `~/.config/comicbox/config.yaml`.
 - **Environment variables** are prefixed with `COMICBOX_`, and name their config
@@ -402,6 +422,7 @@ its own:
 
 - [News / changelog](NEWS.md)
 - [HTML docs](https://comicbox.readthedocs.io)
+- [Reading lists](https://comicbox.readthedocs.io/reading-lists/)
 - [Metadata schemas](https://comicbox.readthedocs.io/schema/)
 - [Tag translation table](https://comicbox.readthedocs.io/TAGS/)
 

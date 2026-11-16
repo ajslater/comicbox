@@ -38,6 +38,7 @@ from comicbox.readinglists.serialize import (
 )
 
 _UNSAFE_FILENAME_RE = re.compile(r'[\x00-\x1f/\\:*?"<>|]+')
+_LIST_FILES = "Reading list files: .cbl, json-cbl, or comicbox YAML or JSON."
 
 
 def _print(run: Run) -> None:
@@ -175,27 +176,37 @@ def _from_arcs(run: Run) -> None:
 def add_file_actions(actions: Any) -> None:
     """Add the actions on list files to the parser's subcommands."""
     sub = actions.add_parser("print", help="Print each list as a table.")
-    sub.add_argument("files", nargs="+", type=Path, metavar="FILE")
+    sub.add_argument("files", nargs="+", type=Path, metavar="FILE", help=_LIST_FILES)
     sub = actions.add_parser("validate", help="Check each file against its format.")
-    sub.add_argument("files", nargs="+", type=Path, metavar="FILE")
+    sub.add_argument("files", nargs="+", type=Path, metavar="FILE", help=_LIST_FILES)
     sub = actions.add_parser("convert", help="Write each list in another format.")
     add_write_options(sub, "DIR", "Write here, not beside each input.")
-    sub.add_argument("files", nargs="+", type=Path, metavar="FILE")
+    sub.add_argument("files", nargs="+", type=Path, metavar="FILE", help=_LIST_FILES)
     sub = actions.add_parser(
         "combine", help="Combine lists of one reading order, primary first."
     )
     add_write_options(sub, "FILE", "Write here, not to stdout.")
-    sub.add_argument("primary", type=Path, metavar="PRIMARY")
-    sub.add_argument("others", nargs="+", type=Path, metavar="OTHER")
+    sub.add_argument(
+        "primary", type=Path, metavar="PRIMARY", help="The list whose order is kept."
+    )
+    sub.add_argument(
+        "others",
+        nargs="+",
+        type=Path,
+        metavar="OTHER",
+        help="Lists of the same reading order, in rank order.",
+    )
     sub = actions.add_parser("compare", help="Say whether two lists are the same list.")
-    sub.add_argument("a", type=Path, metavar="A")
-    sub.add_argument("b", type=Path, metavar="B")
+    sub.add_argument("a", type=Path, metavar="A", help="A reading list file.")
+    sub.add_argument("b", type=Path, metavar="B", help="Another reading list file.")
     sub = actions.add_parser(
         "from-arcs",
         help="Write one list per story arc the comics in DIR are tagged with.",
     )
     add_write_options(sub, "DIR", "Write here, not the current directory.")
-    sub.add_argument("directory", type=Path, metavar="DIR")
+    sub.add_argument(
+        "directory", type=Path, metavar="DIR", help="Comics, searched deeply."
+    )
 
 
 ACTIONS: MappingProxyType[str, Callable[[Run], None]] = MappingProxyType(

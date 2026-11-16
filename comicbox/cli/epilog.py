@@ -247,9 +247,12 @@ _READING_LIST_MODE = Styled(
   [cyan]comicbox readinglist[/cyan] ACTION ...   or   [cyan]comicbox rl[/cyan] ACTION ...
 
 Reads, converts, combines and compares reading lists: ComicRack .cbl,
-json-cbl, and comicbox YAML and JSON. Actions: [cyan]print[/cyan], [cyan]validate[/cyan],
-[cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan] and [cyan]from-arcs[/cyan].
-[cyan]comicbox rl --help[/cyan] lists them.
+json-cbl, and comicbox YAML and JSON. Fetches them from Metron, Comic Vine
+story arcs, the DieselTech catalog and URLs, and tags the comics a list
+matches with its story arc.
+
+Actions: [cyan]print[/cyan], [cyan]validate[/cyan], [cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan], [cyan]from-arcs[/cyan],
+[cyan]search[/cyan], [cyan]fetch[/cyan], [cyan]match[/cyan] and [cyan]write-arcs[/cyan]. [cyan]comicbox rl --help[/cyan] lists them.
 
 A comic file named [green]readinglist[/green] or [green]rl[/green] has to be given as [green]./readinglist[/green] or [green]./rl[/green].
 """,

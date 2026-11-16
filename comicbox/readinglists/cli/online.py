@@ -234,7 +234,8 @@ def add_online_actions(actions: Any) -> None:
         help="Fetch a list from Metron, Comic Vine, the catalog or a URL.",
         description=(
             "Fetch metron:ID (a Metron reading list), metron-arc:ID (a Metron"
-            " story arc), comicvine-arc:ID (a Comic Vine story arc),"
+            " story arc), comicvine-arc:ID (a Comic Vine story arc; 4045-ID,"
+            " as its URLs spell it, works too),"
             " catalog:PATH (a DieselTech list) or an http(s) URL, and write"
             " it, to stdout without -o. Metron needs an API token and Comic"
             " Vine an API key."

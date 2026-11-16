@@ -268,8 +268,12 @@ def _add_write_group(parser: ArgumentParser) -> None:
         help=(
             "Write comic metadata formats back to the archive, removing every other tag"
             " file, unless 'keep' is among them: '-w keep' writes back the formats the"
-            " comic has, '-w cix,keep' adds ComicInfo to them. cbt and cbr files are always"
-            " exported to a cbz file. Format keys listed below."
+            " comic has, '-w cix,keep' adds ComicInfo to them. A free-text archive"
+            " comment, such as a scanner's note, is kept unless cbi is written in its"
+            " place. A format the archive can't"
+            " hold, such as pdf in a cbz, is skipped with a warning, and naming only"
+            " such formats is refused. cbr, cbt and cb7 files are always converted to"
+            " a cbz file. Format keys listed below."
         ),
     )
     group.add_argument(
@@ -312,7 +316,10 @@ def _add_write_group(parser: ArgumentParser) -> None:
         action="store_true",
         default=None,
         dest="write.delete_all_tags",
-        help="Delete all tags from the archive. Overrides --write.",
+        help=(
+            "Delete all tags from the archive: every tag file, the archive comment, and"
+            " a PDF's own metadata. Overrides --write."
+        ),
     )
 
 
@@ -353,8 +360,8 @@ def _add_print_group(parser: ArgumentParser) -> None:
         dest="print.validate",
         help=(
             "Validate formats against schema if available. Schemas like ComicInfo enforce a "
-            "strict tag order. Schemas available at "
-            "https://github.com/ajslater/comicbox/tree/main/schemas"
+            "strict tag order. Schema references at "
+            "https://comicbox.readthedocs.io/schema/"
         ),
     )
 
@@ -368,8 +375,10 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         default=None,
         dest="convert.cbz",
         help=(
-            "Export the archive to CBZ format and rewrite all metadata formats found. "
-            "When converting PDFs, by default a pixmap is taken of the page. "
+            "Export the archive to CBZ format. Without [cyan]--write[/cyan] it writes "
+            "back the tag formats the comic has; a PDF with no embedded tag file "
+            "gets ComicInfo. "
+            "When converting PDFs, by default each page is rendered to a jpeg. "
             "Try [cyan]--pdf-pages image[/cyan] if the PDF is a comic with only one big "
             "image per page."
         ),
