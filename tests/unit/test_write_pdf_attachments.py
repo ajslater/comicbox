@@ -232,3 +232,33 @@ def test_converting_a_pdf_with_an_attachment_that_would_be_lost_is_refused(
     assert path.read_bytes() == original
     assert not path.with_suffix(".cbz").exists()
     assert {p.name for p in tmp_path.iterdir()} == {"comic.pdf"}
+
+
+@pytest.mark.parametrize(
+    ("name", "pages"),
+    [("1.jpeg", "pixmap_jpeg"), ("1.pdf", "pdf")],
+    ids=["jpeg pages", "pdf pages"],
+)
+def test_converting_a_pdf_whose_attachment_takes_a_page_name_is_refused(
+    tmp_path: Path, name: str, pages: str
+) -> None:
+    """E6: D8 refused "1" and let "1.jpeg" through, which collides with page 1."""
+    path = tmp_path / "comic.pdf"
+    shutil.copy(CIX_PDF_SOURCE_PATH, path)
+    with pymupdf.open(path) as doc:
+        doc.embfile_add(name, b"an attachment")
+        doc.saveIncr()
+    original = path.read_bytes()
+
+    result = write_metadata(
+        path,
+        {"summary": "New"},
+        formats=["COMIC_INFO"],
+        base_config=_config(**{"convert.cbz": True, "convert.pdf_pages": pages}),
+    )
+
+    assert not result.written
+    assert isinstance(result.error, UnsafePdfAttachmentError)
+    assert repr(name) in str(result.error)
+    assert path.read_bytes() == original
+    assert {p.name for p in tmp_path.iterdir()} == {"comic.pdf"}

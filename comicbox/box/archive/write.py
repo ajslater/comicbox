@@ -292,10 +292,12 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         # Read in batches. Reading a 7z member on its own re-decompresses
         # its whole solid block, so copying page by page made conversion
         # cost grow with the square of the page count.
+        written: set[str] = set()
         for filename in self._iter_prefetched(filenames):
             props = {}
             data = self._archive_readfile(filename, pdf_format=pdf_format, props=props)
             write_name = self._ensure_image_suffix(filename, props)
+            self._refuse_a_page_named_twice(write_name, written)
             # images usually end up slightly larger with zip compression,
             # so store them. Decide from the final name — pdf pages only
             # gain their image suffix above.
@@ -310,6 +312,25 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compress_type=compress,
                 compresslevel=9,
             )
+
+    def _refuse_a_page_named_twice(self, write_name: str, written: set[str]) -> None:
+        """
+        Refuse a PDF whose attachment takes the name a page converts to.
+
+        Page 1 converts to ``1.jpeg``, so an attachment named ``1.jpeg`` and
+        the page were both written under one name and one was lost. Which
+        name a page takes depends on its format, and for the image formats on
+        the page, so it is caught as it is written; the temporary archive is
+        then discarded, and the comic is as it was.
+        """
+        if self._archive_is_pdf and write_name in written:
+            reason = (
+                f"{self._path}: cannot convert it to a CBZ without harming the"
+                f" attachment {write_name!r}, which is also the name of a page it"
+                " converts."
+            )
+            raise UnsafePdfAttachmentError(reason)
+        written.add(write_name)
 
     def _tail_offset(self, path: Path, rewritten: frozenset[str] | None) -> int | None:
         """

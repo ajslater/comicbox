@@ -46,8 +46,9 @@
   beside others it can is skipped with a warning.
 - A PDF write no longer overwrites another attachment with the old ComicInfo, or
   fails and loses tag files when a PDF has several. Converting a PDF whose
-  attachment is named like a page number is refused, where its CBZ had the page
-  twice and lost the attachment.
+  attachment is named like a page number, or like a page it converts to
+  (`1.jpeg`), is refused, where its CBZ had the page twice and lost the
+  attachment.
 - A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
   YAML, JSON or a library patch is read, where it was dropped without a word.
 - `write_metadata` and `bulk_write` write nothing for a patch that does not
