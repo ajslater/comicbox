@@ -1,11 +1,20 @@
 """Merge Metadata Methods."""
 
+from collections.abc import Mapping
+from datetime import date
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.config.settings import MergeMode
-from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import (
+    COVER_DATE_KEY,
+    DATE_KEY,
+    DAY_KEY,
+    MONTH_KEY,
+    YEAR_KEY,
+    ComicboxSchemaMixin,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger, UpdateMerger
 
@@ -35,6 +44,56 @@ _PATCH_SOURCES = frozenset(
         MetadataSources.API,
     }
 )
+
+
+_DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
+
+
+def _named_parts(date_md: Mapping[str, Any]) -> dict[str, Any]:
+    """Name the year, month and day a source's date gives, from either form."""
+    parts: dict[str, Any] = {}
+    if isinstance(cover_date := date_md.get(COVER_DATE_KEY), date):
+        parts = dict(
+            zip(
+                _DATE_PART_KEYS,
+                (cover_date.year, cover_date.month, cover_date.day),
+                strict=True,
+            )
+        )
+    parts.update(
+        {
+            key: value
+            for key in _DATE_PART_KEYS
+            if (value := date_md.get(key)) is not None
+        }
+    )
+    return parts
+
+
+def _drop_a_contradicted_date(
+    merged: dict[str, Any], incoming: Mapping[str, Any]
+) -> None:
+    """
+    Drop the cover date below where a higher source's date contradicts it.
+
+    Merged part by part, a higher source's ``2006-07`` kept a lower
+    1950-11-01's day, or its cover date, which the computed date then rebuilt;
+    and a lower source's year, month and day outranked a higher one's cover
+    date. A date is one fact: where the two disagree on any part both name,
+    the lower one's cover date and parts go, and the higher one's stand
+    alone. Where they agree, the lower one's other parts stay, so a day only
+    it knows is kept. A store date is not part of it.
+    """
+    old = merged.get(DATE_KEY)
+    new = incoming.get(DATE_KEY)
+    if not isinstance(old, dict) or not isinstance(new, Mapping):
+        return
+    below = _named_parts(old)
+    if any(
+        key in below and below[key] != part for key, part in _named_parts(new).items()
+    ):
+        for key in (*_DATE_PART_KEYS, COVER_DATE_KEY):
+            old.pop(key, None)
 
 
 class ComicboxMerge(ComicboxOnlineLookup):
@@ -73,6 +132,7 @@ class ComicboxMerge(ComicboxOnlineLookup):
             source, normalized_md_list
         ):
             if sub_md := normalized_md.get(ComicboxSchemaMixin.ROOT_TAG):
+                _drop_a_contradicted_date(merged_sub_md, sub_md)
                 merger.merge(merged_sub_md, sub_md)
 
     def _merger_for_source(self, source: MetadataSources) -> type[Merger]:

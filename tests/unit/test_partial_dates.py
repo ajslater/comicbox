@@ -8,14 +8,19 @@ the comic's year and month, and the rest is absent.
 
 from __future__ import annotations
 
+import logging
 from datetime import date
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.fields.time_fields import DateParts, date_parts
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 _COMET = (
     '<?xml version="1.0"?><comet xmlns:comet="http://www.denvog.com/comet/">'
@@ -45,6 +50,8 @@ def _date(fmt: MetadataFormats, text: str) -> dict[str, Any]:
         ("2006-07", DateParts(2006, 7, None)),
         ("July 2006", DateParts(2006, 7, None)),
         ("2006-07-04", DateParts(2006, 7, 4)),
+        ("15", DateParts(None, None, 15)),
+        ("10:30", DateParts(None, None, None)),
         ("not a date", None),
     ],
 )
@@ -81,9 +88,35 @@ def test_a_whole_date_is_still_a_date(
 
 
 def test_a_partial_store_date_is_dropped() -> None:
-    """The model has no parts for a store date, so it is absent."""
-    text = _YAML.format("2006-07-04") + "    store_date: '2006-07'\n"
-    assert "store_date" not in _date(MetadataFormats.COMICBOX_YAML, text)
+    """
+    The model has no parts for a store date, so it is absent.
+
+    Its parts do not become the cover date's either: beside a cover date of
+    only a year, a store date's month would show.
+    """
+    text = _YAML.format("2006") + "    store_date: '2005-03'\n"
+    assert _date(MetadataFormats.COMICBOX_YAML, text) == {"year": 2006}
+
+
+@pytest.fixture
+def warnings(caplog: pytest.LogCaptureFixture) -> Iterator[pytest.LogCaptureFixture]:
+    handler_id = logger.add(caplog.handler, level=0)
+    caplog.set_level(logging.WARNING)
+    try:
+        yield caplog
+    finally:
+        logger.remove(handler_id)
+
+
+@pytest.mark.parametrize("text", ["15", "10:30"], ids=["a day alone", "a time alone"])
+def test_a_day_or_a_time_alone_is_not_a_date(
+    text: str, warnings: pytest.LogCaptureFixture
+) -> None:
+    """It was dropped without a word, as if it named a year or a month."""
+    assert _date(MetadataFormats.COMICBOX_YAML, _YAML.format(text)) == {}
+    assert f"Cannot parse date: {text}" in "\n".join(
+        record.getMessage() for record in warnings.records
+    )
 
 
 def test_a_source_year_beats_the_partial_dates_year() -> None:

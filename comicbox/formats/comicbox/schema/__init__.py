@@ -227,8 +227,11 @@ def _partial_date(value: Any) -> DateParts | None:
     if value is None or isinstance(value, date):
         return None
     parts = date_parts(str(value).strip())
-    # The field parses a whole date, and warns of nonsense.
-    return None if parts is None or parts.whole else parts
+    # The field parses a whole date, and refuses with a warning nonsense and
+    # what names neither a year nor a month, such as a day or a time alone.
+    if parts is None or parts.whole or (parts.year is None and parts.month is None):
+        return None
+    return parts
 
 
 def _held(parts: DateParts) -> dict[str, int]:
