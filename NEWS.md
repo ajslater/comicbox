@@ -41,6 +41,9 @@
   metadata no longer has, and removes its embedded tag files, as `-w` does in a
   zip, so what it wrote reads back. `-w keep` rewrites both, and
   `--delete-all-tags` now clears a PDF's own metadata too.
+- `-w` naming only formats a comic cannot hold, such as `-w pdf` on a CBZ, is
+  refused, where it removed every tag file and wrote none; one it cannot hold
+  beside others it can is skipped with a warning.
 - A PDF write no longer overwrites another attachment with the old ComicInfo, or
   fails and loses tag files when a PDF has several. Converting a PDF whose
   attachment is named like a page number is refused, where its CBZ had the page

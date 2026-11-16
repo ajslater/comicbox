@@ -49,6 +49,10 @@ class UnparsedTagFileError(ArchiveWriteError):
     """A keep write refused: a tag file the comic carries did not parse."""
 
 
+class UnwritableFormatError(ArchiveWriteError):
+    """A write refused: -w names no format this archive can hold."""
+
+
 class UnsafePdfAttachmentError(ArchiveWriteError):
     """A PDF write refused: replacing its tag files would harm another attachment."""
 

@@ -23,6 +23,7 @@ from comicbox.exceptions import (
     UnparsedTagFileError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
+    UnwritableFormatError,
 )
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
@@ -44,7 +45,8 @@ if TYPE_CHECKING:
 #: isn't an archive we can open, a keep write refused a comic whose tag file
 #: did not parse, a write or rename would land on a file already there, a
 #: PDF write would harm another attachment, a comic an interrupted write
-#: damaged cannot be repaired here, or an export or extraction
+#: damaged cannot be repaired here, -w names no format the archive can
+#: hold, or an export or extraction
 #: target is unsafe or not a directory. A traceback tells the user nothing
 #: the message doesn't, so these log one line. Anything else is a bug and
 #: earns the stack.
@@ -54,6 +56,7 @@ _EXPECTED_FILE_ERRORS = (
     DestinationOccupiedError,
     UnsafePdfAttachmentError,
     UnfinishedWriteError,
+    UnwritableFormatError,
     ExportError,
 )
 

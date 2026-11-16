@@ -9,7 +9,8 @@ from loguru import logger
 
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.box.pages import ComicboxPages
-from comicbox.exceptions import UnparsedTagFileError
+from comicbox.enums.comicbox import FileTypeEnum
+from comicbox.exceptions import UnparsedTagFileError, UnwritableFormatError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import EXT_KEY, ComicboxSchemaMixin
 from comicbox.formats.pdf.schema import MuPDFSubSchema
@@ -368,11 +369,66 @@ class ComicboxDump(ComicboxPages):
             or write.delete_all_tags
         )
 
+    def _can_hold(self, fmt: MetadataFormats) -> bool:
+        """Tell whether this write can put a format into the archive."""
+        if fmt in ARCHIVE_FORMATS:
+            return True
+        return (
+            fmt == MetadataFormats.PDF
+            and self._archive_is_pdf
+            and not self._config.convert.cbz
+        )
+
+    def _refuse_formats_it_cannot_hold(self) -> None:
+        """
+        Refuse -w naming no format this archive can hold; warn of any it names.
+
+        -w removes the tag formats it does not name, so -w pdf on a CBZ
+        removed every tag file and wrote none: a PDF's own metadata cannot go
+        into a zip, nor the file name or an online source's into any
+        archive. A PDF converted to a CBZ gets its ComicInfo default instead.
+        Under keep the carried formats are written whatever -w names.
+        """
+        write = self._config.write
+        if not write.formats or write.delete_all_tags or self._pdf_default_applies():
+            return
+        cannot = sorted(
+            fmt.value.label for fmt in write.formats if not self._can_hold(fmt)
+        )
+        if not cannot:
+            return
+        kind = self._written_kind()
+        if len(cannot) == len(write.formats) and not write.keep_formats:
+            reason = (
+                f"{self._path}: -w names no format a {kind} can hold"
+                f" ({', '.join(cannot)}), so nothing was written."
+            )
+            raise UnwritableFormatError(reason)
+        logger.warning(
+            f"{self._path}: a {kind} cannot hold {', '.join(cannot)}; not written."
+        )
+
+    def _pdf_default_applies(self) -> bool:
+        """Tell whether a PDF converted to a CBZ gets ComicInfo for what -w names."""
+        return bool(
+            self._config.convert.cbz
+            and self._defaults_to_comic_info()
+            and not self._config.write.formats - {MetadataFormats.PDF}
+        )
+
+    def _written_kind(self) -> str:
+        """Name the kind of archive the write puts its tags into."""
+        if self._config.convert.cbz:
+            return FileTypeEnum.CBZ.value
+        return self._file_type.value if self._file_type else "comic"
+
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
         if self._is_write_disabled():
             logger.info(f"Not writing metadata for: {self._path}")
             return None
+        # Before the destination is checked, so --cbz converts nothing.
+        self._refuse_formats_it_cannot_hold()
 
         if self._path:
             # Refuse an occupied conversion destination before any metadata
