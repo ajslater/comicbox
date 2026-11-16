@@ -5,7 +5,11 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.archive.write import _claim_destination, _release_destination
+from comicbox.box.archive.write import (
+    _claim_destination,
+    _release_destination,
+    file_key,
+)
 from comicbox.box.dump import ComicboxDump
 from comicbox.exceptions import (
     ArchiveWriteError,
@@ -88,13 +92,34 @@ class ComicboxDumpToFiles(ComicboxDump):
         """Return whether both names already refer to one file on disk."""
         # Not just `==`: on a case-insensitive filesystem a rename that only
         # changes case lands on the same inode, and refusing it would make
-        # `--rename` fail on every macOS library.
+        # `--rename` fail on every macOS library. `file_key`, not
+        # `samefile`, because some filesystems give every file one inode.
+        return file_key(new_path) == file_key(old_path)
+
+    @staticmethod
+    def _respell(old_path: Path, new_path: Path) -> bool:
+        """
+        Change the case of the name of a file the new name already finds.
+
+        Return whether the old name is gone. Names that are a symbolic link
+        and the file it names are left: renaming the link onto the file
+        would replace the file with a link to itself. On a case-sensitive
+        disk two hard links of one file can differ only in case, and
+        rename() between them does nothing, so the old name is looked for
+        afterwards, not assumed gone.
+        """
+        if not _differs_only_in_case(old_path, new_path):
+            return False
         try:
-            return new_path.samefile(old_path)
+            old_stat, new_stat = old_path.lstat(), new_path.lstat()
         except OSError:
             return False
+        if (old_stat.st_dev, old_stat.st_ino) != (new_stat.st_dev, new_stat.st_ino):
+            return False
+        old_path.rename(new_path)
+        return all(path.name != old_path.name for path in old_path.parent.iterdir())
 
-    def _rename_to(self, old_path: Path, new_path: Path) -> None:
+    def _rename_to(self, old_path: Path, new_path: Path) -> bool:
         """
         Rename onto a destination no one else holds.
 
@@ -104,13 +129,12 @@ class ComicboxDumpToFiles(ComicboxDump):
         the last one written. Claim the destination for the same reason
         conversions do (comicbox.box.archive.write): the finished-file
         check alone can't see a rename still in flight on another thread.
+
+        Return False when the new name already names this comic, through a
+        hard or symbolic link, and nothing was renamed.
         """
         if self._is_same_file(old_path, new_path):
-            if _differs_only_in_case(old_path, new_path):
-                # One file under both names: a case-insensitive disk. The
-                # rename changes the case of its name.
-                old_path.rename(new_path)
-            return
+            return self._respell(old_path, new_path)
         _claim_destination(new_path, old_path)
         try:
             if new_path.exists():
@@ -118,6 +142,7 @@ class ComicboxDumpToFiles(ComicboxDump):
             old_path.rename(new_path)
         finally:
             _release_destination(new_path)
+        return True
 
     def rename_file(self) -> None:
         """Rename the archive."""
@@ -136,6 +161,8 @@ class ComicboxDumpToFiles(ComicboxDump):
         if self._config.general.dry_run:
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return
-        self._rename_to(old_path, new_path)
+        if not self._rename_to(old_path, new_path):
+            logger.info(f"Not renamed: {new_path} is already a name for {old_path}")
+            return
         self._path: Path | None = new_path
         logger.info(f"Renamed:\n{old_path} ==> {new_path}")

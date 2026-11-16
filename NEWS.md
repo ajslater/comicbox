@@ -38,6 +38,8 @@
 - A tag write that fails while comicbox is running leaves the comic as it was. A
   process killed in the middle of one can still leave the tag files damaged, as
   before; the pages are never touched.
+- `-w` keeps a free-text archive comment, such as a scanner's note, and clears
+  only a ComicBookInfo comment.
 
 ### 🐛 Fixed
 
@@ -85,9 +87,14 @@
   is not a directory, are reported in one line, without a traceback.
 - A write that replaces or removes a tag file comicbox could not parse warns,
   naming it.
-- `--rename` changes the case of a name on a case-insensitive disk, where it
-  said "Renamed" and changed nothing, and says nothing for a comic already at
-  its name.
+- `--rename` changes the case of a name on a case-insensitive disk, and says so
+  when a link to the comic already has the new name, where it said "Renamed" and
+  changed nothing. It says nothing for a comic already at its name.
+- A path that does not exist fails the run, logged once, where it exited 0.
+- A ComicInfo `Web` holding two urls for one database reads the first url's id
+  every time, and is written back in its order.
+- A six-digit date such as `200607` reads as July 2006, not 20 June 2007.
+- Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
 - An environment variable for a list setting reads a plain string as its CLI
   option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
 - ComicInfo keeps every story arc's number when another arc has none.

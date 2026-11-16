@@ -16,6 +16,7 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
+    ComicNotFoundError,
     DestinationOccupiedError,
     ExportError,
     OnlineLookupAbortedError,
@@ -41,14 +42,15 @@ if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
 
 #: Expected per-file failures, refusals comicbox makes on purpose: the path
-#: isn't an archive we can open, a keep write refused a comic whose tag file
-#: did not parse, a write or rename would land on a file already there, a
-#: PDF write would harm another attachment, -w names no format the archive
-#: can hold, or an export or extraction
-#: target is unsafe or not a directory. A traceback tells the user nothing
-#: the message doesn't, so these log one line. Anything else is a bug and
-#: earns the stack.
+#: names nothing or isn't an archive we can open, a keep write refused a
+#: comic whose tag file did not parse, a write or rename would land on a
+#: file already there, a PDF write would harm another attachment, -w names
+#: no format the archive can hold, or an export or extraction target is
+#: unsafe or not a directory. A traceback tells the user nothing the
+#: message doesn't, so these log one line. Anything else is a bug and earns
+#: the stack.
 _EXPECTED_FILE_ERRORS = (
+    ComicNotFoundError,
     UnsupportedArchiveTypeError,
     UnparsedTagFileError,
     DestinationOccupiedError,
@@ -192,15 +194,17 @@ class Runner:
         return iter_recurse(path)
 
     def _expand_paths(self) -> list[Path]:
-        """Flatten config.paths, expanding directories under --recurse."""
+        """
+        Flatten config.paths, expanding directories under --recurse.
+
+        A path that names nothing is kept, so its dispatch reports it and
+        counts it as failed once, whichever branch the run takes.
+        """
         out: list[Path] = []
         for raw in self._config.paths or ():
             if not raw:
                 continue
             path = Path(raw)
-            if not path.exists():
-                logger.error(f"{path} does not exist.")
-                continue
             if path.is_dir():
                 if self._config.general.recurse:
                     out.extend(self._iter_recurse(path))
@@ -247,10 +251,9 @@ class Runner:
     def run_on_file(self, path: Path | str | None) -> None:
         """Run operations on one file (single-file CLI invocation)."""
         if path:
+            # A path that names nothing gets as far as `Comicbox`, which
+            # raises `ComicNotFoundError`: a failed file, not a skipped one.
             path = Path(path)
-            if not path.exists():
-                logger.error(f"{path} does not exist.")
-                return
             if path.is_dir() and self._config.general.recurse:
                 self.recurse(path)
                 return

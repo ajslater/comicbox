@@ -20,6 +20,7 @@ runs at the far end of the pipeline in ``urls``.
 """
 
 import re
+from operator import itemgetter
 from typing import Any
 
 from comicbox.box.merge import ComicboxMerge
@@ -72,35 +73,32 @@ class ComicboxComputedUrlIdentifiers(ComicboxMerge):
         """
         return get_url_from_identifier(id_source_str, identifier) == url
 
-    @classmethod
-    def _add_identifier_from_url(
-        cls,
-        url: str,
-        old_identifiers: dict[str, Any],
-        new_identifiers: dict[str, dict],
-    ) -> None:
-        """Record the id one url names, if it beats what the url list holds."""
-        id_source_str, identifier = identifier_from_url(url)
-        # An explicit id always wins. For several databases the url path
-        # is a slug, not the id, so it must not overwrite a real key.
-        if not (id_source_str and identifier) or id_source_str in old_identifiers:
-            return
-        if id_source_str not in new_identifiers or cls._url_holds_its_key(
-            id_source_str, identifier, url
-        ):
-            new_identifiers[id_source_str] = identifier
-
     def _get_computed_identifiers_from_urls(
         self, sub_data: dict[str, Any], **_kwargs: Any
     ) -> dict[str, dict] | None:
-        """Recognize database urls and record the ids they contain."""
+        """
+        Recognize database urls and record the ids they contain.
+
+        An id the file states outright always wins: for several databases
+        the url path is a slug, not the id, so it must not overwrite a real
+        key. Among a database's urls, one that holds its id beats a slug,
+        and between equals the first in the file wins, so a comic tagged
+        twice from one database reads back the same id every time.
+        """
         urls = sub_data.get(URLS_KEY) if sub_data else None
         if not urls:
             return None
         old_identifiers = sub_data.get(IDENTIFIERS_KEY) or {}
+        found: list[tuple[bool, str, dict]] = []
+        for url in map(str, urls):
+            id_source_str, identifier = identifier_from_url(url)
+            if id_source_str and identifier and id_source_str not in old_identifiers:
+                is_slug = not self._url_holds_its_key(id_source_str, identifier, url)
+                found.append((is_slug, id_source_str, identifier))
         new_identifiers: dict[str, dict] = {}
-        for url in urls:
-            self._add_identifier_from_url(str(url), old_identifiers, new_identifiers)
+        # A stable sort: urls that hold their id first, file order within.
+        for _is_slug, id_source_str, identifier in sorted(found, key=itemgetter(0)):
+            new_identifiers.setdefault(id_source_str, identifier)
         if not new_identifiers:
             return None
         return {IDENTIFIERS_KEY: new_identifiers}
