@@ -15,7 +15,7 @@ import sys
 from datetime import date, datetime
 from enum import StrEnum
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from marshmallow import ValidationError
 from marshmallow.fields import Constant, Nested
@@ -49,8 +49,6 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
-if TYPE_CHECKING:
-    from ruamel.yaml import YAML
 
 # The root tag of a serialized reading list.
 READING_LIST_KEY = "reading_list"
@@ -299,19 +297,6 @@ class ReadingListJsonSubSchema(ReadingListSubSchema):
     entries = ListField(Nested(JsonEntrySchema), sort=False)
 
 
-class ReadingListYamlRenderModule(YamlRenderModule):
-    """Comicbox's YAML, written without anchors or aliases."""
-
-    @override
-    @classmethod
-    def _config_yaml(cls, yaml: "YAML") -> None:
-        super()._config_yaml(yaml)
-        # ruamel aliases any object written twice, such as one date for a
-        # cover and a store date. Reading lists refuse aliases on read, so
-        # they must never write one.
-        yaml.representer.ignore_aliases = lambda *_data: True
-
-
 class ReadingListYamlSchema(YamlSchema):
     """A reading list serialized as YAML. Also the in-memory model."""
 
@@ -323,7 +308,9 @@ class ReadingListYamlSchema(YamlSchema):
     class Meta(YamlSchema.Meta):
         """Schema options."""
 
-        render_module = ReadingListYamlRenderModule
+        # Comicbox's YAML, written without aliases: reading lists refuse
+        # them on read.
+        render_module = YamlRenderModule
 
 
 class ReadingListJsonSchema(JsonSchema):
