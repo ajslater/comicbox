@@ -73,3 +73,17 @@ def test_a_symlink_and_its_file_are_one_file(tmp_path: Path) -> None:
 
     assert file_key(real) == file_key(link)
     assert _same_files([link, real]).same_as == {link: real}
+
+
+def test_two_spellings_of_one_name_on_a_case_insensitive_disk_are_one_file(
+    tmp_path: Path,
+) -> None:
+    """D12: D6 made Comic.cbt and comic.cbt two files there."""
+    path = tmp_path / "Comic.cbt"
+    shutil.copy(CIX_CBT_SOURCE_PATH, path)
+    other_spelling = tmp_path / "comic.cbt"
+    if not other_spelling.exists():
+        pytest.skip("this disk is case-sensitive")
+
+    assert file_key(path) == file_key(other_spelling)
+    assert _same_files([path, other_spelling]).same_as == {other_spelling: path}

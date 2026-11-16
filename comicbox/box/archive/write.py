@@ -29,7 +29,7 @@ from comicbox.exceptions import (
 if TYPE_CHECKING:
     from pdffile import PDFFile
 
-FileKey: TypeAlias = tuple[int, int] | Path
+FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | Path
 
 # A conversion's temporary archive: a dot name ending in .tmp, never a comic
 # suffix, so a library watcher skips its creation and its replace alike.
@@ -56,19 +56,23 @@ def file_key(path: Path) -> FileKey:
     Name the file a path points at, so two spellings of one file agree.
 
     Two paths are one file when they resolve to the same real path, which
-    sees through a symlink or a linked directory, or when they share a
-    device and a non-zero inode and the file has more than one link: hard
-    links. An inode alone is not trusted, as some network and FUSE
-    filesystems give every file the same one. A path with nothing there yet,
-    such as a conversion's destination, is its resolved spelling too.
+    sees through a symlink or a linked directory; when they share a device
+    and a non-zero inode and the file has more than one link: hard links;
+    or when they share a device and a non-zero inode and their real paths
+    are equal once case-folded: two spellings of one name on a
+    case-insensitive disk. An inode alone is not trusted, as some network
+    and FUSE filesystems give every file the same one. A path with nothing
+    there yet, such as a conversion's destination, is its resolved spelling.
     """
     try:
         stat = path.stat()
     except OSError:
         return path.resolve()
-    if stat.st_ino and stat.st_nlink > 1:
+    if not stat.st_ino:
+        return path.resolve()
+    if stat.st_nlink > 1:
         return (stat.st_dev, stat.st_ino)
-    return path.resolve()
+    return (stat.st_dev, stat.st_ino, str(path.resolve()).casefold())
 
 
 def tmp_archive_path(path: Path) -> Path:
