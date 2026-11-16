@@ -16,6 +16,8 @@ from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
+    DestinationOccupiedError,
+    ExportError,
     OnlineLookupAbortedError,
     UnparsedTagFileError,
     UnsupportedArchiveTypeError,
@@ -36,11 +38,18 @@ if TYPE_CHECKING:
 
     from comicbox.config.settings import ComicboxSettings
 
-#: Expected per-file failures: the path isn't an archive we can open, or
-#: a keep write refused a comic whose tag file did not parse. A traceback
+#: Expected per-file failures, refusals comicbox makes on purpose: the path
+#: isn't an archive we can open, a keep write refused a comic whose tag file
+#: did not parse, a write or rename would land on a file already there, or
+#: an export or extraction target is unsafe or not a directory. A traceback
 #: tells the user nothing the message doesn't, so these log one line.
 #: Anything else is a bug and earns the stack.
-_EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError, UnparsedTagFileError)
+_EXPECTED_FILE_ERRORS = (
+    UnsupportedArchiveTypeError,
+    UnparsedTagFileError,
+    DestinationOccupiedError,
+    ExportError,
+)
 
 #: The online sources that hold process-wide clients to release at the
 #: end of a run. Named, not imported: see `_close_shared_online_sessions`.

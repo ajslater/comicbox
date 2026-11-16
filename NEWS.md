@@ -32,6 +32,8 @@
 
 - A batch write that names one archive twice, by a link and its target, no
   longer writes it twice at once and damages it.
+- A conversion onto a file already there, and a page extraction to a target that
+  is not a directory, are reported in one line, without a traceback.
 - ComicInfo keeps every story arc's number when another arc has none.
 - Online summaries no longer show HTML entities such as `&amp;`.
 - A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
