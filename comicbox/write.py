@@ -214,9 +214,14 @@ def _write_comic(
 ) -> WriteResult:
     """Write, or with ``dry_run`` serialize, one comic; raise what fails."""
     with Comicbox(path, config=settings, metadata=wrapped) as cb:
-        if wrapped is not None and not cb.get_loaded_metadata(MetadataSources.API):
+        if (
+            wrapped is not None
+            and not settings.general.delete_keys
+            and not cb.get_loaded_metadata(MetadataSources.API)
+        ):
             # Written anyway, the comic was rewritten from its own tags and
-            # reported as written with none of the patch applied.
+            # reported as written with none of the patch applied. With
+            # delete_keys the write still does something: it deletes them.
             reason = (
                 f"{path}: the patch did not load as comicbox metadata; nothing written."
             )

@@ -70,3 +70,19 @@ def test_a_patch_with_one_bad_value_still_writes_the_rest(tmp_path: Path) -> Non
     assert result.written, result.error
     with Comicbox(path) as box:
         assert box.to_dict()["comicbox"]["summary"] == "Applied"
+
+
+@pytest.mark.parametrize("patch", [{"title": ""}, {}], ids=["empty values", "empty"])
+def test_a_patch_that_loads_nothing_still_deletes_its_keys(
+    tmp_path: Path, patch: dict[str, Any]
+) -> None:
+    """E2: D7 refused it, and deleted nothing."""
+    path = _copy(tmp_path)
+
+    result = write_metadata(
+        path, patch, formats=["COMIC_INFO"], delete_keys=["title", "stories"]
+    )
+
+    assert result.written, result.error
+    with Comicbox(path) as box:
+        assert "title" not in box.to_dict()["comicbox"]
