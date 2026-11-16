@@ -456,6 +456,7 @@ def print_arc_write(
     problem: str | None = None,
     moved: Path | None = None,
     deleted: bool = False,
+    removed: Mapping[Path, str | None] | None = None,
 ) -> None:
     """
     Print what tagging one file with an arc did, or would do, or why not.
@@ -463,7 +464,8 @@ def print_arc_write(
     ``problem`` says why a write that was made did not hold, ``moved`` is
     the CBZ a write converted the file to, and ``deleted`` whether the
     original then went. The file's other paths follow, each on its own line,
-    a link saying when the original's deletion leaves it pointing at nothing.
+    saying whether they went with it: ``removed`` gives each one removed,
+    with why it could not be, if not.
     """
     change = write.change
     if change.action.value == "tagged":
@@ -488,19 +490,21 @@ def print_arc_write(
                 ),
             )
         )
-    _print_same_file(out, write, done=done, deleted=deleted)
+    _print_same_file(out, write, done=done, removed=removed or {})
 
 
 def _print_same_file(
-    out: Console, write: "ArcWrite", *, done: bool, deleted: bool
+    out: Console, write: "ArcWrite", *, done: bool, removed: Mapping[Path, str | None]
 ) -> None:
-    """List a file's other paths; a link the original's deletion leaves dangling."""
-    gone = deleted if done else write.deletes_original and write.reason is None
+    """List a file's other paths, and whether they go with a deleted original."""
+    goes = not done and write.deletes_original and write.reason is None
     for other in write.same_file:
         detail = f"same file as {write.path}"
-        if gone and other in write.links:
-            left = "left" if done else "would be left"
-            detail += f"; {left} pointing at nothing"
+        if goes:
+            detail += "; would be removed with it"
+        elif other in removed:
+            why = removed[other]
+            detail += "; removed with it" if why is None else f"; not removed: {why}"
         _dim_line(out, other, detail)
 
 

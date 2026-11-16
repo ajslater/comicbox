@@ -379,11 +379,12 @@ renumbered. A comic with a tag file comicbox could not read is listed and not
 written. A file found under two names, through a symbolic or hard link, is
 written once, through the file itself, never a symbolic link to it: a link to a
 comic elsewhere writes that comic where it is. When `--delete-orig` deletes a
-converted original, each symbolic link to it is named as left pointing at
-nothing. With `general.dry_run` set in the config, `--apply` is a dry run and
-says so. A comic that is not written for any reason but having the arc makes the
-command exit 1, and the rest are still written. Ctrl-C stops before the writes
-not yet started and lets those under way finish, however often it is pressed.
+converted original, every other path in the run that names it, a symbolic or a
+hard link, is removed with it and named. With `general.dry_run` set in the
+config, `--apply` is a dry run and says so. A comic that is not written for any
+reason but having the arc makes the command exit 1, and the rest are still
+written. Ctrl-C stops before the writes not yet started and lets those under way
+finish, however often it is pressed.
 
 ## Python API
 

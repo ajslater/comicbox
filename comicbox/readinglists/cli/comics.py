@@ -214,8 +214,7 @@ def _plan_file(
         others = (change.path, *others)
         change = replace(change, path=change.path.resolve())
     write = _plan_one(change, comic, setup)
-    links = tuple(path for path in others if path.is_symlink())
-    return replace(write, same_file=others, links=links)
+    return replace(write, same_file=others)
 
 
 def _plan_one(change: ArcChange, comic: "Comic", setup: "_Setup") -> ArcWrite:
@@ -268,7 +267,6 @@ def _one_per_destination(writes: Sequence[ArcWrite]) -> tuple[ArcWrite, ...]:
                     write.change,
                     reason=reason,
                     same_file=write.same_file,
-                    links=write.links,
                 )
             )
     return tuple(kept)
@@ -326,17 +324,52 @@ def _report(
         # A cancelled run exits 130 whatever else happened.
         run.failed = run.failed or not written.cancelled
         return False
+    return _report_written(run, write, written, config)
+
+
+def _report_written(
+    run: Run, write: ArcWrite, written: "WriteResult", config: "ComicboxSettings"
+) -> bool:
+    """Say what a write that was made did; whether the comic holds its arc."""
     # A CBR, CBT or CB7 is converted to a CBZ beside it, as any write does.
     final = written.final_path or write.path
     problem = _held(final, write, config)
     moved = final if final != write.path else None
     deleted = moved is not None and not write.path.exists()
+    removed = _remove_other_names(write) if deleted else {}
     print_arc_write(
-        run.out, write, done=True, problem=problem, moved=moved, deleted=deleted
+        run.out,
+        write,
+        done=True,
+        problem=problem,
+        moved=moved,
+        deleted=deleted,
+        removed=removed,
     )
     if problem is not None:
         run.failed = True
     return problem is None
+
+
+def _remove_other_names(write: ArcWrite) -> dict[Path, str | None]:
+    """
+    Remove the other paths of a converted original that --delete-orig deleted.
+
+    A symbolic link would point at nothing, and a hard link kept the old
+    CBT under its second name, which a rerun converted again. Returns each
+    path with None, or why it could not be removed.
+    """
+    removed: dict[Path, str | None] = {}
+    for other in write.same_file:
+        try:
+            other.unlink()
+        except FileNotFoundError:
+            removed[other] = None
+        except OSError as exc:
+            removed[other] = exc.strerror or str(exc)
+        else:
+            removed[other] = None
+    return removed
 
 
 def _apply(run: Run, todo: Sequence[ArcWrite], setup: "_Setup") -> list[ArcWrite]:

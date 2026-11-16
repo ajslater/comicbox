@@ -6,9 +6,9 @@ import sys
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -34,7 +34,7 @@ from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from argparse import Namespace
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
 
     from comicbox.config.settings import ComicboxSettings
 
@@ -106,6 +106,46 @@ def iter_recurse(path: Path) -> Iterator[Path]:
         yield full_path
 
 
+@dataclass(frozen=True, slots=True)
+class _SameFiles:
+    """
+    The paths of a run that name a file the run reaches by another path too.
+
+    ``process_as`` maps the one path of each such file that is processed
+    to its real path: a path that is not a symbolic link, or else the
+    link's target. ``same_as`` maps every other path to that real path.
+    """
+
+    process_as: Mapping[Path, Path] = field(default_factory=dict)
+    same_as: Mapping[Path, Path] = field(default_factory=dict)
+
+
+def _same_files(paths: Iterable[Path]) -> _SameFiles:
+    """
+    Group a run's paths by the file they name.
+
+    With -r over a directory holding real.cbt and link.cbt -> real.cbt,
+    both were converted, and --delete-orig deleted the link and kept the
+    file. A file the run reaches by one path is left as it is, a symbolic
+    link included, and so is one path given twice.
+    """
+    from comicbox.box.archive.write import file_key
+
+    groups: dict[Any, list[Path]] = {}
+    for path in dict.fromkeys(paths):
+        groups.setdefault(file_key(path), []).append(path)
+    process_as: dict[Path, Path] = {}
+    same_as: dict[Path, Path] = {}
+    for members in groups.values():
+        if len(members) < 2:  # noqa: PLR2004
+            continue
+        chosen = next((path for path in members if not path.is_symlink()), members[0])
+        real = chosen.resolve() if chosen.is_symlink() else chosen
+        process_as[chosen] = real
+        same_as.update({path: real for path in members if path != chosen})
+    return _SameFiles(process_as, same_as)
+
+
 class Runner:
     """Main runner."""
 
@@ -117,6 +157,8 @@ class Runner:
         #: wrong; `comicbox.cli.main` exits non-zero when it's non-empty.
         self.failure_count = 0
         self._failure_lock = threading.Lock()
+        #: A file the run reaches by several paths, processed once.
+        self._same_files = _SameFiles()
         #: Batch-wide series cache for online tagging (series-first
         #: batching, plan §3.10). `OnlineSession` has always had one; the
         #: CLI did not, so `comicbox --online` re-ran the full candidate
@@ -206,6 +248,10 @@ class Runner:
             if path.is_dir() and self._config.general.recurse:
                 self.recurse(path)
                 return
+            if real := self._same_files.same_as.get(path):
+                logger.info(f"{path}: same file as {real}")
+                return
+            path = self._same_files.process_as.get(path, path)
 
         with Comicbox(path, config=self._config) as car:
             if self._config.online.lookup.enabled:
@@ -384,6 +430,7 @@ class Runner:
             # which handles directory expansion under `--recurse`, so the
             # actual processing is unchanged.
             paths = self._expand_paths()
+            self._same_files = _same_files(paths)
             self._maybe_auto_engage_effort(len(paths))
             self._note_series_clusters(paths)
             if self._config.online.lookup.enabled:
@@ -405,6 +452,7 @@ class Runner:
         if not paths:
             logger.warning("No files to process")
             return
+        self._same_files = _same_files(paths)
         self._maybe_auto_engage_effort(len(paths))
         self._note_series_clusters(paths)
         if len(paths) == 1:

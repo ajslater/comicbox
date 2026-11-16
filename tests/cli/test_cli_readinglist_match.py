@@ -1196,18 +1196,34 @@ def test_a_conversion_through_a_link_converts_the_file_it_names(
     again, rerun, _ = _write(capsys, *args, apply=True)
 
     cbz = cbr.with_suffix(".cbz")
-    assert f"{link}: same file as {cbr}; would be left pointing at nothing" in _flat(
-        dry
-    )
+    assert f"{link}: same file as {cbr}; would be removed with it" in _flat(dry)
     assert code == 0
     assert f"{cbr} added 'Captain Arc' #1 as {cbz.name}; deleted the CBR" in _flat(out)
-    assert f"{link}: same file as {cbr}; left pointing at nothing" in _flat(out)
+    # B8: every path naming the deleted original goes with it.
+    assert f"{link}: same file as {cbr}; removed with it" in _flat(out)
     assert f"{cbr}: same file" not in _flat(out)
-    # The CBR is gone and the link to it left; no second CBZ beside the link.
-    assert sorted(cbr.parent.iterdir()) == [link, cbz]
+    assert sorted(cbr.parent.iterdir()) == [cbz]
     assert _tags(cbz)["arcs"] == {"Captain Arc": {"number": 1}}
     assert again == 0
     assert "already has 'Captain Arc' #1" in _flat(rerun)
+
+
+def test_delete_orig_removes_a_hard_link_to_the_converted_original(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    """B8: the second name kept the old CBR, and a rerun converted it again."""
+    other = cbr.parent / "Z-other.cbr"
+    other.hardlink_to(cbr)
+    args = ("-w", "cix", "--delete-orig", str(captain_list), str(cbr.parent))
+
+    code, out, _ = _write(capsys, *args, apply=True)
+    again, _, _ = _write(capsys, *args, apply=True)
+
+    cbz = cbr.with_suffix(".cbz")
+    assert code == 0
+    assert f"{other}: same file as {cbr}; removed with it" in _flat(out)
+    assert again == 0
+    assert sorted(cbr.parent.iterdir()) == [cbz]
 
 
 def test_a_link_to_a_comic_elsewhere_writes_that_comic(

@@ -131,9 +131,8 @@ class ArcWrite:
     files the write takes out of the comic, and ``clears_comment`` whether it
     clears a free-text archive comment. ``converts_to`` is the CBZ a CBR,
     CBT or CB7 is converted to, and ``deletes_original`` whether the
-    original then goes. ``same_file`` lists the other paths of this file,
-    and ``links`` those of them that are symbolic links: a deleted original
-    leaves them pointing at nothing.
+    original then goes. ``same_file`` lists the other paths of this file:
+    when the original goes, so do they.
     """
 
     change: ArcChange
@@ -144,7 +143,6 @@ class ArcWrite:
     converts_to: Path | None = None
     deletes_original: bool = False
     clears_comment: bool = False
-    links: tuple[Path, ...] = ()
 
     @property
     def loses(self) -> bool:

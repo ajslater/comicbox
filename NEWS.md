@@ -34,6 +34,9 @@
   compared as `pok mon`, and a Japanese or Cyrillic name as nothing.
 - A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
   month; it was completed with today's month or day.
+- A comic a run reaches by several paths, such as a file and a link to it under
+  `-r`, is processed once, through the file. `write-arcs --delete-orig` removes
+  every other name of a converted original, hard links included.
 - A batch write that names one archive twice, by a link and its target, no
   longer writes it twice at once and damages it.
 - A RAR or 7z archive named `.cbz` is refused in one line that names its real
