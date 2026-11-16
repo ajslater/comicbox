@@ -2,8 +2,8 @@
 
 import os
 import shutil
-import stat
 from collections.abc import Mapping
+from contextlib import suppress
 from pathlib import Path
 from threading import Lock
 from types import MappingProxyType
@@ -14,6 +14,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
+from comicbox.box.archive.attributes import keep_attributes
 from comicbox.box.archive.journal import TAIL_CAP, TailJournal, replay_journal
 from comicbox.box.archive.journal.record import hidden_name
 from comicbox.box.archive.read import ComicboxArchiveRead
@@ -350,6 +351,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         rewritten = self._rewritten_names(files)
         self.close()
+        # A killed copy's leftover temporary archive goes with the next write.
+        with suppress(OSError):
+            tmp_archive_path(self._path.resolve()).unlink(missing_ok=True)
         if (offset := self._tail_offset(self._path, rewritten)) is None:
             self._patch_a_copy(self._path, files, comment, rewritten)
             return
@@ -385,8 +389,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         file, through any link, and the result is the in-place write's, member
         for member: names, bytes, order, dates, modes and comments are as they
         were, and no page is read. The copy is flushed and given the
-        original's permission bits before it replaces the real file; a
-        failure anywhere leaves the original and no temporary file.
+        original's extended attributes, owner and group where they may be
+        set, and mode before it replaces the real file; a failure anywhere
+        leaves the original and no temporary file. A directory that cannot
+        take the copy, read-only or full, gets the in-place write unprotected,
+        with a warning, as before the copy path.
         """
         real = path.resolve()
         if replay_journal(real):
@@ -394,13 +401,22 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         logger.debug(f"{real}: writing a copy, pages first, tags last.")
         tmp_path = tmp_archive_path(real)
-        tmp_path.unlink(missing_ok=True)
         try:
             shutil.copyfile(real, tmp_path)
+        except OSError as exc:
+            with suppress(OSError):
+                tmp_path.unlink(missing_ok=True)
+            logger.warning(
+                f"{real}: no room for a copy beside it ({exc}); writing it in"
+                " place, unprotected: a write that fails part way can damage it."
+            )
+            self._patch_in_place(real, files, comment, rewritten)
+            return
+        try:
             self._patch_in_place(tmp_path, files, comment, rewritten)
             with tmp_path.open("r+b") as copy:
                 os.fsync(copy.fileno())
-            tmp_path.chmod(stat.S_IMODE(real.stat().st_mode))
+            keep_attributes(real, tmp_path)
             tmp_path.replace(real)
         except BaseException:
             tmp_path.unlink(missing_ok=True)

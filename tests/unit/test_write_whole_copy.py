@@ -13,6 +13,8 @@ from __future__ import annotations
 import errno
 import os
 import stat
+import subprocess
+import sys
 import time
 import warnings
 import zipfile
@@ -255,3 +257,104 @@ def test_a_tags_first_comic_with_a_long_name_takes_a_write(tmp_path: Path) -> No
     assert _members(path) == before
     assert _summary(path) == "New"
     assert _leftovers(tmp_path) == set()
+
+
+# ------------------------------------------------- E3: what the copy keeps
+
+
+def _messages(run: Callable[[], Any]) -> tuple[Any, list[str]]:
+    from loguru import logger
+
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        return run(), messages
+    finally:
+        logger.remove(handler)
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or os.geteuid() == 0, reason="needs POSIX permissions"
+)
+def test_a_directory_that_cannot_take_the_copy_gets_the_in_place_write(
+    tmp_path: Path,
+) -> None:
+    """E3: it failed with PermissionError; f7357cb wrote it in place."""
+    directory = tmp_path / "ro"
+    directory.mkdir()
+    path = _odd_zip(directory / "odd.cbz")
+    mode = directory.stat().st_mode
+    directory.chmod(0o555)
+    try:
+        result, warnings = _messages(lambda: _retag(path, "In Place"))
+    finally:
+        directory.chmod(mode)
+
+    assert result.written, result.error
+    assert _summary(path) == "In Place"
+    assert any("unprotected" in message for message in warnings)
+    assert _leftovers(directory) == set()
+
+
+def test_a_leftover_copy_is_removed_by_a_tail_write(tmp_path: Path) -> None:
+    """E3: a killed copy's full-size temporary archive stayed for good."""
+    path = tmp_path / "comic.cbz"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr("page-0.jpg", os.urandom(1000))
+    assert _retag(path, "First").written
+    leftover = write_module.tmp_archive_path(path)
+    leftover.write_bytes(os.urandom(5000))
+
+    assert _retag(path).written
+
+    assert not leftover.exists()
+
+
+def _set_xattr(path: Path, name: str, value: bytes) -> None:
+    if sys.platform == "darwin":
+        subprocess.run(["xattr", "-w", name, value.decode(), str(path)], check=True)  # noqa: S603, S607
+    else:
+        os.setxattr(path, f"user.{name}", value)
+
+
+def _get_xattr(path: Path, name: str) -> bytes | None:
+    if sys.platform == "darwin":
+        done = subprocess.run(  # noqa: S603
+            ["xattr", "-p", name, str(path)],  # noqa: S607
+            capture_output=True,
+            check=False,
+        )
+        return done.stdout.strip() if done.returncode == 0 else None
+    try:
+        return os.getxattr(path, f"user.{name}")
+    except OSError:
+        return None
+
+
+@pytest.mark.skipif(
+    sys.platform not in ("darwin", "linux"), reason="no extended attributes"
+)
+def test_the_copy_keeps_extended_attributes(tmp_path: Path) -> None:
+    """E3: a Finder tag or a user attribute was dropped with the old file."""
+    path = _odd_zip(tmp_path / "odd.cbz")
+    try:
+        _set_xattr(path, "comicbox.test", b"kept")
+    except (OSError, subprocess.CalledProcessError):
+        pytest.skip("this filesystem takes no extended attributes")
+
+    assert _retag(path).written
+
+    assert _get_xattr(path, "comicbox.test") == b"kept"
+
+
+def test_the_copy_keeps_the_group(tmp_path: Path) -> None:
+    """E3: the new file took its directory's group, not the comic's."""
+    path = _odd_zip(tmp_path / "odd.cbz")
+    others = [gid for gid in os.getgroups() if gid != path.stat().st_gid]
+    if not others:
+        pytest.skip("this user belongs to one group only")
+    os.chown(path, -1, others[0])
+
+    assert _retag(path).written
+
+    assert path.stat().st_gid == others[0]

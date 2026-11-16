@@ -161,9 +161,14 @@ def test_a_journal_that_cannot_be_deleted_leaves_the_write_standing(
 ) -> None:
     """D1 rule 2: it was rolled back; the next open removes the journal."""
     path = _comic(tmp_path)
-    _fail_on_call(
-        monkeypatch, type(path), "unlink", 1, PermissionError(errno.EACCES, "denied")
-    )
+    real_unlink = type(path).unlink
+
+    def unlink(self: Path, *args: Any, **kwargs: Any) -> None:
+        if self == journal_path(path):
+            raise PermissionError(errno.EACCES, "denied")
+        real_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(type(path), "unlink", unlink)
 
     result = _retag(path)
 
