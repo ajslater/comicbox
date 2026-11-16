@@ -36,8 +36,8 @@ def _pages(doc: pymupdf.Document) -> list[str]:
     return [hashlib.sha256(page.get_pixmap().samples).hexdigest() for page in doc]
 
 
-def test_w_pdf_writes_each_field_it_maps(tmp_path: Path) -> None:
-    """It said "Wrote metadata" and wrote nothing: the branch never ran."""
+def _write_the_patch(tmp_path: Path) -> dict[str, str]:
+    """Write the patch to a plain PDF with -w pdf; return its metadata."""
     path = tmp_path / "plain.pdf"
     shutil.copy(PDF_SOURCE_PATH, path)
 
@@ -45,16 +45,28 @@ def test_w_pdf_writes_each_field_it_maps(tmp_path: Path) -> None:
 
     assert result.written, result.error
     with pymupdf.open(path) as doc:
-        info = doc.metadata or {}
+        return dict(doc.metadata or {})
+
+
+def test_w_pdf_writes_each_field_it_maps(tmp_path: Path) -> None:
+    """It said "Wrote metadata" and wrote nothing: the branch never ran."""
+    info = _write_the_patch(tmp_path)
+
     assert info["title"] == "New Title"
-    assert "Jane Writer" in info["author"].split(",")
-    assert "Horror" in info["subject"].split(",")
-    assert "t1" in info["keywords"].split(",")
     assert info["creator"] == "Scanner X"
     assert info["producer"] == "Tagger Y"
     assert info["modDate"].startswith("D:20260102030405")
     # What the PDF had and the patch did not touch is kept.
     assert info["creationDate"].startswith("D:19700101")
+
+
+def test_w_pdf_writes_each_list_into_its_field(tmp_path: Path) -> None:
+    """Credits, genres and tags each join the comma-separated field they map to."""
+    info = _write_the_patch(tmp_path)
+
+    assert "Jane Writer" in info["author"].split(",")
+    assert "Horror" in info["subject"].split(",")
+    assert "t1" in info["keywords"].split(",")
 
 
 def _with_notes_first(tmp_path: Path) -> Path:

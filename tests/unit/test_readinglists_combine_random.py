@@ -189,33 +189,44 @@ def _id_counts(entries: list[dict[str, Any]]) -> Counter[tuple[str, str]]:
     )
 
 
-@pytest.mark.parametrize("seed", SEEDS)
-def test_no_id_lands_on_two_entries_unreported(seed: int) -> None:
-    """
-    An id on two entries is repeated by an input, or reported as shared.
-
-    And every shared id reported is on two entries and repeated by none.
-    """
-    inputs = _random_inputs(seed)
-    result = combine(inputs)
-    repeated = {
+def _repeated_ids(inputs: list[dict[str, Any]]) -> set[tuple[str, str]]:
+    """Get each id that an input puts on two of its own rows."""
+    return {
         id_key
         for reading_list in inputs
         for id_key, count in _id_counts(reading_list[ENTRIES_KEY]).items()
         if count > 1
     }
-    shared = {(item.source, item.key): item.entries for item in result.shared_ids}
-    entries = result.reading_list[ENTRIES_KEY]
-    for id_key, count in _id_counts(entries).items():
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_no_id_lands_on_two_entries_unreported(seed: int) -> None:
+    """An id on two entries is repeated by an input, or reported as shared."""
+    inputs = _random_inputs(seed)
+    result = combine(inputs)
+    repeated = _repeated_ids(inputs)
+    shared = {(item.source, item.key) for item in result.shared_ids}
+    for id_key, count in _id_counts(result.reading_list[ENTRIES_KEY]).items():
         assert count == 1 or id_key in repeated or id_key in shared, id_key
-    for id_key, positions in shared.items():
-        assert id_key not in repeated
-        assert len(positions) > 1
-        source, key = id_key
-        for position in positions:
-            assert entries[position]["identifiers"][source]["key"] == key
     for members in result.provenance:
         assert len({origin.input_index for origin in members}) == len(members)
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_every_shared_id_reported_is_on_two_entries_and_repeated_by_none(
+    seed: int,
+) -> None:
+    """Each is on every entry it names, and no input puts it on two rows."""
+    inputs = _random_inputs(seed)
+    result = combine(inputs)
+    repeated = _repeated_ids(inputs)
+    shared = {(item.source, item.key): item.entries for item in result.shared_ids}
+    entries = result.reading_list[ENTRIES_KEY]
+    for (source, key), positions in shared.items():
+        assert (source, key) not in repeated
+        assert len(positions) > 1
+        for position in positions:
+            assert entries[position]["identifiers"][source]["key"] == key
 
 
 def _rows(result: Any, moves: list[list[int]] | None = None) -> set[frozenset]:
