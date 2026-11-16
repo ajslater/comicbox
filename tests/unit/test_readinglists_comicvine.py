@@ -93,13 +93,12 @@ def _keys(reading_list: dict[str, Any]) -> list[str]:
 
 
 def test_an_arc_is_an_unordered_story_list(
-    session: ReadingListSession, cv: FakeComicvine, events: list[Event]
+    session: ReadingListSession, cv: FakeComicvine
 ) -> None:
     _civil_war(cv)
 
-    result = session.fetch_comicvine_arc(12)
+    reading_list = session.fetch_comicvine_arc(12).reading_list
 
-    reading_list = result.reading_list
     assert reading_list["name"] == "Civil War"
     assert reading_list["description"] == "Hero against hero."
     assert reading_list["list_type"] == "story"
@@ -112,6 +111,16 @@ def test_an_arc_is_an_unordered_story_list(
             "revision": "2024-05-01T12:00:00",
         }
     ]
+
+
+def test_an_arc_is_three_calls_from_started_to_finished(
+    session: ReadingListSession, cv: FakeComicvine, events: list[Event]
+) -> None:
+    """The arc, its issues and their volumes; with no format, and no warning."""
+    _civil_war(cv)
+
+    result = session.fetch_comicvine_arc(12)
+
     assert result.fmt is None
     assert result.warnings == ()
     assert cv.calls == [
