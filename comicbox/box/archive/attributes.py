@@ -3,17 +3,14 @@ Give a copy of a comic what the comic had beside its bytes.
 
 A write that replaces a comic with a patched copy keeps the comic's mode,
 its owner and group where this process may set them, and its extended
-attributes: Finder tags and the like on macOS, user attributes on Linux.
-Windows has no extended attributes to keep.
+attributes where the standard library can read them: on Linux, not on macOS
+or Windows.
 """
 
 from __future__ import annotations
 
-import ctypes
-import ctypes.util
 import os
 import stat
-import sys
 from contextlib import suppress
 from typing import TYPE_CHECKING
 
@@ -21,9 +18,6 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-# copyfile(3)'s flag for extended attributes alone.
-_COPYFILE_XATTR = 1 << 2
 
 
 def _keep_owner(source_stat: os.stat_result, copy: Path) -> None:
@@ -38,28 +32,18 @@ def _keep_owner(source_stat: os.stat_result, copy: Path) -> None:
             os.chown(copy, -1, source_stat.st_gid)
 
 
-def _keep_xattrs_macos(source: Path, copy: Path) -> None:  # pragma: no cover
-    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
-    done = libc.copyfile(os.fsencode(source), os.fsencode(copy), None, _COPYFILE_XATTR)
-    if done != 0:
-        errno = ctypes.get_errno()
-        raise OSError(errno, os.strerror(errno))
-
-
-def _keep_xattrs_linux(source: Path, copy: Path) -> None:  # pragma: no cover
-    for name in os.listxattr(source):  # ty: ignore[missing-attribute]
-        with suppress(OSError):
-            os.setxattr(copy, name, os.getxattr(source, name))  # ty: ignore[missing-attribute]
-
-
 def _keep_xattrs(source: Path, copy: Path) -> None:
+    """Copy the comic's extended attributes, where ``os`` has them."""
+    if not hasattr(os, "listxattr"):
+        return
     try:
-        if sys.platform == "darwin":
-            _keep_xattrs_macos(source, copy)
-        elif hasattr(os, "listxattr"):
-            _keep_xattrs_linux(source, copy)
+        names = os.listxattr(source)
     except OSError as exc:
         logger.debug(f"{source}: extended attributes not kept: {exc}")
+        return
+    for name in names:
+        with suppress(OSError):
+            os.setxattr(copy, name, os.getxattr(source, name))
 
 
 def keep_attributes(source: Path, copy: Path) -> None:

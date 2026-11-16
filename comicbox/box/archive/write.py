@@ -431,11 +431,12 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         file, through any link, and the result is the in-place write's, member
         for member: names, bytes, order, dates, modes and comments are as they
         were, and no page is read. The copy is flushed and given the
-        original's extended attributes, owner and group where they may be
-        set, and mode before it replaces the real file; a failure anywhere
-        leaves the original and no temporary file. A directory that cannot
-        take the copy, read-only or full, gets the in-place write unprotected,
-        with a warning, as before the copy path.
+        original's mode, owner and group where they may be set, and
+        extended attributes where ``os`` can read them, before it replaces
+        the real file; a failure anywhere leaves the original and no
+        temporary file. A directory that cannot take the copy, read-only or
+        full, gets the in-place write unprotected, with a warning, as before
+        the copy path.
         """
         real = path.resolve()
         logger.debug(f"{real}: writing a copy, pages first, tags last.")

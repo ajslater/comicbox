@@ -13,7 +13,6 @@ from __future__ import annotations
 import errno
 import os
 import stat
-import subprocess
 import sys
 import time
 import warnings
@@ -310,41 +309,50 @@ def test_a_leftover_copy_is_removed_by_a_tail_write(tmp_path: Path) -> None:
     assert not leftover.exists()
 
 
-def _set_xattr(path: Path, name: str, value: bytes) -> None:
-    if sys.platform == "darwin":
-        subprocess.run(["xattr", "-w", name, value.decode(), str(path)], check=True)  # noqa: S603, S607
-    else:
-        os.setxattr(path, f"user.{name}", value)
-
-
-def _get_xattr(path: Path, name: str) -> bytes | None:
-    if sys.platform == "darwin":
-        done = subprocess.run(  # noqa: S603
-            ["xattr", "-p", name, str(path)],  # noqa: S607
-            capture_output=True,
-            check=False,
-        )
-        return done.stdout.strip() if done.returncode == 0 else None
-    try:
-        return os.getxattr(path, f"user.{name}")
-    except OSError:
-        return None
-
-
-@pytest.mark.skipif(
-    sys.platform not in ("darwin", "linux"), reason="no extended attributes"
-)
+@pytest.mark.skipif(not hasattr(os, "listxattr"), reason="no os.listxattr")
 def test_the_copy_keeps_extended_attributes(tmp_path: Path) -> None:
-    """E3: a Finder tag or a user attribute was dropped with the old file."""
+    """E3: a user attribute was dropped with the old file."""
     path = _odd_zip(tmp_path / "odd.cbz")
     try:
-        _set_xattr(path, "comicbox.test", b"kept")
-    except (OSError, subprocess.CalledProcessError):
+        os.setxattr(path, "user.comicbox.test", b"kept")  # ty: ignore[missing-attribute]
+    except OSError:
         pytest.skip("this filesystem takes no extended attributes")
 
     assert _retag(path).written
 
-    assert _get_xattr(path, "comicbox.test") == b"kept"
+    assert os.getxattr(path, "user.comicbox.test") == b"kept"  # ty: ignore[missing-attribute]
+
+
+def test_extended_attributes_are_kept_through_os_alone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """E9: on macOS E3 called copyfile(3) through ctypes; only os is used now."""
+    attributes: dict[str, dict[str, bytes]] = {}
+
+    def _key(path: Any) -> str:
+        return Path(path).name
+
+    def _set(path: Any, name: str, value: bytes) -> None:
+        attributes.setdefault(_key(path), {})[name] = value
+
+    monkeypatch.setattr(
+        os,
+        "listxattr",
+        lambda path: list(attributes.get(_key(path), {})),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        os, "getxattr", lambda path, name: attributes[_key(path)][name], raising=False
+    )
+    monkeypatch.setattr(os, "setxattr", _set, raising=False)
+    path = _odd_zip(tmp_path / "odd.cbz")
+    _set(path, "user.comicbox.test", b"kept")
+
+    assert _retag(path).written
+
+    copies = [name for name in attributes if name != path.name]
+    assert copies == [write_module.tmp_archive_path(path).name]
+    assert attributes[copies[0]] == {"user.comicbox.test": b"kept"}
 
 
 def test_the_copy_keeps_the_group(tmp_path: Path) -> None:

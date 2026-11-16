@@ -253,12 +253,14 @@ paths, e.g. `-D series,reprints.0.series`.
 - A process killed in the middle of a re-tag can leave the tag files damaged;
   the pages are never touched.
 - A copy is written through a hidden temporary `.<comic name>.comicbox.tmp`,
-  which replaces the comic keeping its mode, owner, group and extended
-  attributes where they may be set; a leftover one is removed by the next write.
-  A directory that cannot hold the copy gets the in-place write, with a warning.
-  A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
-  converted through `.<comic name>.comicbox.tmp` too. Where a comic's name is
-  too long for that name, a hash of it stands in.
+  which replaces the comic keeping its mode, and its owner and group where they
+  may be set. On Linux it keeps the comic's extended attributes too; on macOS
+  they are not carried over, so a Finder tag on a comic written through a copy
+  is lost. A leftover copy is removed by the next write. A directory that cannot
+  hold the copy gets the in-place write, with a warning. A PDF is saved to a
+  temporary file that replaces it, and a CBR, CBT or CB7 is converted through
+  `.<comic name>.comicbox.tmp` too. Where a comic's name is too long for that
+  name, a hash of it stands in.
 
 ### Reading Lists
 
