@@ -128,8 +128,7 @@ class ArcWrite:
 
     ``formats`` is empty when nothing is written, and ``reason`` then says
     why, unless the comic already has the arc. ``removes`` names the tag
-    files the write takes out of the comic, and ``clears_comment`` whether it
-    clears a free-text archive comment. ``converts_to`` is the CBZ a CBR,
+    files the write takes out of the comic. ``converts_to`` is the CBZ a CBR,
     CBT or CB7 is converted to, and ``deletes_original`` whether the
     original then goes. ``same_file`` lists the other paths of this file:
     when the original goes, so do they.
@@ -142,12 +141,11 @@ class ArcWrite:
     removes: tuple[str, ...] = ()
     converts_to: Path | None = None
     deletes_original: bool = False
-    clears_comment: bool = False
 
     @property
     def loses(self) -> bool:
-        """Whether the write takes a tag file or the archive comment away."""
-        return bool(self.removes) or self.clears_comment
+        """Whether the write takes a tag file away."""
+        return bool(self.removes)
 
     @property
     def path(self) -> Path:
@@ -255,8 +253,6 @@ def plan_write(
         removes=tuple(sorted(format_name(fmt) for fmt in removed)),
         converts_to=converts_to,
         deletes_original=converts_to is not None and delete_orig,
-        # comicbox writes no comment but ComicBookInfo, which holds no arc.
-        clears_comment=comic.free_comment and not keep,
     )
 
 

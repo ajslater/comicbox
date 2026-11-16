@@ -455,25 +455,15 @@ def _verdict(
         else:
             verdict += "; --apply writes them."
         losing = [write for write in plan.todo if write.loses]
-        return verdict, len(losing), f"would lose {_lost_text(losing)}."
+        return verdict, len(losing), "would lose a tag file."
     if not plan.todo:
         return f"Nothing to write among {files}.", 0, ""
     losing = [write for write in held if write.loses]
     return (
         f"{len(held)} of {files} written.",
         len(losing),
-        f"lost {_lost_text(losing)}.",
+        "lost a tag file.",
     )
-
-
-def _lost_text(losing: Sequence[ArcWrite]) -> str:
-    """Name what some writes take away: a tag file, the archive comment, or both."""
-    lost = []
-    if any(write.removes for write in losing):
-        lost.append("a tag file")
-    if any(write.clears_comment for write in losing):
-        lost.append("the archive comment")
-    return " or ".join(lost)
 
 
 def _suggest(run: Run) -> None:

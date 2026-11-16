@@ -33,6 +33,8 @@
 - A tag write that fails while comicbox is running leaves the comic as it was. A
   process killed in the middle of one can still leave the tag files damaged, as
   before; the pages are never touched.
+- `-w` keeps a free-text archive comment, such as a scanner's note, and clears
+  only a ComicBookInfo comment.
 
 ### 🐛 Fixed
 

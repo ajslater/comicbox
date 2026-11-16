@@ -9,6 +9,7 @@ from typing import Any
 from loguru import logger
 
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
+from comicbox.box.load import is_comic_book_info
 from comicbox.box.merge import merge_source
 from comicbox.box.pages import ComicboxPages
 from comicbox.enums.comicbox import FileTypeEnum
@@ -336,12 +337,8 @@ class ComicboxDump(ComicboxPages):
     def _dump_to_archive(self, formats: frozenset[MetadataFormats]) -> None:
         """Prepare archive files and comment and write to archive."""
         self._warn_of_unparsed_tag_files(formats)
-        # Get files and comment. Under keep, a comment not rewritten is kept:
-        # None leaves it as it is.
         files = {}
-        comment: dict[str, bytes | None] = {
-            "c": None if self._config.write.keep_formats else b""
-        }
+        comment: dict[str, bytes | None] = {"c": self._comment_left_by_write()}
         pdf_md = {}
         if not self._config.write.delete_all_tags:
             formats = self._ensure_pdf_to_cbz_default_format(formats)
@@ -355,6 +352,24 @@ class ComicboxDump(ComicboxPages):
         # write to the archive, then re-seed caches from the new bytes.
         self.write_archive_metadata(files, comment["c"], pdf_md)
         self._reset_caches_after_write()
+
+    def _comment_left_by_write(self) -> bytes | None:
+        """
+        Get the archive comment a write leaves unless a format rewrites it.
+
+        None leaves the comment as it is, and b"" clears it. Keep leaves
+        it. Otherwise a ComicBookInfo comment is a tag format, removed like
+        any other the write does not name, while free text, such as a
+        scanner's note, is not one and is left. --delete-all-tags clears
+        either.
+        """
+        write = self._config.write
+        if write.keep_formats:
+            return None
+        if write.delete_all_tags:
+            return b""
+        comment = self._get_comment()
+        return None if comment and not is_comic_book_info(comment) else b""
 
     def _writes_pdf_metadata(self, formats: frozenset[MetadataFormats]) -> bool:
         """

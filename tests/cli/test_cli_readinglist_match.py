@@ -1281,9 +1281,10 @@ def test_keep_does_not_write_a_kept_format_that_splits_the_arc(
     assert _tags(held)["arcs"] == {"Avengers, The: Disassembled": {"number": 2}}
 
 
-def test_a_write_without_keep_says_it_clears_a_free_text_comment(
+def test_a_write_without_keep_leaves_a_free_text_comment(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:
+    """B1: -w without keep cleared a scanner's note, and said so."""
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         comment="Scanned by a friend",
@@ -1293,15 +1294,11 @@ def test_a_write_without_keep_says_it_clears_a_free_text_comment(
     )
 
     _, dry, dry_err = _write(capsys, str(reading_list), str(path.parent))
-    code, out, _ = _write(
-        capsys, "-w", "json,keep", str(reading_list), str(path.parent), apply=True
-    )
+    code, out, _ = _write(capsys, str(reading_list), str(path.parent), apply=True)
 
-    assert "cw1.cbz would add 'Civil War' #1; would clear the archive comment" in (
-        _flat(dry)
-    )
-    assert "1 comic would lose the archive comment." in dry_err
-    assert dry_err.endswith("Add keep to -w to keep them: -w json,keep.")
+    assert "cw1.cbz would add 'Civil War' #1" in _flat(dry)
+    assert "comment" not in _flat(dry) + dry_err
+    assert "Add keep" not in dry_err
     assert code == 0
     assert "clear" not in out
     with zipfile.ZipFile(path) as archive:

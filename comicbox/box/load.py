@@ -60,7 +60,7 @@ def _tag_source_name(source: MetadataSources, data: SourceData) -> str:
     return _TAG_SOURCE_NAMES.get(source, source.value.label)
 
 
-def _is_comic_book_info(text: Any) -> bool:
+def is_comic_book_info(text: Any) -> bool:
     """
     Tell a ComicBookInfo comment from free text.
 
@@ -100,7 +100,7 @@ class _Carrying:
         one whose parser failed is unreadable.
         """
         is_comment = source is MetadataSources.ARCHIVE_COMMENT
-        if is_comment and not _is_comic_book_info(data.data):
+        if is_comment and not is_comic_book_info(data.data):
             self.free_comment = True
             return
         if (source, str(data.path)) in failed:
