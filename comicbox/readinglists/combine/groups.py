@@ -5,8 +5,8 @@ Every row is a node ``(input index, row index)`` carrying its
 ``entry_keys``. A key is qualified by how many earlier rows of its own input
 carry it, so the first occurrence of a repeated issue lines up with the
 first in another list and the second with the second. The cover-year key
-is counted for each row's discriminators apart (``discriminators``): rows
-of two volumes are not repeats of one issue.
+is counted among rows of the same signature (``discriminators``): rows of
+two volumes are not repeats of one issue.
 
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
@@ -16,13 +16,17 @@ volume, then names with a cover year, and within one strength by input
 rank and row. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
-afterwards. A cover-year link is also refused when the group it would
-make holds two rows that conflict (``Discriminators.conflicts``): two
-volumes whose issues share a number and a cover year stay apart, even
-through a third row that has only the cover year. And a row is not linked
-by its cover-year key into an input whose rows holding that key conflict
-with one another: it cannot tell which volume it is, so it is its own
-entry, as ``match`` calls such comics ambiguous.
+afterwards.
+
+The cover-year key links a row to its candidates: rows of other inputs with
+the same key and occurrence whose signatures do not conflict with its own.
+An exact candidate has the same signature, a loose one another. Every exact
+pair is linked, so a list combines with itself unchanged. A loose pair is
+linked only when neither row has an exact candidate in the other's input,
+each is the other's only loose candidate there, and neither has two
+candidates that conflict over all the other inputs: a row that cannot tell
+which volume it is stays its own entry. No group formed through cover-year
+links holds two rows whose signatures conflict.
 """
 
 from collections import Counter
@@ -58,7 +62,9 @@ _BARCODE_SOURCES = frozenset(
 )
 _ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
 _NAME_STRENGTH = (1, 0)
-_NAME_YEAR_STRENGTH = (2, 0)
+_EXACT_STRENGTH = (2, 0)
+_LOOSE_STRENGTH = (2, 1)
+_COVER_YEAR_STRENGTHS = frozenset({_EXACT_STRENGTH, _LOOSE_STRENGTH})
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,7 +152,7 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
     """
     Qualify each row's keys by their count in earlier rows.
 
-    The cover-year key is counted for each row's discriminators apart.
+    The cover-year key is counted among rows of the same signature.
     """
     counts: Counter[tuple[EntryKey, Discriminators | None]] = Counter()
     qualified = []
@@ -162,47 +168,73 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
 
 
 def _strength(key: EntryKey) -> tuple[int, int]:
-    """Rank a key: ids, better ranked databases first, then names, then years."""
+    """Rank an id or name key: ids, better ranked databases first, then names."""
     if key[0] == ID_KEY_KIND:
         return (0, _ID_SOURCE_RANKS.get(key[1], len(_ID_SOURCE_RANKS)))
-    if key[0] == NAME_YEAR_KEY_KIND:
-        return _NAME_YEAR_STRENGTH
     return _NAME_STRENGTH
 
 
-def _unsure_inputs(
-    nodes: Sequence[Node], values: Mapping[Node, Discriminators]
-) -> frozenset[int]:
-    """Name the inputs whose rows holding one key conflict with one another."""
-    held: dict[int, list[Discriminators]] = {}
-    for node in nodes:
-        held.setdefault(node[0], []).append(values[node])
-    return frozenset(index for index, rows in held.items() if any_conflict(rows))
+class _CoverYear:
+    """The rows holding one qualified cover-year key, and their candidates."""
+
+    __slots__ = ("candidates", "values")
+
+    def __init__(
+        self, nodes: Sequence[Node], values: Mapping[Node, Discriminators]
+    ) -> None:
+        self.values = values
+        # A row's candidates: rows of other inputs whose signatures do not
+        # conflict with its own.
+        self.candidates = {
+            node: [
+                other
+                for other in nodes
+                if other[0] != node[0] and not values[node].conflicts(values[other])
+            ]
+            for node in nodes
+        }
+
+    def _may_link_loosely(self, one: Node, other: Node) -> bool:
+        """
+        Tell whether ``one`` lets a loose link to ``other`` be made.
+
+        It has no exact candidate in ``other``'s input, ``other`` is its only
+        loose one there, and no two of its candidates conflict.
+        """
+        there = [node for node in self.candidates[one] if node[0] == other[0]]
+        return there == [other] and not any_conflict(
+            self.values[node] for node in self.candidates[one]
+        )
+
+    def links(self) -> Iterator[_Link]:
+        """Yield every exact pair, and the loose pairs both rows allow."""
+        for one, others in self.candidates.items():
+            for other in others:
+                if other <= one:
+                    continue
+                if self.values[one] == self.values[other]:
+                    yield (_EXACT_STRENGTH, one, other)
+                elif self._may_link_loosely(one, other) and self._may_link_loosely(
+                    other, one
+                ):
+                    yield (_LOOSE_STRENGTH, one, other)
 
 
 def _links(
     holders: Mapping[QualifiedKey, Sequence[Node]],
     values: Mapping[Node, Discriminators],
 ) -> list[_Link]:
-    """
-    List every pair of rows sharing a key, strongest first.
-
-    A cover-year link is left out when either row's candidates in the
-    other's input, the rows there holding the key, conflict with one another.
-    """
+    """List every pair of rows to link, strongest first."""
     links: list[_Link] = []
     for (key, _), nodes in holders.items():
+        if key[0] == NAME_YEAR_KEY_KIND:
+            links.extend(_CoverYear(nodes, values).links())
+            continue
         strength = _strength(key)
-        unsure = (
-            _unsure_inputs(nodes, values)
-            if key[0] == NAME_YEAR_KEY_KIND
-            else frozenset()
-        )
         links.extend(
             (strength, one, other)
             for index, one in enumerate(nodes)
             for other in nodes[index + 1 :]
-            if one[0] not in unsure and other[0] not in unsure
         )
     return sorted(links)
 
@@ -239,7 +271,7 @@ class _Grouper:
                 holders.setdefault(qkey, []).append(node)
         groups = _Groups({node: self._discriminators[node] for node in nodes})
         for strength, one, other in _links(holders, self._discriminators):
-            groups.link(one, other, guarded=strength == _NAME_YEAR_STRENGTH)
+            groups.link(one, other, guarded=strength in _COVER_YEAR_STRENGTHS)
         return groups.groups()
 
     def _record_disagreements(self, group: int, members: Sequence[Node]) -> None:

@@ -1,11 +1,12 @@
 """
-The cover-year key compares like with like (R3-G, R3-H).
+The cover-year key compares like with like (R3-G, R3-H, R3-I).
 
-A row has up to two discriminators, one of each kind: the year-like one,
-its start year or a volume number of 1900 or more, and its small volume
-number. Two rows conflict when they have one of the same kind and those
-differ. A row is not linked by its cover-year key into an input whose rows
-holding it conflict with one another.
+A row's signature has up to two discriminators, one of each kind: the
+year-like one, its start year or a volume number of 1900 or more, and its
+small volume number. Two rows conflict when they have one of the same kind
+and those differ. Every exact pair is linked; a loose pair only when neither
+row has an exact candidate in the other's list, each is the other's only
+loose one there, and neither has two candidates that conflict.
 """
 
 from __future__ import annotations
@@ -133,16 +134,12 @@ def test_two_small_volumes_with_one_cover_year_stay_apart() -> None:
 def test_two_small_volumes_never_meet_through_a_cover_year_row(
     order: tuple[int, ...],
 ) -> None:
+    """The bare row fits both volumes, so it joins neither (R3-I)."""
     rows = (_VOL1, _VOL2, _BARE)
-    position = {row: order.index(row) for row in range(3)}
 
-    groups = [
-        {index for index, _ in group}
-        for group in _groups(*(_list(rows[index]) for index in order))
-    ]
+    groups = _groups(*(_list(rows[index]) for index in order))
 
-    assert len(groups) == 2
-    assert not any({position[0], position[1]} <= group for group in groups)
+    assert groups == [{(0, 0)}, {(1, 0)}, {(2, 0)}]
 
 
 @pytest.mark.parametrize("bare_first", [False, True])
@@ -320,3 +317,96 @@ def test_from_arcs_still_folds_a_copy_into_its_one_volume(*, bare_first: bool) -
     (reading_list,) = reading_lists_from_comics(comics)
 
     assert len(reading_list[ENTRIES_KEY]) == 1
+
+
+# ------------------------------------------------ R3-I: what the rule decides
+
+
+def _entries(*inputs: dict[str, Any]) -> int:
+    return len(combine(list(inputs)).reading_list[ENTRIES_KEY])
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [(_AV_BARE, _AV2011, _AV2016), (_BARE, _VOL1, _VOL2)],
+    ids=["years", "volumes"],
+)
+def test_a_list_with_a_bare_row_and_two_volumes_combines_with_itself(
+    rows: tuple[dict[str, Any], ...],
+) -> None:
+    """[bare, 2011, 2016] with itself became 4 entries and compared unrelated."""
+    assert _groups(_list(*rows), _list(*rows)) == [{(0, r), (1, r)} for r in range(3)]
+    assert compare(_list(*rows), _list(*rows)).verdict is Verdict.SAME
+
+
+def test_a_loose_pair_alone_is_joined_and_a_conflicting_one_is_not() -> None:
+    assert _entries(_list(_AV2011), _list(_AV2016)) == 2
+    assert _entries(_list(_AV2011), _list(_AV_BARE)) == 1
+
+
+def test_a_third_list_does_not_carry_a_bare_row_into_one_volume() -> None:
+    groups = _groups(_list(_AV2011, _AV2016), _list(_AV_BARE), _list(_AV2011))
+    assert {(1, 0)} in groups
+    assert {(0, 0), (2, 0)} in groups
+
+
+def test_a_bare_row_with_two_loose_candidates_in_a_list_stays_alone() -> None:
+    cover = date(2015, 1, 1)
+    started = _entry(series="X", start_year=1999, cover=cover)
+    numbered = _entry(series="X", volume=2, cover=cover)
+    bare = _entry(series="X", cover=cover)
+    assert {(1, 0)} in _groups(_list(started, numbered), _list(bare))
+
+
+def test_bare_rows_join_each_other_and_their_volumes_stay_apart() -> None:
+    groups = _groups(_list(_AV_BARE, _AV2011), _list(_AV_BARE, _AV2016))
+    assert sorted(groups, key=sorted) == [{(0, 0), (1, 0)}, {(0, 1)}, {(1, 1)}]
+
+
+def test_one_start_year_with_two_volume_numbers_joins_by_the_name_key() -> None:
+    """Design 3's name key, unchanged; the docs say so."""
+    one = _entry(series="X-Men", start_year=1991, volume=1, cover=_XMEN_COVER)
+    other = _entry(series="X-Men", start_year=1991, volume=2, cover=_XMEN_COVER)
+    assert _entries(_list(one), _list(other)) == 1
+
+
+# ------------------------- R3-I: the clauses no line of the plan's list shows
+
+
+def test_a_row_whose_exact_copy_is_taken_does_not_fall_back_to_a_loose_one() -> None:
+    """Rule 2: B's bare row joins A's 2016 row by id, so A's bare row stays alone."""
+    metron = {"identifiers": {"metron": {"key": "7"}}}
+    first = _list(_AV_BARE, {**_AV2016, **metron})
+    second = _list({**_AV_BARE, **metron}, _AV2011)
+
+    assert _groups(first, second) == [{(0, 0)}, {(0, 1), (1, 0)}, {(1, 1)}]
+
+
+def test_an_exact_pair_never_joins_two_volumes_that_ids_hold() -> None:
+    """Rule 3: the bare rows are exact, but their groups hold 2011 and 2016."""
+    seven = {"identifiers": {"metron": {"key": "7"}}}
+    eight = {"identifiers": {"metron": {"key": "8"}}}
+    lists = (
+        _list({**_AV_BARE, **seven}),
+        _list({**_AV2011, **seven}),
+        _list({**_AV_BARE, **eight}),
+        _list({**_AV2016, **eight}),
+    )
+
+    assert _groups(*lists) == [{(0, 0), (1, 0)}, {(2, 0), (3, 0)}]
+
+
+def test_match_finds_a_comic_of_the_entrys_own_signature_outright() -> None:
+    comics = {
+        Path("bare.cbz"): _AV_BARE,
+        Path("v2011.cbz"): _AV2011,
+        Path("v2016.cbz"): _AV2016,
+    }
+
+    (found,) = match_comics(_list(_AV_BARE), comics).found
+
+    assert {comic.path.name: comic.ambiguous for comic in found.comics} == {
+        "bare.cbz": False,
+        "v2011.cbz": True,
+        "v2016.cbz": True,
+    }

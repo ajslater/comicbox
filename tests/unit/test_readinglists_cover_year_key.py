@@ -183,16 +183,11 @@ def test_two_volumes_with_one_cover_year_stay_apart() -> None:
 def test_two_volumes_never_meet_through_a_cover_year_row(
     order: tuple[int, ...],
 ) -> None:
-    """Refused on the group, not the pair: each joins the year-only row."""
+    """The year-only row fits both volumes, so it joins neither (R3-I)."""
     rows = (_V2011, _V2016, _YEAR_ONLY)
     inputs = [_list(rows[index]) for index in order]
-    position = {row: order.index(row) for row in range(3)}
 
-    groups = _groups(*inputs)
-
-    assert len(groups) == 2
-    assert not any({position[0], position[1]} <= group for group in groups)
-    assert any(position[2] in group and len(group) == 2 for group in groups)
+    assert _groups(*inputs) == [{0}, {1}, {2}]
 
 
 def test_an_id_still_joins_rows_whose_series_years_differ() -> None:

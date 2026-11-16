@@ -8,7 +8,7 @@ comic as part of a list.
 """
 
 from collections import Counter
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from types import MappingProxyType
 from typing import Any
 
@@ -23,15 +23,8 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.identifiers import ID_KEY_KEY
-from comicbox.readinglists.identity import (
-    NAME_YEAR_KEY_KIND,
-    Discriminators,
-    EntryKey,
-    any_conflict,
-    discriminators,
-    entry_keys,
-    entry_sort_key,
-)
+from comicbox.readinglists.combine.groups import group_rows
+from comicbox.readinglists.identity import entry_sort_key
 from comicbox.readinglists.schema import (
     DATE_KEY,
     ENTRIES_KEY,
@@ -110,18 +103,6 @@ def entry_from_comic(metadata: Mapping[str, Any]) -> dict[str, Any]:
     return entry
 
 
-def _unsure_keys(
-    keys: Sequence[frozenset[EntryKey]], values: Sequence[Discriminators]
-) -> frozenset[EntryKey]:
-    """Name the cover-year keys held by comics that conflict with one another."""
-    held: dict[EntryKey, list[Discriminators]] = {}
-    for comic_keys, value in zip(keys, values, strict=True):
-        for key in comic_keys:
-            if key[0] == NAME_YEAR_KEY_KIND:
-                held.setdefault(key, []).append(value)
-    return frozenset(key for key, rows in held.items() if any_conflict(rows))
-
-
 class _ArcMembers:
     """The comics tagged with one arc, gathered for a list."""
 
@@ -154,31 +135,13 @@ class _ArcMembers:
 
     def _members(self) -> list[tuple[int | None, dict[str, Any]]]:
         """
-        Fold copies of one issue into the first seen, as ``combine`` joins rows.
+        Fold copies of one issue into the first seen, by ``combine``'s rule.
 
-        A copy shares an id or a name key with the member, or its cover-year
-        key without making the member hold two comics that conflict. A
-        cover-year key held by comics that conflict folds none of them: a
-        comic with it alone cannot tell which volume it is a copy of.
+        Each comic is a list of one row: the rows ``combine`` would join are
+        copies of one issue.
         """
-        keys = [frozenset(entry_keys(entry)) for _, entry in self.comics]
-        values = [discriminators(entry) for _, entry in self.comics]
-        unsure = _unsure_keys(keys, values)
-        members: list[tuple[int | None, dict[str, Any]]] = []
-        folded: list[tuple[frozenset[EntryKey], set[Discriminators]]] = []
-        for comic, comic_keys, value in zip(self.comics, keys, values, strict=True):
-            usable = comic_keys - unsure
-            for member_keys, member_values in folded:
-                shared = usable & member_keys
-                if any(key[0] != NAME_YEAR_KEY_KIND for key in shared) or (
-                    shared and not any_conflict((*member_values, value))
-                ):
-                    member_values.add(value)
-                    break
-            else:
-                members.append(comic)
-                folded.append((comic_keys, {value}))
-        return members
+        grouping = group_rows([[entry] for _, entry in self.comics])
+        return [self.comics[members[0][0]] for members in grouping.members]
 
     def reading_list(self) -> dict[str, Any]:
         """Build the list, ordered only when every member has its own number."""

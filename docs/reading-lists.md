@@ -217,18 +217,37 @@ list and a report. It is pure: no files, no network.
 - It does not guess past the cover year. An entry with no id and no start year
   or volume matches on its series, issue and cover year, so a CBL row with a
   `Year` and no `Volume` matches its own copy and a row that has the start year.
-  A cover-year join never brings together rows of two volumes, even through a
-  third row that has only the cover year: two volumes whose issues share a
-  number and a cover year stay apart. A row tells its volume by up to two
-  things: a year, its start year or else a volume number of 1900 or more, and a
-  small volume number. X-Men (1991) volume 2 has both. Rows are of two volumes
-  when they have the same kind and it differs: two start years, or volumes 1
-  and 2. Volume 2 and a start year cannot be compared, so they do not keep rows
-  apart. A row that fits two rows of another list that are of two volumes, such
-  as Avengers #1 of 2016 with no start year against the 2011 and 2016 volumes,
-  joins neither and stays an entry of its own. An entry with no cover year
-  either matches nothing, because a series name and number alone match every
-  volume of a long-running title.
+  A row tells its volume by up to two things: a year, its start year or else a
+  volume number of 1900 or more, and a small volume number. X-Men (1991) volume
+  2 has both. Two rows are of two volumes when they have the same kind and it
+  differs: two start years, or volumes 1 and 2. On the cover year, a row always
+  joins a row of another list that tells its volume exactly as it does, as its
+  own copy does. It joins one that tells it otherwise, such as a start year
+  against no year, or against volume 2, only when that is its one such row in
+  that list, neither has an exact match there, and no list leaves either of them
+  between two volumes. So the cover year will not join:
+    - rows of two volumes, even through a third row that has only the cover
+      year;
+    - a row that fits two rows of one list, such as Avengers #1 of 2016 with no
+      start year against the 2011 and 2016 volumes, or against X (1999) #1 and X
+      volume 2 #1: it stays an entry of its own;
+    - a row that another list leaves between two volumes, even where this list
+      has only one of them;
+    - a row with no year to a row that has one, when the first has its exact
+      copy in that list: `[bare, 2011]` with `[bare, 2016]` joins the bare rows
+      and leaves 2011 and 2016 apart.
+
+    An entry with no cover year either matches nothing, because a series name
+    and number alone match every volume of a long-running title.
+
+- It does not tell a start year from a volume number across lists. X (1999) #1
+  and X volume 2 #1 of one cover year join when they come from two lists, and a
+  row with no year joins them: three lists of one row each, or the three comics
+  in `from-arcs`, where each comic counts as a list of its own, give one entry.
+  The same rows with the first two in one list give three.
+- It does not tell volumes apart within the name key. Rows with one series,
+  start year and issue number are one entry by name, whatever their volume
+  numbers: X-Men (1991) volume 1 #1 and X-Men (1991) volume 2 #1 join.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -287,20 +306,25 @@ the ids differ, or both have cover years more than a year apart.
 
 A comic that shares only the cover year with an entry is judged with the rest of
 the entry's comics, by volume as `combine` tells them apart. It is refused when
-it is of another volume than the entry. Beside comics the entry matched by id or
-name that tell their volume the same way, by a start year or by a volume number,
-it is refused unless it is of one of theirs. Otherwise, when the comics matched
-on the cover year alone are of more than one volume, such as Avengers #1 of 2016
-with no start year against the 2011 and 2016 volumes, or against volumes 1 and
-2, they are all ambiguous: `match` marks them, and `write-arcs` tags none of
-them and exits 1. A start year or volume on the entry settles it. A refused
-comic is not listed under the entry. An entry with no id, start year, volume or
-cover year matches nothing, as in `combine`. `match` prints each entry with each
-comic that is it on a row of its own, and how it matched (`id`, `name`,
-`name-year` or `variant`), or `missing`; a comic with a tag file comicbox could
-not read is marked. The count goes to stderr. Linked directories are not
-searched, as with comicbox's `--recurse`, and a directory that cannot be read is
-a warning: the command then exits 1.
+it is of another volume than the entry, and found outright when it tells its
+volume exactly as the entry does. Of the others, beside comics the entry matched
+by id or name that tell their volume the same way, by a start year or by a
+volume number, it is refused unless it is of one of theirs. Otherwise, when the
+comics matched on the cover year alone are of more than one volume, such as
+Avengers #1 of 2016 with no start year against the 2011 and 2016 volumes, or
+against volumes 1 and 2, they are all ambiguous: `match` marks them, and
+`write-arcs` tags none of them and exits 1. A start year or volume on the entry
+settles it. Unlike `combine`, `match` finds a comic that fits an entry loosely
+beside one that fits it exactly, as it finds every copy: an entry with no year
+finds a comic with no year and a 2011 comic alike, and so does an entry with no
+year beside X (1999) #1 and X volume 2 #1. A refused comic is not listed under
+the entry. An entry with no id, start year, volume or cover year matches
+nothing, as in `combine`. `match` prints each entry with each comic that is it
+on a row of its own, and how it matched (`id`, `name`, `name-year` or
+`variant`), or `missing`; a comic with a tag file comicbox could not read is
+marked. The count goes to stderr. Linked directories are not searched, as with
+comicbox's `--recurse`, and a directory that cannot be read is a warning: the
+command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also
