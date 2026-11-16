@@ -41,6 +41,12 @@
 - `-w` keeps a free-text archive comment, such as a scanner's note, and clears
   only a ComicBookInfo comment.
 
+### 🗑️ Deprecated
+
+> [!NOTE]
+>
+> - The `cbl` format key for ComicBookInfo, removed in 6.0. Use `cbi`.
+
 ### 🐛 Fixed
 
 - `-w pdf` writes a PDF's own metadata, which it never did, clearing a field the

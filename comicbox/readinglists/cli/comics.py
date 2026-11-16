@@ -15,7 +15,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
 from comicbox.cli.parser import CSVAction
-from comicbox.config.formats import KEEP_KEYWORD, split_keep
+from comicbox.config.formats import DEPRECATED_FORMAT_KEYS, KEEP_KEYWORD, split_keep
 from comicbox.constants import ROOT_TAG
 from comicbox.exceptions import ReadingListError
 from comicbox.readinglists.arcs import arc_patch
@@ -59,9 +59,15 @@ if TYPE_CHECKING:
     from comicbox.readinglists.library import Comic
     from comicbox.write import WriteResult
 
-# -w takes the tag formats comicbox writes into a comic, by config key.
+# -w takes the tag formats comicbox writes into a comic, by config key. Not
+# by a deprecated key: write-arcs is newer than any of them, and here cbl
+# would read as a reading list.
 _FORMAT_KEYS = MappingProxyType(
-    {key: fmt for fmt in TAG_FORMATS for key in fmt.value.config_keys}
+    {
+        key: fmt
+        for fmt in TAG_FORMATS
+        for key in fmt.value.config_keys.difference(DEPRECATED_FORMAT_KEYS)
+    }
 )
 _ADDITIVE = "additive"
 
