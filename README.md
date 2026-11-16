@@ -250,10 +250,14 @@ paths, e.g. `-D series,reprints.0.series`.
   pages first and tags last, and patched in place after that.
 - A write that fails leaves the comic as it was.
 - A write interrupted by a kill is undone the next time comicbox opens the
-  comic. Until then other readers see a damaged archive.
+  comic, unless it had already finished. Until then other readers see a damaged
+  archive.
 - For the length of a write, a hidden journal file,
-  `.<comic name>.comicbox-journal.tmp`, sits beside the comic. A comic whose
-  journal's writer is still running is refused as having a write in progress.
+  `.<comic name>.comicbox-journal.tmp`, sits beside the comic, and while one is
+  being settled it is `.<comic name>.comicbox-claimed.tmp`. A comic whose
+  journal was written in the last five minutes by another running comicbox on
+  this host, or by any on another host, is refused as having a write in
+  progress.
 - A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
   converted through a hidden temporary `.<comic name>.comicbox.tmp`.
 

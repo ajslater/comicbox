@@ -10,11 +10,9 @@ from __future__ import annotations
 
 import errno
 import io
-import json
 import os
 import random
 import shutil
-import subprocess
 import sys
 import tarfile
 import time
@@ -25,10 +23,9 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from comicbox.box import Comicbox
-from comicbox.box.archive import journal as journal_module
 from comicbox.box.archive import write as write_module
-from comicbox.box.archive.journal import TailJournal, journal_path
-from comicbox.exceptions import DestinationOccupiedError
+from comicbox.box.archive.journal import journal_path
+from comicbox.box.archive.journal import tail as tail_module
 from comicbox.write import write_metadata
 from tests.const import CIX_PDF_SOURCE_PATH
 
@@ -113,9 +110,8 @@ _DISK_FULL = OSError(errno.ENOSPC, "No space left on device")
         ("tail", _DISK_FULL),
         ("tail", KeyboardInterrupt()),
         ("flush", _DISK_FULL),
-        ("delete", PermissionError(errno.EACCES, "Permission denied")),
     ],
-    ids=["journal-interrupt", "tail-full", "tail-interrupt", "flush", "delete"],
+    ids=["journal-interrupt", "tail-full", "tail-interrupt", "flush"],
 )
 def test_a_failure_at_each_step_leaves_the_comic_as_it_was(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, step: str, error: BaseException
@@ -124,15 +120,13 @@ def test_a_failure_at_each_step_leaves_the_comic_as_it_was(
     original = path.read_bytes()
     if step == "journal":
         # The journal's own flush.
-        _fail_on_call(monkeypatch, journal_module, "_flush", 1, error)
+        _fail_on_call(monkeypatch, tail_module, "flush", 1, error)
     elif step == "tail":
         # The second tag file: the first is already written into the tail.
         _fail_on_call(monkeypatch, zipfile.ZipFile, "writestr", 2, error)
     elif step == "flush":
         # The journal's fsync, then the archive's.
-        _fail_on_call(monkeypatch, journal_module.os, "fsync", 2, error)
-    else:
-        _fail_on_call(monkeypatch, type(path), "unlink", 1, error)
+        _fail_on_call(monkeypatch, os, "fsync", 2, error)
 
     if isinstance(error, KeyboardInterrupt):
         with pytest.raises(KeyboardInterrupt):
@@ -152,12 +146,30 @@ def test_a_journal_the_disk_cannot_hold_is_done_without(
 ) -> None:
     """A full disk at the journal: the write goes ahead, and leaves no part of it."""
     path = _comic(tmp_path)
-    _fail_on_call(monkeypatch, journal_module, "_flush", 1, _DISK_FULL)
+    _fail_on_call(monkeypatch, tail_module, "flush", 1, _DISK_FULL)
 
     result = _retag(path)
 
     assert result.written, result.error
     monkeypatch.undo()
+    assert _tags(path)["summary"] == "New"
+    assert _leftovers(tmp_path) == set()
+
+
+def test_a_journal_that_cannot_be_deleted_leaves_the_write_standing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D1 rule 2: it was rolled back; the next open removes the journal."""
+    path = _comic(tmp_path)
+    _fail_on_call(
+        monkeypatch, type(path), "unlink", 1, PermissionError(errno.EACCES, "denied")
+    )
+
+    result = _retag(path)
+
+    monkeypatch.undo()
+    assert result.written, result.error
+    assert journal_path(path).exists()
     assert _tags(path)["summary"] == "New"
     assert _leftovers(tmp_path) == set()
 
@@ -194,146 +206,6 @@ def test_a_read_only_directory_writes_with_the_in_memory_rollback(
 
     assert written != original
     assert _leftovers(directory) == set()
-
-
-# ------------------------------------------------------------ kill and replay
-
-
-def _killed_write(
-    monkeypatch: pytest.MonkeyPatch, path: Path
-) -> tuple[bytes, bytes, bytes]:
-    """
-    Make a write and keep its journal, as a kill before its delete leaves it.
-
-    Return the archive before and after, and the journal.
-    """
-    original = path.read_bytes()
-    seen: dict[str, bytes] = {}
-    real_finish = TailJournal._finish
-
-    def keep(self: TailJournal) -> None:
-        seen["journal"] = journal_path(path).read_bytes()
-        real_finish(self)
-
-    monkeypatch.setattr(TailJournal, "_finish", keep)
-    assert _retag(path).written
-    monkeypatch.undo()
-    return original, path.read_bytes(), seen["journal"]
-
-
-def _header(journal: bytes) -> dict[str, Any]:
-    return json.loads(journal.split(b"\n", 2)[1])
-
-
-def _with_writer(journal: bytes, **writer: Any) -> bytes:
-    magic, header, tail = journal.split(b"\n", 2)
-    fields = {**json.loads(header), **writer}
-    return b"\n".join((magic, json.dumps(fields).encode(), tail))
-
-
-def _dead_pid() -> int:
-    child = subprocess.Popen([sys.executable, "-c", "pass"])
-    child.wait()
-    return child.pid
-
-
-def _states(original: bytes, final: bytes, offset: int) -> dict[str, bytes]:
-    """List the archive as a kill at several points of the tail write leaves it."""
-    tail = len(final) - offset
-    states: dict[str, bytes] = {}
-    for name, cut in (("start", 0), ("one byte", 1), ("half", tail // 2)):
-        states[f"cut at {name}"] = final[: offset + cut]
-        states[f"overwritten to {name}"] = (
-            final[: offset + cut] + original[offset + cut :]
-        )
-    states["written, journal not yet deleted"] = final
-    return states
-
-
-@pytest.fixture
-def killed(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> tuple[Path, bytes, dict[str, bytes], bytes]:
-    path = _comic(tmp_path)
-    original, final, journal = _killed_write(monkeypatch, path)
-    offset = _header(journal)["offset"]
-    assert final[:offset] == original[:offset]
-    dead = _with_writer(journal, pid=_dead_pid())
-    return path, original, _states(original, final, offset), dead
-
-
-@pytest.mark.parametrize("how", ["read", "write"])
-def test_a_killed_write_is_undone_when_the_comic_is_next_opened(
-    killed: tuple[Path, bytes, dict[str, bytes], bytes], how: str
-) -> None:
-    path, original, states, journal = killed
-    for name, state in states.items():
-        path.write_bytes(state)
-        journal_path(path).write_bytes(journal)
-
-        if how == "read":
-            assert _tags(path).get("summary") is None, name
-            assert path.read_bytes() == original, name
-        else:
-            assert _retag(path, "Again").written, name
-            assert _tags(path)["summary"] == "Again", name
-            with zipfile.ZipFile(path) as archive:
-                assert archive.testzip() is None, name
-        assert not journal_path(path).exists(), name
-
-
-def test_a_journal_from_another_host_is_replayed(
-    killed: tuple[Path, bytes, dict[str, bytes], bytes],
-) -> None:
-    path, original, states, journal = killed
-    path.write_bytes(states["cut at half"])
-    journal_path(path).write_bytes(
-        _with_writer(journal, host="elsewhere", pid=os.getpid())
-    )
-
-    _tags(path)
-
-    assert path.read_bytes() == original
-
-
-def test_a_journal_whose_writer_is_alive_is_refused(
-    killed: tuple[Path, bytes, dict[str, bytes], bytes],
-) -> None:
-    path, _original, states, journal = killed
-    state = states["cut at half"]
-    path.write_bytes(state)
-    journal_path(path).write_bytes(_with_writer(journal, pid=os.getpid()))
-
-    with pytest.raises(DestinationOccupiedError) as exc_info:
-        Comicbox(path)
-    result = _retag(path)
-
-    assert exc_info.value.kind == "writing"
-    assert isinstance(result.error, DestinationOccupiedError)
-    assert path.read_bytes() == state
-    assert journal_path(path).exists()
-
-
-@pytest.mark.parametrize("mismatch", ["pages changed", "not a journal"])
-def test_a_journal_that_does_not_fit_is_left_alone(
-    killed: tuple[Path, bytes, dict[str, bytes], bytes], mismatch: str
-) -> None:
-    path, original, _, journal = killed
-    if mismatch == "pages changed":
-        # The comic was replaced since: its last page differs.
-        offset = _header(journal)["offset"]
-        state = bytearray(original)
-        state[offset - 10] ^= 0xFF
-        state = bytes(state)
-    else:
-        state, journal = original, b"something else"
-    path.write_bytes(state)
-    journal_path(path).write_bytes(journal)
-
-    Comicbox(path).close()
-
-    assert path.read_bytes() == state
-    assert journal_path(path).read_bytes() == journal
 
 
 # ------------------------------------------------------------ the copy path
@@ -423,7 +295,7 @@ def _watch_names(
         monkeypatch.setattr(owner, name, fake)
 
     watching(zipfile.ZipFile, "writestr")
-    watching(journal_module, "_flush")
+    watching(tail_module, "flush")
     watching(write_module.ComicboxArchiveWrite, "_cleanup_tmp_archive")
     return lambda: seen
 

@@ -13,6 +13,7 @@ from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.journal import TAIL_CAP, TailJournal
 from comicbox.box.archive.read import ComicboxArchiveRead
+from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ArchiveWriteError,
@@ -20,7 +21,6 @@ from comicbox.exceptions import (
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
 )
-from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
     from pdffile import PDFFile
@@ -93,15 +93,6 @@ def _release_destination(path: Path) -> None:
     """
     with _INFLIGHT_GUARD:
         _INFLIGHT_DESTINATIONS.pop(path, None)
-
-
-ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
-    {
-        fmt.value.filename.lower()
-        for fmt in MetadataSources.ARCHIVE_FILE.value.formats
-        if fmt.value.enabled
-    }
-)
 
 
 def _same_path(one: Path, other: Path) -> bool:

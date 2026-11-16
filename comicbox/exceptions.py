@@ -41,6 +41,10 @@ class ArchiveWriteError(ArchiveError):
     """An archive could not be written, repacked, or renamed."""
 
 
+class UnfinishedWriteError(ArchiveError):
+    """A comic an interrupted write damaged cannot be repaired here."""
+
+
 class UnparsedTagFileError(ArchiveWriteError):
     """A keep write refused: a tag file the comic carries did not parse."""
 

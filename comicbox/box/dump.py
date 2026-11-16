@@ -7,7 +7,7 @@ from typing import Any
 
 from loguru import logger
 
-from comicbox.box.archive.write import ALL_ARCHIVE_METADATA_FILENAMES
+from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.box.pages import ComicboxPages
 from comicbox.exceptions import UnparsedTagFileError
 from comicbox.formats import MetadataFormats

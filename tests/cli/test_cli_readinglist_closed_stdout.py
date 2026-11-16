@@ -21,6 +21,11 @@ from comicbox import cli, logger
 from comicbox.readinglists.library import read_comics
 from tests.util.comics import make_comic
 
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
     from pathlib import Path
@@ -42,6 +47,7 @@ _ENTRY = "from comicbox.cli import main; main()"
 class _ClosedPipe(io.StringIO):
     """A stdout whose reader has gone, as ``| head -1`` leaves it."""
 
+    @override
     def write(self, s: str) -> int:
         """Fail as a write to a closed pipe does."""
         del s

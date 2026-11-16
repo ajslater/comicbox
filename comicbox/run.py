@@ -19,6 +19,7 @@ from comicbox.exceptions import (
     DestinationOccupiedError,
     ExportError,
     OnlineLookupAbortedError,
+    UnfinishedWriteError,
     UnparsedTagFileError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
@@ -42,7 +43,8 @@ if TYPE_CHECKING:
 #: Expected per-file failures, refusals comicbox makes on purpose: the path
 #: isn't an archive we can open, a keep write refused a comic whose tag file
 #: did not parse, a write or rename would land on a file already there, a
-#: PDF write would harm another attachment, or an export or extraction
+#: PDF write would harm another attachment, a comic an interrupted write
+#: damaged cannot be repaired here, or an export or extraction
 #: target is unsafe or not a directory. A traceback tells the user nothing
 #: the message doesn't, so these log one line. Anything else is a bug and
 #: earns the stack.
@@ -51,6 +53,7 @@ _EXPECTED_FILE_ERRORS = (
     UnparsedTagFileError,
     DestinationOccupiedError,
     UnsafePdfAttachmentError,
+    UnfinishedWriteError,
     ExportError,
 )
 

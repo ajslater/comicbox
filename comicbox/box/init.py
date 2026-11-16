@@ -95,10 +95,6 @@ class ComicboxInit:
         ``comicbox.logger.init_logging`` themselves.
         """
         self._path = self._validate_path(path)
-        if self._path:
-            # A comic a killed write left half done is put back before it is
-            # read, or refused while its writer still runs.
-            replay_journal(self._path)
         # Lazy import: comicbox.config imports comicbox.formats which
         # transitively imports this module — keep the top-level import
         # graph acyclic.
@@ -111,6 +107,10 @@ class ComicboxInit:
         # was what made that guard dead for every CLI run: Runner builds
         # a ComicboxSettings once and hands it to each Comicbox.
         self._config: ComicboxSettings = get_config(config, path=self._path, box=True)
+        if self._path:
+            # A journal a killed write left is settled before the comic is
+            # read, and a comic whose write is in flight refused.
+            replay_journal(self._path, dry_run=self._config.general.dry_run)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:
