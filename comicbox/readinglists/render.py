@@ -6,7 +6,10 @@ not highlight: series names and paths carry brackets (``[Marvel] Civil
 War``) that markup would swallow or misread.
 """
 
+import os
+import sys
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
@@ -53,6 +56,11 @@ from comicbox.readinglists.serialize import ReadingListResult
 from comicbox.readinglists.text import printable
 from comicbox.readinglists.transform import entry_issue_name
 
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 if TYPE_CHECKING:
     from comicbox.readinglists.formats.metron_api import MetronListSummary
     from comicbox.readinglists.match import Found, FoundComic, MatchResult
@@ -72,6 +80,25 @@ _ERROR = Style(color="red", bold=True)
 _UNWRAPPED_WIDTH = 10_000
 
 
+class _Console(Console):
+    """A console whose reader going away is not an error."""
+
+    @override
+    def on_broken_pipe(self) -> None:
+        """
+        Print nothing more, and let the command finish.
+
+        Rich exits 1 here, so ``rl print FILE | head -1`` failed, and a
+        ``write-arcs --apply`` piped into ``head`` stopped tagging part way.
+        What was closed now reads nothing: the rest of the output, and
+        Python's flush of it at exit, go nowhere.
+        """
+        self.quiet = True
+        with suppress(OSError, ValueError):
+            devnull = os.open(os.devnull, os.O_WRONLY)
+            os.dup2(devnull, self.file.fileno())
+
+
 def console(*, stderr: bool = False) -> Console:
     """
     Get a console that prints text as given.
@@ -80,10 +107,10 @@ def console(*, stderr: bool = False) -> Console:
     wraps it. A table fits a terminal's width; written anywhere else, it is
     not wrapped at all, so each row stays one line for a script to read.
     """
-    out = Console(highlight=False, soft_wrap=True, stderr=stderr)
+    out = _Console(highlight=False, soft_wrap=True, stderr=stderr)
     if out.is_terminal:
         return out
-    return Console(
+    return _Console(
         highlight=False, soft_wrap=True, stderr=stderr, width=_UNWRAPPED_WIDTH
     )
 
