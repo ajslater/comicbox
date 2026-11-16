@@ -1,8 +1,13 @@
 """Mixin for Comicbox Schemas."""
 
+import sys
+from collections.abc import Mapping
+from datetime import date
 from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
+from loguru import logger
 from marshmallow.fields import Nested
 
 from comicbox.formats.base.fields.collection_fields import (
@@ -33,8 +38,18 @@ from comicbox.formats.base.fields.number_fields import (
     IntegerField,
 )
 from comicbox.formats.base.fields.pycountry import CountryField, LanguageField
-from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
+from comicbox.formats.base.fields.time_fields import (
+    DateField,
+    DateParts,
+    DateTimeField,
+    date_parts,
+)
 from comicbox.formats.base.schemas.base import BaseSubSchema
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 from comicbox.formats.comicbox.schema.identifiers import (
     IdentifiedSchema,
 )
@@ -182,13 +197,61 @@ class CommunityRatingSchema(BaseSubSchema):
 
 
 class DateSchema(BaseSubSchema):
-    """Date Schema."""
+    """
+    Date Schema.
+
+    A cover date that holds only part of a date, such as CoMet's ``2006`` or
+    ``2006-07``, is kept as the year and month it holds, beside any the
+    source gave itself; a store date has no parts of its own, so a partial
+    one is dropped.
+    """
 
     cover_date = DateField(serialize_to_str=False)  # Comet, PDF, Metron
     store_date = DateField(serialize_to_str=False)  # Metron ONLY
     year = IntegerField()  # CIX, CBI, CT, Filename, Metron
     month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
+
+    @override
+    @classmethod
+    def pre_load_validate(cls, data: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Take a partial cover or store date apart before its field sees it."""
+        data = super().pre_load_validate(data)
+        if not isinstance(data, Mapping):
+            return data
+        return _without_partial_dates(data)
+
+
+def _partial_date(value: Any) -> DateParts | None:
+    """Get the parts of a value that holds part of a date, else None."""
+    if value is None or isinstance(value, date):
+        return None
+    parts = date_parts(str(value).strip())
+    # The field parses a whole date, and warns of nonsense.
+    return None if parts is None or parts.whole else parts
+
+
+def _held(parts: DateParts) -> dict[str, int]:
+    """Name the parts a partial date holds; a day means nothing without its month."""
+    held = {YEAR_KEY: parts.year, MONTH_KEY: parts.month}
+    if parts.month is not None:
+        held[DAY_KEY] = parts.day
+    return {key: part for key, part in held.items() if part is not None}
+
+
+def _without_partial_dates(data: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep a partial cover date as its parts, and drop a partial store date."""
+    data = dict(data)
+    for key in (COVER_DATE_KEY, STORE_DATE_KEY):
+        if (parts := _partial_date(value := data.get(key))) is None:
+            continue
+        del data[key]
+        if key == STORE_DATE_KEY:
+            logger.warning(f"Store date {value} is not a whole date: dropped.")
+            continue
+        for part_key, part in _held(parts).items():
+            data.setdefault(part_key, part)
+    return data
 
 
 class ComicboxSubSchemaMixin(IdentifiedSchema):

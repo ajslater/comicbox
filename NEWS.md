@@ -30,6 +30,8 @@
 
 ### 🐛 Fixed
 
+- A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
+  month; it was completed with today's month or day.
 - A batch write that names one archive twice, by a link and its target, no
   longer writes it twice at once and damages it.
 - A conversion onto a file already there, and a page extraction to a target that
