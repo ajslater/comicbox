@@ -11,9 +11,10 @@ from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.box.pages import ComicboxPages
 from comicbox.exceptions import UnparsedTagFileError
 from comicbox.formats import MetadataFormats
-from comicbox.formats.comicbox.schema import EXT_KEY
+from comicbox.formats.comicbox.schema import EXT_KEY, ComicboxSchemaMixin
 from comicbox.formats.pdf.schema import MuPDFSubSchema
 from comicbox.formats.sources import MetadataSources
+from comicbox.merge import AdditiveMerger
 
 ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats
@@ -22,6 +23,30 @@ ARCHIVE_FORMATS = frozenset(
 # The formats a write puts into an archive: its tag files, its comment, and a
 # PDF's own metadata.
 _WRITABLE_FORMATS = frozenset({*ARCHIVE_FORMATS, MetadataFormats.PDF})
+# Where -m and --import values come from, and where a comic's own come from.
+_GIVEN_SOURCES = (MetadataSources.IMPORT_FILE, MetadataSources.CLI)
+_ARCHIVE_SOURCES = (
+    MetadataSources.ARCHIVE_FILENAME,
+    MetadataSources.ARCHIVE_PDF,
+    MetadataSources.ARCHIVE_COMMENT,
+    MetadataSources.ARCHIVE_FILE,
+)
+ROOT_TAG = ComicboxSchemaMixin.ROOT_TAG
+
+
+def _holds(have: Any, want: Any) -> bool:
+    """Tell whether a value read back holds one given: each key, item and value."""
+    if isinstance(want, Mapping):
+        return isinstance(have, Mapping) and all(
+            _holds(have.get(key), value) for key, value in want.items()
+        )
+    if isinstance(want, list | tuple | set | frozenset):
+        return isinstance(have, list | tuple | set | frozenset) and all(
+            any(_holds(item, wanted) for item in have) for wanted in want
+        )
+    return have == want
+
+
 # Every field -w pdf maps, empty: what a PDF write that no longer has it sets.
 # A field it does not map, such as the creation date, is never sent.
 _CLEARED_PDF_METADATA = MappingProxyType(
@@ -345,8 +370,6 @@ class ComicboxDump(ComicboxPages):
 
     def dump(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Write metadata according to config.write settings."""
-        write = self._config.write
-        convert = self._config.convert
         if self._is_write_disabled():
             logger.info(f"Not writing metadata for: {self._path}")
             return None
@@ -366,15 +389,50 @@ class ComicboxDump(ComicboxPages):
             formats = self._get_dump_formats()
             if formats is None:
                 return None
+        return self._write_formats(formats)
 
-        writes = bool(formats or convert.cbz or write.delete_all_tags)
+    def _write_formats(self, formats: frozenset[MetadataFormats]) -> None:
+        """Write the formats decided, or say there is nothing to keep."""
+        write = self._config.write
+        writes = bool(formats or self._config.convert.cbz or write.delete_all_tags)
         if write.keep_formats and not writes:
             # Not a failure: there is just nothing to keep, and none named.
             logger.info(f"Nothing to keep in {self._path}: not writing it.")
             return None
         result = self._dump_to_archive(formats) if writes else None
         logger.info(f"Wrote metadata to: {self._path}")
+        if formats and self._is_cbz_alone():
+            self._warn_of_unwritten_patch_values()
         return result
+
+    def _merged_sources(self, sources: tuple[MetadataSources, ...]) -> dict:
+        merged: dict = {}
+        for source in sources:
+            for loaded in self.get_normalized_metadata(source) or ():
+                AdditiveMerger.merge(merged, dict(loaded.metadata.get(ROOT_TAG) or {}))
+        return merged
+
+    def _warn_of_unwritten_patch_values(self) -> None:
+        """
+        Name the -m and --import keys a --cbz without -w had nowhere to write.
+
+        Their values go only into the formats the comic carried, and a format
+        can have no place for one: MetronInfo for a title apart from its
+        stories, CoMet for tags. What the comic reads back after the write
+        shows which landed; -w names a format that holds the rest.
+        """
+        given = self._merged_sources(_GIVEN_SOURCES)
+        if not given:
+            return
+        held = self._merged_sources(_ARCHIVE_SOURCES)
+        if missing := sorted(
+            key for key, value in given.items() if not _holds(held.get(key), value)
+        ):
+            logger.warning(
+                f"{self._path}: the formats it carries have no place for"
+                f" {', '.join(missing)} from -m or --import, so they were not"
+                " written. Name a format that holds them with -w."
+            )
 
     def _warn_of_unparsed_tag_files(self, formats: frozenset[MetadataFormats]) -> None:
         """

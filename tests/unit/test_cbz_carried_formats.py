@@ -17,6 +17,7 @@ from tests.const import (
     CBI_CBR_SOURCE_PATH,
     CIX_CBI_CBR_SOURCE_PATH,
     CIX_CBT_SOURCE_PATH,
+    TEST_FILES_DIR,
 )
 from tests.util.comics import make_comic
 
@@ -84,3 +85,50 @@ def test_named_formats_are_unchanged(tmp_path: Path, source: Path) -> None:
     names, comment = _convert(path, **{"write.formats": ["cix"]})
     assert names == ["ComicInfo.xml"]
     assert comment == b""
+
+
+def _unwritten(path: Path, **dests: Any) -> list[str]:
+    """Convert, and return the warnings that name values with nowhere to go."""
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        _convert(path, **dests)
+    finally:
+        logger.remove(handler)
+    return [message for message in messages if "have no place for" in message]
+
+
+_PATCH = "{title: Patched Title, tags: [alpha]}"
+
+
+@pytest.mark.parametrize(
+    ("source", "named"),
+    [("metron", "title"), ("comet", "tags"), ("cix", None)],
+    ids=["MetronInfo has no title", "CoMet has no tags", "ComicInfo holds both"],
+)
+def test_m_values_the_carried_formats_cannot_hold_are_named(
+    tmp_path: Path, source: str, named: str | None
+) -> None:
+    """They were dropped without a word (D5); before B9 a comicbox-cli.yaml took them."""
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / f"Captain Science #001-{source}.cbz", path)
+
+    warnings = _unwritten(path, **{"general.metadata_cli": [_PATCH]})
+
+    if named is None:
+        assert warnings == []
+    else:
+        (warning,) = warnings
+        assert f"no place for {named} from -m" in warning
+
+
+def test_import_values_with_nowhere_to_go_are_named(tmp_path: Path) -> None:
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / "Captain Science #001-metron.cbz", path)
+    imported = tmp_path / "patch.yaml"
+    imported.write_text("comicbox:\n  title: Imported Title\n")
+
+    warnings = _unwritten(path, **{"convert.import_paths": [str(imported)]})
+
+    (warning,) = warnings
+    assert "no place for title" in warning
