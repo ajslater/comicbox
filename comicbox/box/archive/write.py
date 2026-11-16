@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
+from types import MappingProxyType
 from typing import Any, TypeAlias
 
 from loguru import logger
@@ -11,13 +12,22 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.read import ComicboxArchiveRead
-from comicbox.exceptions import ArchiveWriteError, DestinationOccupiedError
+from comicbox.enums.comicbox import FileTypeEnum
+from comicbox.exceptions import (
+    ArchiveWriteError,
+    DestinationOccupiedError,
+    UnsupportedArchiveTypeError,
+)
 from comicbox.formats.sources import MetadataSources
 
 FileKey: TypeAlias = tuple[int, int] | Path
 
 _RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
 _CBZ_SUFFIX = ".cbz"
+# What a sniffed archive really is, for a message about one misnamed.
+_ARCHIVE_KINDS = MappingProxyType(
+    {FileTypeEnum.CBR: "RAR", FileTypeEnum.CB7: "7z", FileTypeEnum.CBT: "tar"}
+)
 # Destinations a conversion is currently writing to. Archives differing
 # only by suffix ("Foo.cbr" and "Foo.cbt", a common way for a library to
 # carry one issue twice) both convert to "Foo.cbz", and bulk writes run on
@@ -82,6 +92,16 @@ ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
 )
 
 
+def _same_path(one: Path, other: Path) -> bool:
+    """Tell whether two paths name one file, as on a case-insensitive disk."""
+    if one == other:
+        return True
+    try:
+        return one.samefile(other)
+    except OSError:
+        return False
+
+
 class ComicboxArchiveWrite(ComicboxArchiveRead):
     """Comicboxs methods for writing to the archive."""
 
@@ -102,7 +122,26 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         is_pdf_in_place = self._archive_is_pdf and not self._config.convert.cbz
         if is_zip or is_pdf_in_place:
             return self._path
-        return self._path.with_suffix(_CBZ_SUFFIX)
+        destination = self._path.with_suffix(_CBZ_SUFFIX)
+        if _same_path(destination, self._path):
+            self._refuse_misnamed_archive(self._path)
+        return destination
+
+    def _refuse_misnamed_archive(self, path: Path) -> None:
+        """
+        Refuse to write a RAR, 7z or tar archive already named ``.cbz``.
+
+        Its CBZ would land on the archive itself, and the write called zip
+        methods on it and failed with an AttributeError.
+        """
+        file_type = self._file_type or FileTypeEnum.CBR
+        kind = _ARCHIVE_KINDS.get(file_type, file_type.value)
+        reason = (
+            f"{path} is a {kind} archive named {path.suffix}"
+            f" (not a zip): rename it to .{file_type.value.lower()} and comicbox"
+            " can convert it to a CBZ."
+        )
+        raise UnsupportedArchiveTypeError(reason)
 
     def _get_new_archive_path(self) -> Path:
         """Return the conversion destination, refusing one already on disk."""

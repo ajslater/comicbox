@@ -36,6 +36,8 @@
   month; it was completed with today's month or day.
 - A batch write that names one archive twice, by a link and its target, no
   longer writes it twice at once and damages it.
+- A RAR or 7z archive named `.cbz` is refused in one line that names its real
+  type, where a write failed with an error.
 - A conversion onto a file already there, and a page extraction to a target that
   is not a directory, are reported in one line, without a traceback.
 - A write that replaces or removes a tag file comicbox could not parse warns,
