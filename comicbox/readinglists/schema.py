@@ -10,7 +10,6 @@ The value passed around the API is the inner mapping, the one under
 ``reading_list``. Only serialized documents carry the root key.
 """
 
-import re
 import sys
 from datetime import date, datetime
 from enum import StrEnum
@@ -24,7 +23,7 @@ from comicbox.formats.base.fields.collection_fields import ListField, StringSetF
 from comicbox.formats.base.fields.comicbox import SimpleNamedNestedField
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import BooleanField, IntegerField
-from comicbox.formats.base.fields.time_fields import DateField
+from comicbox.formats.base.fields.time_fields import DateField, date_parts
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.base.schemas.json_schemas import JsonSchema
 from comicbox.formats.base.schemas.yaml import YamlRenderModule, YamlSchema
@@ -143,16 +142,13 @@ class EntryTypeField(VocabularyField):
     SYNONYMS = MappingProxyType({"tiein": "tie-in", "oneshot": "one-shot"})
 
 
-_FULL_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
 class FullDateField(DateField):
     """
-    A whole date: a date, or an ISO ``YYYY-MM-DD`` string.
+    A whole date, read as a comic's date is: ``2006-07-15``, ``July 15, 2006``.
 
-    comicbox's ``DateField`` parses liberally and fills missing parts from
-    today, so ``2006-07`` would become the 14th of July on the 14th of any
-    month. A reading list never guesses a day.
+    A string that names no day is not one: ``_partial_dates`` reads its year
+    and month before the field sees it, and a reading list never guesses a
+    day. It is always written as ISO ``YYYY-MM-DD``.
     """
 
     @override
@@ -161,12 +157,13 @@ class FullDateField(DateField):
             return value.date()
         if isinstance(value, date):
             return value
-        if isinstance(value, str) and _FULL_DATE_RE.match(text := value.strip()):
-            try:
-                return date.fromisoformat(text)
-            except ValueError:
-                pass
-        reason = "Not a whole date: YYYY-MM-DD."
+        if (
+            isinstance(value, str)
+            and (parts := date_parts(value.strip())) is not None
+            and parts.whole
+        ):
+            return date(parts.year, parts.month, parts.day)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+        reason = "Not a whole date."
         raise ValidationError(reason)
 
 

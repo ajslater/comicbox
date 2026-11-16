@@ -1,6 +1,5 @@
 """Read and write reading lists in any registered format."""
 
-import re
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -9,6 +8,7 @@ from typing import Any
 
 from comicbox.empty import is_empty
 from comicbox.exceptions import ReadingListFormatError
+from comicbox.formats.base.fields.time_fields import DateParts, date_parts
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.base.schemas.error_store import unlogged_drops
 from comicbox.formats.comicbox.schema import (
@@ -37,7 +37,6 @@ from comicbox.readinglists.syntax import refuse_yaml_aliases, syntax_error
 from comicbox.readinglists.text import clean_tree
 
 # A year, or a year and month: a date that names no day.
-_PARTIAL_DATE_RE = re.compile(r"^(\d{4})(?:-(\d{1,2}))?$")
 _YAML_LEXER = "yaml"
 
 
@@ -82,11 +81,11 @@ def _partial_dates(
     entry: Mapping[str, Any], prefix: str, warnings: list[str]
 ) -> Mapping[str, Any]:
     """
-    Read a cover date that names no day as its year and month.
+    Read a cover date that names a year but no day as its year and month.
 
-    ``2006`` and ``2006-07`` are a year and a month, never a cover date: a
-    reading list does not guess the day. A store date that names no day is
-    dropped. Either is a warning.
+    ``2006``, ``2006-07`` and ``July 2006`` are a year and a month, never a
+    cover date, as in a comic: a reading list does not guess the day. A store
+    date that names no day is dropped. Either is a warning.
     """
     entry_date = entry.get(DATE_KEY)
     if not isinstance(entry_date, Mapping):
@@ -94,23 +93,33 @@ def _partial_dates(
     result = dict(entry_date)
     for key in (COVER_DATE_KEY, STORE_DATE_KEY):
         value = result.get(key)
-        if not isinstance(value, str) or not (
-            match := _PARTIAL_DATE_RE.match(value.strip())
-        ):
+        if (parts := _partial_date(value)) is None:
             continue
         del result[key]
         here = f"{prefix}.{DATE_KEY}.{key}: {quote_value(value)} is not a whole date"
         if key == STORE_DATE_KEY:
             warnings.append(f"{here}; dropped")
             continue
-        year, month = match.groups()
-        result.setdefault(YEAR_KEY, int(year))
-        read = f"year {year}"
-        if month:
-            result.setdefault(MONTH_KEY, int(month))
-            read += f", month {int(month)}"
+        result.setdefault(YEAR_KEY, parts.year)
+        read = f"year {parts.year}"
+        if parts.month is not None:
+            result.setdefault(MONTH_KEY, parts.month)
+            read += f", month {parts.month}"
         warnings.append(f"{here}; read as {read}")
     return {**entry, DATE_KEY: result}
+
+
+def _partial_date(value: Any) -> DateParts | None:
+    """
+    Get the parts of a date that names a year but no day; None for any other.
+
+    An unquoted YAML ``2006`` is a number, and is read as a year too.
+    """
+    if isinstance(value, int) and not isinstance(value, bool):
+        value = str(value)
+    if not isinstance(value, str) or (parts := date_parts(value.strip())) is None:
+        return None
+    return parts if parts.year is not None and not parts.whole else None
 
 
 def _load_entries(raw_entries: Any, warnings: list[str]) -> list[dict[str, Any]]:

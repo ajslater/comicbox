@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from typing import TYPE_CHECKING, Any
 
 import pytest
 from loguru import logger
 
-from comicbox.readinglists import ENTRIES_KEY, entry_keys, load, loads
+from comicbox.readinglists import ENTRIES_KEY, dumps, entry_keys, load, loads
 from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
@@ -175,19 +176,53 @@ def _cover_date(value: str) -> tuple[dict[str, Any], tuple[str, ...]]:
             "entries #1.date.cover_date: '2006' is not a whole date; read as year 2006",
         ),
         (
+            # Read as a comic's date is (AJ: "Yes, read them").
             "July 2006",
-            None,
-            "entries #1.date.cover_date: 'July 2006' dropped",
+            {"year": 2006, "month": 7},
+            (
+                "entries #1.date.cover_date: 'July 2006' is not a whole date;"
+                " read as year 2006, month 7"
+            ),
+        ),
+        (
+            "July 15, 2006",
+            {"cover_date": date(2006, 7, 15)},
+            "entries #1.date.cover_date: 'July 15, 2006' read as 2006-07-15",
+        ),
+        (
+            "07/15/2006",
+            {"cover_date": date(2006, 7, 15)},
+            "entries #1.date.cover_date: '07/15/2006' read as 2006-07-15",
         ),
         ("2006-02-30", None, "entries #1.date.cover_date: '2006-02-30' dropped"),
+        ("soon", None, "entries #1.date.cover_date: 'soon' dropped"),
     ],
 )
 def test_a_cover_date_is_never_completed_from_today(
-    value: str, entry_date: dict[str, int] | None, warning: str
+    value: str, entry_date: dict[str, Any] | None, warning: str
 ) -> None:
     entry, warnings = _cover_date(value)
     assert entry.get("date") == entry_date
     assert warnings == (warning,)
+
+
+def test_a_yaml_date_is_read_as_a_comics_and_written_as_iso() -> None:
+    result = loads(
+        "reading_list:\n  name: X\n  entries:\n"
+        "    - series: {name: A}\n      date: {store_date: 15 Jul 2006}\n"
+        "    - series: {name: B}\n      date: {cover_date: 2006}\n",
+        fmt="yaml",
+    )
+
+    first, second = result.reading_list[ENTRIES_KEY]
+    assert first["date"] == {"store_date": date(2006, 7, 15)}
+    # An unquoted YAML 2006 is a number, and still a year.
+    assert second["date"] == {"year": 2006}
+    assert result.warnings == (
+        "entries #1.date.store_date: '15 Jul 2006' read as 2006-07-15",
+        "entries #2.date.cover_date: 2006 is not a whole date; read as year 2006",
+    )
+    assert "store_date: 2006-07-15" in dumps(result.reading_list, "yaml")
 
 
 def test_a_partial_yaml_store_date_is_dropped() -> None:

@@ -31,8 +31,8 @@ _VALUE_TYPES = (date, Decimal, int, float)
 
 
 def quote_value(value: Any) -> str:
-    """Quote a value for a warning, cut to a bounded length."""
-    text = _REPR.repr(value)
+    """Quote a value for a warning, cut to a bounded length; a date as ISO text."""
+    text = value.isoformat() if isinstance(value, date) else _REPR.repr(value)
     return text if len(text) <= _MAX_REPR else text[: _MAX_REPR - 1] + "…"
 
 

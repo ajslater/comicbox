@@ -36,7 +36,10 @@ warning and the rest of the file loads. A ComicRack smart list, whose
 `<Matchers>` select comics rather than list them, is refused. Comicbox YAML and
 JSON are read tolerantly too: a plain `series: Civil War` or `volume: 2006` is
 read as `{name: Civil War}` or `{number: 2006}`, with a warning saying so, and
-is always written as the object.
+is always written as the object. In every format a date is read as a comic's is:
+`July 15, 2006` is that day, and `July 2006` or `2006` a year and month or a
+year, never a guessed day, each with a warning. Dates are written as ISO
+`YYYY-MM-DD`.
 
 The json-cbl schema is vendored byte for byte from
 [json-cbl-standard](https://github.com/ComicReadingLists/json-cbl-standard),
