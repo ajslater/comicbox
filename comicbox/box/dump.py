@@ -6,6 +6,7 @@ from typing import Any
 
 from loguru import logger
 
+from comicbox.box.archive.write import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.box.pages import ComicboxPages
 from comicbox.exceptions import UnparsedTagFileError
 from comicbox.formats import MetadataFormats
@@ -19,6 +20,7 @@ ARCHIVE_FORMATS = frozenset(
 # comicbox cannot write a PDF's own metadata (_dump_format_to_archive
 # returns before its branch), so keep has nothing to write for it.
 _KEEP_UNWRITABLE = frozenset({MetadataFormats.PDF})
+_UNPARSED = "it could not be parsed"
 
 
 def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mapping:
@@ -214,6 +216,7 @@ class ComicboxDump(ComicboxPages):
 
     def _dump_to_archive(self, formats: frozenset[MetadataFormats]) -> None:
         """Prepare archive files and comment and write to archive."""
+        self._warn_of_unparsed_tag_files(formats)
         # Get files and comment. Under keep, a comment not rewritten is kept:
         # None leaves it as it is.
         files = {}
@@ -295,3 +298,27 @@ class ComicboxDump(ComicboxPages):
         result = self._dump_to_archive(formats) if writes else None
         logger.info(f"Wrote metadata to: {self._path}")
         return result
+
+    def _warn_of_unparsed_tag_files(self, formats: frozenset[MetadataFormats]) -> None:
+        """
+        Name each tag file that did not parse and that this write takes away.
+
+        Without keep, a write replaces or removes every tag file the comic
+        has; one that could not be parsed added nothing to what is written.
+        Keep refuses such a comic instead, and deleting all tags means it.
+        """
+        write = self._config.write
+        if write.keep_formats or write.delete_all_tags:
+            return
+        written = {fmt.value.filename.lower() for fmt in formats}
+        for name in self.get_carried_formats().unreadable:
+            if name.lower() not in ALL_ARCHIVE_METADATA_FILENAMES:
+                continue
+            if name.lower() in written:
+                why = "so nothing it held is in the new one"
+                logger.warning(f"Replacing {name} in {self._path}: {_UNPARSED}, {why}.")
+            else:
+                why = "and its format is not one written"
+                logger.warning(
+                    f"Removing {name} from {self._path}: {_UNPARSED}, {why}."
+                )

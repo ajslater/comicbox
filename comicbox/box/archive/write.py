@@ -73,7 +73,7 @@ def _release_destination(path: Path) -> None:
         _INFLIGHT_DESTINATIONS.pop(path, None)
 
 
-_ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
+ALL_ARCHIVE_METADATA_FILENAMES = frozenset(
     {
         fmt.value.filename.lower()
         for fmt in MetadataSources.ARCHIVE_FILE.value.formats
@@ -150,7 +150,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """Remove metadata files from archive: all, or ``only`` those named."""
         for path in self.namelist():
             fn = Path(path).name.lower()
-            if fn in _ALL_ARCHIVE_METADATA_FILENAMES and (only is None or fn in only):
+            if fn in ALL_ARCHIVE_METADATA_FILENAMES and (only is None or fn in only):
                 # zipremove patches remove()/repack() onto the stdlib
                 # ZipFile, which lacks both through at least Python 3.14,
                 # so the typeshed stubs can't see either method.
@@ -191,7 +191,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
         # Don't copy old metadata files to new archive.
         lower_name = Path(filename).name.lower()
-        if lower_name in _ALL_ARCHIVE_METADATA_FILENAMES and (
+        if lower_name in ALL_ARCHIVE_METADATA_FILENAMES and (
             rewritten is None or lower_name in rewritten
         ):
             return None
@@ -311,7 +311,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         return {
             path: pf.read(path)
             for path in self.namelist()
-            if (name := Path(path).name.lower()) in _ALL_ARCHIVE_METADATA_FILENAMES
+            if (name := Path(path).name.lower()) in ALL_ARCHIVE_METADATA_FILENAMES
             and name not in rewritten
         }
 
