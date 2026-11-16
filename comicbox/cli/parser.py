@@ -86,6 +86,20 @@ class LazyEpilog:
         return build_epilog()
 
 
+class RichArgumentParser(ArgumentParser):
+    """
+    An ArgumentParser whose help is rich by default.
+
+    Its subcommands' parsers are built from the same class, so they are
+    rich too without each naming the formatter.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Default the formatter to rich."""
+        kwargs.setdefault("formatter_class", RichHelpFormatter)
+        super().__init__(*args, **kwargs)
+
+
 class CSVAction(Action):
     """Parse comma delimited sequences."""
 
@@ -652,11 +666,10 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     if not PDF_ENABLED:
         description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
 
-    parser = ArgumentParser(
+    parser = RichArgumentParser(
         prog=prog,
         description=description,
-        epilog=LazyEpilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
-        formatter_class=RichHelpFormatter,
+        epilog=LazyEpilog(),
         add_help=False,
     )
     _add_general_group(parser)

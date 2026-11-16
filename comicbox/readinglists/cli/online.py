@@ -8,8 +8,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
-from rich_argparse import RichHelpFormatter
-
 from comicbox.cli.parser import (
     add_online_auth_group,
     add_online_cache_group,
@@ -220,7 +218,6 @@ def add_online_actions(actions: Any) -> None:
             "Search Metron's reading lists by name (needs a Metron API token),"
             " or the paths of the DieselTech catalog on GitHub."
         ),
-        formatter_class=RichHelpFormatter,
     )
     sub.add_argument(
         "where", choices=_SEARCH_WHERE, metavar="metron|catalog", help="Where to look."
@@ -240,7 +237,6 @@ def add_online_actions(actions: Any) -> None:
             " it, to stdout without -o. Metron needs an API token and Comic"
             " Vine an API key."
         ),
-        formatter_class=RichHelpFormatter,
     )
     add_write_options(sub, "FILE", "Write here, not to stdout.")
     sub.add_argument(
