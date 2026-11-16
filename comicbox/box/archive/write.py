@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import unicodedata
 from collections.abc import Mapping
 from contextlib import suppress
 from pathlib import Path
@@ -60,8 +61,9 @@ def file_key(path: Path) -> FileKey:
     sees through a symlink or a linked directory; when they share a device
     and a non-zero inode and the file has more than one link: hard links;
     or when they share a device and a non-zero inode and their real paths
-    are equal once case-folded: two spellings of one name on a
-    case-insensitive disk. An inode alone is not trusted, as some network
+    are equal once case-folded and Unicode-normalized: two spellings of one
+    name on a case-insensitive disk, or its NFC and NFD forms on one that
+    normalizes names, as macOS does. An inode alone is not trusted, as some network
     and FUSE filesystems give every file the same one. A path with nothing
     there yet, such as a conversion's destination, is its resolved spelling.
     """
@@ -73,7 +75,8 @@ def file_key(path: Path) -> FileKey:
         return path.resolve()
     if stat.st_nlink > 1:
         return (stat.st_dev, stat.st_ino)
-    return (stat.st_dev, stat.st_ino, str(path.resolve()).casefold())
+    real = unicodedata.normalize("NFC", str(path.resolve()).casefold())
+    return (stat.st_dev, stat.st_ino, real)
 
 
 def tmp_archive_path(path: Path) -> Path:

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -87,3 +88,15 @@ def test_two_spellings_of_one_name_on_a_case_insensitive_disk_are_one_file(
 
     assert file_key(path) == file_key(other_spelling)
     assert _same_files([path, other_spelling]).same_as == {other_spelling: path}
+
+
+def test_the_nfc_and_nfd_spellings_of_one_name_are_one_file(tmp_path: Path) -> None:
+    """E5: D6 made them two files; they were one at fa457a6."""
+    composed = tmp_path / unicodedata.normalize("NFC", "Café.cbt")
+    shutil.copy(CIX_CBT_SOURCE_PATH, composed)
+    decomposed = tmp_path / unicodedata.normalize("NFD", "Café.cbt")
+    if not decomposed.exists():
+        pytest.skip("this disk does not normalize names")
+
+    assert file_key(composed) == file_key(decomposed)
+    assert _same_files([composed, decomposed]).same_as == {decomposed: composed}
