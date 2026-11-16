@@ -37,8 +37,9 @@
 
 ### 🐛 Fixed
 
-- `-w pdf` writes a PDF's own metadata, which it never did, and `-w keep`
-  rewrites it too.
+- `-w pdf` writes a PDF's own metadata, which it never did, and removes its
+  embedded tag files, as `-w` does in a zip, so what it wrote reads back.
+  `-w keep` rewrites both.
 - A PDF write no longer overwrites another attachment with the old ComicInfo, or
   fails and loses tag files when a PDF has several.
 - A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox

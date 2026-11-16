@@ -475,8 +475,10 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         try:
             if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
-            if delete_all_tags or files:
-                self._replace_pdf_tag_files(pf, files)
+            # As in a zip, a write without keep replaces every tag file, so
+            # -w pdf alone removes them and what it wrote is what reads back.
+            # Under keep only those rewritten are; with none it does nothing.
+            self._replace_pdf_tag_files(pf, files)
         except BaseException:
             # pdffile's close() saves a changed document even after an
             # error, which wrote a half-done write over the PDF. Dropped
