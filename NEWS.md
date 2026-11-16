@@ -80,9 +80,9 @@
   is not a directory, are reported in one line, without a traceback.
 - A write that replaces or removes a tag file comicbox could not parse warns,
   naming it.
-- `--rename` changes the case of a name on a case-insensitive disk, where it
-  said "Renamed" and changed nothing, and says nothing for a comic already at
-  its name.
+- `--rename` changes the case of a name on a case-insensitive disk, and says so
+  when a link to the comic already has the new name, where it said "Renamed" and
+  changed nothing. It says nothing for a comic already at its name.
 - A path that does not exist fails the run, logged once, where it exited 0.
 - A ComicInfo `Web` holding two urls for one database reads the first url's id
   every time, and is written back in its order.
