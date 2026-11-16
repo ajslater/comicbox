@@ -1,6 +1,7 @@
 """Writing Methods."""
 
 from collections.abc import Mapping
+from dataclasses import replace
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any
@@ -8,13 +9,23 @@ from typing import Any
 from loguru import logger
 
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
+from comicbox.box.merge import merge_source
 from comicbox.box.pages import ComicboxPages
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnparsedTagFileError, UnwritableFormatError
 from comicbox.formats import MetadataFormats
-from comicbox.formats.comicbox.schema import EXT_KEY, ComicboxSchemaMixin
+from comicbox.formats.comicbox.schema import (
+    EXT_KEY,
+    IDENTIFIERS_KEY,
+    NOTES_KEY,
+    TAGGER_KEY,
+    UPDATED_AT_KEY,
+    URLS_KEY,
+    ComicboxSchemaMixin,
+)
 from comicbox.formats.pdf.schema import MuPDFSubSchema
 from comicbox.formats.sources import MetadataSources
+from comicbox.identifiers.identifiers import get_url_from_identifier
 from comicbox.merge import AdditiveMerger
 
 ARCHIVE_FORMATS = frozenset(
@@ -24,15 +35,36 @@ ARCHIVE_FORMATS = frozenset(
 # The formats a write puts into an archive: its tag files, its comment, and a
 # PDF's own metadata.
 _WRITABLE_FORMATS = frozenset({*ARCHIVE_FORMATS, MetadataFormats.PDF})
-# Where -m and --import values come from, and where a comic's own come from.
+# Where -m and --import values come from.
 _GIVEN_SOURCES = (MetadataSources.IMPORT_FILE, MetadataSources.CLI)
-_ARCHIVE_SOURCES = (
-    MetadataSources.ARCHIVE_FILENAME,
-    MetadataSources.ARCHIVE_PDF,
-    MetadataSources.ARCHIVE_COMMENT,
-    MetadataSources.ARCHIVE_FILE,
-)
 ROOT_TAG = ComicboxSchemaMixin.ROOT_TAG
+
+
+def _holds_identifiers(given: Mapping[str, Any], held: Mapping[str, Any]) -> bool:
+    """
+    Tell whether a comic read back holds each database id it was given.
+
+    The reader builds urls from ids and ids from urls, so an id is held as
+    its key, or as the url it names: ComicInfo carries ids in its Web. Where
+    one comic's urls name two ids for one database, which the reader keeps
+    as the key is not fixed, but both urls are there.
+    """
+    held_ids = held.get(IDENTIFIERS_KEY) or {}
+    urls = {str(url) for url in held.get(URLS_KEY) or ()}
+    for source, identifier in given.items():
+        if _holds(held_ids.get(source), identifier):
+            continue
+        url = get_url_from_identifier(source, identifier)
+        if not url or url not in urls:
+            return False
+    return True
+
+
+def _holds_given(key: str, given: Any, held: Mapping[str, Any]) -> bool:
+    """Tell whether a comic read back holds one given key's value."""
+    if key == IDENTIFIERS_KEY and isinstance(given, Mapping):
+        return _holds_identifiers(given, held)
+    return _holds(held.get(key), given)
 
 
 def _holds(have: Any, want: Any) -> bool:
@@ -461,12 +493,39 @@ class ComicboxDump(ComicboxPages):
             self._warn_of_unwritten_patch_values()
         return result
 
-    def _merged_sources(self, sources: tuple[MetadataSources, ...]) -> dict:
+    def _given_metadata(self) -> dict:
+        """Merge the -m and --import values, as a read merges them."""
         merged: dict = {}
-        for source in sources:
+        for source in _GIVEN_SOURCES:
             for loaded in self.get_normalized_metadata(source) or ():
-                AdditiveMerger.merge(merged, dict(loaded.metadata.get(ROOT_TAG) or {}))
+                merge_source(
+                    merged, dict(loaded.metadata.get(ROOT_TAG) or {}), AdditiveMerger
+                )
         return merged
+
+    def _read_back(self) -> Mapping[str, Any]:
+        """
+        Read the written comic as a plain read does, without -m or --import.
+
+        Its own sources merged and computed, so a value the reader derives,
+        such as the identifiers ComicInfo carries in its Notes and Web, is
+        there as the reader has it.
+        """
+        config = self._config
+        plain = replace(
+            config,
+            general=replace(config.general, metadata_cli=None),
+            convert=replace(config.convert, import_paths=(), cbz=False),
+        )
+        with type(self)(self._path, config=plain) as reader:
+            return reader.get_internal_metadata().get(ROOT_TAG) or {}
+
+    def _stamped_keys(self) -> frozenset[str]:
+        """Name the keys the stamp rewrote: they have a place, if not -m's value."""
+        keys = {TAGGER_KEY, UPDATED_AT_KEY}
+        if self._config.write.stamp_notes:
+            keys.add(NOTES_KEY)
+        return frozenset(keys)
 
     def _warn_of_unwritten_patch_values(self) -> None:
         """
@@ -477,12 +536,15 @@ class ComicboxDump(ComicboxPages):
         stories, CoMet for tags. What the comic reads back after the write
         shows which landed; -w names a format that holds the rest.
         """
-        given = self._merged_sources(_GIVEN_SOURCES)
+        given = self._given_metadata()
         if not given:
             return
-        held = self._merged_sources(_ARCHIVE_SOURCES)
+        held = self._read_back()
+        stamped = self._stamped_keys()
         if missing := sorted(
-            key for key, value in given.items() if not _holds(held.get(key), value)
+            key
+            for key, value in given.items()
+            if key not in stamped and not _holds_given(key, value, held)
         ):
             logger.warning(
                 f"{self._path}: the formats it carries have no place for"

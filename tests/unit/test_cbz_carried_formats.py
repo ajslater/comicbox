@@ -132,3 +132,21 @@ def test_import_values_with_nowhere_to_go_are_named(tmp_path: Path) -> None:
 
     (warning,) = warnings
     assert "no place for title" in warning
+
+
+@pytest.mark.parametrize(
+    "patch",
+    ["{identifiers: {comicvine: {key: '99'}}}", "{notes: a scanner's note}"],
+    ids=["identifiers in Notes and Web", "notes the stamp rewrote"],
+)
+def test_a_value_the_comic_reads_back_is_not_named(tmp_path: Path, patch: str) -> None:
+    """
+    E4: ComicInfo carries identifiers in its Notes and Web, which the reader derives.
+
+    Compared with the tag files alone they looked unwritten; and the stamp
+    replaced notes, which is not having no place for them.
+    """
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / "Captain Science #001-cix.cbz", path)
+
+    assert _unwritten(path, **{"general.metadata_cli": [patch]}) == []
