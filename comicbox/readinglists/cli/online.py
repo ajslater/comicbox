@@ -57,8 +57,11 @@ from comicbox.readinglists.cli.run import (
 _SETTING_DESTS = ("auth", "cache", "cache_dir", "cache_ttl", "general.config")
 _URL_SCHEMES = frozenset({"http", "https"})
 _URL_KIND = "url"
-_METRON_KINDS = frozenset({"metron", "metron-arc"})
+_COMICVINE_ARC_KIND = "comicvine-arc"
+# The kinds that take a database id.
+_ID_KINDS = frozenset({"metron", "metron-arc", _COMICVINE_ARC_KIND})
 _CATALOG_KIND = "catalog"
+_WHAT = "metron:ID, metron-arc:ID, comicvine-arc:ID, catalog:PATH or an http(s) URL"
 _SEARCH_WHERE = ("metron", _CATALOG_KIND)
 
 
@@ -79,18 +82,29 @@ class FetchSpec:
         return f"{self.kind}:{self.target}"
 
 
+def _comicvine_arc_id(target: str) -> str:
+    """Take an arc id as Comic Vine's URLs spell it too: ``4045-12345``."""
+    from comicbox.enums.comicbox import IdSources
+    from comicbox.identifiers.identifiers import IDENTIFIER_PARTS_MAP
+
+    code = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE].id_type.arc
+    return target.removeprefix(f"{code}-")
+
+
 def fetch_spec(text: str) -> FetchSpec:
-    """Parse ``metron:ID``, ``metron-arc:ID``, ``catalog:PATH`` or a URL."""
+    """Parse a database's ``KIND:ID``, ``catalog:PATH`` or a URL."""
     if urlsplit(text).scheme.lower() in _URL_SCHEMES:
         return FetchSpec(_URL_KIND, text)
     kind, colon, target = text.partition(":")
     kind = kind.lower()
+    if kind == _COMICVINE_ARC_KIND:
+        target = _comicvine_arc_id(target)
     # ASCII digits only: "²" is a digit to isdigit and not to int.
-    if colon and kind in _METRON_KINDS and target.isascii() and target.isdigit():
+    if colon and kind in _ID_KINDS and target.isascii() and target.isdigit():
         return FetchSpec(kind, target)
     if colon and kind == _CATALOG_KIND and target.strip():
         return FetchSpec(kind, target)
-    reason = f"{text!r}: give metron:ID, metron-arc:ID, catalog:PATH or an http(s) URL"
+    reason = f"{text!r}: give {_WHAT}"
     raise ArgumentTypeError(reason)
 
 
@@ -99,6 +113,9 @@ _FETCHERS: MappingProxyType[str, _Fetcher] = MappingProxyType(
     {
         "metron": lambda session, target: session.fetch_metron_list(int(target)),
         "metron-arc": lambda session, target: session.fetch_metron_arc(int(target)),
+        _COMICVINE_ARC_KIND: lambda session, target: session.fetch_comicvine_arc(
+            int(target)
+        ),
         _CATALOG_KIND: lambda session, target: session.fetch_catalog(target),
         _URL_KIND: lambda session, target: session.fetch_url(target),
     }
@@ -214,11 +231,13 @@ def add_online_actions(actions: Any) -> None:
     _add_online_options(sub)
     sub = actions.add_parser(
         "fetch",
-        help="Fetch a list from Metron, the catalog or a URL.",
+        help="Fetch a list from Metron, Comic Vine, the catalog or a URL.",
         description=(
             "Fetch metron:ID (a Metron reading list), metron-arc:ID (a Metron"
-            " story arc), catalog:PATH (a DieselTech list) or an http(s) URL,"
-            " and write it, to stdout without -o. Metron needs an API token."
+            " story arc), comicvine-arc:ID (a Comic Vine story arc),"
+            " catalog:PATH (a DieselTech list) or an http(s) URL, and write"
+            " it, to stdout without -o. Metron needs an API token and Comic"
+            " Vine an API key."
         ),
         formatter_class=RichHelpFormatter,
     )
@@ -227,7 +246,7 @@ def add_online_actions(actions: Any) -> None:
         "spec",
         type=fetch_spec,
         metavar="WHAT",
-        help="metron:ID, metron-arc:ID, catalog:PATH or an http(s) URL.",
+        help=f"{_WHAT}.",
     )
     _add_online_options(sub)
 
