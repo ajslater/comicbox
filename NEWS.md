@@ -30,10 +30,9 @@
 
 ### ♻️ Changed
 
-- A tag write that fails leaves the comic as it was, and one interrupted by a
-  kill is undone the next time comicbox opens the comic; until then other
-  readers see a damaged archive. A hidden journal file sits beside the comic for
-  the length of a write.
+- A tag write that fails while comicbox is running leaves the comic as it was. A
+  process killed in the middle of one can still leave the tag files damaged, as
+  before; the pages are never touched.
 
 ### 🐛 Fixed
 

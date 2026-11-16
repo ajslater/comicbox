@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, ClassVar
 from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
-from comicbox.box.archive.journal import replay_journal
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
@@ -107,10 +106,6 @@ class ComicboxInit:
         # was what made that guard dead for every CLI run: Runner builds
         # a ComicboxSettings once and hands it to each Comicbox.
         self._config: ComicboxSettings = get_config(config, path=self._path, box=True)
-        if self._path:
-            # A journal a killed write left is settled before the comic is
-            # read, and a comic whose write is in flight refused.
-            replay_journal(self._path, dry_run=self._config.general.dry_run)
         self._reset_archive(fmt, metadata)
 
     def _reset_loaded_forward_caches(self) -> None:

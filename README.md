@@ -249,19 +249,16 @@ paths, e.g. `-D series,reprints.0.series`.
   before its pages, as some other tools write them, is written once on a copy
   that then replaces it, every other member kept as it was and the tags moved
   last, and patched in place after that.
-- A write that fails leaves the comic as it was.
-- A write interrupted by a kill is undone the next time comicbox opens the
-  comic, unless it had already finished. Until then other readers see a damaged
-  archive.
-- For the length of a write, a hidden journal file,
-  `.<comic name>.comicbox-journal.tmp`, sits beside the comic, and while one is
-  being settled it is `.<comic name>.comicbox-claimed.tmp`. A comic whose
-  journal was written in the last five minutes by another running comicbox on
-  this host, or by any on another host, is refused as having a write in
-  progress.
-- A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
-  converted through a hidden temporary `.<comic name>.comicbox.tmp`. Where a
-  comic's name is too long for these names, a hash of it stands in.
+- A write that fails while comicbox is running leaves the comic as it was.
+- A process killed in the middle of a re-tag can leave the tag files damaged;
+  the pages are never touched.
+- A copy is written through a hidden temporary `.<comic name>.comicbox.tmp`,
+  which replaces the comic keeping its mode, owner, group and extended
+  attributes where they may be set; a leftover one is removed by the next write.
+  A directory that cannot hold the copy gets the in-place write, with a warning.
+  A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
+  converted through `.<comic name>.comicbox.tmp` too. Where a comic's name is
+  too long for that name, a hash of it stands in.
 
 ### Reading Lists
 

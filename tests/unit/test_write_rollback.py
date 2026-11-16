@@ -2,8 +2,8 @@
 A tag write can be rolled back (B18, "tail rollback").
 
 An in-place re-tag rewrites only the archive's tail. A write that fails puts
-the old tail back; one killed part way leaves a journal that the next open
-replays. Every archive here is generated under tmp_path.
+the old tail back, so the comic is as it was. Every archive here is generated
+under tmp_path.
 """
 
 from __future__ import annotations
@@ -21,11 +21,11 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
 
 import pytest
+from loguru import logger
 
 from comicbox.box import Comicbox
+from comicbox.box.archive import rollback as rollback_module
 from comicbox.box.archive import write as write_module
-from comicbox.box.archive.journal import journal_path
-from comicbox.box.archive.journal import tail as tail_module
 from comicbox.write import write_metadata
 from tests.const import CIX_PDF_SOURCE_PATH
 
@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 _CIX = "COMIC_INFO"
 _MI = "METRON_INFO"
 _TAGS: dict[str, Any] = {"series": {"name": "Civil War"}, "issue": {"name": "1"}}
-_COMIC_SUFFIXES = frozenset({".cbz", ".cbr", ".cbt", ".cb7", ".pdf"})
 
 
 def _page(seed: int) -> bytes:
@@ -69,10 +68,6 @@ def _retag(path: Path, summary: str = "New") -> Any:
     return write_metadata(path, {"summary": summary}, formats=[_CIX, _MI])
 
 
-def _comic_files(directory: Path) -> set[str]:
-    return {p.name for p in directory.iterdir() if p.suffix.lower() in _COMIC_SUFFIXES}
-
-
 def _leftovers(directory: Path) -> set[str]:
     return {p.name for p in directory.iterdir() if p.name.startswith(".")}
 
@@ -103,30 +98,42 @@ _DISK_FULL = OSError(errno.ENOSPC, "No space left on device")
 # --------------------------------------------------------- in-memory rollback
 
 
+def _fail_at_the_end_record(
+    monkeypatch: pytest.MonkeyPatch, error: BaseException
+) -> None:
+    """Fail as zipfile starts the central directory, the new tags flushed."""
+    real = vars(zipfile.ZipFile)["_write_end_record"]
+
+    def end_record(self: zipfile.ZipFile) -> None:
+        if self.mode == "a":
+            assert self.fp is not None
+            self.fp.flush()
+            raise error
+        real(self)
+
+    monkeypatch.setattr(zipfile.ZipFile, "_write_end_record", end_record)
+
+
 @pytest.mark.parametrize(
     ("step", "error"),
     [
-        ("journal", KeyboardInterrupt()),
         ("tail", _DISK_FULL),
         ("tail", KeyboardInterrupt()),
-        ("flush", _DISK_FULL),
+        ("end record", _DISK_FULL),
+        ("end record", KeyboardInterrupt()),
     ],
-    ids=["journal-interrupt", "tail-full", "tail-interrupt", "flush"],
+    ids=["tail-full", "tail-interrupt", "end-record-full", "end-record-interrupt"],
 )
 def test_a_failure_at_each_step_leaves_the_comic_as_it_was(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, step: str, error: BaseException
 ) -> None:
     path = _comic(tmp_path)
     original = path.read_bytes()
-    if step == "journal":
-        # The journal's own flush.
-        _fail_on_call(monkeypatch, tail_module, "flush", 1, error)
-    elif step == "tail":
+    if step == "tail":
         # The second tag file: the first is already written into the tail.
         _fail_on_call(monkeypatch, zipfile.ZipFile, "writestr", 2, error)
-    elif step == "flush":
-        # The journal's fsync, then the archive's.
-        _fail_on_call(monkeypatch, os, "fsync", 2, error)
+    else:
+        _fail_at_the_end_record(monkeypatch, error)
 
     if isinstance(error, KeyboardInterrupt):
         with pytest.raises(KeyboardInterrupt):
@@ -138,45 +145,27 @@ def test_a_failure_at_each_step_leaves_the_comic_as_it_was(
     monkeypatch.undo()
 
     assert path.read_bytes() == original
-    assert _leftovers(tmp_path) == set()
+    assert {p.name for p in tmp_path.iterdir()} == {path.name}
 
 
-def test_a_journal_the_disk_cannot_hold_is_done_without(
+def test_a_restore_that_fails_is_reported(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A full disk at the journal: the write goes ahead, and leaves no part of it."""
     path = _comic(tmp_path)
-    _fail_on_call(monkeypatch, tail_module, "flush", 1, _DISK_FULL)
+    _fail_on_call(monkeypatch, zipfile.ZipFile, "writestr", 2, _DISK_FULL)
 
-    result = _retag(path)
+    def restore(*_args: Any) -> None:
+        raise OSError(errno.EIO, "the disk went away")
 
-    assert result.written, result.error
-    monkeypatch.undo()
-    assert _tags(path)["summary"] == "New"
-    assert _leftovers(tmp_path) == set()
+    monkeypatch.setattr(rollback_module, "_restore", restore)
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="ERROR", format="{message}")
+    try:
+        assert not _retag(path).written
+    finally:
+        logger.remove(handler)
 
-
-def test_a_journal_that_cannot_be_deleted_leaves_the_write_standing(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    """D1 rule 2: it was rolled back; the next open removes the journal."""
-    path = _comic(tmp_path)
-    real_unlink = type(path).unlink
-
-    def unlink(self: Path, *args: Any, **kwargs: Any) -> None:
-        if self == journal_path(path):
-            raise PermissionError(errno.EACCES, "denied")
-        real_unlink(self, *args, **kwargs)
-
-    monkeypatch.setattr(type(path), "unlink", unlink)
-
-    result = _retag(path)
-
-    monkeypatch.undo()
-    assert result.written, result.error
-    assert journal_path(path).exists()
-    assert _tags(path)["summary"] == "New"
-    assert _leftovers(tmp_path) == set()
+    assert any(str(path) in m and "may be damaged" in m for m in messages)
 
 
 @contextmanager
@@ -287,28 +276,28 @@ def test_a_leftover_temporary_archive_is_removed_by_the_next_write(
 def _watch_names(
     monkeypatch: pytest.MonkeyPatch, directory: Path
 ) -> Callable[[], list[set[str]]]:
-    """Record the comic-suffixed names in a directory at each step of a write."""
+    """Record every name in a directory at each step of a write."""
     seen: list[set[str]] = []
 
     def watching(owner: Any, name: str) -> None:
         real = getattr(owner, name)
 
         def fake(*args: Any, **kwargs: Any) -> Any:
-            seen.append(_comic_files(directory))
+            seen.append({p.name for p in directory.iterdir()})
             return real(*args, **kwargs)
 
         monkeypatch.setattr(owner, name, fake)
 
     watching(zipfile.ZipFile, "writestr")
-    watching(tail_module, "flush")
     watching(write_module.ComicboxArchiveWrite, "_cleanup_tmp_archive")
     return lambda: seen
 
 
 @pytest.mark.parametrize("archive", ["tail", "tags first", "cbt"])
-def test_no_comic_named_file_appears_during_a_write(
+def test_nothing_but_a_copys_temporary_archive_appears_during_a_write(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, archive: str
 ) -> None:
+    """No file with a comic suffix, and nothing at all beside a tail write."""
     if archive == "tail":
         path = _comic(tmp_path)
     elif archive == "tags first":
@@ -321,14 +310,17 @@ def test_no_comic_named_file_appears_during_a_write(
         info.size = len(page)
         with tarfile.open(path, "w") as tar:
             tar.addfile(info, io.BytesIO(page))
-    before = _comic_files(tmp_path)
+    allowed = {path.name}
+    if archive != "tail":
+        allowed.add(write_module.tmp_archive_path(path).name)
     seen = _watch_names(monkeypatch, tmp_path)
 
     assert _retag(path).written
 
     monkeypatch.undo()
     assert seen()
-    assert all(names == before for names in seen())
+    assert all(names <= allowed for names in seen())
+    assert all(path.name in names for names in seen())
 
 
 # --------------------------------------------------------------------- PDF
@@ -366,33 +358,24 @@ def test_a_failed_pdf_write_leaves_the_pdf_as_it_was(
     ],
     ids=["cix", "cix+mi", "comment", "keep"],
 )
-def test_the_journal_changes_no_byte_of_a_write(
+def test_the_rollback_changes_no_byte_of_a_write(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     formats: list[str],
     patch: dict[str, Any],
 ) -> None:
     monkeypatch.setattr(time, "time", lambda: 1_800_000_000.0)
-    journaled = _comic(tmp_path / "journaled")
+    kept = _comic(tmp_path / "kept")
     plain = _comic(tmp_path / "plain")
-    assert journaled.read_bytes() == plain.read_bytes()
+    assert kept.read_bytes() == plain.read_bytes()
 
-    assert write_metadata(journaled, patch, formats=formats).written
+    assert write_metadata(kept, patch, formats=formats).written
 
     @contextmanager
-    def no_journal(*_args: Any) -> Generator[None]:
+    def no_rollback(*_args: Any) -> Generator[None]:
         yield
 
-    monkeypatch.setattr(write_module, "TailJournal", no_journal)
+    monkeypatch.setattr(write_module, "TailRollback", no_rollback)
     assert write_metadata(plain, patch, formats=formats).written
 
-    assert journaled.read_bytes() == plain.read_bytes()
-
-
-def test_a_link_and_its_file_share_one_journal(tmp_path: Path) -> None:
-    path = _comic(tmp_path / "real")
-    link = tmp_path / "link.cbz"
-    link.symlink_to(path)
-
-    assert journal_path(link) == journal_path(path)
-    assert journal_path(path).parent == path.parent
+    assert kept.read_bytes() == plain.read_bytes()

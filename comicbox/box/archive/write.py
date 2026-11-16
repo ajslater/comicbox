@@ -1,5 +1,6 @@
 """Comicboxs methods for writing to the archive."""
 
+import hashlib
 import os
 import shutil
 import unicodedata
@@ -16,9 +17,8 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.attributes import keep_attributes
-from comicbox.box.archive.journal import TAIL_CAP, TailJournal, replay_journal
-from comicbox.box.archive.journal.record import hidden_name
 from comicbox.box.archive.read import ComicboxArchiveRead
+from comicbox.box.archive.rollback import TAIL_CAP, TailRollback
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
@@ -36,6 +36,10 @@ FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | Path
 # A conversion's temporary archive: a dot name ending in .tmp, never a comic
 # suffix, so a library watcher skips its creation and its replace alike.
 _TMP_ARCHIVE_SUFFIX = ".comicbox.tmp"
+# The longest file name most filesystems take, in bytes, and the length of
+# the hash that stands in for a comic's name past it.
+_NAME_MAX = 255
+_SHORT_DIGEST = 32
 _CBZ_SUFFIX = ".cbz"
 # What a sniffed archive really is, for a message about one misnamed.
 _ARCHIVE_KINDS = MappingProxyType(
@@ -79,9 +83,24 @@ def file_key(path: Path) -> FileKey:
     return (stat.st_dev, stat.st_ino, real)
 
 
+def _hidden_name(name: str, suffix: str) -> str:
+    """
+    Name a hidden file beside a comic: ``.<name><suffix>``.
+
+    Where that is longer than a directory takes (255 bytes), a hash of the
+    comic's name stands in for it, still dot-named and ending ``suffix``, so
+    a long-named comic still gets its temporary archive.
+    """
+    full = f".{name}{suffix}"
+    if len(os.fsencode(full)) <= _NAME_MAX:
+        return full
+    digest = hashlib.sha256(os.fsencode(name)).hexdigest()[:_SHORT_DIGEST]
+    return f".{digest}{suffix}"
+
+
 def tmp_archive_path(path: Path) -> Path:
     """Name the temporary archive a conversion of this one writes first."""
-    return path.with_name(hidden_name(path.name, _TMP_ARCHIVE_SUFFIX))
+    return path.with_name(_hidden_name(path.name, _TMP_ARCHIVE_SUFFIX))
 
 
 def _claim_destination(destination: Path, source: Path) -> None:
@@ -366,9 +385,8 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         """
         In place remove and append to existing zipfile.
 
-        Only the tail changes, and ``TailJournal`` puts it back if the write
-        fails, or, through its journal, if it is killed part way.
-        A ``comment`` of None, from a ``keep`` write, leaves the comment.
+        Only the tail changes, and ``TailRollback`` puts it back if the write
+        fails. A ``comment`` of None, from a ``keep`` write, leaves the comment.
         """
         if not self._path:
             reason = "No zipfile path to write to."
@@ -381,7 +399,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if (offset := self._tail_offset(self._path, rewritten)) is None:
             self._patch_a_copy(self._path, files, comment, rewritten)
             return
-        with TailJournal(self._path, offset):
+        with TailRollback(self._path, offset):
             self._patch_in_place(self._path, files, comment, rewritten)
 
     def _patch_in_place(
@@ -420,9 +438,6 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         with a warning, as before the copy path.
         """
         real = path.resolve()
-        if replay_journal(real):
-            reason = f"{real} was restored from an interrupted write: write it again."
-            raise ArchiveWriteError(reason)
         logger.debug(f"{real}: writing a copy, pages first, tags last.")
         tmp_path = tmp_archive_path(real)
         try:
