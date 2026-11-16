@@ -352,3 +352,39 @@ def test_rename_to_the_same_name_is_not_a_collision(tmp_path: Path) -> None:
 
     assert again == landed
     assert landed.exists()
+
+
+def test_a_rename_that_only_changes_case_is_carried_out(tmp_path: Path) -> None:
+    """B3: on a case-insensitive disk it logged "Renamed" and renamed nothing."""
+    cbz = tmp_path / "x.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        predicted = car.predict_filename()
+    lowered = tmp_path / predicted.lower()
+    cbz.rename(lowered)
+
+    with Comicbox(lowered) as car:
+        car.rename_file()
+
+    assert [path.name for path in tmp_path.iterdir()] == [predicted]
+
+
+def test_a_rename_onto_its_own_name_says_nothing(tmp_path: Path) -> None:
+    from loguru import logger
+
+    cbz = tmp_path / "x.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        car.rename_file()
+        landed = car.get_path()
+    assert landed is not None
+    messages: list[str] = []
+    handler = logger.add(messages.append, format="{message}")
+    try:
+        with Comicbox(landed) as car:
+            car.rename_file()
+    finally:
+        logger.remove(handler)
+
+    assert not [message for message in messages if "Renamed" in message]
+    assert landed.exists()

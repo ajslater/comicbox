@@ -36,6 +36,9 @@
   is not a directory, are reported in one line, without a traceback.
 - A write that replaces or removes a tag file comicbox could not parse warns,
   naming it.
+- `--rename` changes the case of a name on a case-insensitive disk, where it
+  said "Renamed" and changed nothing, and says nothing for a comic already at
+  its name.
 - ComicInfo keeps every story arc's number when another arc has none.
 - Online summaries no longer show HTML entities such as `&amp;`.
 - A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
