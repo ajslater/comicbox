@@ -45,6 +45,8 @@
   fails and loses tag files when a PDF has several.
 - A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
   YAML, JSON or a library patch is read, where it was dropped without a word.
+- `write_metadata` and `bulk_write` write nothing for a patch that does not
+  load, and return the error, where they rewrote the comic and reported success.
 - `comicbox rl` exits quietly when its output is closed, as by `| head -1`,
   where it failed and stopped `write-arcs --apply` part way.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a

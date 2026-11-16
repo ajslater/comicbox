@@ -46,7 +46,7 @@ from comicbox.events import (
     FileParsed,
     FileShortCircuited,
 )
-from comicbox.exceptions import ComicboxError
+from comicbox.exceptions import ComicboxError, MetadataError
 
 # Historical import path for the write exceptions; the definitions live in
 # comicbox.exceptions so they share the ComicboxError base without cycles. The
@@ -59,6 +59,7 @@ from comicbox.exceptions import (
 )
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import ComicboxSchemaMixin
+from comicbox.formats.sources import MetadataSources
 from comicbox.predict import predict_write_destination
 
 if TYPE_CHECKING:
@@ -213,6 +214,13 @@ def _write_comic(
 ) -> WriteResult:
     """Write, or with ``dry_run`` serialize, one comic; raise what fails."""
     with Comicbox(path, config=settings, metadata=wrapped) as cb:
+        if wrapped is not None and not cb.get_loaded_metadata(MetadataSources.API):
+            # Written anyway, the comic was rewritten from its own tags and
+            # reported as written with none of the patch applied.
+            reason = (
+                f"{path}: the patch did not load as comicbox metadata; nothing written."
+            )
+            return WriteResult(path=path, error=MetadataError(reason))
         written = _keep_formats(cb, settings) if keep else fmt_set
         if dry_run:
             payload = {fmt.name: cb.to_string(fmt) for fmt in written or ()}
