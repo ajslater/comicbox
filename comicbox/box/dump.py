@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from loguru import logger
@@ -21,6 +22,10 @@ ARCHIVE_FORMATS = frozenset(
 # returns before its branch), so keep has nothing to write for it.
 _KEEP_UNWRITABLE = frozenset({MetadataFormats.PDF})
 _UNPARSED = "it could not be parsed"
+# Tag files are written in the order the formats are declared.
+_FORMAT_ORDER = MappingProxyType(
+    {fmt: index for index, fmt in enumerate(MetadataFormats)}
+)
 
 
 def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mapping:
@@ -275,7 +280,8 @@ class ComicboxDump(ComicboxPages):
         pdf_md = {}
         if not self._config.write.delete_all_tags:
             formats = self._ensure_pdf_to_cbz_default_format(formats)
-            for fmt in formats:
+            # In one fixed order: a frozenset's follows the hash seed.
+            for fmt in sorted(formats, key=_FORMAT_ORDER.__getitem__):
                 self._dump_format_to_archive(fmt, files, pdf_md, comment)
 
         # write to the archive, then re-seed caches from the new bytes.
