@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import shutil
 from typing import TYPE_CHECKING
 
@@ -213,8 +214,41 @@ def test_usage_errors_exit_two(
 def test_help(capsys: pytest.CaptureFixture[str]) -> None:
     code, out, _ = _run(capsys, "readinglist", "--help")
     assert code == 0
-    assert out.startswith("usage: comicbox readinglist")
+    assert out.startswith("Usage: comicbox readinglist")
     assert "from-arcs" in out
+
+
+def test_every_action_help_is_rich() -> None:
+    """Each action's --help is rich, as comicbox's own is."""
+    from argparse import _SubParsersAction
+
+    from rich_argparse import RichHelpFormatter
+
+    parser = readinglist_cli.build_parser()
+    (actions,) = (
+        action for action in parser._actions if isinstance(action, _SubParsersAction)
+    )
+    plain = [
+        name
+        for name, sub in actions.choices.items()
+        if not issubclass(sub.formatter_class, RichHelpFormatter)
+    ]
+    assert not plain, f"rl actions with plain help: {plain}"
+
+
+def test_main_help_names_every_action() -> None:
+    """`comicbox -h` lists every reading-list action `comicbox rl` has."""
+    from rich.text import Text
+
+    from comicbox.cli.epilog import _READING_LIST_MODE
+
+    text = Text.from_markup(str(_READING_LIST_MODE.renderable)).plain
+    missing = [
+        action
+        for action in readinglist_cli._ACTIONS
+        if not re.search(rf"(?<![\w-]){re.escape(action)}(?![\w-])", text)
+    ]
+    assert not missing, f"comicbox -h does not name rl actions: {missing}"
 
 
 @pytest.mark.parametrize("name", ["./readinglist", "./rl"])

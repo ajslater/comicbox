@@ -18,6 +18,7 @@ from types import MappingProxyType
 
 from confuse import ConfigError
 
+from comicbox.cli.parser import RichArgumentParser
 from comicbox.exceptions import (
     ConfigurationError,
     OnlineLookupAbortedError,
@@ -29,11 +30,16 @@ from comicbox.readinglists.render import print_note
 
 PROG = "comicbox readinglist"
 
-_DESCRIPTION = """Read, convert, combine and compare reading lists.
+_DESCRIPTION = """Read, convert, combine and compare reading lists, fetch
+them from Metron, Comic Vine, the DieselTech catalog or a URL, and tag the
+comics a list matches with its story arc.
 
 Formats: ComicRack .cbl, json-cbl, and comicbox's own YAML and JSON.
 `comicbox rl` is the short form. A comic file named readinglist or rl has
 to be given to comicbox as ./readinglist or ./rl."""
+
+_EPILOG = """Exits 1 when any file, fetch or comic fails, 2 for a usage
+error, and 130 when Ctrl-C stops it."""
 
 _ACTIONS: MappingProxyType[str, Callable[[Run], None]] = MappingProxyType(
     {**files.ACTIONS, **online.ACTIONS, **comics.ACTIONS}
@@ -44,7 +50,7 @@ __all__ = ("EXIT_CANCELLED", "PROG", "build_parser", "main", "write_text")
 
 def build_parser() -> ArgumentParser:
     """Build the ``comicbox readinglist`` parser."""
-    parser = ArgumentParser(prog=PROG, description=_DESCRIPTION)
+    parser = RichArgumentParser(prog=PROG, description=_DESCRIPTION, epilog=_EPILOG)
     parser.add_argument(
         "-Q",
         "--quiet",
@@ -52,7 +58,12 @@ def build_parser() -> ArgumentParser:
         default=0,
         help="Log less, as in a comicbox run.",
     )
-    actions = parser.add_subparsers(dest="action", required=True, metavar="ACTION")
+    # prog given, argparse doesn't render this parser's usage to make the
+    # actions' prog, which with rich help writes to stdout before any
+    # action runs: an rl piped into a closed reader then failed at once.
+    actions = parser.add_subparsers(
+        dest="action", required=True, metavar="ACTION", prog=PROG
+    )
     files.add_file_actions(actions)
     online.add_online_actions(actions)
     comics.add_comic_actions(actions)

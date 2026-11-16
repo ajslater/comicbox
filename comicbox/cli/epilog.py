@@ -10,7 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 from comicbox._pdf import PAGE_FORMAT_VALUES
-from comicbox.config.formats import KEEP_KEYWORD
+from comicbox.config.formats import DEPRECATED_FORMAT_KEYS, KEEP_KEYWORD
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 
 _TABLE_ARGS = MappingProxyType(
@@ -247,9 +247,12 @@ _READING_LIST_MODE = Styled(
   [cyan]comicbox readinglist[/cyan] ACTION ...   or   [cyan]comicbox rl[/cyan] ACTION ...
 
 Reads, converts, combines and compares reading lists: ComicRack .cbl,
-json-cbl, and comicbox YAML and JSON. Actions: [cyan]print[/cyan], [cyan]validate[/cyan],
-[cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan] and [cyan]from-arcs[/cyan].
-[cyan]comicbox rl --help[/cyan] lists them.
+json-cbl, and comicbox YAML and JSON. Fetches them from Metron, Comic Vine
+story arcs, the DieselTech catalog and URLs, and tags the comics a list
+matches with its story arc.
+
+Actions: [cyan]print[/cyan], [cyan]validate[/cyan], [cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan], [cyan]from-arcs[/cyan],
+[cyan]search[/cyan], [cyan]fetch[/cyan], [cyan]match[/cyan] and [cyan]write-arcs[/cyan]. [cyan]comicbox rl --help[/cyan] lists them.
 
 A comic file named [green]readinglist[/green] or [green]rl[/green] has to be given as [green]./readinglist[/green] or [green]./rl[/green].
 """,
@@ -271,7 +274,9 @@ def _get_help_format_table() -> Table:
         if label.startswith("Comicbox"):
             style = Style(dim=True)
             label = Text(label, style=style)
-        keys = ", ".join(sorted(fmt.value.config_keys))
+        keys = ", ".join(
+            sorted(fmt.value.config_keys.difference(DEPRECATED_FORMAT_KEYS))
+        )
         table.add_row(label, keys)
     table.add_row(
         Text("Keep what the comic has (--write only)", style=Style(italic=True)),

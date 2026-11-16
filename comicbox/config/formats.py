@@ -2,10 +2,16 @@
 
 import contextlib
 from collections.abc import Iterable, Mapping
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Final
 
 from confuse import Subview, exceptions
 from loguru import logger
+
+# Format keys still read, with a warning, and left out of the help: each
+# maps to the key to use instead. cbl for ComicBookInfo goes in comicbox
+# 6.0, since CBL is a ComicRack reading list.
+DEPRECATED_FORMAT_KEYS: Final = MappingProxyType({"cbl": "cbi"})
 
 
 def _raw_or_empty(view: Subview) -> Iterable[Any]:
@@ -63,6 +69,12 @@ def _resolve_formats(
     if ignore_view is not None:
         raw_ignore = _raw_or_empty(ignore_view)
         ignore_keys = frozenset({str(k).strip() for k in raw_ignore})
+
+    for key in sorted(keys & DEPRECATED_FORMAT_KEYS.keys()):
+        logger.warning(
+            f"Action '{label}': format key '{key}' is deprecated and will be"
+            f" removed in comicbox 6.0; use '{DEPRECATED_FORMAT_KEYS[key]}'."
+        )
 
     fmts, keys = _get_formats_from_keys(keys, ignore_keys)
 

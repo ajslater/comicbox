@@ -1,8 +1,9 @@
 # 📚 Reading Lists
 
 A reading list is a set of comics in reading order: an event, a story arc, a
-character's history. Comicbox reads them from files and from comics' own arc
-tags, combines lists that describe the same order, and writes them back out.
+character's history. Comicbox reads them from files, from comics' own arc tags
+and from online sources, combines lists that describe the same order, writes
+them back out, and tags the comics a list matches with its story arc.
 
 ## Formats
 
@@ -82,8 +83,8 @@ comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
 `--to` takes a format token from the table above; the default is `yaml`.
 `combine` and `fetch` write to stdout without `-o`. stdout only ever holds the
 list or table asked for: warnings, what a format loses, the combine report,
-fetch progress and log lines go to stderr. A command exits 1 when any file or
-fetch fails, and 130 when a fetch is cancelled.
+fetch progress and log lines go to stderr. A command exits 1 when any file,
+fetch or comic fails, 2 for a usage error, and 130 when Ctrl-C stops it.
 
 Nothing is written over an existing file unless `--overwrite` is given to
 `convert`, `combine`, `from-arcs` or `fetch`, and nothing is ever written over
