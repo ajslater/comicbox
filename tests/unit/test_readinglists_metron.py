@@ -7,6 +7,7 @@ cache and rate gate included; only its transport is fake.
 
 from __future__ import annotations
 
+import threading
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -455,8 +456,8 @@ def test_a_cancel_during_the_gate_wait_releases_the_slot(
     gate = _gate(session)
     acquire = gate.acquire
 
-    def acquire_then_cancel() -> float:
-        admitted = acquire()
+    def acquire_then_cancel(abort: Callable[[], bool] | None = None) -> float:
+        admitted = acquire(abort)
         session.cancel()
         return admitted
 
@@ -470,6 +471,44 @@ def test_a_cancel_during_the_gate_wait_releases_the_slot(
     # Nothing was sent, so nothing is counted and no slot is held.
     assert gate.stats().sends == 0
     assert not gate._slots
+
+
+def test_a_cancel_inside_a_gate_wait_is_not_sat_out(
+    session: ReadingListSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A4: a cancel sent while a send waited at a full gate waited up to a minute."""
+    adapter = _serve(session, _three_pages())
+    gate = _gate(session)
+    gate.observe(burst_limit=1, burst_remaining=1)
+    gate.acquire()  # spend the window's only slot
+    gate.release()
+    acquire = gate.acquire
+    entered = threading.Event()
+
+    def acquire_once_entered(abort: Callable[[], bool] | None = None) -> float:
+        entered.set()
+        return acquire(abort)
+
+    monkeypatch.setattr(gate, "acquire", acquire_once_entered)
+    raised: list[OnlineLookupAbortedError] = []
+
+    def fetch() -> None:
+        try:
+            session.fetch_metron_list(1)
+        except OnlineLookupAbortedError as exc:
+            raised.append(exc)
+
+    worker = threading.Thread(target=fetch, daemon=True)
+    worker.start()
+    assert entered.wait(5)
+    session.cancel()
+    worker.join(5)
+
+    assert not worker.is_alive()
+    assert len(raised) == 1
+    assert adapter.urls == []
+    assert gate._in_flight == 0
+    assert gate.stats().sends == 1
 
 
 def test_a_cancelled_session_sends_nothing(session: ReadingListSession) -> None:

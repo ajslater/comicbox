@@ -9,6 +9,8 @@ would really block.
 
 from __future__ import annotations
 
+import threading
+
 import pytest
 from mokkari.rate_limit import DEFAULT_BURST_PERIOD, DEFAULT_BURST_SLACK
 
@@ -385,6 +387,51 @@ def test_exhausted_daily_quota_aborts_instead_of_sending(clock: _Clock) -> None:
     )
     with pytest.raises(OnlineLookupAbortedError, match="quota exhausted"):
         gate.acquire()
+
+
+def test_a_cancel_inside_the_wait_ends_it(clock: _Clock) -> None:
+    """
+    A4: a cancel sent while acquire waited for a slot sat the wait out.
+
+    The fake clock never frees the slot, so without the abort check the
+    waiter would sleep a whole window of real time.
+    """
+    gate = _gate(clock, default_limit=1)
+    _paced(gate, limit=1)
+    _send(gate)
+    asked = threading.Event()
+    cancelled = threading.Event()
+    raised: list[OnlineLookupAbortedError] = []
+
+    def abort() -> bool:
+        asked.set()
+        return cancelled.is_set()
+
+    def wait_for_a_slot() -> None:
+        try:
+            gate.acquire(abort=abort)
+        except OnlineLookupAbortedError as exc:
+            raised.append(exc)
+
+    waiter = threading.Thread(target=wait_for_a_slot, daemon=True)
+    waiter.start()
+    assert asked.wait(5)  # parked at the gate
+    cancelled.set()
+    waiter.join(5)
+
+    assert not waiter.is_alive()
+    assert len(raised) == 1
+    # Nothing was admitted.
+    assert gate.stats().sends == 1
+    assert len(gate._slots) == 1
+
+
+def test_an_abort_hook_that_says_no_changes_nothing(clock: _Clock) -> None:
+    gate = _gate(clock)
+    _paced(gate)
+    gate.acquire(abort=lambda: False)
+    gate.release()
+    assert gate.stats().sends == 1
 
 
 # ---------------------------------------------------------------- stats

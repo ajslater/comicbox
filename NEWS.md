@@ -86,6 +86,7 @@
 - A path that does not exist fails the run, logged once, where it exited 0.
 - A ComicInfo `Web` holding two urls for one database reads the first url's id
   every time, and is written back in its order.
+- Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
 - An environment variable for a list setting reads a plain string as its CLI
   option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
 - ComicInfo keeps every story arc's number when another arc has none.

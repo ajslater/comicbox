@@ -15,7 +15,7 @@ import contextvars
 import sys
 import threading
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -39,6 +39,9 @@ from tests.util.metron_transport import (
     issue_row,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
@@ -58,9 +61,9 @@ class _RecordingGate(RateGate):
         self.cooldowns: list[float | None] = []
 
     @override
-    def acquire(self) -> float:
+    def acquire(self, abort: Callable[[], bool] | None = None) -> float:
         self.acquires += 1
-        return super().acquire()
+        return super().acquire(abort)
 
     @override
     def release(self) -> None:
