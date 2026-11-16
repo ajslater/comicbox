@@ -30,6 +30,9 @@
 
 ### 🐛 Fixed
 
+- `--cbz` without `-w` writes back only the tag formats the comic carried, a
+  ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
+  turned the comment into a file.
 - Online tagging matches accented and non-Latin series names: `Pokémon` was
   compared as `pok mon`, and a Japanese or Cyrillic name as nothing.
 - A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and

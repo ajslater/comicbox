@@ -89,18 +89,62 @@ class ComicboxDump(ComicboxPages):
         """
         return self._get_dump_formats()
 
-    def _get_loaded_formats(self) -> frozenset[MetadataFormats]:
-        """Get every format loaded, from any source: what --cbz writes back."""
-        loaded_data_lists = (
-            self.get_loaded_metadata(source) for source in MetadataSources
+    def _get_carried_formats_for_cbz(self) -> frozenset[MetadataFormats]:
+        """
+        Get the formats --cbz without -w writes back: those the archive carried.
+
+        Its tag files, its ComicBookInfo comment and a PDF's own metadata;
+        -m and --import values merge into them. Every loaded format was
+        written, so -m added a comicbox-cli.yaml the comic never had.
+        """
+        carried = self.get_carried_formats().formats
+        if not carried and self._has_given_metadata():
+            logger.warning(
+                f"{self._path} carries no tag format: without -w, the metadata"
+                " given with -m or --import has nowhere to be written."
+            )
+        return carried
+
+    def _has_given_metadata(self) -> bool:
+        """Tell whether metadata came from -m, --import or the API caller."""
+        general, convert = self._config.general, self._config.convert
+        return bool(
+            general.metadata_cli
+            or convert.import_paths
+            or self._sources.get(MetadataSources.API)
         )
-        return frozenset(
-            loaded_data.fmt
-            for loaded_data_list in loaded_data_lists
-            if loaded_data_list
-            for loaded_data in loaded_data_list
-            if loaded_data and loaded_data.fmt is not None
+
+    def _is_cbz_alone(self) -> bool:
+        """Tell whether this is a --cbz write naming no format."""
+        write = self._config.write
+        return bool(
+            self._config.convert.cbz
+            and not write.formats
+            and not write.keep_formats
+            and not write.delete_all_tags
         )
+
+    def _dump_carried_format(
+        self,
+        fmt: MetadataFormats,
+        schema: Any,
+        denormalized_metadata: Mapping,
+        files: dict[str, Mapping],
+        comment: dict[str, bytes | None],
+    ) -> None:
+        """
+        Write a format --cbz carries over: a ComicBookInfo comment as a comment.
+
+        It came back as a comic-book-info.json file. A tag file is written as
+        any write writes it.
+        """
+        in_comment = self.get_carried_formats().in_comment
+        if fmt in MetadataSources.ARCHIVE_COMMENT.value.formats and in_comment:
+            comment["c"] = schema.dumps(denormalized_metadata).encode(errors="replace")
+            filename = fmt.value.filename.lower()
+            if not any(Path(name).name.lower() == filename for name in self.namelist()):
+                return
+        _dump_format(fmt, schema, denormalized_metadata, files, comment)
 
     def _get_dump_formats(self) -> frozenset[MetadataFormats] | None:
         write = self._config.write
@@ -111,7 +155,7 @@ class ComicboxDump(ComicboxPages):
         elif write.formats:
             formats = write.formats
         elif convert.cbz:
-            formats = self._get_loaded_formats()
+            formats = self._get_carried_formats_for_cbz()
         elif not write.delete_all_tags:
             reason = "No formats specified to write"
             logger.warning(reason)
@@ -140,14 +184,15 @@ class ComicboxDump(ComicboxPages):
         """
         Whether the PDF to CBZ default may add ComicInfo.
 
-        Under keep, only for a PDF, and never over a ComicInfo the archive
+        Only for a PDF: an untagged comic of any other kind gains no tag file
+        from --cbz. Under keep, also never over a ComicInfo the archive
         carries and the read configuration did not read: keep replaces no
-        tag file it did not read, and an untagged comic gains none.
+        tag file it did not read.
         """
-        if not self._config.write.keep_formats:
-            return True
         if not self._archive_is_pdf:
             return False
+        if not self._config.write.keep_formats:
+            return True
         unread = MetadataFormats.COMIC_INFO not in self.get_carried_formats().formats
         filename = MetadataFormats.COMIC_INFO.value.filename.lower()
         return not (
@@ -178,6 +223,10 @@ class ComicboxDump(ComicboxPages):
                 pdf_md.update(mupdf_md.get(schema.ROOT_TAG, {}))
         elif self._config.write.keep_formats:
             self._dump_kept_format(fmt, schema, denormalized_metadata, files, comment)
+        elif self._is_cbz_alone():
+            self._dump_carried_format(
+                fmt, schema, denormalized_metadata, files, comment
+            )
         else:
             _dump_format(fmt, schema, denormalized_metadata, files, comment)
 
