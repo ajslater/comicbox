@@ -1,6 +1,94 @@
 # 📰 News
 
-## v5.6.2
+## v5.7.0
+
+### ✨ Added
+
+- Reading lists: `comicbox readinglist` (or `rl`) and the
+  `comicbox.readinglists` API read, validate and write ComicRack CBL, json-cbl
+  and comicbox YAML or JSON lists, combine and compare lists of one event, and
+  build lists from story arc tags. They never write over an existing file
+  without `--overwrite`.
+- `-w keep` writes back the tag formats a comic already has, and `-w cix,keep`
+  adds ComicInfo to them, removing none.
+- `ReadingListSession` fetches reading lists from URLs, with a download size cap
+  set by the new `readinglists` config group.
+- `ReadingListSession` searches and fetches Metron reading lists and story arcs
+  with your Metron API token, sharing tagging's rate limit and response cache.
+  Long lists report progress page by page and can be cancelled between pages.
+- `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
+  on GitHub, with each list's curator read from its name or folder. The index is
+  cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
+  configurable, so a fork works. A renamed list is still found by its sha.
+- `comicbox rl search metron|catalog QUERY` and
+  `comicbox rl fetch metron:ID | metron-arc:ID | catalog:PATH | URL`, with
+  progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over a
+  file without `--overwrite`.
+- `comicbox rl match FILE DIR` shows which of a list's issues a directory of
+  comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
+  the list as a story arc: a dry run unless given `--apply`.
+
+### ♻️ Changed
+
+- A tag write that fails while comicbox is running leaves the comic as it was. A
+  process killed in the middle of one can still leave the tag files damaged, as
+  before; the pages are never touched.
+
+### 🐛 Fixed
+
+- `-w pdf` writes a PDF's own metadata, which it never did, clearing a field the
+  metadata no longer has, and removes its embedded tag files, as `-w` does in a
+  zip, so what it wrote reads back. `-w keep` rewrites both, and
+  `--delete-all-tags` now clears a PDF's own metadata too.
+- `-w` naming only formats a comic cannot hold, such as `-w pdf` on a CBZ, is
+  refused, where it removed every tag file and wrote none; one it cannot hold
+  beside others it can is skipped with a warning.
+- A PDF write no longer overwrites another attachment with the old ComicInfo, or
+  fails and loses tag files when a PDF has several. Converting a PDF whose
+  attachment is named like a page number, or like a page it converts to
+  (`1.jpeg`), is refused, where its CBZ had the page twice and lost the
+  attachment.
+- A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
+  YAML, JSON or a library patch is read, where it was dropped without a word.
+- `write_metadata` and `bulk_write` write nothing for a patch that does not
+  load, and return the error, where they rewrote the comic and reported success.
+- `comicbox rl` exits quietly when its output is closed, as by `| head -1`,
+  where it failed and stopped `write-arcs --apply` part way.
+- `--cbz` without `-w` writes back only the tag formats the comic carried, a
+  ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
+  turned the comment into a file. It warns of an `-m` or `--import` value none
+  of those formats can hold.
+- Online tagging matches accented and non-Latin series names: `Pokémon` was
+  compared as `pok mon`, and a Japanese or Cyrillic name as nothing.
+- Tag files are written into an archive in one fixed order.
+- Comic YAML repeats a value it holds twice, such as one date for cover and
+  store, instead of writing `&id001` and `*id001`.
+- Issue `-1` is read as the number -1; it was read as a suffix, with no number.
+- A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
+  month; it was completed with today's month or day.
+- A cover date from a higher source, such as `-m`, replaces a comic's own date
+  that it contradicts, where the old date or its day survived; a year, month or
+  day given alone still changes only that part.
+- A comic a run reaches by several paths, such as a file and a link to it under
+  `-r`, is processed once, through the file. `write-arcs --delete-orig` removes
+  every other name of a converted original, hard links included.
+- A batch write that names one archive twice, by a link and its target, no
+  longer writes it twice at once and damages it.
+- A RAR or 7z archive named `.cbz` is refused in one line that names its real
+  type, where a write failed with an error.
+- A conversion onto a file already there, and a page extraction to a target that
+  is not a directory, are reported in one line, without a traceback.
+- A write that replaces or removes a tag file comicbox could not parse warns,
+  naming it.
+- `--rename` changes the case of a name on a case-insensitive disk, where it
+  said "Renamed" and changed nothing, and says nothing for a comic already at
+  its name.
+- An environment variable for a list setting reads a plain string as its CLI
+  option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
+- ComicInfo keeps every story arc's number when another arc has none.
+- Online summaries no longer show HTML entities such as `&amp;`.
+- A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
+  config from loading.
 
 ### 🧑‍💻 Developer
 

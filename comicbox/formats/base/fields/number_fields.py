@@ -13,6 +13,7 @@ from comicbox.formats.base.fields.fields import (
     StringField,
     half_replace,
 )
+from comicbox.formats.base.schemas.error_store import drops_logged
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -53,7 +54,7 @@ class RangedNumberMixin(Generic[NumT]):
                 result = max(result, self._min)
             if self._max is not None:
                 result = min(result, self._max)
-            if old_result != result:
+            if old_result != result and drops_logged():
                 logger.warning(f"Coerced {old_result} to {result}")
         return result
 
@@ -146,6 +147,17 @@ class DecimalField(fields.Decimal, RangedNumberMixin[Decimal]):
     def _serialize(self, *args: Any, **kwargs: Any) -> Any:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
+
+
+class SignedDecimalField(DecimalField):
+    """
+    A decimal that keeps a leading minus sign.
+
+    Issue -1 is a real issue number; DecimalField reads only digits, so its
+    "-1" was 1.
+    """
+
+    DECIMAL_MATCHER = re.compile(r"-?\d*\.?\d+")
 
 
 class BooleanField(fields.Boolean):

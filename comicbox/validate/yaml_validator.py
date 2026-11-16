@@ -1,23 +1,13 @@
 """Validate yaml with jsonchema."""
 
 import sys
+from collections.abc import Mapping
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from glom import glom
 from ruamel.yaml import YAML
 
-from comicbox.constants import (
-    COVER_DATE_KEY,
-    COVER_DATE_KEYPATH,
-    DATE_KEY,
-    PAGES_KEY,
-    PAGES_KEYPATH,
-    ROOT_KEYPATH,
-    STORE_DATE_KEY,
-    STORE_DATE_KEYPATH,
-    UPDATED_AT_KEY,
-)
 from comicbox.formats.base.fields.time_fields import DateField, DateTimeField
 from comicbox.validate.json_validator import JsonValidator
 
@@ -26,34 +16,23 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
-_KEYPATH_PREFIX = ROOT_KEYPATH + "."
-_FULL_UPDATED_AT_KEYPATH = _KEYPATH_PREFIX + UPDATED_AT_KEY
-_FULL_COVER_DATE_KEYPATH = _KEYPATH_PREFIX + COVER_DATE_KEYPATH
-_FULL_STORE_DATE_KEYPATH = _KEYPATH_PREFIX + STORE_DATE_KEYPATH
 
+def _jsonable(data: Any) -> Any:
+    """
+    Make loaded YAML look like the JSON the schema describes.
 
-def _stringify_keys(data: Any) -> Any:
-    """JSON requires string keys."""
-    if pages := glom(data, PAGES_KEYPATH, default=None):
-        pages = {str(key): value for key, value in pages.items()}
-        # Glom can't assign to RumaelCommentMaps
-        data[ROOT_KEYPATH][PAGES_KEY] = pages
-
-    if updated_at := glom(data, _FULL_UPDATED_AT_KEYPATH, default=None):
-        data[ROOT_KEYPATH][UPDATED_AT_KEY] = updated_at = DateTimeField()._serialize(  # noqa: SLF001
-            updated_at, "", None
-        )
-
-    if cover_date := glom(data, _FULL_COVER_DATE_KEYPATH, default=None):
-        data[ROOT_KEYPATH][DATE_KEY][COVER_DATE_KEY] = DateField()._serialize(  # noqa: SLF001
-            cover_date, "", None
-        )
-
-    if store_date := glom(data, _FULL_STORE_DATE_KEYPATH, default=None):
-        data[ROOT_KEYPATH][DATE_KEY][STORE_DATE_KEY] = DateField()._serialize(  # noqa: SLF001
-            store_date, "", None
-        )
-
+    JSON keys are strings, and JSON has no date type: YAML loads page
+    numbers as int keys and dates as date objects, wherever they sit, in a
+    comic's cover date or in every entry of a reading list.
+    """
+    if isinstance(data, Mapping):
+        return {str(key): _jsonable(value) for key, value in data.items()}
+    if isinstance(data, list):
+        return [_jsonable(value) for value in data]
+    if isinstance(data, datetime):
+        return DateTimeField()._serialize(data, "", None)  # noqa: SLF001
+    if isinstance(data, date):
+        return DateField()._serialize(data, "", None)  # noqa: SLF001
     return data
 
 
@@ -65,5 +44,4 @@ class YamlValidator(JsonValidator):
         """Validate source."""
         data = self.get_data_str(data)
         data = YAML().load(data)
-        json_data = _stringify_keys(data)
-        self._validator.validate(json_data)
+        self._validator.validate(_jsonable(data))

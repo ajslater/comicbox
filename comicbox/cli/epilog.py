@@ -10,6 +10,7 @@ from rich.table import Table
 from rich.text import Text
 
 from comicbox._pdf import PAGE_FORMAT_VALUES
+from comicbox.config.formats import KEEP_KEYWORD
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 
 _TABLE_ARGS = MappingProxyType(
@@ -239,6 +240,22 @@ A comic file named [green]doctor[/green] has to be given as [green]./doctor[/gre
     style="argparse.text",
 )
 
+_READING_LIST_MODE = Styled(
+    """
+[bold]Reading lists[/bold]
+
+  [cyan]comicbox readinglist[/cyan] ACTION ...   or   [cyan]comicbox rl[/cyan] ACTION ...
+
+Reads, converts, combines and compares reading lists: ComicRack .cbl,
+json-cbl, and comicbox YAML and JSON. Actions: [cyan]print[/cyan], [cyan]validate[/cyan],
+[cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan] and [cyan]from-arcs[/cyan].
+[cyan]comicbox rl --help[/cyan] lists them.
+
+A comic file named [green]readinglist[/green] or [green]rl[/green] has to be given as [green]./readinglist[/green] or [green]./rl[/green].
+""",
+    style="argparse.text",
+)
+
 _FORMAT_TABLE_TITLE = """Format keys for [cyan]--read[/cyan], [cyan]--read-except[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not intended for distribution and are provided as convenience to developers."""
 
@@ -256,6 +273,10 @@ def _get_help_format_table() -> Table:
             label = Text(label, style=style)
         keys = ", ".join(sorted(fmt.value.config_keys))
         table.add_row(label, keys)
+    table.add_row(
+        Text("Keep what the comic has (--write only)", style=Style(italic=True)),
+        KEEP_KEYWORD,
+    )
 
     return table
 
@@ -273,6 +294,7 @@ def build_epilog() -> Group:
         _get_match_mode_table(),
         _get_help_format_table(),
         _DOCTOR_MODE,
+        _READING_LIST_MODE,
     ]
     # Without pdffile installed there is no --pdf-pages option to document.
     if PAGE_FORMAT_VALUES:

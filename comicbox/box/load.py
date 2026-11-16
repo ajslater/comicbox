@@ -1,7 +1,9 @@
 """Parsing methods."""
 
+import json
 import os
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
+from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
@@ -18,6 +20,105 @@ from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.sources import MetadataSources
+
+# The sources that are files in, or metadata of, the archive itself.
+TAG_SOURCES = (
+    MetadataSources.ARCHIVE_FILE,
+    MetadataSources.ARCHIVE_COMMENT,
+    MetadataSources.ARCHIVE_PDF,
+)
+_TAG_SOURCE_NAMES = MappingProxyType(
+    {
+        MetadataSources.ARCHIVE_COMMENT: "archive comment",
+        MetadataSources.ARCHIVE_PDF: "PDF metadata",
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class CarriedFormats:
+    """
+    The tag formats a comic carries that comicbox read, and what it could not.
+
+    ``formats`` come from the archive's own tag files, its ComicBookInfo
+    comment and a PDF's metadata: not the file name, nor the command line,
+    an import or an online lookup. ``unreadable`` names the tag files that
+    did not parse. ``in_comment`` is whether the comic carries ComicBookInfo
+    as its archive comment rather than as a file.
+    """
+
+    formats: frozenset[MetadataFormats]
+    unreadable: tuple[str, ...]
+    in_comment: bool
+    # An archive comment that is not ComicBookInfo: free text.
+    free_comment: bool = False
+
+
+def _tag_source_name(source: MetadataSources, data: SourceData) -> str:
+    if source is MetadataSources.ARCHIVE_FILE and data.path:
+        return Path(data.path).name
+    return _TAG_SOURCE_NAMES.get(source, source.value.label)
+
+
+def _is_comic_book_info(text: Any) -> bool:
+    """
+    Tell a ComicBookInfo comment from free text.
+
+    It is ComicBookInfo only as JSON with ComicBookInfo's root key: any
+    other comment, a brace or JSON included, is free text.
+    """
+    from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
+
+    if isinstance(text, bytes):
+        text = text.decode(errors="replace")
+    try:
+        data = json.loads(text)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(data, dict) and ComicBookInfoSchema.ROOT_DATA_KEY in data
+
+
+class _Carrying:
+    """Gather what a comic carries, one tag source at a time."""
+
+    def __init__(self) -> None:
+        self.formats: set[MetadataFormats] = set()
+        self.unreadable: list[str] = []
+        self.in_comment = False
+        self.free_comment = False
+
+    def add(
+        self,
+        source: MetadataSources,
+        data: SourceData,
+        failed: Collection[tuple[MetadataSources, str]],
+    ) -> None:
+        """
+        Sort one tag source: carried, carried and empty, unreadable, or free text.
+
+        A well-formed file that yields nothing is carried, and empty; only
+        one whose parser failed is unreadable.
+        """
+        is_comment = source is MetadataSources.ARCHIVE_COMMENT
+        if is_comment and not _is_comic_book_info(data.data):
+            self.free_comment = True
+            return
+        if (source, str(data.path)) in failed:
+            self.unreadable.append(_tag_source_name(source, data))
+            return
+        if data.fmt is None:
+            return
+        self.formats.add(data.fmt)
+        self.in_comment |= is_comment
+
+    def result(self) -> CarriedFormats:
+        """Freeze what was gathered."""
+        return CarriedFormats(
+            frozenset(self.formats),
+            tuple(self.unreadable),
+            self.in_comment,
+            self.free_comment,
+        )
 
 
 class ComicboxLoad(ComicboxSources):
@@ -130,6 +231,7 @@ class ComicboxLoad(ComicboxSources):
                 return MappingProxyType(md), fmt
         except Exception as exc:
             self._except_on_load(source, fmt, exc)
+            self._failed_loads.add((source, str(source_data.path)))
         return None, None
 
     def _set_loaded_metadata(self, source: MetadataSources) -> None:
@@ -153,6 +255,22 @@ class ComicboxLoad(ComicboxSources):
             if source not in self._loaded:
                 self._loaded[source] = ()
             self._loaded[source] += tuple(loaded_list)
+
+    def get_carried_formats(self) -> CarriedFormats:
+        """
+        Get the tag formats the comic carries that were read, and those that failed.
+
+        Only what the read configuration reads is seen: a tag file it
+        excludes is neither. An archive comment of free text is not a tag
+        file, so it is neither too.
+        """
+        carried = _Carrying()
+        for source in TAG_SOURCES:
+            # Loads the source, recording any file whose parser failed.
+            self.get_loaded_metadata(source)
+            for data in self.get_source_metadata(source) or ():
+                carried.add(source, data, self._failed_loads)
+        return carried.result()
 
     def get_loaded_metadata(
         self, source: MetadataSources

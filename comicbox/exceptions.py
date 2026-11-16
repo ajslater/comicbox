@@ -41,6 +41,18 @@ class ArchiveWriteError(ArchiveError):
     """An archive could not be written, repacked, or renamed."""
 
 
+class UnparsedTagFileError(ArchiveWriteError):
+    """A keep write refused: a tag file the comic carries did not parse."""
+
+
+class UnwritableFormatError(ArchiveWriteError):
+    """A write refused: -w names no format this archive can hold."""
+
+
+class UnsafePdfAttachmentError(ArchiveWriteError):
+    """A PDF write refused: replacing its tag files would harm another attachment."""
+
+
 class DestinationOccupiedError(ArchiveWriteError):
     """
     A write's destination path is held by another file or writer.
@@ -114,3 +126,30 @@ class OnlineConfigurationError(ComicboxError):
 
 class OnlineLookupAbortedError(ComicboxError):
     """Raised when the selector callback returns ('abort', None)."""
+
+
+class ReadingListError(ComicboxError):
+    """A reading list could not be read, converted, combined or written."""
+
+
+class ReadingListFormatError(ReadingListError):
+    """A document is not a reading list in any format comicbox reads."""
+
+
+class SmartListError(ReadingListFormatError):
+    """
+    A ComicRack smart list.
+
+    Its ``<Matchers>`` are rules that select comics from a library, not a
+    list of issues, so there is nothing to read.
+    """
+
+
+class ReadingListFetchError(ReadingListError):
+    """
+    A reading list could not be fetched.
+
+    A network failure, an HTTP error, a refused URL, a download over the
+    size cap, or a missing credential. A cancel, or a spent quota, raises
+    ``OnlineLookupAbortedError`` instead, as tagging does.
+    """

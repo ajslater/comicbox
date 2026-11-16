@@ -15,6 +15,13 @@ from comicbox.exceptions import (
 from comicbox.formats import MetadataFormats
 
 
+def _differs_only_in_case(old_path: Path, new_path: Path) -> bool:
+    """Tell whether two names in one directory differ in their case alone."""
+    return old_path.name != new_path.name and (
+        old_path.name.casefold() == new_path.name.casefold()
+    )
+
+
 class ComicboxDumpToFiles(ComicboxDump):
     """Special file writes."""
 
@@ -99,6 +106,10 @@ class ComicboxDumpToFiles(ComicboxDump):
         check alone can't see a rename still in flight on another thread.
         """
         if self._is_same_file(old_path, new_path):
+            if _differs_only_in_case(old_path, new_path):
+                # One file under both names: a case-insensitive disk. The
+                # rename changes the case of its name.
+                old_path.rename(new_path)
             return
         _claim_destination(new_path, old_path)
         try:
@@ -119,6 +130,9 @@ class ComicboxDumpToFiles(ComicboxDump):
             logger.warning(f"Unable to construct a filename for {old_path}")
             return
         new_path = self._path.parent / Path(fn)
+        if new_path.name == old_path.name:
+            # Already so named: nothing to do, and nothing to say.
+            return
         if self._config.general.dry_run:
             logger.info(f"Would rename:\n{old_path} ==> {new_path}")
             return

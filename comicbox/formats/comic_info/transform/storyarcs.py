@@ -5,8 +5,6 @@ from contextlib import suppress
 from itertools import zip_longest
 from typing import Any
 
-from glom import Coalesce, Iter, T
-
 from comicbox.formats.base.transforms.spec import MetaSpec
 from comicbox.formats.comicbox.schema import ARCS_KEY, NUMBER_KEY
 
@@ -90,26 +88,46 @@ def story_arcs_to_cb(
     return MetaSpec(key_map={ARCS_KEY: source_tags}, spec=to_cb)
 
 
+def _numbered_first(arcs: Mapping[str, Any] | None) -> list[tuple[str, Any]]:
+    """
+    Order arcs so the numbered ones come first.
+
+    StoryArcNumber is a list parallel to StoryArc with no way to leave a
+    slot empty, and the reader pairs them from the front. With the numbered
+    arcs first, their numbers are a clean prefix and the unnumbered arcs
+    after them read back without one.
+    """
+    items = list((arcs or {}).items())
+    numbered = [item for item in items if _arc_number(item[1]) is not None]
+    unnumbered = [item for item in items if _arc_number(item[1]) is None]
+    return numbered + unnumbered
+
+
+def _arc_number(arc: Any) -> Any:
+    return arc.get(NUMBER_KEY) if isinstance(arc, Mapping) else None
+
+
+def _story_arc_names(arcs: Mapping[str, Any] | None) -> list[str]:
+    return [name for name, _ in _numbered_first(arcs)]
+
+
+def _story_arc_numbers(arcs: Mapping[str, Any] | None) -> list[Any]:
+    numbers = (_arc_number(arc) for _, arc in _numbered_first(arcs))
+    return [number for number in numbers if number is not None]
+
+
 def story_arcs_from_cb(story_arc_tag: str, story_arc_number_tag: str) -> tuple:
-    """Transform comicbox arcs to comicinfo story arc and story arc number."""
+    """
+    Transform comicbox arcs to comicinfo story arc and story arc number.
+
+    One arc without a number used to fail the whole StoryArcNumber spec, so
+    every arc lost its number. Numbered arcs are written first instead.
+    """
     metaspecs = []
     if story_arc_tag:
-        ms = MetaSpec(
-            key_map={
-                story_arc_tag: ARCS_KEY,
-            },
-            spec=(Iter().all(),),
-        )
+        ms = MetaSpec(key_map={story_arc_tag: ARCS_KEY}, spec=_story_arc_names)
         metaspecs.append(ms)
     if story_arc_number_tag:
-        ms = MetaSpec(
-            key_map={
-                story_arc_number_tag: ARCS_KEY,
-            },
-            spec=(
-                Coalesce(T.values()),
-                Iter().map(NUMBER_KEY).all(),
-            ),
-        )
+        ms = MetaSpec(key_map={story_arc_number_tag: ARCS_KEY}, spec=_story_arc_numbers)
         metaspecs.append(ms)
     return tuple(metaspecs)

@@ -1,0 +1,152 @@
+"""--cbz without -w writes back the formats the comic carried (B9)."""
+
+from __future__ import annotations
+
+import json
+import shutil
+import zipfile
+from argparse import Namespace
+from typing import TYPE_CHECKING, Any
+
+import pytest
+from loguru import logger
+
+from comicbox.box import Comicbox
+from comicbox.config import get_config
+from tests.const import (
+    CBI_CBR_SOURCE_PATH,
+    CIX_CBI_CBR_SOURCE_PATH,
+    CIX_CBT_SOURCE_PATH,
+    TEST_FILES_DIR,
+)
+from tests.util.comics import make_comic
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+_PAGES = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def _convert(path: Path, **dests: Any) -> tuple[list[str], bytes]:
+    config = get_config(Namespace(comicbox=Namespace(**{"convert.cbz": True, **dests})))
+    with Comicbox(path, config=config) as box:
+        box.dump()
+    with zipfile.ZipFile(path.with_suffix(".cbz")) as archive:
+        names = [n for n in archive.namelist() if not n.lower().endswith(_PAGES)]
+        return sorted(names), archive.comment
+
+
+def test_a_comment_stays_a_comment_and_m_merges_into_it(tmp_path: Path) -> None:
+    """It gave comicbox-cli.yaml, and the comment came back as a file."""
+    path = tmp_path / "comic.cbr"
+    shutil.copy(CBI_CBR_SOURCE_PATH, path)
+
+    names, comment = _convert(path, **{"general.metadata_cli": ["{summary: given}"]})
+
+    assert names == []
+    assert json.loads(comment)["ComicBookInfo/1.0"]["comments"] == "given"
+
+
+def test_a_tag_file_and_a_comment_each_come_back_as_they_were(tmp_path: Path) -> None:
+    path = tmp_path / "comic.cbr"
+    shutil.copy(CIX_CBI_CBR_SOURCE_PATH, path)
+
+    names, comment = _convert(path)
+
+    assert names == ["ComicInfo.xml"]
+    assert "ComicBookInfo/1.0" in json.loads(comment)
+
+
+def test_tag_files_are_written_as_before(tmp_path: Path) -> None:
+    path = tmp_path / "comic.cbt"
+    shutil.copy(CIX_CBT_SOURCE_PATH, path)
+    names, comment = _convert(path)
+    assert names == ["ComicInfo.xml", "MetronInfo.xml"]
+    assert comment == b""
+
+
+def test_a_comic_that_carried_nothing_says_where_m_went(tmp_path: Path) -> None:
+    path = make_comic(tmp_path / "bare.cbz", formats=(), series="X", number="1")
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        names, _ = _convert(path, **{"general.metadata_cli": ["{summary: given}"]})
+    finally:
+        logger.remove(handler)
+
+    assert names == []
+    assert any("carries no tag format" in message for message in messages)
+
+
+@pytest.mark.parametrize("source", [CBI_CBR_SOURCE_PATH, CIX_CBI_CBR_SOURCE_PATH])
+def test_named_formats_are_unchanged(tmp_path: Path, source: Path) -> None:
+    path = tmp_path / "comic.cbr"
+    shutil.copy(source, path)
+    names, comment = _convert(path, **{"write.formats": ["cix"]})
+    assert names == ["ComicInfo.xml"]
+    assert comment == b""
+
+
+def _unwritten(path: Path, **dests: Any) -> list[str]:
+    """Convert, and return the warnings that name values with nowhere to go."""
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        _convert(path, **dests)
+    finally:
+        logger.remove(handler)
+    return [message for message in messages if "have no place for" in message]
+
+
+_PATCH = "{title: Patched Title, tags: [alpha]}"
+
+
+@pytest.mark.parametrize(
+    ("source", "named"),
+    [("metron", "title"), ("comet", "tags"), ("cix", None)],
+    ids=["MetronInfo has no title", "CoMet has no tags", "ComicInfo holds both"],
+)
+def test_m_values_the_carried_formats_cannot_hold_are_named(
+    tmp_path: Path, source: str, named: str | None
+) -> None:
+    """They were dropped without a word (D5); before B9 a comicbox-cli.yaml took them."""
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / f"Captain Science #001-{source}.cbz", path)
+
+    warnings = _unwritten(path, **{"general.metadata_cli": [_PATCH]})
+
+    if named is None:
+        assert warnings == []
+    else:
+        (warning,) = warnings
+        assert f"no place for {named} from -m" in warning
+
+
+def test_import_values_with_nowhere_to_go_are_named(tmp_path: Path) -> None:
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / "Captain Science #001-metron.cbz", path)
+    imported = tmp_path / "patch.yaml"
+    imported.write_text("comicbox:\n  title: Imported Title\n")
+
+    warnings = _unwritten(path, **{"convert.import_paths": [str(imported)]})
+
+    (warning,) = warnings
+    assert "no place for title" in warning
+
+
+@pytest.mark.parametrize(
+    "patch",
+    ["{identifiers: {comicvine: {key: '99'}}}", "{notes: a scanner's note}"],
+    ids=["identifiers in Notes and Web", "notes the stamp rewrote"],
+)
+def test_a_value_the_comic_reads_back_is_not_named(tmp_path: Path, patch: str) -> None:
+    """
+    E4: ComicInfo carries identifiers in its Notes and Web, which the reader derives.
+
+    Compared with the tag files alone they looked unwritten; and the stamp
+    replaced notes, which is not having no place for them.
+    """
+    path = tmp_path / "comic.cbz"
+    shutil.copy(TEST_FILES_DIR / "Captain Science #001-cix.cbz", path)
+
+    assert _unwritten(path, **{"general.metadata_cli": [patch]}) == []

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ComicReadingLists/json-cbl-standard/tree/main/drafts/1.0",
+  "title": "Comic Reading List Schema",
+  "description": "An ordered list of comic book issues which have been composed for the purpose of reading",
+  "type": "object",
+  "properties": {
+    "fileDetails": {
+      "type":"object",
+      "properties": {
+        "version": { "type":"number" },
+        "UUID": { "type":"string" }
+      },
+      "required":["version","UUID"]
+    },
+    "listDetails": {
+      "type":"object",
+      "properties": {
+        "name": {"type":"string"},
+        "description": {"type":"string"},
+        "publisher": {"type":"string"},
+        "imprint": {"type":"string"},
+        "startYear":{ "type":"integer", "minimum":1900, "maximum":2100},
+        "endYear":{ "type":"integer", "minimum":1900, "maximum":2100},
+        "type": { 
+          "type": "string", 
+          "enum": ["master","interuniversal", "universal", "team", "character", "story"],
+          "description": "Describes the scope of the reading list in impact over the publisher's works, ranging from 'master' lists (all publisher works), to 'universal' events (which include crossovers universe-wide), to 'story' events (arcs contained to a single character)."
+        },        
+        "tags": { 
+          "type": "array", 
+          "items": {
+            "description":"Tags may be used to identify list source, characters, teams and eras of the list. Entries should be all lower case with proper grammar.",
+            "type":"string"
+          }
+        },
+        "coverImageURLs": {"type":"array", "items":{ "type": "string", "format": "uri", "pattern": "^https?://" } },
+        "relationships": {
+          "description":"Links to other reading lists which occur before or after this list",
+          "type":"array",
+          "items":{
+            "type":"object",
+            "properties":{ 
+              "name":{ "type":"string" },
+              "UUID":{ "type":"string" },
+              "relationship":{ "type":"string", "enum":["previous","following"]}
+            },
+            "required":["name","UUID","relationship"]
+          }
+        },
+        "source": {
+          "description":"Websites containing useful information about this reading list.",
+          "type":"array",
+          "items":{
+            "type":"object",
+            "properties":{ 
+              "name":{ "type":"string", "description":"Field should be written in capital case with spaces, using the full name of the source"},
+              "url":{ "type": "string", "format": "uri", "pattern": "^https?://" },
+              "id":{ "type":"string" }
+            },
+            "required":["name"]
+          }   
+        }
+      },
+      "required":["name"]
+    },
+    "notes":{"type":"string"},
+    "issueList": {
+      "type":"array",
+      "items":{
+        "type":"object",
+        "properties":{ 
+          "seriesName":{"type":"string"},
+          "seriesStartYear":{ "type":"integer", "minimum":1900, "maximum":2100},
+          "issueNumber":{"type":"string"},
+          "issueCoverDate":{ "type":"string", "format":"date"},
+          "issueType":{ "type":"string", "enum":["Event Core","Event Tie-In","Event One Shot","Ongoing"]},
+          "id":{
+            "type":"array",
+            "items":{
+              "properties":{
+                "name":{"type":"string","enum":["comicvine","metron","grandComicsDatabase"]},
+                "series":{"type":"string"},
+                "issue":{"type":"string"}
+              },
+              "required":["name","series","issue"]
+            }
+          }
+        },
+        "required":["seriesName","seriesStartYear","issueNumber","issueCoverDate"]
+      }
+    }
+  },
+  "required":["fileDetails","listDetails","issueList"]
+}

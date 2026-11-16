@@ -17,6 +17,8 @@ from confuse.templates import (
 # into list-typed fields before validation sees them.
 NON_MAPPING_TYPES = (set, frozenset, tuple, list)
 NON_MAPPING_CONTAINER = OneOf(NON_MAPPING_TYPES)
+# A lifetime: "7d", "24h", "0", or a bare number of seconds.
+TTL_TEMPLATE = OneOf((String(), Number()))
 
 
 _RATE_LIMIT_TEMPLATE = MappingTemplate(
@@ -72,7 +74,8 @@ ONLINE_TEMPLATE = MappingTemplate(
             {
                 "mode": String(),
                 "dir": Optional(OneOf((str, Path))),
-                "ttl": String(),
+                # "7d", or a number of seconds: the docs suggest a bare 0.
+                "ttl": TTL_TEMPLATE,
             }
         ),
         "tuning": MappingTemplate(

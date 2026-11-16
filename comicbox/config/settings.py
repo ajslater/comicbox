@@ -11,16 +11,20 @@ groups one-for-one:
       general / read / write / print / convert / compute
       online:
         lookup / auth / cache / tuning
+      readinglists
 
 This taxonomy is the source of truth for the config tree. New options
 must land under the group that owns their concern.
 
 The ``online`` subtree is big enough to live in its own package —
-``comicbox.config.online.settings``.
+``comicbox.config.online.settings``. ``readinglists`` holds what reading
+lists alone need: the DieselTech catalog's repository, ref and lifetime,
+and the download size cap. Their credentials and cache are ``online``'s.
 """
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import timedelta
 from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, TypeVar
@@ -123,6 +127,10 @@ class WriteSettings:
     stamp: bool = False
     stamp_notes: bool = True
     delete_all_tags: bool = False
+    # Set by ``keep`` among the formats: a write removes no tag format the
+    # comic already carries, and writes the ones it read back beside those
+    # named.
+    keep_formats: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +164,19 @@ class ComputeSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class ReadingListsSettings:
+    """Where reading lists come from online, beyond the online sources."""
+
+    # The GitHub repository and ref holding DieselTech's CBL lists.
+    catalog_repo: str = "DieselTech/CBL-ReadingLists"
+    catalog_ref: str = "main"
+    # How long the catalog's index is reused before it is revalidated.
+    catalog_ttl: timedelta = timedelta(hours=4)
+    # The largest list a fetch will download, in bytes.
+    max_download_bytes: int = 16 * 1024 * 1024
+
+
+@dataclass(frozen=True, slots=True)
 class ComicboxSettings:
     """Typed runtime config for comicbox, organized by verb taxonomy."""
 
@@ -166,6 +187,7 @@ class ComicboxSettings:
     convert: ConvertSettings
     compute: ComputeSettings
     online: "OnlineSettings"
+    readinglists: ReadingListsSettings = field(default_factory=ReadingListsSettings)
 
     # CLI positional args.
     paths: tuple[str | Path | None, ...] = ()
@@ -173,6 +195,8 @@ class ComicboxSettings:
     # Computed (derived in compute_config(); kept flat for ergonomics —
     # they're read by many call sites and the flat names are clearer).
     all_write_formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
+    # Whether the formats given said keep, as the config was built.
+    is_write_keep: bool = False
     read_filename_formats: "frozenset[MetadataFormats]" = field(
         default_factory=frozenset
     )

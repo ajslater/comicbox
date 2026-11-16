@@ -266,7 +266,9 @@ def _add_write_group(parser: ArgumentParser) -> None:
         default=None,
         dest="write.formats",
         help=(
-            "Write comic metadata formats back to the archive. cbt and cbr files are always"
+            "Write comic metadata formats back to the archive, removing every other tag"
+            " file, unless 'keep' is among them: '-w keep' writes back the formats the"
+            " comic has, '-w cix,keep' adds ComicInfo to them. cbt and cbr files are always"
             " exported to a cbz file. Format keys listed below."
         ),
     )
@@ -534,7 +536,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_auth_group(parser: ArgumentParser) -> None:
+def add_online_auth_group(parser: ArgumentParser) -> None:
+    """Add ``--auth``; the reading-list CLI shares it."""
     group = parser.add_argument_group("online: auth")
     group.add_argument(
         "-a",
@@ -555,7 +558,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_cache_group(parser: ArgumentParser) -> None:
+def add_online_cache_group(parser: ArgumentParser) -> None:
+    """Add the online cache options; the reading-list CLI shares them."""
     group = parser.add_argument_group("online: cache")
     group.add_argument(
         "--cache",
@@ -652,8 +656,8 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     _add_print_group(parser)
     _add_convert_group(parser)
     _add_online_lookup_group(parser)
-    _add_online_auth_group(parser)
-    _add_online_cache_group(parser)
+    add_online_auth_group(parser)
+    add_online_cache_group(parser)
     _add_online_tuning_group(parser)
     _add_target_group(parser)
     parser.add_argument(

@@ -10,7 +10,7 @@ call for those non-matches is wasted budget under CV's 200/hr cap.
 
 This module provides the pre-call filter both sources consult before
 deciding to spend an API call on a discovered volume. The same
-`normalize_series` from `signals.py` is reused so a candidate that
+`normalize_series` as `signals.py` (``comicbox.series_name``) so a candidate that
 passes the filter scores predictably under `s_series` downstream.
 
 **Why `fuzz.ratio` and not `fuzz.WRatio`** (which `s_series` uses):
@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Final
 from rapidfuzz import fuzz
 
 from comicbox.config.online.settings import Effort
-from comicbox.formats.base.online.signals import normalize_series
+from comicbox.series_name import normalize_series
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

@@ -41,6 +41,7 @@ import datetime as dt
 import threading
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
@@ -197,10 +198,11 @@ class RateGate:
 
     # -- admission ------------------------------------------------------------
 
-    def acquire(self) -> None:
+    def acquire(self) -> float:
         """
         Block until a send is within pace, then record it.
 
+        Returns the time it was admitted at, which `withdraw` takes back.
         Raises `OnlineLookupAbortedError` when the daily quota is spent —
         every further request would be refused, and a 429 costs the same
         daily budget as a success, so there is nothing to gain by trying.
@@ -223,6 +225,22 @@ class RateGate:
                 self._blocked_seconds += blocked
         if blocked >= 1.0:
             logger.debug(f"online rate gate: paced a request by {blocked:.1f}s")
+        return now
+
+    def withdraw(self, admitted: float) -> None:
+        """
+        Take back an admission whose send was never made.
+
+        The slot ``acquire`` recorded at ``admitted`` is given back, so the
+        window does not hold it for a minute, and the send is not counted.
+        A cooldown that rebuilt the window since has already replaced it.
+        """
+        with self._cond:
+            with suppress(ValueError):
+                self._slots.remove(admitted)
+            self._sends = max(0, self._sends - 1)
+            self._in_flight = max(0, self._in_flight - 1)
+            self._cond.notify_all()
 
     def release(self) -> None:
         """Retire one in-flight request and wake a waiter."""

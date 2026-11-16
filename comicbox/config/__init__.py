@@ -23,10 +23,12 @@ from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.computed import compute_config
 from comicbox.config.online import (
     ONLINE_TEMPLATE,
+    TTL_TEMPLATE,
     build_online_settings,
     cns_for_overrides,
     runtime_online_inputs,
 )
+from comicbox.config.online.build import parse_ttl
 from comicbox.config.online.template import (
     NON_MAPPING_CONTAINER,
     NON_MAPPING_TYPES,
@@ -43,6 +45,7 @@ from comicbox.config.settings import (
     GeneralSettings,
     MergeMode,
     PrintSettings,
+    ReadingListsSettings,
     ReadSettings,
     WriteSettings,
     parse_enum,
@@ -102,6 +105,8 @@ _TEMPLATE = MappingTemplate(
                         "stamp": bool,
                         "stamp_notes": bool,
                         "delete_all_tags": bool,
+                        # Set by the keep keyword among the formats.
+                        "keep_formats": Optional(bool, default=False),
                     }
                 ),
                 "print": MappingTemplate(
@@ -129,11 +134,20 @@ _TEMPLATE = MappingTemplate(
                     }
                 ),
                 "online": ONLINE_TEMPLATE,
+                "readinglists": MappingTemplate(
+                    {
+                        "catalog_repo": String(),
+                        "catalog_ref": String(),
+                        "catalog_ttl": TTL_TEMPLATE,
+                        "max_download_bytes": Integer(),
+                    }
+                ),
                 "paths": Optional(OneOf((Sequence(OneOf((str, Path))), None))),
                 "computed": Optional(
                     MappingTemplate(
                         {
                             "all_write_formats": frozenset,
+                            "is_write_keep": bool,
                             "read_filename_formats": frozenset,
                             "read_file_formats": frozenset,
                             "read_metadata_lower_filenames": frozenset,
@@ -208,6 +222,7 @@ def _build_write_settings(write_block: Any) -> WriteSettings:
         stamp=bool(write_block.stamp),
         stamp_notes=bool(write_block.stamp_notes),
         delete_all_tags=bool(write_block.delete_all_tags),
+        keep_formats=bool(write_block.keep_formats),
     )
 
 
@@ -221,6 +236,22 @@ def _build_convert_settings(convert_block: Any) -> ConvertSettings:
         import_paths=expand_glob_paths(convert_block.import_paths),
         export_formats=frozenset(convert_block.export_formats or ()),
         pdf_pages=convert_block.pdf_pages,
+    )
+
+
+def _build_readinglists_settings(block: Any) -> ReadingListsSettings:
+    defaults = ReadingListsSettings()
+    return ReadingListsSettings(
+        catalog_repo=str(block.catalog_repo).strip() or defaults.catalog_repo,
+        catalog_ref=str(block.catalog_ref).strip() or defaults.catalog_ref,
+        # Its own default and label: an unparsable value must not inherit
+        # the online cache's seven days.
+        catalog_ttl=parse_ttl(
+            block.catalog_ttl,
+            default=defaults.catalog_ttl,
+            label="readinglists.catalog_ttl",
+        ),
+        max_download_bytes=max(1, int(block.max_download_bytes)),
     )
 
 
@@ -253,8 +284,10 @@ def _build_settings(
             page_count=bool(compute_block.page_count),
         ),
         online=online,
+        readinglists=_build_readinglists_settings(inner.readinglists),
         paths=tuple(inner.paths or ()),
         all_write_formats=frozenset(computed.all_write_formats),
+        is_write_keep=bool(computed.is_write_keep),
         read_filename_formats=frozenset(computed.read_filename_formats),
         read_file_formats=frozenset(computed.read_file_formats),
         read_metadata_lower_filenames=frozenset(computed.read_metadata_lower_filenames),
@@ -266,7 +299,7 @@ def _build_settings(
 def _read_settings(args: Namespace | Mapping | None, modname: str) -> ComicboxSettings:
     """Layer every config source and reduce the result to settings."""
     config = Configuration(PACKAGE_NAME, modname=modname, read=False)
-    read_config_sources(config, args)
+    read_config_sources(config, args, _TEMPLATE.subtemplates[PACKAGE_NAME])
 
     config_program = config[PACKAGE_NAME]
     compute_config(config_program)
