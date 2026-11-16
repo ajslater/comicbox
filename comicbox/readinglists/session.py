@@ -107,7 +107,13 @@ class ReadingListSession:
         self._cancelled.set()
 
     def close(self) -> None:
-        """Close the HTTP client and Metron's shared sessions, if opened."""
+        """
+        Close the HTTP client and Metron's shared sessions, if opened.
+
+        Comic Vine's shared client is left open. Closing it closes its
+        rate-limit buckets, which can fail a tagging lookup in the same
+        process that holds one; ``OnlineSession.close`` releases it.
+        """
         if self._http is not None:
             self._http.close()
             self._http = None
@@ -264,6 +270,29 @@ class ReadingListSession:
         metron.check_token(self)
         with self.fetching(SourceKind.METRON_ARC.value, str(arc_id)):
             result = metron.fetch_arc(self, arc_id, if_modified_since=if_modified_since)
+            self.check_cancelled()
+            return result
+
+    def fetch_comicvine_arc(self, arc_id: int) -> ReadingListResult:
+        """
+        Fetch a Comic Vine story arc as an unordered list.
+
+        Comic Vine names an arc's issues by id alone, so after the arc come
+        its issues, a hundred a call, then their volumes the same way: an
+        arc of N issues in V volumes costs ``1 + ceil(N/100) + ceil(V/100)``
+        calls, each on its own hourly budget. Progress events count the
+        issues as they arrive. A budget already spent fails the fetch at
+        once, saying when it frees, rather than waiting.
+
+        Comic Vine has no conditional request, so there is no
+        ``if_modified_since``: compare the result's source revision instead.
+        Needs a Comic Vine API key. The result has no ``fmt``.
+        """
+        from comicbox.readinglists.sources import comicvine
+
+        comicvine.check_key(self)
+        with self.fetching(SourceKind.COMICVINE_ARC.value, str(arc_id)):
+            result = comicvine.fetch_arc(self, arc_id)
             self.check_cancelled()
             return result
 

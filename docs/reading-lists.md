@@ -95,8 +95,8 @@ A comic file named `readinglist` or `rl` has to be given to comicbox as
 
 ## Online sources
 
-Lists can be fetched from Metron, from the DieselTech catalog of ComicRack lists
-on GitHub, and from any URL:
+Lists can be fetched from Metron, from Comic Vine's story arcs, from the
+DieselTech catalog of ComicRack lists on GitHub, and from any URL:
 
 ```sh
 # Search Metron's reading lists by name, then fetch one by its id.
@@ -106,6 +106,10 @@ comicbox rl fetch metron:123 -o civil-war.yaml
 # A Metron story arc, as an unordered list.
 comicbox rl fetch metron-arc:456
 
+# A Comic Vine story arc. The id as Comic Vine's URLs spell it works too:
+# comicvine-arc:4045-789.
+comicbox rl fetch --auth comicvine:KEY comicvine-arc:789
+
 # Search the catalog's paths, then fetch one by its path.
 comicbox rl search catalog civil war official
 comicbox rl fetch "catalog:Marvel/Events/Official/[Marvel] (2006-02) Civil War (Official).cbl"
@@ -114,16 +118,17 @@ comicbox rl fetch "catalog:Marvel/Events/Official/[Marvel] (2006-02) Civil War (
 comicbox rl fetch --to json-cbl -o civil-war.json https://example.org/civil-war.cbl
 ```
 
-| Source              | `fetch` takes   | Needs              |
-| ------------------- | --------------- | ------------------ |
-| Metron reading list | `metron:ID`     | a Metron API token |
-| Metron story arc    | `metron-arc:ID` | a Metron API token |
-| DieselTech catalog  | `catalog:PATH`  | nothing            |
-| A URL               | `http(s)://...` | nothing            |
+| Source               | `fetch` takes      | Needs                |
+| -------------------- | ------------------ | -------------------- |
+| Metron reading list  | `metron:ID`        | a Metron API token   |
+| Metron story arc     | `metron-arc:ID`    | a Metron API token   |
+| Comic Vine story arc | `comicvine-arc:ID` | a Comic Vine API key |
+| DieselTech catalog   | `catalog:PATH`     | nothing              |
+| A URL                | `http(s)://...`    | nothing              |
 
 A fetched list goes through the same read as a file, so its warnings say what it
-dropped, and its source records where it came from: the Metron id, the catalog
-path and blob sha, or the URL and its ETag.
+dropped, and its source records where it came from: the Metron or Comic Vine id,
+the catalog path and blob sha, or the URL and its ETag.
 
 ### Metron
 
@@ -146,6 +151,26 @@ minute. A 3,000-issue list is 30 pages, about a minute and a half when nothing
 else is using the token, and longer during a tagging run. Each page prints its
 progress. Ctrl-C stops the fetch before its next request, which can take up to a
 minute when the rate limit is spent; a second Ctrl-C quits at once.
+
+### Comic Vine
+
+Give the key with `--auth comicvine:KEY`, `online.auth.comicvine.key` in the
+config, or `COMICBOX_ONLINE__AUTH__COMICVINE__KEY` in the environment, as for
+tagging. A story arc shares tagging's hourly budgets and response cache for the
+key.
+
+Comic Vine names an arc's issues by id alone, so comicbox then asks for those
+issues by id, a hundred a call, and for their volumes the same way. Each entry
+gets its series, the series' start year, the issue number, cover and store
+dates, and the Comic Vine issue and series ids, so the list prints, matches by
+name and combines with a Metron list of the same arc. An issue Comic Vine sends
+no details for stays in the list by its id. An arc of N issues in V volumes
+costs `1 + ceil(N/100) + ceil(V/100)` calls: three for most arcs.
+
+Comic Vine states no reading order for an arc, so the list is unordered. Comic
+Vine allows each kind of request 200 calls an hour. A fetch that needs a kind
+whose hour is spent fails at once, saying when a call frees, rather than wait.
+Ctrl-C stops a fetch before its next call.
 
 ### The DieselTech catalog
 
@@ -427,9 +452,10 @@ with ReadingListSession(on_event=print) as session:
         catalog_list = session.fetch_catalog(entry.path, sha=entry.sha)
 ```
 
-A list fetched from Metron has no `fmt`: it was built from records, not read
-from a document. `fetch_metron_list` and `fetch_metron_arc` take
-`if_modified_since` and return `None`, having fetched no items, when the list
-has not changed. `cancel()`, from any thread, stops a fetch before its next
-request with `OnlineLookupAbortedError`. A fetch that fails raises
-`ReadingListFetchError`.
+A list fetched from Metron or Comic Vine has no `fmt`: it was built from
+records, not read from a document. `fetch_metron_list` and `fetch_metron_arc`
+take `if_modified_since` and return `None`, having fetched no items, when the
+list has not changed. `fetch_comicvine_arc` does not: Comic Vine has no
+conditional request, so compare the source's `revision` instead. `cancel()`,
+from any thread, stops a fetch before its next request with
+`OnlineLookupAbortedError`. A fetch that fails raises `ReadingListFetchError`.

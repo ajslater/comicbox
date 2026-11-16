@@ -26,6 +26,7 @@ from comicbox.readinglists import cli as readinglist_cli
 from comicbox.readinglists import load, loads
 from comicbox.readinglists.cli import online as readinglist_online
 from tests.const import TEST_FILES_DIR
+from tests.util import comicvine_fake
 from tests.util.metron_transport import (
     BURST_HEADERS,
     Reply,
@@ -220,7 +221,17 @@ def test_fetch_metron_without_a_token_says_how_to_give_one(
 
 
 @pytest.mark.parametrize(
-    "spec", ["metron:x", "metron-arc:", "catalog:", "ftp://lists.example/a.cbl", "1"]
+    "spec",
+    [
+        "metron:x",
+        "metron-arc:",
+        "comicvine-arc:x",
+        # An issue's id in Comic Vine's long form, not an arc's.
+        "comicvine-arc:4000-12",
+        "catalog:",
+        "ftp://lists.example/a.cbl",
+        "1",
+    ],
 )
 def test_fetch_refuses_what_it_cannot_fetch(
     capsys: pytest.CaptureFixture[str], spec: str
@@ -228,7 +239,49 @@ def test_fetch_refuses_what_it_cannot_fetch(
     code, _, err = _run(capsys, "fetch", spec)
 
     assert code == 2
-    assert "give metron:ID, metron-arc:ID, catalog:PATH or an http(s) URL" in err
+    assert (
+        "give metron:ID, metron-arc:ID, comicvine-arc:ID, catalog:PATH or an"
+        " http(s) URL" in err
+    )
+
+
+@pytest.mark.parametrize("target", ["12", "4045-12"])
+def test_fetch_a_comicvine_arc_with_progress(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, target: str
+) -> None:
+    """The id is taken bare or in the long form Comic Vine's URLs use."""
+    cv = comicvine_fake.install(monkeypatch)
+    cv.serve(
+        comicvine_fake.arc_row([1, 2]),
+        [comicvine_fake.issue_row(1), comicvine_fake.issue_row(2)],
+        [comicvine_fake.volume_row(7)],
+    )
+
+    code, out, err = _run(
+        capsys, "fetch", "--auth", "comicvine:k", f"comicvine-arc:{target}"
+    )
+
+    assert code == 0
+    reading_list = loads(out).reading_list
+    assert reading_list["sources"][0]["kind"] == "comicvine-arc"
+    assert reading_list["ordered"] is False
+    assert len(reading_list["entries"]) == 2
+    assert "Fetching comicvine-arc 12..." in err
+    assert "2 of 2 entries" in err
+
+
+def test_fetch_comicvine_without_a_key_says_how_to_give_one(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cv = comicvine_fake.install(monkeypatch)
+
+    code, out, err = _run(capsys, "fetch", "comicvine-arc:12")
+
+    assert code == 1
+    assert out == ""
+    assert "Comic Vine needs an API key: pass --auth comicvine:KEY" in err
+    assert "Traceback" not in err
+    assert cv.calls == []
 
 
 def test_quiet_fetch_prints_no_progress(capsys: pytest.CaptureFixture[str]) -> None:

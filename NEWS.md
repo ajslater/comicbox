@@ -16,14 +16,19 @@
 - `ReadingListSession` searches and fetches Metron reading lists and story arcs
   with your Metron API token, sharing tagging's rate limit and response cache.
   Long lists report progress page by page and can be cancelled between pages.
+- `ReadingListSession` fetches Comic Vine story arcs with your Comic Vine API
+  key, sharing tagging's hourly budgets and response cache. Each issue comes
+  with its series, start year, number and dates, so the list matches your comics
+  and combines with Metron's list of the arc. A spent budget fails the fetch at
+  once, saying when it frees.
 - `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
   on GitHub, with each list's curator read from its name or folder. The index is
   cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
   configurable, so a fork works. A renamed list is still found by its sha.
 - `comicbox rl search metron|catalog QUERY` and
-  `comicbox rl fetch metron:ID | metron-arc:ID | catalog:PATH | URL`, with
-  progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over a
-  file without `--overwrite`.
+  `comicbox rl fetch metron:ID | metron-arc:ID | comicvine-arc:ID | catalog:PATH | URL`,
+  with progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over
+  a file without `--overwrite`.
 - `comicbox rl match FILE DIR` shows which of a list's issues a directory of
   comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
   the list as a story arc: a dry run unless given `--apply`.
