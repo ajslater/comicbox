@@ -35,6 +35,7 @@
   turned the comment into a file.
 - Online tagging matches accented and non-Latin series names: `Pokémon` was
   compared as `pok mon`, and a Japanese or Cyrillic name as nothing.
+- Issue `-1` is read as the number -1; it was read as a suffix, with no number.
 - A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
   month; it was completed with today's month or day.
 - A comic a run reaches by several paths, such as a file and a link to it under

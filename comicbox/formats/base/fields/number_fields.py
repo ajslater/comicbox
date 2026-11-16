@@ -149,5 +149,16 @@ class DecimalField(fields.Decimal, RangedNumberMixin[Decimal]):
         return self._serialize_post(result)
 
 
+class SignedDecimalField(DecimalField):
+    """
+    A decimal that keeps a leading minus sign.
+
+    Issue -1 is a real issue number; DecimalField reads only digits, so its
+    "-1" was 1.
+    """
+
+    DECIMAL_MATCHER = re.compile(r"-?\d*\.?\d+")
+
+
 class BooleanField(fields.Boolean):
     """A liberally parsed boolean field."""

@@ -5,7 +5,10 @@ from marshmallow.fields import Nested
 from comicbox.formats.base.fields.collection_fields import ListField
 from comicbox.formats.base.fields.enum_fields import SeriesStatusField
 from comicbox.formats.base.fields.fields import StringField
-from comicbox.formats.base.fields.number_fields import DecimalField, IntegerField
+from comicbox.formats.base.fields.number_fields import (
+    IntegerField,
+    SignedDecimalField,
+)
 from comicbox.formats.base.fields.pycountry import LanguageField
 from comicbox.formats.base.schemas.base import BaseSubSchema
 from comicbox.formats.comicbox.schema.identifiers import (
@@ -52,7 +55,7 @@ class IssueSchema(BaseSubSchema):
     """Issue Schema."""
 
     name = StringField()  # All
-    number = DecimalField()  # Comicbox
+    number = SignedDecimalField()  # Comicbox
     suffix = StringField()  # Comicbox
 
 

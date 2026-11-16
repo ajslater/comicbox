@@ -19,7 +19,9 @@ _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
 _HALF_RE = re.compile(r"(½|1/2)")
 # Always matches: a leading number, possibly empty, then the rest.
-_SPLIT_ISSUE_RE = re.compile(r"(\d*\.?\d*)(.*)")
+# The leading number and the rest. A minus sign belongs to the number when a
+# digit, or a point and a digit, follows it: issue -1 is a real issue number.
+_SPLIT_ISSUE_RE = re.compile(r"((?:-(?=\.?\d))?\d*\.?\d*)(.*)")
 
 
 class StringField(fields.String):
@@ -77,7 +79,12 @@ class IssueField(StringField):
 
     @staticmethod
     def split_issue(name: str) -> tuple[str, str]:
-        """Split an issue name into its leading number and its suffix."""
+        """
+        Split an issue name into its leading number and its suffix.
+
+        ``-1AU`` is ``-1`` and ``AU``; a minus with no number after it, as in
+        ``-AU``, is part of the suffix.
+        """
         match = _SPLIT_ISSUE_RE.match(name)
         if match is None:  # pragma: no cover - the pattern matches any string
             return "", name

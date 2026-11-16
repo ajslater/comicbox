@@ -9,7 +9,7 @@ from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
 from comicbox.formats.base.fields.comicbox import NAME_KEY
 from comicbox.formats.base.fields.fields import IssueField, StringField
-from comicbox.formats.base.fields.number_fields import DecimalField
+from comicbox.formats.base.fields.number_fields import SignedDecimalField
 from comicbox.formats.comicbox.schema import (
     ALTERNATIVE_ISSUE_KEY,
     ISSUE_KEY,
@@ -41,7 +41,7 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
         issue_number, issue_suffix = IssueField.split_issue(issue_name)
         if is_empty(old_issue_number) and not is_empty(issue_number):
             try:
-                issue_number = DecimalField().deserialize(
+                issue_number = SignedDecimalField().deserialize(
                     issue_number, NUMBER_KEY, issue
                 )
                 issue[NUMBER_KEY] = issue_number

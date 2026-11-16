@@ -82,14 +82,11 @@ def parse_issue(text: Any) -> ParsedIssue:
 
     The comicbox rules: ``#004AU`` is ``4AU``, number 4 and suffix ``AU``;
     ``½`` is ``.5``. ``3`` and ``3.0`` have equal numbers. ``-1`` is a real
-    issue number, so a leading minus sign belongs to the number.
+    issue number: ``IssueField.split_issue`` reads its sign.
     """
     name = IssueField.parse_issue(str(text).strip()) if text is not None else ""
-    negative = name.startswith("-")
-    number_text, suffix = IssueField.split_issue(name[1:] if negative else name)
-    if (number := _to_decimal(number_text)) is None:
-        return ParsedIssue(name, None, name.strip() if negative else suffix.strip())
-    return ParsedIssue(name, -number if negative else number, suffix.strip())
+    number_text, suffix = IssueField.split_issue(name)
+    return ParsedIssue(name, _to_decimal(number_text), suffix.strip())
 
 
 def _issue_parts(entry: Mapping[str, Any]) -> tuple[Decimal | None, str] | None:
