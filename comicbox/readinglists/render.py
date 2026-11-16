@@ -23,6 +23,7 @@ from comicbox.formats.comicbox.schema import (
 )
 from comicbox.readinglists.combine import CombineResult
 from comicbox.readinglists.compare import Comparison
+from comicbox.readinglists.identity import YEAR_LIKE_VOLUME
 from comicbox.readinglists.schema import (
     DATE_KEY,
     DESCRIPTION_KEY,
@@ -363,11 +364,25 @@ def _comic_cell(
     return shown
 
 
+def _and(items: Sequence[str]) -> str:
+    return ", ".join(items[:-1]) + f" and {items[-1]}" if len(items) > 1 else items[0]
+
+
 def volumes_text(volumes: Sequence[int]) -> str:
-    """Name the volumes an entry fits: ``the 2011 and 2016 volumes``."""
-    years = [str(year) for year in volumes]
-    listed = ", ".join(years[:-1]) + f" and {years[-1]}" if len(years) > 1 else years[0]
-    return f"the {listed} volumes"
+    """
+    Name the volumes an entry fits.
+
+    By start year, ``the 2011 and 2016 volumes``, and by number,
+    ``volumes 1 and 2``.
+    """
+    years = [str(value) for value in volumes if value >= YEAR_LIKE_VOLUME]
+    numbers = [str(value) for value in volumes if value < YEAR_LIKE_VOLUME]
+    parts = []
+    if years:
+        parts.append(f"the {_and(years)} volume{'s' if len(years) > 1 else ''}")
+    if numbers:
+        parts.append(f"volume{'s' if len(numbers) > 1 else ''} {_and(numbers)}")
+    return " and ".join(parts)
 
 
 _ARC_VERBS = MappingProxyType(
@@ -405,6 +420,8 @@ def _change_text(
     if write.removes:
         removes = "removed" if done else "would remove"
         detail += f"; {removes} {', '.join(write.removes)}"
+    if write.clears_comment:
+        detail += f"; {'cleared' if done else 'would clear'} the archive comment"
     return detail
 
 
@@ -445,7 +462,8 @@ def print_arc_write(
 
     ``problem`` says why a write that was made did not hold, ``moved`` is
     the CBZ a write converted the file to, and ``deleted`` whether the
-    original then went. The file's other paths follow, each on its own line.
+    original then went. The file's other paths follow, each on its own line,
+    a link saying when the original's deletion leaves it pointing at nothing.
     """
     change = write.change
     if change.action.value == "tagged":
@@ -470,19 +488,36 @@ def print_arc_write(
                 ),
             )
         )
+    _print_same_file(out, write, done=done, deleted=deleted)
+
+
+def _print_same_file(
+    out: Console, write: "ArcWrite", *, done: bool, deleted: bool
+) -> None:
+    """List a file's other paths; a link the original's deletion leaves dangling."""
+    gone = deleted if done else write.deletes_original and write.reason is None
     for other in write.same_file:
-        _dim_line(out, other, f"same file as {change.path}")
+        detail = f"same file as {write.path}"
+        if gone and other in write.links:
+            left = "left" if done else "would be left"
+            detail += f"; {left} pointing at nothing"
+        _dim_line(out, other, detail)
 
 
 def print_ambiguous(
     out: Console, path: Path, position: int, volumes: Sequence[int]
 ) -> None:
     """Say a comic is not tagged: its entry fits it and a comic of another volume."""
+    kinds = []
+    if any(value >= YEAR_LIKE_VOLUME for value in volumes):
+        kinds.append("start year")
+    if any(value < YEAR_LIKE_VOLUME for value in volumes):
+        kinds.append("volume number")
     _failed_line(
         out,
         path,
         f"not written: entry #{position + 1} fits {volumes_text(volumes)}"
-        " alike; a start year on the entry settles it",
+        f" alike; a {' or '.join(kinds)} on the entry settles it",
     )
 
 

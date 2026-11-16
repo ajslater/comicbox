@@ -4,8 +4,9 @@ Which rows of several lists are the same issue.
 Every row is a node ``(input index, row index)`` carrying its
 ``entry_keys``. A key is qualified by how many earlier rows of its own input
 carry it, so the first occurrence of a repeated issue lines up with the
-first in another list and the second with the second, and two rows of one
-input never share a qualified key.
+first in another list and the second with the second. The cover-year key
+is counted for each discriminator apart (``discriminator``): rows of two
+volumes are not repeats of one issue.
 
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
@@ -16,9 +17,9 @@ rank and row. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
 afterwards. A cover-year link is also refused when the group it would
-make holds two series years (``series_year``): two volumes whose issues
-share a number and a cover year stay apart, even through a third row that
-has only the cover year.
+make holds two rows that conflict (``discriminators_conflict``): two
+volumes whose issues share a number and a cover year stay apart, even
+through a third row that has only the cover year.
 """
 
 from collections import Counter
@@ -32,8 +33,9 @@ from comicbox.readinglists.identity import (
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
     EntryKey,
+    any_conflict,
+    discriminator,
     entry_keys,
-    series_year,
 )
 
 Node = tuple[int, int]
@@ -87,18 +89,20 @@ class _Groups:
     """
     Disjoint sets of nodes, each holding at most one row per input.
 
-    Each group also knows the series years of its rows, so a cover-year
+    Each group also knows the discriminators of its rows, so a cover-year
     link can be refused for the whole group, not only the pair it names.
     """
 
-    __slots__ = ("_inputs", "_parent", "_years")
+    __slots__ = ("_discriminators", "_inputs", "_parent")
 
-    def __init__(self, years: Mapping[Node, int | None]) -> None:
-        self._parent: dict[Node, Node] = {node: node for node in years}
-        self._inputs: dict[Node, set[int]] = {node: {node[0]} for node in years}
-        self._years: dict[Node, frozenset[int]] = {
-            node: frozenset() if year is None else frozenset({year})
-            for node, year in years.items()
+    def __init__(self, discriminators: Mapping[Node, int | None]) -> None:
+        self._parent: dict[Node, Node] = {node: node for node in discriminators}
+        self._inputs: dict[Node, set[int]] = {
+            node: {node[0]} for node in discriminators
+        }
+        self._discriminators: dict[Node, frozenset[int]] = {
+            node: frozenset() if value is None else frozenset({value})
+            for node, value in discriminators.items()
         }
 
     def find(self, node: Node) -> Node:
@@ -110,24 +114,24 @@ class _Groups:
             node, self._parent[node] = self._parent[node], root
         return root
 
-    def link(self, one: Node, other: Node, *, one_year: bool = False) -> None:
+    def link(self, one: Node, other: Node, *, guarded: bool = False) -> None:
         """
         Join two nodes' groups, unless both hold a row of one input.
 
-        With ``one_year``, as for a cover-year link, also unless the joined
-        group would hold two series years.
+        With ``guarded``, as for a cover-year link, also unless the joined
+        group would hold two rows that conflict.
         """
         roots = sorted((self.find(one), self.find(other)))
         root, child = roots
         if root == child or self._inputs[root] & self._inputs[child]:
             return
-        years = self._years[root] | self._years[child]
-        if one_year and len(years) > 1:
+        values = self._discriminators[root] | self._discriminators[child]
+        if guarded and any_conflict(values):
             return
         self._parent[child] = root
         self._inputs[root] |= self._inputs.pop(child)
-        self._years[root] = years
-        del self._years[child]
+        self._discriminators[root] = values
+        del self._discriminators[child]
 
     def groups(self) -> list[list[Node]]:
         """List the groups, each in node order, by their first node."""
@@ -138,13 +142,21 @@ class _Groups:
 
 
 def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
-    """Qualify each row's keys by their count in earlier rows."""
-    counts: Counter[EntryKey] = Counter()
+    """
+    Qualify each row's keys by their count in earlier rows.
+
+    The cover-year key is counted for each discriminator apart.
+    """
+    counts: Counter[tuple[EntryKey, int | None]] = Counter()
     qualified = []
     for entry in entries:
-        keys = entry_keys(entry)
-        qualified.append([(key, counts[key]) for key in keys])
-        counts.update(keys)
+        value = discriminator(entry)
+        tallies = [
+            (key, value if key[0] == NAME_YEAR_KEY_KIND else None)
+            for key in entry_keys(entry)
+        ]
+        qualified.append([(tally[0], counts[tally]) for tally in tallies])
+        counts.update(tallies)
     return qualified
 
 
@@ -174,10 +186,10 @@ class _Grouper:
     """Group the rows of ranked inputs and report what disagreed."""
 
     def __init__(self, inputs: Sequence[Sequence[Mapping[str, Any]]]) -> None:
-        """Qualify every row's keys, and note its series year."""
+        """Qualify every row's keys, and note its discriminator."""
         self._qualified = [_qualify(entries) for entries in inputs]
-        self._years = {
-            (input_index, row): series_year(entry)
+        self._discriminators = {
+            (input_index, row): discriminator(entry)
             for input_index, entries in enumerate(inputs)
             for row, entry in enumerate(entries)
         }
@@ -200,9 +212,9 @@ class _Grouper:
         for node in nodes:
             for qkey in self._keys(node):
                 holders.setdefault(qkey, []).append(node)
-        groups = _Groups({node: self._years[node] for node in nodes})
+        groups = _Groups({node: self._discriminators[node] for node in nodes})
         for strength, one, other in _links(holders):
-            groups.link(one, other, one_year=strength == _NAME_YEAR_STRENGTH)
+            groups.link(one, other, guarded=strength == _NAME_YEAR_STRENGTH)
         return groups.groups()
 
     def _record_disagreements(self, group: int, members: Sequence[Node]) -> None:

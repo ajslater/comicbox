@@ -1178,6 +1178,134 @@ def test_one_file_is_written_once(
     assert _tags(target)["arcs"] == {"Civil War": {"number": 1}}
 
 
+def test_a_conversion_through_a_link_converts_the_file_it_names(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    """It converted the link, said it deleted the CBR, and left the CBR untagged."""
+    link = cbr.parent / "A-link.cbr"
+    link.symlink_to(cbr)
+    args = ("-w", "cix", "--delete-orig", str(captain_list), str(cbr.parent))
+
+    _, dry, _ = _write(capsys, *args)
+    code, out, _ = _write(capsys, *args, apply=True)
+    again, rerun, _ = _write(capsys, *args, apply=True)
+
+    cbz = cbr.with_suffix(".cbz")
+    assert f"{link}: same file as {cbr}; would be left pointing at nothing" in _flat(
+        dry
+    )
+    assert code == 0
+    assert f"{cbr} added 'Captain Arc' #1 as {cbz.name}; deleted the CBR" in _flat(out)
+    assert f"{link}: same file as {cbr}; left pointing at nothing" in _flat(out)
+    assert f"{cbr}: same file" not in _flat(out)
+    # The CBR is gone and the link to it left; no second CBZ beside the link.
+    assert sorted(cbr.parent.iterdir()) == [link, cbz]
+    assert _tags(cbz)["arcs"] == {"Captain Arc": {"number": 1}}
+    assert again == 0
+    assert "already has 'Captain Arc' #1" in _flat(rerun)
+
+
+def test_a_link_to_a_comic_elsewhere_writes_that_comic(
+    capsys: pytest.CaptureFixture[str], captain_list: Path, cbr: Path
+) -> None:
+    library = cbr.parent.parent / "library"
+    library.mkdir()
+    link = library / "Captain.cbr"
+    link.symlink_to(cbr)
+
+    code, out, _ = _write(
+        capsys, "-w", "cix", str(captain_list), str(library), apply=True
+    )
+
+    cbz = cbr.with_suffix(".cbz")
+    assert code == 0
+    assert f"{cbr} added 'Captain Arc' #1 as {cbz.name}" in _flat(out)
+    assert f"{link}: same file as {cbr}" in _flat(out)
+    assert list(library.iterdir()) == [link]
+    assert _tags(cbz)["arcs"] == {"Captain Arc": {"number": 1}}
+
+
+def test_keep_does_not_write_a_kept_format_that_splits_the_arc(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A kept ComicInfo got two bogus arcs, and the next write spread them."""
+    reading_list = _write_list(
+        tmp_path / "avx.yaml", name="'Avengers, The: Disassembled'"
+    )
+    comics = tmp_path / "comics"
+    split = make_comic(
+        comics / "cw1.cbz",
+        formats=(_CIX, JSON),
+        series="Civil War",
+        number="1",
+        start_year=2006,
+    )
+    held = make_comic(
+        comics / "cw2.cbz", formats=(_MI,), series="Civil War", number="2", volume=2006
+    )
+    untouched = split.read_bytes()
+
+    named, _, named_err = _write(capsys, "-w", "cix", str(reading_list), str(comics))
+    code, out, _ = _write(
+        capsys, "-w", "keep", str(reading_list), str(comics), apply=True
+    )
+
+    assert named == 2
+    assert "ComicInfo.xml cannot hold the arc" in named_err
+    assert code == 1
+    assert (
+        "cw1.cbz not written: its ComicInfo.xml would read the arc back as other arcs"
+    ) in _flat(out)
+    assert split.read_bytes() == untouched
+    assert _tags(held)["arcs"] == {"Avengers, The: Disassembled": {"number": 2}}
+
+
+def test_a_write_without_keep_says_it_clears_a_free_text_comment(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    path = make_comic(
+        tmp_path / "comics" / "cw1.cbz",
+        comment="Scanned by a friend",
+        series="Civil War",
+        number="1",
+        start_year=2006,
+    )
+
+    _, dry, dry_err = _write(capsys, str(reading_list), str(path.parent))
+    code, out, _ = _write(
+        capsys, "-w", "json,keep", str(reading_list), str(path.parent), apply=True
+    )
+
+    assert "cw1.cbz would add 'Civil War' #1; would clear the archive comment" in (
+        _flat(dry)
+    )
+    assert "1 comic would lose the archive comment." in dry_err
+    assert dry_err.endswith("Add keep to -w to keep them: -w json,keep.")
+    assert code == 0
+    assert "clear" not in out
+    with zipfile.ZipFile(path) as archive:
+        assert archive.comment == b"Scanned by a friend"
+
+
+def test_the_summary_counts_comics_that_lose_a_tag_file(
+    capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
+) -> None:
+    """It read "3 comics would lose a tag files"."""
+    comics = tmp_path / "comics"
+    for number in ("1", "2", "7"):
+        make_comic(
+            comics / f"cw{number}.cbz",
+            formats=(_MI,),
+            series="Civil War",
+            number=number,
+            start_year=2006,
+        )
+
+    _, _, err = _write(capsys, "-w", "cix", str(reading_list), str(comics))
+
+    assert "3 comics would lose a tag file." in err
+
+
 def test_a_read_only_comic_fails_and_the_rest_are_written(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:

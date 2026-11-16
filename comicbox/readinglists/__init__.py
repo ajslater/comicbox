@@ -31,11 +31,12 @@ from comicbox.readinglists.formats.metron_api import MetronListSummary
 from comicbox.readinglists.identity import (
     EntryKey,
     ParsedIssue,
+    discriminator,
+    discriminators_conflict,
     entry_keys,
     name_variants,
     normalize_series,
     parse_issue,
-    series_year,
 )
 from comicbox.readinglists.registry import (
     ReadingListFormats,
@@ -135,6 +136,8 @@ __all__ = (
     "combine",
     "compare",
     "detect_format",
+    "discriminator",
+    "discriminators_conflict",
     "dumps",
     "entry_from_comic",
     "entry_keys",
@@ -146,5 +149,4 @@ __all__ = (
     "normalize_series",
     "parse_issue",
     "reading_lists_from_comics",
-    "series_year",
 )

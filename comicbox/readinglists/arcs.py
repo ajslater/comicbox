@@ -23,7 +23,14 @@ from comicbox.formats.comicbox.schema import (
     YEAR_KEY,
 )
 from comicbox.identifiers import ID_KEY_KEY
-from comicbox.readinglists.identity import EntryKey, entry_keys, entry_sort_key
+from comicbox.readinglists.identity import (
+    NAME_YEAR_KEY_KIND,
+    EntryKey,
+    any_conflict,
+    discriminator,
+    entry_keys,
+    entry_sort_key,
+)
 from comicbox.readinglists.schema import (
     DATE_KEY,
     ENTRIES_KEY,
@@ -105,26 +112,45 @@ def entry_from_comic(metadata: Mapping[str, Any]) -> dict[str, Any]:
 class _ArcMembers:
     """The comics tagged with one arc, gathered for a list."""
 
-    __slots__ = ("arc_ids", "keys", "members", "name")
+    __slots__ = ("arc_ids", "folded", "members", "name")
 
     def __init__(self, name: str) -> None:
         """Keep the first spelling of the name seen."""
         self.name = name
         self.members: list[tuple[int | None, dict[str, Any]]] = []
         self.arc_ids: dict[str, list[str]] = {}
-        self.keys: set[EntryKey] = set()
+        # Each member's keys, and the discriminators of the copies in it.
+        self.folded: list[tuple[frozenset[EntryKey], set[int]]] = []
+
+    def _copy_of(self, keys: frozenset[EntryKey], value: int | None) -> int | None:
+        """
+        Find the member an entry is a copy of, as ``combine`` would join them.
+
+        A copy shares an id or a name key with the member, or its cover-year
+        key without making the member hold two rows that conflict.
+        """
+        for index, (member_keys, values) in enumerate(self.folded):
+            shared = keys & member_keys
+            if any(key[0] != NAME_YEAR_KEY_KIND for key in shared) or (
+                shared and not any_conflict((*values, value))
+            ):
+                return index
+        return None
 
     def add(self, entry: dict[str, Any], arc: Mapping[str, Any]) -> None:
         """
         Add a comic's entry and remember the ids its arc tag carries.
 
-        Copies of one issue, files that share an entry key, are one entry:
-        the first one seen.
+        Copies of one issue are one entry: the first one seen.
         """
-        keys = set(entry_keys(entry))
-        if not keys & self.keys:
+        keys = frozenset(entry_keys(entry))
+        value = discriminator(entry)
+        if (index := self._copy_of(keys, value)) is None:
             self.members.append((arc.get(NUMBER_KEY), entry))
-            self.keys |= keys
+            self.folded.append((keys, set()))
+            index = len(self.folded) - 1
+        if value is not None:
+            self.folded[index][1].add(value)
         for source, identifier in (arc.get(IDENTIFIERS_KEY) or {}).items():
             if source in _ARC_POINTER_KINDS and (
                 key := (identifier or {}).get(ID_KEY_KEY)

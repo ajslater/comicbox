@@ -30,9 +30,12 @@ from comicbox.readinglists.identity import (
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
     EntryKey,
+    any_conflict,
+    discriminator,
+    discriminators_comparable,
+    discriminators_conflict,
     entry_date,
     entry_keys,
-    series_year,
     variant_keys,
 )
 from comicbox.readinglists.schema import ENTRIES_KEY, NUMBER_KEY
@@ -74,8 +77,8 @@ class Found:
     """
     The comics that are entry ``position`` (from 0), in path order.
 
-    ``volumes`` holds the series years its ambiguous cover-year matches
-    carry, when it has any.
+    ``volumes`` holds the discriminators its ambiguous cover-year matches
+    carry, start years or volume numbers, when it has any.
     """
 
     position: int
@@ -112,25 +115,21 @@ class _Facts:
     """
     What vetoes a match: an entry's or comic's issue ids and cover year.
 
-    And its series year, which vetoes a match on the cover-year key alone.
+    And its discriminator, which vetoes a match on the cover-year key alone.
     """
 
     ids: Mapping[str, str]
     year: int | None
-    series_year: int | None
+    discriminator: int | None
 
     @classmethod
     def of(cls, entry: Mapping[str, Any], keys: Sequence[EntryKey]) -> "_Facts":
         ids = {key[1]: key[2] for key in keys if key[0] == ID_KEY_KIND}
-        return cls(ids, _year(entry), series_year(entry))
+        return cls(ids, _year(entry), discriminator(entry))
 
     def other_volume(self, other: "_Facts") -> bool:
-        """Tell whether both sides name a series year, and not the same one."""
-        return (
-            self.series_year is not None
-            and other.series_year is not None
-            and self.series_year != other.series_year
-        )
+        """Tell whether the two sides are of two volumes."""
+        return discriminators_conflict(self.discriminator, other.discriminator)
 
     def contradicts(self, other: "_Facts") -> bool:
         """Tell whether two sides cannot be one issue, whatever their keys."""
@@ -142,6 +141,10 @@ class _Facts:
             and other.year is not None
             and abs(self.year - other.year) > _COVER_YEAR_SLACK
         )
+
+
+def _cover_year_found(paths: Collection[Path], *, ambiguous: bool) -> list[FoundComic]:
+    return [FoundComic(path, FoundBy.NAME_YEAR, ambiguous=ambiguous) for path in paths]
 
 
 class _Index:
@@ -184,11 +187,11 @@ class _Index:
             for path in self.strict.get(key, ()):
                 if path not in strong and not facts.contradicts(self.facts[path]):
                     strong[path] = by
-        cover, volumes = self._cover_year_matches(keys, facts, strong)
-        comics = [FoundComic(path, by) for path, by in strong.items()]
-        comics += [
-            FoundComic(path, FoundBy.NAME_YEAR, ambiguous=bool(volumes))
-            for path in cover
+        cover, unsure, volumes = self._cover_year_matches(keys, facts, strong)
+        comics = [
+            *(FoundComic(path, by) for path, by in strong.items()),
+            *_cover_year_found(cover, ambiguous=False),
+            *_cover_year_found(unsure, ambiguous=True),
         ]
         if not comics:
             return None
@@ -199,27 +202,32 @@ class _Index:
         keys: Sequence[EntryKey],
         facts: "_Facts",
         strong: Collection[Path],
-    ) -> tuple[list[Path], tuple[int, ...]]:
+    ) -> tuple[list[Path], list[Path], tuple[int, ...]]:
         """
         Judge the comics that share only an entry's cover-year key.
 
-        Each is refused when its series year differs from the entry's. Beside
-        strong matches that carry series years, it is refused unless its
-        series year is one of theirs or it has none. Otherwise they are
-        judged together: of more than one series year, they are all
-        ambiguous, and the years are returned with them.
+        Each is refused when it conflicts with the entry
+        (``discriminators_conflict``). One that can be compared with some
+        strong match is found if it has one of their discriminators, and
+        refused if not. The rest are judged together: if any two conflict,
+        they are all ambiguous. Returns the comics found, those ambiguous,
+        and the discriminators of the ambiguous.
         """
-        cover = self._cover_year_candidates(keys, facts, strong)
-        if strong_years := self._series_years(strong):
-            kept = [
-                path
-                for path in cover
-                if (year := self.facts[path].series_year) is None
-                or year in strong_years
-            ]
-            return kept, ()
-        years = self._series_years(cover)
-        return cover, tuple(sorted(years)) if len(years) > 1 else ()
+        strong_values = self._discriminators(strong)
+        found: list[Path] = []
+        rest: list[Path] = []
+        for path in self._cover_year_candidates(keys, facts, strong):
+            value = self.facts[path].discriminator
+            if not any(
+                discriminators_comparable(value, other) for other in strong_values
+            ):
+                rest.append(path)
+            elif value in strong_values:
+                found.append(path)
+        rest_values = self._discriminators(rest)
+        if any_conflict(rest_values):
+            return found, rest, tuple(sorted(rest_values))
+        return found + rest, [], ()
 
     def _cover_year_candidates(
         self,
@@ -237,10 +245,12 @@ class _Index:
             and not facts.other_volume(self.facts[path])
         ]
 
-    def _series_years(self, paths: Collection[Path]) -> set[int]:
-        """Get the series years some comics carry, leaving out those with none."""
+    def _discriminators(self, paths: Collection[Path]) -> set[int]:
+        """Get the discriminators some comics carry, leaving out those with none."""
         return {
-            year for path in paths if (year := self.facts[path].series_year) is not None
+            value
+            for path in paths
+            if (value := self.facts[path].discriminator) is not None
         }
 
     def find_variant(

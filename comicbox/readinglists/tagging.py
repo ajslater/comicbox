@@ -128,9 +128,12 @@ class ArcWrite:
 
     ``formats`` is empty when nothing is written, and ``reason`` then says
     why, unless the comic already has the arc. ``removes`` names the tag
-    files the write takes out of the comic. ``converts_to`` is the CBZ a
-    CBR, CBT or CB7 is converted to, and ``deletes_original`` whether the
-    original then goes. ``same_file`` lists the other paths of this file.
+    files the write takes out of the comic, and ``clears_comment`` whether it
+    clears a free-text archive comment. ``converts_to`` is the CBZ a CBR,
+    CBT or CB7 is converted to, and ``deletes_original`` whether the
+    original then goes. ``same_file`` lists the other paths of this file,
+    and ``links`` those of them that are symbolic links: a deleted original
+    leaves them pointing at nothing.
     """
 
     change: ArcChange
@@ -140,6 +143,13 @@ class ArcWrite:
     removes: tuple[str, ...] = ()
     converts_to: Path | None = None
     deletes_original: bool = False
+    clears_comment: bool = False
+    links: tuple[Path, ...] = ()
+
+    @property
+    def loses(self) -> bool:
+        """Whether the write takes a tag file or the archive comment away."""
+        return bool(self.removes) or self.clears_comment
 
     @property
     def path(self) -> Path:
@@ -172,6 +182,25 @@ def _converts_to(destination: "WriteDestination | None") -> Path | None:
     return destination.destination
 
 
+def _kept_unfit(
+    comic: "Comic",
+    named: frozenset[MetadataFormats],
+    fits: Callable[[MetadataFormats], ArcFit] | None,
+) -> str | None:
+    """
+    Say why a keep write would put the wrong arcs in a comic, or None.
+
+    A format it keeps that has no arcs is harmless; one that reads the arc
+    back as other arcs is not. The formats named were checked for the run.
+    """
+    if fits is None:
+        return None
+    for fmt in sorted(comic.formats - named, key=format_name):
+        if fits(fmt) is ArcFit.MANGLES:
+            return f"its {format_name(fmt)} would read the arc back as other arcs"
+    return None
+
+
 def _none_holds(
     comic: "Comic",
     written: Collection[MetadataFormats],
@@ -182,6 +211,16 @@ def _none_holds(
         return None
     have = format_names(comic.formats) or "no tag file"
     return f"it has {have}, none of which can hold the arc"
+
+
+def _keep_refusal(
+    comic: "Comic",
+    formats: frozenset[MetadataFormats],
+    written: Collection[MetadataFormats],
+    fits: Callable[[MetadataFormats], ArcFit] | None,
+) -> str | None:
+    """Say why a keep write is not made, or None."""
+    return _kept_unfit(comic, formats, fits) or _none_holds(comic, written, fits)
 
 
 def plan_write(
@@ -200,15 +239,16 @@ def plan_write(
     ``destination`` is where comicbox would write it, as
     ``predict_write_destination`` says; None for a comic already tagged.
     With ``keep`` the comic is written in ``formats`` and every format it
-    carries, and removes none; ``fits`` says whether a kept one can hold
-    the arc, which at least one written must.
+    carries, and removes none; ``fits`` says what a kept one does with the
+    arc. At least one written must hold it, and none kept may read it back
+    as other arcs.
     """
     if change.action is ArcAction.TAGGED:
         return ArcWrite(change)
     if reason := _unwritable(comic, destination):
         return ArcWrite(change, reason=reason)
     written, removed = _formats_written(comic, formats, keep=keep)
-    if keep and (reason := _none_holds(comic, written, fits)):
+    if keep and (reason := _keep_refusal(comic, formats, written, fits)):
         return ArcWrite(change, reason=reason)
     converts_to = _converts_to(destination)
     return ArcWrite(
@@ -217,6 +257,8 @@ def plan_write(
         removes=tuple(sorted(format_name(fmt) for fmt in removed)),
         converts_to=converts_to,
         deletes_original=converts_to is not None and delete_orig,
+        # comicbox writes no comment but ComicBookInfo, which holds no arc.
+        clears_comment=comic.free_comment and not keep,
     )
 
 
@@ -226,9 +268,15 @@ def group_files(
     """
     Group paths by the file they are; each group's first path names it.
 
-    Returns each first path with the other paths of its file.
+    The first is the first in path order that is not a symbolic link, or
+    the first link when all are. Returns each first path with the other
+    paths of its file.
     """
     groups: dict[Any, list[Path]] = {}
     for path in sorted(paths):
         groups.setdefault(key(path), []).append(path)
-    return {group[0]: tuple(group[1:]) for group in groups.values()}
+    named = {}
+    for group in groups.values():
+        first = min(group, key=lambda path: (path.is_symlink(), path))
+        named[first] = tuple(path for path in group if path != first)
+    return named

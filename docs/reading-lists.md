@@ -217,12 +217,14 @@ list and a report. It is pure: no files, no network.
 - It does not guess past the cover year. An entry with no id and no start year
   or volume matches on its series, issue and cover year, so a CBL row with a
   `Year` and no `Volume` matches its own copy and a row that has the start year.
-  A cover-year join never brings together rows whose start years differ, a
-  volume number of 1900 or more counting as a start year, even through a third
-  row that has only the cover year: two volumes whose issues share a number and
-  a cover year stay apart. An entry with no cover year either matches nothing,
-  because a series name and number alone match every volume of a long-running
-  title.
+  A cover-year join never brings together rows of two volumes, even through a
+  third row that has only the cover year: two volumes whose issues share a
+  number and a cover year stay apart. A row tells its volume by its start year
+  or, failing that, its volume number. Two years, a volume number of 1900 or
+  more counting as one, are compared, and so are two small volume numbers;
+  volume 2 and a start year cannot be, so they do not keep rows apart. An entry
+  with no cover year either matches nothing, because a series name and number
+  alone match every volume of a long-running title.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -280,20 +282,20 @@ A comic is never matched to an entry when both carry an id from one database and
 the ids differ, or both have cover years more than a year apart.
 
 A comic that shares only the cover year with an entry is judged with the rest of
-the entry's comics. It is refused when its start year, a volume number of 1900
-or more counting as one, differs from the entry's. Beside comics the entry
-matched by id or name that have start years, it is refused unless it has one of
-those or none. Otherwise, when the comics matched on the cover year alone are of
-more than one volume, such as Avengers #1 of 2016 with no start year against the
-2011 and 2016 volumes, they are all ambiguous: `match` marks them, and
-`write-arcs` tags none of them and exits 1. A start year on the entry settles
-it. A refused comic is not listed under the entry. An entry with no id, start
-year, volume or cover year matches nothing, as in `combine`. `match` prints each
-entry with each comic that is it on a row of its own, and how it matched (`id`,
-`name`, `name-year` or `variant`), or `missing`; a comic with a tag file
-comicbox could not read is marked. The count goes to stderr. Linked directories
-are not searched, as with comicbox's `--recurse`, and a directory that cannot be
-read is a warning: the command then exits 1.
+the entry's comics, by volume as `combine` tells them apart. It is refused when
+it is of another volume than the entry. Beside comics the entry matched by id or
+name whose volumes it can be compared with, it is refused unless it is of one of
+theirs. Otherwise, when the comics matched on the cover year alone are of more
+than one volume, such as Avengers #1 of 2016 with no start year against the 2011
+and 2016 volumes, or against volumes 1 and 2, they are all ambiguous: `match`
+marks them, and `write-arcs` tags none of them and exits 1. A start year or
+volume on the entry settles it. A refused comic is not listed under the entry.
+An entry with no id, start year, volume or cover year matches nothing, as in
+`combine`. `match` prints each entry with each comic that is it on a row of its
+own, and how it matched (`id`, `name`, `name-year` or `variant`), or `missing`;
+a comic with a tag file comicbox could not read is marked. The count goes to
+stderr. Linked directories are not searched, as with comicbox's `--recurse`, and
+a directory that cannot be read is a warning: the command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also
@@ -312,16 +314,24 @@ removed: `-w keep` writes the arc into the formats each comic already has, and
 `-w cix,keep` adds ComicInfo to them. A comic with none that can hold the arc is
 not written, and says which it has. A `-w` format that cannot hold the arc
 refuses the run before any comic is read: ComicBookInfo and CoMet have no arcs,
-and ComicInfo splits a name with a comma in it into two arcs. `keep` still keeps
-a comic's ComicBookInfo comment or CoMet file, beside the formats that hold the
-arc:
+and ComicInfo splits a name with a comma in it into two arcs. A format a comic
+keeps that has no arcs is harmless: `keep` still keeps a comic's ComicBookInfo
+comment or CoMet file, beside the formats that hold the arc. A comic that keeps
+one that would read the arc back as other arcs, such as a ComicInfo for a name
+with a comma, is not written, and says which file. A format named that a comic
+lacks adds a file, and on the next read its values join the comic's others by
+precedence, as every tag file's do, so `-w cix,keep` on a MetronInfo comic can
+change its merged title. Without `keep`, a write also clears a free-text archive
+comment, as every comicbox write does: the comic's line says so, and the summary
+and the `keep` hint count it with the tag files:
 
 ```text
 · Marvel/Civil War 001.cbz would add 'Civil War' #1; would remove MetronInfo.xml
 · Marvel/Civil War 002.cbr would add 'Civil War' #2; would convert to Civil War 002.cbz and keep the CBR
 ✗ Marvel/Civil War 003.cbr not written: Civil War 003.cbz already exists
-Dry run: 2 of 3 matched comics would change; --apply writes them.
-1 comic would lose a tag file.
+· Marvel/Civil War 004.cbz would add 'Civil War' #4; would clear the archive comment
+Dry run: 3 of 4 matched comics would change; --apply writes them.
+2 comics would lose a tag file or the archive comment.
 1 matched comic not written; see above.
 Add keep to -w to keep them: -w cix,keep.
 ```
@@ -336,12 +346,14 @@ The arc is merged into each comic's tags, whatever `write.merge_mode` says, and
 the comic is read back to check that it holds the arc. A comic that already has
 the arc with that number is left alone, and one with another number is
 renumbered. A comic with a tag file comicbox could not read is listed and not
-written, and a file found under two names, through a symbolic or hard link, is
-written once. With `general.dry_run` set in the config, `--apply` is a dry run
-and says so. A comic that is not written for any reason but having the arc makes
-the command exit 1, and the rest are still written. Ctrl-C stops before the
-writes not yet started and lets those under way finish, however often it is
-pressed.
+written. A file found under two names, through a symbolic or hard link, is
+written once, through the file itself, never a symbolic link to it: a link to a
+comic elsewhere writes that comic where it is. When `--delete-orig` deletes a
+converted original, each symbolic link to it is named as left pointing at
+nothing. With `general.dry_run` set in the config, `--apply` is a dry run and
+says so. A comic that is not written for any reason but having the arc makes the
+command exit 1, and the rest are still written. Ctrl-C stops before the writes
+not yet started and lets those under way finish, however often it is pressed.
 
 ## Python API
 

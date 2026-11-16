@@ -45,12 +45,14 @@ class Comic:
 
     ``formats`` are the tag formats it carries that comicbox read, and
     ``unreadable`` names the tag files it carries that comicbox could not
-    parse.
+    parse. ``free_comment`` is whether its archive comment is free text, not
+    ComicBookInfo: a write without keep clears it.
     """
 
     tags: dict[str, Any]
     formats: frozenset[MetadataFormats] = frozenset()
     unreadable: tuple[str, ...] = ()
+    free_comment: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +74,9 @@ def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
             carried = box.get_carried_formats()
         finally:
             logger.enable("comicbox")
-        return Comic(dict(tags), carried.formats, carried.unreadable)
+        return Comic(
+            dict(tags), carried.formats, carried.unreadable, carried.free_comment
+        )
 
 
 def _init_worker(log_level: str) -> None:

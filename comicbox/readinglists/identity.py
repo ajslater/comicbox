@@ -8,7 +8,7 @@ counts as the same issue.
 
 import re
 import unicodedata
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, InvalidOperation
@@ -220,27 +220,51 @@ def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
 
 
 # A volume number this big is a year, as a CBL's Volume="2006" is.
-_YEAR_LIKE_VOLUME = 1900
+YEAR_LIKE_VOLUME = 1900
 
 
-def series_year(entry: Mapping[str, Any]) -> int | None:
+def discriminator(entry: Mapping[str, Any]) -> int | None:
     """
-    Get the year an entry's name key tells its volume by, when it is one.
+    Get what an entry's name key tells its volume by.
 
-    The start year, or a volume number of 1900 or more. None for an entry
-    with no name key, or whose volume number is small: volume 2 cannot be
-    compared with a year. A cover-year join never brings together two
-    rows whose series years differ.
+    The start year or, failing that, the volume number. None for an entry
+    with no name key.
     """
     if _name_key(entry) is None:
         return None
-    series = entry.get(SERIES_KEY) or {}
-    if (start_year := series.get(SERIES_START_YEAR_KEY)) is not None:
-        return start_year
-    number = (entry.get(VOLUME_KEY) or {}).get(NUMBER_KEY)
-    if isinstance(number, int) and number >= _YEAR_LIKE_VOLUME:
-        return number
-    return None
+    value = _discriminator(entry)
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
+
+
+def discriminators_comparable(one: int | None, other: int | None) -> bool:
+    """
+    Tell whether two discriminators can be compared.
+
+    Both are years, 1900 or more, or both are less, as volume numbers are.
+    A start year and volume 2 cannot be compared, nor anything with none.
+    """
+    if one is None or other is None:
+        return False
+    return (one >= YEAR_LIKE_VOLUME) == (other >= YEAR_LIKE_VOLUME)
+
+
+def discriminators_conflict(one: int | None, other: int | None) -> bool:
+    """
+    Tell whether two discriminators name two volumes.
+
+    They conflict when they can be compared and differ: the 2011 and 2016
+    volumes, or volumes 1 and 2.
+    """
+    return one != other and discriminators_comparable(one, other)
+
+
+def any_conflict(discriminators: Iterable[int | None]) -> bool:
+    """Tell whether any two of some discriminators conflict."""
+    values = {value for value in discriminators if value is not None}
+    years = {value for value in values if value >= YEAR_LIKE_VOLUME}
+    return len(years) > 1 or len(values - years) > 1
 
 
 def _cover_year(entry: Mapping[str, Any]) -> int | None:
@@ -260,7 +284,8 @@ def _name_year_key(entry: Mapping[str, Any]) -> EntryKey | None:
     For every entry with a series name, an issue and a cover year, so a row
     with a year and no volume, as a CBL often has, meets a row that has a
     start year. Two volumes whose issues share a number and a cover year
-    share this key too: ``series_year`` tells them apart where it can.
+    share this key too: ``discriminators_conflict`` tells them apart
+    where it can.
     """
     if (named := _series_issue(entry)) is None:
         return None

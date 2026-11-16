@@ -56,6 +56,7 @@ from comicbox.readinglists.tagging import (
 if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
     from comicbox.formats import MetadataFormats
+    from comicbox.readinglists.library import Comic
     from comicbox.write import WriteResult
 
 # -w takes the tag formats comicbox writes into a comic, by config key.
@@ -192,19 +193,36 @@ def _plan(run: Run, setup: "_Setup", library: Library) -> _Plan:
     }
     writes = _one_per_destination(
         [
-            replace(_plan_one(changes[path], library, setup), same_file=others)
+            _plan_file(changes[path], others, library, setup)
             for path, others in group_files(changes, file_key).items()
         ]
     )
     return _Plan(result, writes, *_left_out(result, changes))
 
 
-def _plan_one(change: ArcChange, library: Library, setup: "_Setup") -> ArcWrite:
+def _plan_file(
+    change: ArcChange, others: tuple[Path, ...], library: Library, setup: "_Setup"
+) -> ArcWrite:
+    """
+    Plan one file's write, through the file itself, never a link to it.
+
+    A write through a link converts the link, deletes the link and leaves
+    the file it points at as it was.
+    """
+    comic = library.comics[change.path]
+    if change.path.is_symlink():
+        others = (change.path, *others)
+        change = replace(change, path=change.path.resolve())
+    write = _plan_one(change, comic, setup)
+    links = tuple(path for path in others if path.is_symlink())
+    return replace(write, same_file=others, links=links)
+
+
+def _plan_one(change: ArcChange, comic: "Comic", setup: "_Setup") -> ArcWrite:
     """Plan one file's write, with where comicbox would write it."""
     from comicbox.exceptions import ComicboxError
     from comicbox.predict import predict_write_destination
 
-    comic = library.comics[change.path]
     destination = None
     if change.action is not ArcAction.TAGGED and not comic.unreadable:
         try:
@@ -246,7 +264,12 @@ def _one_per_destination(writes: Sequence[ArcWrite]) -> tuple[ArcWrite, ...]:
         else:
             reason = f"{write.converts_to.name} is also the destination of {first}"
             kept.append(
-                ArcWrite(write.change, reason=reason, same_file=write.same_file)
+                ArcWrite(
+                    write.change,
+                    reason=reason,
+                    same_file=write.same_file,
+                    links=write.links,
+                )
             )
     return tuple(kept)
 
@@ -398,13 +421,26 @@ def _verdict(
             verdict += "; general.dry_run is set in the config, so nothing was written."
         else:
             verdict += "; --apply writes them."
-        lose = sum(bool(write.removes) for write in plan.todo)
-        return verdict, lose, f"would lose a tag file{'' if lose == 1 else 's'}."
+        losing = [write for write in plan.todo if write.loses]
+        return verdict, len(losing), f"would lose {_lost_text(losing)}."
     if not plan.todo:
         return f"Nothing to write among {files}.", 0, ""
-    lose = sum(bool(write.removes) for write in held)
-    lost = f"lost a tag file{'' if lose == 1 else 's'}."
-    return f"{len(held)} of {files} written.", lose, lost
+    losing = [write for write in held if write.loses]
+    return (
+        f"{len(held)} of {files} written.",
+        len(losing),
+        f"lost {_lost_text(losing)}.",
+    )
+
+
+def _lost_text(losing: Sequence[ArcWrite]) -> str:
+    """Name what some writes take away: a tag file, the archive comment, or both."""
+    lost = []
+    if any(write.removes for write in losing):
+        lost.append("a tag file")
+    if any(write.clears_comment for write in losing):
+        lost.append("the archive comment")
+    return " or ".join(lost)
 
 
 def _suggest(run: Run) -> None:

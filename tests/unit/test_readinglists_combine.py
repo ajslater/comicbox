@@ -16,6 +16,9 @@ from comicbox.readinglists import (
     OrderConflict,
     ReadingListError,
     combine,
+    discriminator,
+    discriminators_conflict,
+    entry_keys,
     load,
 )
 from comicbox.readinglists.serialize import load_model
@@ -280,6 +283,13 @@ class _Issue:
     year: int
     comicvine: str
     metron: str
+    # A volume number, which a row always carries, in place of a start year.
+    volume: int | None = None
+
+
+# Every row of a numbered volume carries this cover date: two volumes' rows
+# share the cover-year key, and only their volume numbers tell them apart.
+_VOLUME_COVER = date(2015, 1, 1)
 
 
 def _random_inputs(seed: int) -> list[dict[str, Any]]:
@@ -288,6 +298,8 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
 
     Every third issue has a twin with the same series, year and number and
     ids of its own, as a reprint has: rows a name key cannot tell apart.
+    Some issues come in volumes 1 and 2, with one cover year: rows that
+    differ only in a small volume number.
     """
     rng = random.Random(seed)  # noqa: S311 - a test fixture, not a secret
     pool = [
@@ -304,6 +316,13 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
         replace(issue, comicvine=f"{issue.comicvine}t", metron=f"{issue.metron}t")
         for issue in pool[::3]
     )
+    pool.extend(
+        _Issue(
+            f"Series {number % 4}", number, 0, f"cv{number}v{v}", f"m{number}v{v}", v
+        )
+        for number in range(30, 34)
+        for v in (1, 2)
+    )
     inputs = []
     for _ in range(rng.randint(2, 4)):
         rows = []
@@ -319,11 +338,12 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
 
 def _random_row(rng: random.Random, issue: _Issue) -> dict[str, Any]:
     """Write one issue as a list might: some ids, maybe no year."""
-    row = _entry(
-        issue.number,
-        series=issue.series,
-        year=issue.year if rng.random() < 0.7 else None,
-    )
+    year = issue.year if rng.random() < 0.7 else None
+    if issue.volume is None:
+        row = _entry(issue.number, series=issue.series, year=year)
+    else:
+        row = _entry(issue.number, series=issue.series, year=None, cover=_VOLUME_COVER)
+        row["volume"] = {"number": issue.volume}
     ids = (("comicvine", issue.comicvine), ("metron", issue.metron))
     if identifiers := {
         source: {"key": key} for source, key in ids if rng.random() < 0.6
@@ -367,6 +387,90 @@ def test_no_id_lands_on_two_entries_unreported(seed: int) -> None:
             assert entries[position]["identifiers"][source]["key"] == key
     for members in result.provenance:
         assert len({origin.input_index for origin in members}) == len(members)
+
+
+def _rows(result: Any, moves: list[list[int]] | None = None) -> set[frozenset]:
+    """List each combined entry's rows, as rows before ``moves``, if given."""
+    return {
+        frozenset(
+            (
+                origin.input_index,
+                moves[origin.input_index][origin.row] if moves else origin.row,
+            )
+            for origin in origins
+        )
+        for origins in result.provenance
+    }
+
+
+def _cover_year_rows(
+    entries: list[dict[str, Any]],
+) -> dict[Any, dict[int | None, list[int]]]:
+    """Index rows by their cover-year key, then by discriminator."""
+    held: dict[Any, dict[int | None, list[int]]] = {}
+    for row, entry in enumerate(entries):
+        for key in entry_keys(entry):
+            if key[0] == "name-year":
+                by_value = held.setdefault(key, {})
+                by_value.setdefault(discriminator(entry), []).append(row)
+    return held
+
+
+def _swap_conflicting(entries: list[dict[str, Any]]) -> list[int]:
+    """
+    Swap each pair of rows that share a cover-year key and conflict.
+
+    Each must be its input's only row of that key and discriminator, so the
+    swap moves no repeat of an issue past another. Returns the row each
+    position now holds.
+    """
+    order = list(range(len(entries)))
+    for by_value in _cover_year_rows(entries).values():
+        alone = [
+            rows[0] for value, rows in by_value.items() if value and len(rows) == 1
+        ]
+        if len(alone) == 2 and discriminators_conflict(
+            *(discriminator(entries[row]) for row in alone)
+        ):
+            one, other = alone
+            order[one], order[other] = order[other], order[one]
+    return order
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_rows_that_conflict_join_alike_in_either_order(seed: int) -> None:
+    """
+    No group holds two rows of two volumes, and swapping such rows changes none.
+
+    An id could join two volumes' rows, but the generator's ids are each
+    volume's own.
+    """
+    inputs = _random_inputs(seed)
+    moves = [_swap_conflicting(list(rl[ENTRIES_KEY])) for rl in inputs]
+    swapped = [
+        {**rl, ENTRIES_KEY: [rl[ENTRIES_KEY][row] for row in order]}
+        for rl, order in zip(inputs, moves, strict=True)
+    ]
+
+    result = combine(inputs)
+
+    for members in _rows(result):
+        values = [
+            discriminator(inputs[index][ENTRIES_KEY][row]) for index, row in members
+        ]
+        assert not any(
+            discriminators_conflict(one, other) for one in values for other in values
+        )
+    assert _rows(combine(swapped), moves) == _rows(result)
+
+
+def test_the_generator_swaps_rows_that_conflict() -> None:
+    """The order test is only worth having if some seed swaps a pair."""
+    assert any(
+        _swap_conflicting(list(rl[ENTRIES_KEY])) != list(range(len(rl[ENTRIES_KEY])))
+        for seed in range(40)
+        for rl in _random_inputs(seed)
+    )
 
 
 def test_the_generator_makes_shared_ids() -> None:
