@@ -30,6 +30,8 @@
 
 ### 🐛 Fixed
 
+- `-w pdf` writes a PDF's own metadata, which it never did, and `-w keep`
+  rewrites it too.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a
   ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
   turned the comment into a file.

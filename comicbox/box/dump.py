@@ -18,9 +18,9 @@ ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats
     + MetadataSources.ARCHIVE_COMMENT.value.formats
 )
-# comicbox cannot write a PDF's own metadata (_dump_format_to_archive
-# returns before its branch), so keep has nothing to write for it.
-_KEEP_UNWRITABLE = frozenset({MetadataFormats.PDF})
+# The formats a write puts into an archive: its tag files, its comment, and a
+# PDF's own metadata.
+_WRITABLE_FORMATS = frozenset({*ARCHIVE_FORMATS, MetadataFormats.PDF})
 _UNPARSED = "it could not be parsed"
 # Tag files are written in the order the formats are declared.
 _FORMAT_ORDER = MappingProxyType(
@@ -83,7 +83,7 @@ class ComicboxDump(ComicboxPages):
                 " so keep cannot keep it."
             )
             raise UnparsedTagFileError(reason)
-        return (self._config.write.formats | carried.formats) - _KEEP_UNWRITABLE
+        return self._config.write.formats | carried.formats
 
     def get_write_formats(self) -> frozenset[MetadataFormats] | None:
         """
@@ -212,7 +212,8 @@ class ComicboxDump(ComicboxPages):
         pdf_md: dict,
         comment: dict[str, bytes | None],
     ) -> None:
-        if fmt not in ARCHIVE_FORMATS:
+        if fmt not in _WRITABLE_FORMATS:
+            # -w pdf returned here, never reaching the PDF branch below.
             return
 
         (

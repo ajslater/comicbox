@@ -155,19 +155,19 @@ def test_keep_rewrites_comicinfo_at_each_path_it_is_carried(tmp_path: Path) -> N
             assert "Kept" in archive.read(name).decode()
 
 
-def test_keep_on_a_pdf_with_only_its_own_metadata_writes_nothing(
-    tmp_path: Path,
-) -> None:
-    """G3: it said "Wrote metadata" and wrote nothing; it has nothing to write."""
+def test_keep_rewrites_a_pdfs_own_metadata(tmp_path: Path) -> None:
+    """B13: like any kept format, where G3 said there was nothing to keep."""
+    import pymupdf
+
     path = tmp_path / "plain.pdf"
     shutil.copy(PDF_SOURCE_PATH, path)
-    untouched = path.read_bytes()
 
-    result = write_metadata(path, _PATCH, formats=["keep"])
+    result = write_metadata(path, {"title": "Kept title"}, formats=["keep"])
 
-    assert not result.written
-    assert result.error is None
-    assert path.read_bytes() == untouched
+    assert result.written, result.error
+    with pymupdf.open(path) as doc:
+        assert (doc.metadata or {})["title"] == "Kept title"
+        assert doc.embfile_names() == []
 
 
 def test_delete_all_tags_in_a_base_config_wins_over_keep(tmp_path: Path) -> None:
