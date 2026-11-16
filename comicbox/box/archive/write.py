@@ -54,16 +54,20 @@ def file_key(path: Path) -> FileKey:
     """
     Name the file a path points at, so two spellings of one file agree.
 
-    An existing file is its device and inode, which a symlink, a hard link
-    and the other case of its name on a case-insensitive disk all share.
-    A path with nothing there yet, such as a conversion's destination, is
-    its resolved spelling, which still sees through a linked directory.
+    Two paths are one file when they resolve to the same real path, which
+    sees through a symlink or a linked directory, or when they share a
+    device and a non-zero inode and the file has more than one link: hard
+    links. An inode alone is not trusted, as some network and FUSE
+    filesystems give every file the same one. A path with nothing there yet,
+    such as a conversion's destination, is its resolved spelling too.
     """
     try:
         stat = path.stat()
     except OSError:
         return path.resolve()
-    return (stat.st_dev, stat.st_ino)
+    if stat.st_ino and stat.st_nlink > 1:
+        return (stat.st_dev, stat.st_ino)
+    return path.resolve()
 
 
 def tmp_archive_path(path: Path) -> Path:
