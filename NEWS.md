@@ -66,8 +66,9 @@
 - Issue `-1` is read as the number -1; it was read as a suffix, with no number.
 - A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
   month; it was completed with today's month or day.
-- A date from a higher source, such as `-m`, replaces a comic's own date that it
-  contradicts, where the old date or its day survived.
+- A cover date from a higher source, such as `-m`, replaces a comic's own date
+  that it contradicts, where the old date or its day survived; a year, month or
+  day given alone still changes only that part.
 - A comic a run reaches by several paths, such as a file and a link to it under
   `-r`, is processed once, through the file. `write-arcs --delete-orig` removes
   every other name of a converted original, hard links included.

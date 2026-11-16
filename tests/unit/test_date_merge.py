@@ -21,6 +21,7 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.write import write_metadata
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -124,3 +125,80 @@ def test_an_agreeing_date_keeps_the_day_only_the_lower_one_knows(
 
     assert _date(path) == _WHOLE
     assert _date(path, "{date: {cover_date: 2006-07}}") == _WHOLE
+
+
+# ------------------------------------------- separate parts override parts
+
+
+@pytest.mark.parametrize(
+    ("patch", "expected"),
+    [
+        ("{date: {day: 15}}", date(1950, 11, 15)),
+        ("{date: {year: 1951}}", date(1951, 11, 1)),
+        ("{date: {month: 8, day: 2}}", date(1950, 8, 2)),
+    ],
+    ids=["day", "year", "month and day"],
+)
+def test_a_higher_part_overrides_that_part_alone(
+    tmp_path: Path, patch: str, expected: date
+) -> None:
+    """E1: D3's rule dropped the rest of the date, so -m day: 15 left Day alone."""
+    path = _comic(tmp_path / "comic.cbz", _TAGS["ComicInfo"])
+
+    got = _date(path, patch)
+
+    assert got["cover_date"] == expected
+    assert (got["year"], got["month"], got["day"]) == (
+        expected.year,
+        expected.month,
+        expected.day,
+    )
+
+
+def test_a_lower_cover_date_under_a_month_alone_is_kept(tmp_path: Path) -> None:
+    """E1: a CoMet 2006-07-15 under a ComicInfo with only Month 8 read as month 8."""
+    path = _comic(
+        tmp_path / "comic.cbz",
+        (
+            "CoMet.xml",
+            (
+                '<?xml version="1.0"?><comet xmlns="http://www.denvog.com/comet/">'
+                "<title>T</title><series>S</series><date>2006-07-15</date></comet>"
+            ),
+        ),
+        ("ComicInfo.xml", "<ComicInfo><Series>S</Series><Month>8</Month></ComicInfo>"),
+    )
+
+    assert _date(path) == _WHOLE
+
+
+def test_a_part_written_with_write_metadata_keeps_the_rest(tmp_path: Path) -> None:
+    path = _comic(tmp_path / "comic.cbz", _TAGS["ComicInfo"])
+
+    assert write_metadata(path, {"date": {"day": 15}}, formats=["COMIC_INFO"]).written
+
+    with zipfile.ZipFile(path) as archive:
+        comic_info = archive.read("ComicInfo.xml").decode()
+    assert "<Year>1950</Year>" in comic_info
+    assert "<Month>11</Month>" in comic_info
+    assert "<Day>15</Day>" in comic_info
+    assert "partial" not in comic_info
+
+
+def test_the_partial_cover_date_mark_is_never_written(tmp_path: Path) -> None:
+    path = _comic(tmp_path / "comic.cbz", _TAGS["ComicInfo"])
+
+    assert write_metadata(
+        path,
+        {"date": {"cover_date": "2006-07"}},
+        formats=["COMICBOX_YAML", "COMIC_INFO"],
+    ).written
+
+    with zipfile.ZipFile(path) as archive:
+        written = b"".join(
+            archive.read(name)
+            for name in archive.namelist()
+            if not name.endswith(".jpg")
+        )
+    assert b"partial" not in written
+    assert _date(path) == {"year": 2006, "month": 7}

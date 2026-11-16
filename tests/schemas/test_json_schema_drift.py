@@ -208,13 +208,13 @@ def _walk(
 ) -> None:
     node, base = _resolve(node, base)
     properties = node.get("properties", {})
-    model_keys = {field.data_key or name for name, field in schema.fields.items()}
+    model_keys = {field.data_key or name for name, field in schema.dump_fields.items()}
     json_keys = set(properties)
     if model_keys != json_keys:
         only_model = sorted(model_keys - json_keys)
         only_json = sorted(json_keys - model_keys)
         failures.append(f"{path}: model-only={only_model} schema-only={only_json}")
-    for name, field in schema.fields.items():
+    for name, field in schema.dump_fields.items():
         key = field.data_key or name
         if key not in properties:
             continue

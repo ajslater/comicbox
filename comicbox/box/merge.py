@@ -12,6 +12,7 @@ from comicbox.formats.comicbox.schema import (
     DATE_KEY,
     DAY_KEY,
     MONTH_KEY,
+    PARTIAL_COVER_DATE_KEY,
     YEAR_KEY,
     ComicboxSchemaMixin,
 )
@@ -70,23 +71,34 @@ def _named_parts(date_md: Mapping[str, Any]) -> dict[str, Any]:
     return parts
 
 
+def _states_a_cover_date(date_md: Mapping[str, Any]) -> bool:
+    """Tell whether a source's date states a cover date, whole or partial."""
+    return isinstance(date_md.get(COVER_DATE_KEY), date) or bool(
+        date_md.get(PARTIAL_COVER_DATE_KEY)
+    )
+
+
 def _drop_a_contradicted_date(
     merged: dict[str, Any], incoming: Mapping[str, Any]
 ) -> None:
     """
-    Drop the cover date below where a higher source's date contradicts it.
+    Drop the date below where a higher source's cover date contradicts it.
 
-    Merged part by part, a higher source's ``2006-07`` kept a lower
-    1950-11-01's day, or its cover date, which the computed date then rebuilt;
-    and a lower source's year, month and day outranked a higher one's cover
-    date. A date is one fact: where the two disagree on any part both name,
-    the lower one's cover date and parts go, and the higher one's stand
-    alone. Where they agree, the lower one's other parts stay, so a day only
-    it knows is kept. A store date is not part of it.
+    Merged part by part, a higher source's ``2006-07`` cover date kept a
+    lower 1950-11-01's day, or its cover date, which the computed date then
+    rebuilt; and a lower source's year, month and day outranked a higher
+    one's cover date. A cover date is one fact: where it disagrees with the
+    date below on any part both name, that date's cover date and parts go,
+    and the higher one stands alone. Where they agree, the lower one's other
+    parts stay, so a day only it knows is kept. A higher source that gives
+    only separate parts (a year, a month, a day) overrides those parts and
+    leaves the others. A store date is not part of it.
     """
     old = merged.get(DATE_KEY)
     new = incoming.get(DATE_KEY)
     if not isinstance(old, dict) or not isinstance(new, Mapping):
+        return
+    if not _states_a_cover_date(new):
         return
     below = _named_parts(old)
     if any(
@@ -94,6 +106,17 @@ def _drop_a_contradicted_date(
     ):
         for key in (*_DATE_PART_KEYS, COVER_DATE_KEY):
             old.pop(key, None)
+
+
+def merge_source(
+    merged: dict[str, Any], incoming: Mapping[str, Any], merger: type[Merger]
+) -> None:
+    """Merge one source's metadata over the sources below it."""
+    _drop_a_contradicted_date(merged, incoming)
+    merger.merge(merged, incoming)
+    if isinstance(merged_date := merged.get(DATE_KEY), dict):
+        # The source's own mark that it stated a cover date has done its work.
+        merged_date.pop(PARTIAL_COVER_DATE_KEY, None)
 
 
 class ComicboxMerge(ComicboxOnlineLookup):
@@ -132,8 +155,7 @@ class ComicboxMerge(ComicboxOnlineLookup):
             source, normalized_md_list
         ):
             if sub_md := normalized_md.get(ComicboxSchemaMixin.ROOT_TAG):
-                _drop_a_contradicted_date(merged_sub_md, sub_md)
-                merger.merge(merged_sub_md, sub_md)
+                merge_source(merged_sub_md, sub_md, merger)
 
     def _merger_for_source(self, source: MetadataSources) -> type[Merger]:
         """

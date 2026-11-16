@@ -229,9 +229,11 @@ def test_entry_dates_have_the_comic_date_fields() -> None:
     from comicbox.formats.comicbox.schema import DateSchema
     from comicbox.readinglists.schema import EntryDateSchema, JsonEntryDateSchema
 
-    fields = set(DateSchema().fields)
-    assert set(EntryDateSchema().fields) == fields
-    assert set(JsonEntryDateSchema().fields) == fields
+    # What each dumps: the comic date's load-only partial cover date mark is
+    # its merge's, and a reading list reads partial dates itself.
+    fields = set(DateSchema().dump_fields)
+    assert set(EntryDateSchema().dump_fields) == fields
+    assert set(JsonEntryDateSchema().dump_fields) == fields
 
 
 @pytest.mark.parametrize("fmt", [None, 3, ""])

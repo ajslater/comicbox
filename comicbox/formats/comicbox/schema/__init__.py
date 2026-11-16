@@ -75,6 +75,9 @@ COVER_IMAGE_KEY = "cover_image"
 COVER_DATE_KEY = "cover_date"
 DATE_KEY = "date"
 DAY_KEY = "day"
+# A partial cover date's own text, kept on load beside the parts it gave, so
+# the merge knows that source stated a cover date. Never dumped.
+PARTIAL_COVER_DATE_KEY = "partial_cover_date"
 DESIGNATION_KEY = "designation"
 EXT_KEY = "ext"
 GENRES_KEY = "genres"
@@ -211,6 +214,7 @@ class DateSchema(BaseSubSchema):
     year = IntegerField()  # CIX, CBI, CT, Filename, Metron
     month = IntegerField(minimum=1, maximum=12)  # CBI, CIX, CT
     day = IntegerField(minimum=1, maximum=31)  # CBI, CIX
+    partial_cover_date = StringField(load_only=True)
 
     @override
     @classmethod
@@ -254,6 +258,7 @@ def _without_partial_dates(data: Mapping[str, Any]) -> dict[str, Any]:
             continue
         for part_key, part in _held(parts).items():
             data.setdefault(part_key, part)
+        data[PARTIAL_COVER_DATE_KEY] = str(value)
     return data
 
 
