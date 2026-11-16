@@ -24,8 +24,8 @@ from comicbox.readinglists import (
     load,
     loads,
 )
-from comicbox.readinglists.identity import normalize_series
 from comicbox.readinglists.registry import xml_root
+from comicbox.series_name import normalize_series
 
 if TYPE_CHECKING:
     from collections.abc import Generator

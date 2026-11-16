@@ -35,7 +35,6 @@ from comicbox.readinglists.identity import (
     discriminators,
     entry_keys,
     name_variants,
-    normalize_series,
     parse_issue,
 )
 from comicbox.readinglists.registry import (
@@ -82,6 +81,7 @@ from comicbox.readinglists.serialize import (
 )
 from comicbox.readinglists.session import ReadingListSession
 from comicbox.readinglists.sources.catalog import Catalog, CatalogEntry
+from comicbox.series_name import normalize_series
 
 __all__ = (
     "DATE_KEY",

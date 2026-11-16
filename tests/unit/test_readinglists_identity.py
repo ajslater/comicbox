@@ -5,7 +5,6 @@ from typing import Any
 
 import pytest
 
-from comicbox.formats.base.online import signals
 from comicbox.readinglists import (
     ParsedIssue,
     entry_keys,
@@ -186,23 +185,6 @@ def test_volume_number_alone_does_not_meet_a_start_year() -> None:
 )
 def test_normalize_series_reads_every_script(name: str, normalized: str) -> None:
     assert normalize_series(name) == normalized
-
-
-@pytest.mark.parametrize(
-    "name",
-    [
-        "Civil War",
-        "X-Men: Legacy",
-        "The Amazing Spider-Man Vol. 2",
-        "Batman (Volume 3)",
-        "100 Bullets!",
-        "  spaced   out  ",
-        "Civil_War",
-        "",
-    ],
-)
-def test_ascii_names_normalize_as_the_online_matcher_does(name: str) -> None:
-    assert normalize_series(name) == signals.normalize_series(name)
 
 
 def test_a_non_latin_series_has_a_name_key() -> None:

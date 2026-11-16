@@ -32,7 +32,6 @@ from loguru import logger
 from comicbox.config.online.settings import CacheMode
 from comicbox.exceptions import ReadingListFetchError
 from comicbox.readinglists.changes import quote_value
-from comicbox.readinglists.identity import fold_text
 from comicbox.readinglists.schema import (
     SOURCE_CURATOR_KEY,
     SOURCE_KEY_KEY,
@@ -42,6 +41,7 @@ from comicbox.readinglists.schema import (
     SourceKind,
 )
 from comicbox.readinglists.sources.url import Download, HttpStatusError, download
+from comicbox.series_name import fold_text
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Mapping

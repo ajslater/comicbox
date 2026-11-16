@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 
 from rapidfuzz import fuzz
 
+from comicbox.series_name import normalize_series
+
 if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
 
@@ -30,28 +32,11 @@ _YEAR_ANCHORS: Final[MappingProxyType[int, float]] = MappingProxyType(
 )
 _YEAR_DECAY_ZERO: Final[int] = 7
 
-_VOLUME_SUFFIX_RE = re.compile(
-    r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
-)
 _PUBLISHER_NOISE_RE = re.compile(
     r"\b(?:inc|incorporated|comics?|publishing|press|llc|ltd|publications?)\b\.?",
     re.IGNORECASE,
 )
 _NON_ALPHANUM_RE = re.compile(r"[^a-z0-9]+")
-
-
-def normalize_series(name: str) -> str:
-    """Lowercase, strip volume suffixes, collapse non-alphanumeric runs."""
-    s = name.lower()
-    s = _VOLUME_SUFFIX_RE.sub(" ", s)
-    s = _NON_ALPHANUM_RE.sub(" ", s)
-    return " ".join(s.split())
-
-
-# Backward-compat alias for the previously-private helper. Other modules
-# in `comicbox.formats.base.online` import the public `normalize_series`; keep the
-# old name resolving until those migrations land.
-_normalize_series = normalize_series
 
 
 def _normalize_publisher(name: str) -> str:
@@ -71,14 +56,14 @@ def s_series(profile: ComicProfile, candidate: Candidate) -> float:
     so a comic filed under a localized or variant title still matches
     its canonical volume.
     """
-    if not profile.series or not (a := _normalize_series(profile.series)):
+    if not profile.series or not (a := normalize_series(profile.series)):
         return 0.0
     summary = candidate.summary
     return max(
         (
             float(fuzz.WRatio(a, b)) / 100.0
             for name in (summary.series, *summary.alt_series)
-            if name and (b := _normalize_series(name))
+            if name and (b := normalize_series(name))
         ),
         default=0.0,
     )

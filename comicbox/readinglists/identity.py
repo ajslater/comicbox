@@ -7,7 +7,6 @@ counts as the same issue.
 """
 
 import re
-import unicodedata
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from datetime import date
@@ -39,17 +38,7 @@ from comicbox.readinglists.schema import (
     SERIES_KEY,
     VOLUME_KEY,
 )
-
-# The Combining Diacritical Marks block: the accents on Latin, Greek and
-# Cyrillic letters.
-_DIACRITICS_START = "\u0300"
-_DIACRITICS_END = "\u036f"
-# The online matcher's volume suffix rule: "Vol. 2", "(Volume 3)". Without
-# its leading whitespace run, which made a long run of spaces quadratic:
-# the normalizer collapses whitespace afterwards anyway.
-_VOLUME_SUFFIX_RE = re.compile(
-    r"(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
-)
+from comicbox.series_name import normalize_series
 
 # The first element of every key says which kind it is.
 ID_KEY_KIND = "id"
@@ -76,46 +65,6 @@ class ParsedIssue:
     name: str
     number: Decimal | None
     suffix: str
-
-
-def normalize_series(name: str) -> str:
-    """
-    Normalize a series name for comparing.
-
-    Latin accents are dropped (``Pokémon`` is ``pokemon``), case is folded,
-    a volume suffix is stripped as the online matcher strips it, and every
-    run of characters that are not letters or digits, in any script, becomes
-    one space, so ``ワンピース`` keeps a name. Only the Combining Diacritical
-    Marks block is dropped: other combining marks, such as kana voicing
-    (``ピ`` is not ``ヒ``), are part of the letter and recompose with it.
-    ASCII names normalize as the online matcher's rule does.
-    """
-    return _spaced(_VOLUME_SUFFIX_RE.sub(" ", _folded(name)))
-
-
-def _folded(text: str) -> str:
-    """Drop Latin accents and fold case, keeping every other mark."""
-    decomposed = unicodedata.normalize("NFKD", text)
-    stripped = "".join(
-        char for char in decomposed if not _DIACRITICS_START <= char <= _DIACRITICS_END
-    )
-    return unicodedata.normalize("NFC", stripped).casefold()
-
-
-def _spaced(text: str) -> str:
-    """Make every run of characters that are not letters or digits one space."""
-    spaced = "".join(char if char.isalnum() else " " for char in text)
-    return " ".join(spaced.split())
-
-
-def fold_text(text: str) -> str:
-    """
-    Fold text for searching, as series names are folded but for volumes.
-
-    A search for ``volume 3`` means those words; ``normalize_series``
-    would strip them.
-    """
-    return _spaced(_folded(text))
 
 
 def _to_decimal(text: str) -> Decimal | None:
