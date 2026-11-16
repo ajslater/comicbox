@@ -1,5 +1,8 @@
 """Identifiers and urls are stored apart and derived from each other."""
 
+import os
+import subprocess
+import sys
 from argparse import Namespace
 
 from comicbox.box import Comicbox
@@ -254,3 +257,71 @@ comicbox:
         "key": "178012",
         "id_type": "series",
     }
+
+
+_TWO_CV_WEB = (
+    "https://comicvine.gamespot.com/a/4000-111/"
+    " https://comicvine.gamespot.com/b/4000-222/"
+)
+_READ_CIX_WEB = f"""
+from comicbox.box import Comicbox
+from comicbox.formats import MetadataFormats
+xml = "<ComicInfo><Web>{_TWO_CV_WEB}</Web></ComicInfo>"
+with Comicbox(metadata=xml, fmt=MetadataFormats.COMIC_INFO) as car:
+    md = car.to_dict()["comicbox"]
+print(md["identifiers"]["comicvine"]["key"], md["urls"][:2])
+"""
+
+
+def test_two_urls_for_one_database_read_back_one_id() -> None:
+    """
+    The first ComicInfo Web url for a database names its id, whatever the seed.
+
+    Web was read into a set, so which of two Comic Vine urls came first, and
+    so which id the comic had, changed from one process to the next.
+    """
+    results = set()
+    for seed in ("0", "1", "2", "3", "4", "5"):
+        done = subprocess.run(  # noqa: S603 - this interpreter, a fixed script
+            [sys.executable, "-c", _READ_CIX_WEB],
+            capture_output=True,
+            text=True,
+            env={**os.environ, "PYTHONHASHSEED": seed},
+            check=True,
+        )
+        results.add(done.stdout.strip().splitlines()[-1])
+    assert results == {f"111 {_TWO_CV_WEB.split()}"}
+
+
+def test_the_first_of_two_id_urls_wins() -> None:
+    """Between two urls that each hold an id, file order decides."""
+    sub_md = _load_yaml("""
+comicbox:
+  urls:
+    - https://comicvine.gamespot.com/c/4000-111/
+    - https://comicvine.gamespot.com/c/4000-222/
+""")
+    assert sub_md["identifiers"]["comicvine"]["key"] == "111"
+
+
+def test_an_id_url_beats_an_earlier_slug_url() -> None:
+    """A url that holds its id outranks a slug url, wherever it sits."""
+    sub_md = _load_yaml("""
+comicbox:
+  urls:
+    - https://comicvine.gamespot.com/a/4000-111/
+    - https://comicvine.gamespot.com/c/4000-222/
+""")
+    assert sub_md["identifiers"]["comicvine"]["key"] == "222"
+
+
+def test_comicinfo_web_is_written_in_order() -> None:
+    """Writing Web back keeps the file's order, so the next read agrees."""
+    web = (
+        "https://comicvine.gamespot.com/b/4000-222/"
+        " https://comicvine.gamespot.com/a/4000-111/"
+    )
+    xml = f"<ComicInfo><Web>{web}</Web></ComicInfo>"
+    with Comicbox(metadata=xml, fmt=MetadataFormats.COMIC_INFO) as car:
+        written = car.to_string(MetadataFormats.COMIC_INFO)
+    assert f"<Web>{web} https://comicvine.gamespot.com/c/4000-222/</Web>" in written
