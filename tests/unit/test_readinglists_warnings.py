@@ -44,11 +44,11 @@ def _yaml(body: str) -> tuple[str, ...]:
         ("  start_year: abc\n", "start_year: 'abc' dropped"),
         (
             "  entries:\n    - series: Batman\n      issue: {name: '1'}\n",
-            "entries #1.series: 'Batman' dropped",
+            "entries #1.series: 'Batman' read as {'name': 'Batman'}",
         ),
         (
             "  entries:\n    - series: {name: A}\n      volume: 2006\n",
-            "entries #1.volume: 2006 dropped",
+            "entries #1.volume: 2006 read as {'number': 2006}",
         ),
         (
             "  entries:\n    - series: {name: A}\n      volume: {number: -1}\n",

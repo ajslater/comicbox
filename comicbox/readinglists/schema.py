@@ -21,6 +21,7 @@ from marshmallow import ValidationError
 from marshmallow.fields import Constant, Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
+from comicbox.formats.base.fields.comicbox import SimpleNamedNestedField
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import BooleanField, IntegerField
 from comicbox.formats.base.fields.time_fields import DateField
@@ -234,11 +235,15 @@ class EntrySchema(IdentifiedSchema):
         NOTES_KEY,
     )
 
-    # The comic model's schemas, without its plain name and number forms: a
-    # reading list's series and volume are objects only (its JSON Schema),
-    # so a plain one is dropped and the read's warnings name it.
-    series = Nested(SeriesSchema)
-    volume = Nested(VolumeSchema)
+    # Declared as ComicboxSubSchemaMixin declares them: a plain name or
+    # number is read as its object, and the read's warnings say so. Writes
+    # are always the object, as the JSON Schema has them.
+    series = SimpleNamedNestedField(schema=SeriesSchema)
+    volume = SimpleNamedNestedField(
+        schema=VolumeSchema,
+        field=IntegerField(minimum=0),
+        name_key=NUMBER_KEY,
+    )
     issue = Nested(IssueSchema)
     date = Nested(EntryDateSchema)
     entry_type = EntryTypeField()

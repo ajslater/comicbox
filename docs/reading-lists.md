@@ -33,7 +33,10 @@ no place for, and comicbox says what before it writes:
 
 CBL is read tolerantly: a `<Book>` without a series or number is skipped with a
 warning and the rest of the file loads. A ComicRack smart list, whose
-`<Matchers>` select comics rather than list them, is refused.
+`<Matchers>` select comics rather than list them, is refused. Comicbox YAML and
+JSON are read tolerantly too: a plain `series: Civil War` or `volume: 2006` is
+read as `{name: Civil War}` or `{number: 2006}`, with a warning saying so, and
+is always written as the object.
 
 The json-cbl schema is vendored byte for byte from
 [json-cbl-standard](https://github.com/ComicReadingLists/json-cbl-standard),
