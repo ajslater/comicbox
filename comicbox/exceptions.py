@@ -45,6 +45,10 @@ class UnparsedTagFileError(ArchiveWriteError):
     """A keep write refused: a tag file the comic carries did not parse."""
 
 
+class UnsafePdfAttachmentError(ArchiveWriteError):
+    """A PDF write refused: replacing its tag files would harm another attachment."""
+
+
 class DestinationOccupiedError(ArchiveWriteError):
     """
     A write's destination path is held by another file or writer.

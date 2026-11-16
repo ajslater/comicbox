@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
 from types import MappingProxyType
-from typing import Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias
 
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -16,9 +16,13 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ArchiveWriteError,
     DestinationOccupiedError,
+    UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
 )
 from comicbox.formats.sources import MetadataSources
+
+if TYPE_CHECKING:
+    from pdffile import PDFFile
 
 FileKey: TypeAlias = tuple[int, int] | Path
 
@@ -183,13 +187,20 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             return None
         return frozenset(Path(name).name.lower() for name in files)
 
+    @staticmethod
+    def _is_replaced(name: str, rewritten: frozenset[str] | None) -> bool:
+        """Tell whether a write replaces this member: a tag file, rewritten."""
+        lower_name = Path(name).name.lower()
+        return lower_name in ALL_ARCHIVE_METADATA_FILENAMES and (
+            rewritten is None or lower_name in rewritten
+        )
+
     def _archive_remove_metadata_files(
         self, zf: ZipFile, only: frozenset[str] | None = None
     ) -> None:
         """Remove metadata files from archive: all, or ``only`` those named."""
         for path in self.namelist():
-            fn = Path(path).name.lower()
-            if fn in ALL_ARCHIVE_METADATA_FILENAMES and (only is None or fn in only):
+            if self._is_replaced(path, only):
                 # zipremove patches remove()/repack() onto the stdlib
                 # ZipFile, which lacks both through at least Python 3.14,
                 # so the typeshed stubs can't see either method.
@@ -197,7 +208,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
 
     def _archive_write_metadata_files(
-        self, zf: ZipFile, files: Mapping[str, bytes]
+        self, zf: "ZipFile | PDFFile", files: Mapping[str, bytes]
     ) -> None:
         # Write metadata files.
         for path, data in files.items():
@@ -211,9 +222,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compresslevel=9,
             )
 
-    @staticmethod
+    @classmethod
     def _get_filename_from_info(
-        info: InfoType, rewritten: frozenset[str] | None = None
+        cls, info: InfoType, rewritten: frozenset[str] | None = None
     ) -> str | None:
         """
         Get the filename to write.
@@ -229,10 +240,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         filename = ArchiveInfo.filename(info)
 
         # Don't copy old metadata files to new archive.
-        lower_name = Path(filename).name.lower()
-        if lower_name in ALL_ARCHIVE_METADATA_FILENAMES and (
-            rewritten is None or lower_name in rewritten
-        ):
+        if cls._is_replaced(filename, rewritten):
             return None
         return filename
 
@@ -334,25 +342,71 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self.close()
         self._cleanup_tmp_archive(tmp_path, new_path)
 
-    def _read_unrewritten_pdf_files(
-        self, pf: ZipFile, files: Mapping[str, Any]
-    ) -> dict[str, bytes]:
-        """
-        Under ``keep``, read the PDF's tag files this write does not replace.
+    @staticmethod
+    def _names_a_page(pf: "PDFFile", name: str) -> bool:
+        """Tell whether pdffile reads this name as a page, not an attachment."""
+        try:
+            pf.valid_pagenum(name)
+        except ValueError:
+            return False
+        return True
 
-        pymupdf's ``embfile_del`` removes the right file only when it is the
-        first embedded one; any other takes part of its neighbour with it. So
-        a PDF write removes every tag file in order, as one without ``keep``
-        always has, and ``keep`` puts these back as they were.
+    def _refuse_unsafe_pdf_attachments(
+        self, pf: "PDFFile", embedded: list[str], kept: list[str]
+    ) -> None:
         """
-        if (rewritten := self._rewritten_names(files)) is None:
-            return {}
-        return {
-            path: pf.read(path)
-            for path in self.namelist()
-            if (name := Path(path).name.lower()) in ALL_ARCHIVE_METADATA_FILENAMES
-            and name not in rewritten
-        }
+        Refuse an attachment that cannot be put back as it was.
+
+        pdffile reads and removes a name that is a page number as that page,
+        and pymupdf finds an embedded file by its first name only, so either
+        would delete a page or lose an attachment.
+        """
+        for name in kept:
+            if self._names_a_page(pf, name):
+                why = "is also the name of a page"
+            elif embedded.count(name) > 1:
+                why = "is the name of more than one attachment"
+            else:
+                continue
+            reason = (
+                f"{self._path}: cannot replace its tag files without harming the"
+                f" attachment {name!r}, which {why}."
+            )
+            raise UnsafePdfAttachmentError(reason)
+
+    def _replace_pdf_tag_files(self, pf: "PDFFile", files: Mapping[str, bytes]) -> None:
+        """
+        Replace a PDF's tag files, leaving every other attachment's bytes as they were.
+
+        pymupdf's ``embfile_del`` removes an embedded file rightly only when
+        it is the first: for any other it removes that file's name and the
+        previous file's contents, leaving the previous name holding this
+        file's bytes. So attachments are only ever removed from the front.
+        Every attachment up to the last one this write replaces is read and
+        removed first to last, and those it does not replace (other
+        attachments, and under ``keep`` the tag files it did not read) are
+        added back in their old order, before the new tag files. The
+        attachments after the last replaced one are not touched.
+        """
+        rewritten = self._rewritten_names(files)
+        names = pf.namelist()
+        # pdffile lists the embedded files in the PDF's own order, then pages.
+        embedded = names[: len(names) - len(pf.pagelist())]
+        replaced = [self._is_replaced(name, rewritten) for name in embedded]
+        last = max(
+            (i for i, is_replaced in enumerate(replaced) if is_replaced), default=-1
+        )
+        front = embedded[: last + 1]
+        kept = [
+            name
+            for name, is_replaced in zip(front, replaced, strict=False)
+            if not is_replaced
+        ]
+        self._refuse_unsafe_pdf_attachments(pf, embedded, kept)
+        kept_files = {name: pf.read(name) for name in kept}
+        for name in front:
+            pf.remove(name)
+        self._archive_write_metadata_files(pf, {**kept_files, **files})
 
     def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:
@@ -367,9 +421,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
             if delete_all_tags or files:
-                unread = self._read_unrewritten_pdf_files(pf, files)
-                self._archive_remove_metadata_files(pf)
-                self._archive_write_metadata_files(pf, {**unread, **files})
+                self._replace_pdf_tag_files(pf, files)
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping
