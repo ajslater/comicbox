@@ -1,5 +1,8 @@
 """Comicboxs methods for writing to the archive."""
 
+import os
+import shutil
+import stat
 from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
@@ -11,7 +14,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
-from comicbox.box.archive.journal import TAIL_CAP, TailJournal
+from comicbox.box.archive.journal import TAIL_CAP, TailJournal, replay_journal
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.enums.comicbox import FileTypeEnum
@@ -339,18 +342,64 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         rewritten = self._rewritten_names(files)
         self.close()
         if (offset := self._tail_offset(self._path, rewritten)) is None:
-            logger.debug(f"{self._path}: rewriting it whole, pages first, tags last.")
-            self._create_zipfile(files, comment)
+            self._patch_a_copy(self._path, files, comment, rewritten)
             return
-        with TailJournal(self._path, offset), ZipFile(self._path, "a") as zf:
+        with TailJournal(self._path, offset):
+            self._patch_in_place(self._path, files, comment, rewritten)
+
+    def _patch_in_place(
+        self,
+        path: Path,
+        files: Mapping[str, bytes],
+        comment: bytes | None,
+        rewritten: frozenset[str] | None,
+    ) -> None:
+        """Remove the tag files a write replaces, repack, and append the new ones."""
+        with ZipFile(path, "a") as zf:
             self._archive_remove_metadata_files(zf, rewritten)
             self._archive_write_metadata_files(zf, files)
             if comment is not None:
                 zf.comment = comment
 
+    def _patch_a_copy(
+        self,
+        path: Path,
+        files: Mapping[str, bytes],
+        comment: bytes | None,
+        rewritten: frozenset[str] | None,
+    ) -> None:
+        """
+        Make the in-place write on a copy, then replace the comic with it.
+
+        For a zip whose tail cannot be patched in place: a tag file stored
+        before a kept member, or a tail over the cap. The copy is of the real
+        file, through any link, and the result is the in-place write's, member
+        for member: names, bytes, order, dates, modes and comments are as they
+        were, and no page is read. The copy is flushed and given the
+        original's permission bits before it replaces the real file; a
+        failure anywhere leaves the original and no temporary file.
+        """
+        real = path.resolve()
+        if replay_journal(real):
+            reason = f"{real} was restored from an interrupted write: write it again."
+            raise ArchiveWriteError(reason)
+        logger.debug(f"{real}: writing a copy, pages first, tags last.")
+        tmp_path = tmp_archive_path(real)
+        tmp_path.unlink(missing_ok=True)
+        try:
+            shutil.copyfile(real, tmp_path)
+            self._patch_in_place(tmp_path, files, comment, rewritten)
+            with tmp_path.open("r+b") as copy:
+                os.fsync(copy.fileno())
+            tmp_path.chmod(stat.S_IMODE(real.stat().st_mode))
+            tmp_path.replace(real)
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)
+            raise
+
     def _create_zipfile(self, files: Mapping, comment: bytes | None) -> None:
         """
-        Create new zipfile.
+        Convert to a new zipfile: a CBR, CBT, CB7 or PDF repacked as a CBZ.
 
         A ``comment`` of None, from a ``keep`` write, carries the old
         archive's comment over.

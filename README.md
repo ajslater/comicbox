@@ -246,8 +246,9 @@ paths, e.g. `-D series,reprints.0.series`.
 
 - A CBZ is re-tagged in place: only its trailing tag files, central directory
   and end record are rewritten, never its pages. A CBZ whose tag files come
-  before its pages, as some other tools write them, is rewritten whole once,
-  pages first and tags last, and patched in place after that.
+  before its pages, as some other tools write them, is written once on a copy
+  that then replaces it, every other member kept as it was and the tags moved
+  last, and patched in place after that.
 - A write that fails leaves the comic as it was.
 - A write interrupted by a kill is undone the next time comicbox opens the
   comic, unless it had already finished. Until then other readers see a damaged

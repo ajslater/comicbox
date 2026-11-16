@@ -227,13 +227,13 @@ def test_a_tags_first_archive_is_copied_once_then_patched(
 ) -> None:
     path = _tags_first(tmp_path)
     copies: list[Path] = []
-    real_create = write_module.ComicboxArchiveWrite._create_zipfile
+    real_copy = write_module.ComicboxArchiveWrite._patch_a_copy
 
-    def spy(self: Any, *args: Any, **kwargs: Any) -> None:
-        copies.append(self._path)
-        real_create(self, *args, **kwargs)
+    def spy(self: Any, target: Path, *args: Any) -> None:
+        copies.append(target)
+        real_copy(self, target, *args)
 
-    monkeypatch.setattr(write_module.ComicboxArchiveWrite, "_create_zipfile", spy)
+    monkeypatch.setattr(write_module.ComicboxArchiveWrite, "_patch_a_copy", spy)
 
     assert _retag(path, "Once").written
     with zipfile.ZipFile(path) as archive:
