@@ -327,7 +327,7 @@ def test_a_cover_year_match_beside_a_strong_one_is_kept(start_year: int | None) 
 
 
 def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
-    """Volume 2 finds its comic by name, and two volumes' comics by cover year."""
+    """Volume 2 finds its own comic by name, so no other volume's is found (R3-J)."""
     comics = {
         Path("vol2.cbz"): _tags(volume=2, cover=date(2016, 8, 1)),
         Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
@@ -338,12 +338,8 @@ def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
     result = match_comics(reading_list, comics)
 
     (found,) = result.found
-    assert {comic.path: comic.ambiguous for comic in found.comics} == {
-        Path("v2011.cbz"): True,
-        Path("v2016.cbz"): True,
-        Path("vol2.cbz"): False,
-    }
-    assert found.volumes == (2011, 2016)
+    assert found.paths == (Path("vol2.cbz"),)
+    assert not found.ambiguous
     changes = plan_arcs(reading_list, comics, result, "Avengers")
     assert [change.path for change in changes] == [Path("vol2.cbz")]
 
@@ -356,7 +352,8 @@ def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
             Path("a/v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
             Path("b/v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
         },
-        # A comic with no series year beside comics of one volume.
+        # A comic with no series year beside comics of one volume: it is the
+        # entry's exact comic, so only it is found (R3-J).
         {
             Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
             Path("year-only.cbz"): _tags(cover=date(2016, 8, 1)),
@@ -365,13 +362,14 @@ def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
 )
 def test_comics_of_one_volume_are_not_ambiguous(comics: dict[Path, Any]) -> None:
     reading_list = _list(_entry(year=2016))
+    exact = [path for path in sorted(comics) if path.name == "year-only.cbz"]
 
     result = match_comics(reading_list, comics)
 
     (found,) = result.found
     assert not found.ambiguous
     changes = plan_arcs(reading_list, comics, result, "Avengers")
-    assert [change.path for change in changes] == sorted(comics)
+    assert [change.path for change in changes] == (exact or sorted(comics))
 
 
 def test_the_vetoes_apply_to_a_cover_year_match() -> None:

@@ -278,31 +278,35 @@ def test_a_volume_number_entry_tags_its_comic_and_not_two_other_volumes(
         cover_date="2016-08-01",
     )
 
+    untouched = {path: path.read_bytes() for path in others}
+
     _, matched, _ = _run(capsys, "match", str(listed), str(comics))
     code, out, _ = _write(capsys, str(listed), str(comics), apply=True)
 
-    assert _flat(matched).count("(ambiguous: the 2011 and 2016 volumes)") == 2
-    assert code == 1
+    # R3-J: the volume-2 comic is the entry's exact comic, so the comics of
+    # the other two volumes are not found beside it at all.
+    assert "ambiguous" not in matched
+    assert all(path.name not in matched for path in others)
+    assert code == 0
     assert f"{vol2} added 'Avengers Firsts' #1" in _flat(out)
-    for path in others:
-        assert f"{path} not written: entry #1 fits the 2011 and 2016 volumes" in (
-            _flat(out)
-        )
+    assert {path: path.read_bytes() for path in others} == untouched
 
 
 @pytest.mark.parametrize(
-    "start_years",
+    ("start_years", "tagged"),
     [
         # Copies of one volume.
-        (2016, 2016),
-        # A comic with no start year beside comics of one volume.
-        (2016, None),
+        ((2016, 2016), (0, 1)),
+        # A comic with no start year beside a comic of one volume: it is the
+        # entry's exact comic, so only it is tagged (R3-J).
+        ((2016, None), (1,)),
     ],
 )
 def test_comics_of_one_volume_are_tagged(
     capsys: pytest.CaptureFixture[str],
     tmp_path: Path,
     start_years: tuple[int | None, ...],
+    tagged: tuple[int, ...],
 ) -> None:
     listed = tmp_path / "avengers.yaml"
     listed.write_text(_AVENGERS)
@@ -314,7 +318,8 @@ def test_comics_of_one_volume_are_tagged(
 
     assert "ambiguous" not in matched
     assert code == 0
-    assert all(f"{path} added 'Avengers Firsts' #1" in _flat(out) for path in paths)
+    added = [i for i, path in enumerate(paths) if f"{path} added" in _flat(out)]
+    assert tuple(added) == tagged
 
 
 def test_match_output_that_is_not_a_terminal_is_not_wrapped(

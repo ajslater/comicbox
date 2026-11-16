@@ -396,7 +396,8 @@ def test_an_exact_pair_never_joins_two_volumes_that_ids_hold() -> None:
     assert _groups(*lists) == [{(0, 0), (1, 0)}, {(2, 0), (3, 0)}]
 
 
-def test_match_finds_a_comic_of_the_entrys_own_signature_outright() -> None:
+def test_match_finds_a_comic_of_the_entrys_own_signature_and_no_other() -> None:
+    """R3-J: the bare comic is exact, so the 2011 and 2016 ones are not found."""
     comics = {
         Path("bare.cbz"): _AV_BARE,
         Path("v2011.cbz"): _AV2011,
@@ -405,8 +406,54 @@ def test_match_finds_a_comic_of_the_entrys_own_signature_outright() -> None:
 
     (found,) = match_comics(_list(_AV_BARE), comics).found
 
-    assert {comic.path.name: comic.ambiguous for comic in found.comics} == {
-        "bare.cbz": False,
-        "v2011.cbz": True,
-        "v2016.cbz": True,
+    assert found.paths == (Path("bare.cbz"),)
+    assert not found.ambiguous
+
+
+# --------------------------------------- R3-J: match tags only the exact comic
+
+
+def _tagged(reading_list: dict[str, Any], comics: dict[Path, Any]) -> list[str]:
+    """Name the comics write-arcs would tag, in path order."""
+    result = match_comics(reading_list, comics)
+    return sorted(
+        change.path.name for change in plan_arcs(reading_list, comics, result, "Arc")
+    )
+
+
+def test_a_bare_entry_tags_the_bare_comic_and_not_a_2011_one() -> None:
+    """Entries [bare, 2016] over comics [bare, 2011]: both were tagged."""
+    comics = {Path("bare.cbz"): _AV_BARE, Path("v2011.cbz"): _AV2011}
+    assert _tagged(_list(_AV_BARE, _AV2016), comics) == ["bare.cbz"]
+
+
+def test_an_entry_of_2016_tags_the_2016_comic_and_not_a_bare_one() -> None:
+    comics = {Path("v2016.cbz"): _AV2016, Path("bare.cbz"): _AV_BARE}
+
+    (found,) = match_comics(_list(_AV2016), comics).found
+
+    assert found.paths == (Path("v2016.cbz"),)
+    assert _tagged(_list(_AV2016), comics) == ["v2016.cbz"]
+
+
+def test_a_bare_entry_over_a_single_2011_comic_still_finds_it() -> None:
+    assert _tagged(_list(_AV_BARE), {Path("v2011.cbz"): _AV2011}) == ["v2011.cbz"]
+
+
+def test_two_files_of_the_exact_comic_are_both_tagged() -> None:
+    comics = {
+        Path("a/v2016.cbz"): _AV2016,
+        Path("b/v2016.cbz"): _AV2016,
+        Path("bare.cbz"): _AV_BARE,
     }
+    assert _tagged(_list(_AV2016), comics) == ["v2016.cbz", "v2016.cbz"]
+
+
+def test_an_exact_comic_found_by_id_leaves_out_a_loose_one() -> None:
+    """By any key: the bare comic has the entry's Metron id and its signature."""
+    metron = {"identifiers": {"metron": {"key": "7"}}}
+    comics = {Path("bare.cbz"): {**_AV_BARE, **metron}, Path("v2011.cbz"): _AV2011}
+
+    (found,) = match_comics(_list({**_AV_BARE, **metron}), comics).found
+
+    assert found.paths == (Path("bare.cbz"),)

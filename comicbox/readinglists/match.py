@@ -152,18 +152,13 @@ def _differing(values: Collection[Discriminators]) -> tuple[int, ...]:
     return tuple(sorted(differing))
 
 
-def _judge(
-    value: Discriminators, facts: "_Facts", strong: Sequence[Discriminators]
-) -> bool | None:
+def _judge(value: Discriminators, strong: Sequence[Discriminators]) -> bool | None:
     """
-    Judge one cover-year comic: found (True), judged with the rest (False), or refused.
+    Judge one loose cover-year comic: found (True), with the rest (False), or refused.
 
-    One with the entry's own signature is found outright. A loose one that
-    shares a kind with some strong match is found if it agrees with one of
-    those, and refused if not; one that shares none goes to the rest.
+    One that shares a kind with some strong match is found if it agrees with
+    one of those, and refused if not; one that shares none goes to the rest.
     """
-    if value == facts.discriminators:
-        return True
     peers = [other for other in strong if value.shares_a_kind(other)]
     if not peers:
         return False
@@ -234,24 +229,45 @@ class _Index:
         Judge the comics that share only an entry's cover-year key.
 
         Each is refused when it conflicts with the entry
-        (``Discriminators.conflicts``). One with the entry's own signature is
-        found outright. Of the loose rest, one that shares a kind of
+        (``Discriminators.conflicts``). When some comic found for the entry,
+        by any key, has the entry's own signature, only such comics are found:
+        no loose one is. Otherwise a loose one that shares a kind of
         discriminator with some strong match is found if it agrees with one
         of those, and refused if not; the others are judged together: if any
         two conflict, they are all ambiguous. Returns the comics found, those
         ambiguous, and the discriminators they differ in.
         """
+        candidates = self._cover_year_candidates(keys, facts, strong)
+        if (exact := self._exact_only(facts, strong, candidates)) is not None:
+            return exact, [], ()
         strong_values = [self.facts[path].discriminators for path in strong]
         found: list[Path] = []
         rest: list[Path] = []
-        for path in self._cover_year_candidates(keys, facts, strong):
-            verdict = _judge(self.facts[path].discriminators, facts, strong_values)
+        for path in candidates:
+            verdict = _judge(self.facts[path].discriminators, strong_values)
             if verdict is not None:
                 (found if verdict else rest).append(path)
         rest_values = [self.facts[path].discriminators for path in rest]
         if any_conflict(rest_values):
             return found, rest, _differing(rest_values)
         return found + rest, [], ()
+
+    def _exact_only(
+        self, facts: "_Facts", strong: Collection[Path], candidates: Sequence[Path]
+    ) -> list[Path] | None:
+        """
+        Find the cover-year comics of the entry's own signature, when exact ones rule.
+
+        When some comic found for the entry, by any key, has the entry's own
+        signature, no loose comic is found: returns the exact cover-year ones.
+        None when there is no exact comic, and the loose rules apply.
+        """
+        own = facts.discriminators
+        if not any(
+            self.facts[path].discriminators == own for path in (*strong, *candidates)
+        ):
+            return None
+        return [path for path in candidates if self.facts[path].discriminators == own]
 
     def _cover_year_candidates(
         self,
