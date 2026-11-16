@@ -29,11 +29,10 @@ from comicbox.readinglists.combine.fields import is_ordered
 from comicbox.readinglists.identity import (
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
+    Discriminators,
     EntryKey,
     any_conflict,
-    discriminator,
-    discriminators_comparable,
-    discriminators_conflict,
+    discriminators,
     entry_date,
     entry_keys,
     variant_keys,
@@ -115,21 +114,21 @@ class _Facts:
     """
     What vetoes a match: an entry's or comic's issue ids and cover year.
 
-    And its discriminator, which vetoes a match on the cover-year key alone.
+    And its discriminators, which veto a match on the cover-year key alone.
     """
 
     ids: Mapping[str, str]
     year: int | None
-    discriminator: int | None
+    discriminators: Discriminators
 
     @classmethod
     def of(cls, entry: Mapping[str, Any], keys: Sequence[EntryKey]) -> "_Facts":
         ids = {key[1]: key[2] for key in keys if key[0] == ID_KEY_KIND}
-        return cls(ids, _year(entry), discriminator(entry))
+        return cls(ids, _year(entry), discriminators(entry))
 
     def other_volume(self, other: "_Facts") -> bool:
         """Tell whether the two sides are of two volumes."""
-        return discriminators_conflict(self.discriminator, other.discriminator)
+        return self.discriminators.conflicts(other.discriminators)
 
     def contradicts(self, other: "_Facts") -> bool:
         """Tell whether two sides cannot be one issue, whatever their keys."""
@@ -141,6 +140,16 @@ class _Facts:
             and other.year is not None
             and abs(self.year - other.year) > _COVER_YEAR_SLACK
         )
+
+
+def _differing(values: Collection[Discriminators]) -> tuple[int, ...]:
+    """Get the discriminators some rows differ in: years, volume numbers or both."""
+    years = {value.year for value in values if value.year is not None}
+    volumes = {value.volume for value in values if value.volume is not None}
+    differing = (years if len(years) > 1 else set()) | (
+        volumes if len(volumes) > 1 else set()
+    )
+    return tuple(sorted(differing))
 
 
 def _cover_year_found(paths: Collection[Path], *, ambiguous: bool) -> list[FoundComic]:
@@ -207,26 +216,25 @@ class _Index:
         Judge the comics that share only an entry's cover-year key.
 
         Each is refused when it conflicts with the entry
-        (``discriminators_conflict``). One that can be compared with some
-        strong match is found if it has one of their discriminators, and
-        refused if not. The rest are judged together: if any two conflict,
-        they are all ambiguous. Returns the comics found, those ambiguous,
-        and the discriminators of the ambiguous.
+        (``Discriminators.conflicts``). One that shares a kind of
+        discriminator with some strong match is found if it agrees with one
+        of those, and refused if not. The rest are judged together: if any
+        two conflict, they are all ambiguous. Returns the comics found, those
+        ambiguous, and the discriminators they differ in.
         """
-        strong_values = self._discriminators(strong)
+        strong_values = [self.facts[path].discriminators for path in strong]
         found: list[Path] = []
         rest: list[Path] = []
         for path in self._cover_year_candidates(keys, facts, strong):
-            value = self.facts[path].discriminator
-            if not any(
-                discriminators_comparable(value, other) for other in strong_values
-            ):
+            value = self.facts[path].discriminators
+            peers = [other for other in strong_values if value.shares_a_kind(other)]
+            if not peers:
                 rest.append(path)
-            elif value in strong_values:
+            elif any(not value.conflicts(other) for other in peers):
                 found.append(path)
-        rest_values = self._discriminators(rest)
+        rest_values = [self.facts[path].discriminators for path in rest]
         if any_conflict(rest_values):
-            return found, rest, tuple(sorted(rest_values))
+            return found, rest, _differing(rest_values)
         return found + rest, [], ()
 
     def _cover_year_candidates(
@@ -244,14 +252,6 @@ class _Index:
             and not facts.contradicts(self.facts[path])
             and not facts.other_volume(self.facts[path])
         ]
-
-    def _discriminators(self, paths: Collection[Path]) -> set[int]:
-        """Get the discriminators some comics carry, leaving out those with none."""
-        return {
-            value
-            for path in paths
-            if (value := self.facts[path].discriminator) is not None
-        }
 
     def find_variant(
         self, entry: Mapping[str, Any], taken: Collection[Path]

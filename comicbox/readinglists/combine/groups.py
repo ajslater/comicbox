@@ -5,8 +5,8 @@ Every row is a node ``(input index, row index)`` carrying its
 ``entry_keys``. A key is qualified by how many earlier rows of its own input
 carry it, so the first occurrence of a repeated issue lines up with the
 first in another list and the second with the second. The cover-year key
-is counted for each discriminator apart (``discriminator``): rows of two
-volumes are not repeats of one issue.
+is counted for each row's discriminators apart (``discriminators``): rows
+of two volumes are not repeats of one issue.
 
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
@@ -17,9 +17,12 @@ rank and row. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
 afterwards. A cover-year link is also refused when the group it would
-make holds two rows that conflict (``discriminators_conflict``): two
+make holds two rows that conflict (``Discriminators.conflicts``): two
 volumes whose issues share a number and a cover year stay apart, even
-through a third row that has only the cover year.
+through a third row that has only the cover year. And a row is not linked
+by its cover-year key into an input whose rows holding that key conflict
+with one another: it cannot tell which volume it is, so it is its own
+entry, as ``match`` calls such comics ambiguous.
 """
 
 from collections import Counter
@@ -32,9 +35,10 @@ from comicbox.identifiers import ID_SOURCE_VALUES
 from comicbox.readinglists.identity import (
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
+    Discriminators,
     EntryKey,
     any_conflict,
-    discriminator,
+    discriminators,
     entry_keys,
 )
 
@@ -95,14 +99,11 @@ class _Groups:
 
     __slots__ = ("_discriminators", "_inputs", "_parent")
 
-    def __init__(self, discriminators: Mapping[Node, int | None]) -> None:
-        self._parent: dict[Node, Node] = {node: node for node in discriminators}
-        self._inputs: dict[Node, set[int]] = {
-            node: {node[0]} for node in discriminators
-        }
-        self._discriminators: dict[Node, frozenset[int]] = {
-            node: frozenset() if value is None else frozenset({value})
-            for node, value in discriminators.items()
+    def __init__(self, values: Mapping[Node, Discriminators]) -> None:
+        self._parent: dict[Node, Node] = {node: node for node in values}
+        self._inputs: dict[Node, set[int]] = {node: {node[0]} for node in values}
+        self._discriminators: dict[Node, frozenset[Discriminators]] = {
+            node: frozenset({value}) for node, value in values.items()
         }
 
     def find(self, node: Node) -> Node:
@@ -145,12 +146,12 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
     """
     Qualify each row's keys by their count in earlier rows.
 
-    The cover-year key is counted for each discriminator apart.
+    The cover-year key is counted for each row's discriminators apart.
     """
-    counts: Counter[tuple[EntryKey, int | None]] = Counter()
+    counts: Counter[tuple[EntryKey, Discriminators | None]] = Counter()
     qualified = []
     for entry in entries:
-        value = discriminator(entry)
+        value = discriminators(entry)
         tallies = [
             (key, value if key[0] == NAME_YEAR_KEY_KIND else None)
             for key in entry_keys(entry)
@@ -169,15 +170,39 @@ def _strength(key: EntryKey) -> tuple[int, int]:
     return _NAME_STRENGTH
 
 
-def _links(holders: Mapping[QualifiedKey, Sequence[Node]]) -> list[_Link]:
-    """List every pair of rows sharing a key, strongest first."""
+def _unsure_inputs(
+    nodes: Sequence[Node], values: Mapping[Node, Discriminators]
+) -> frozenset[int]:
+    """Name the inputs whose rows holding one key conflict with one another."""
+    held: dict[int, list[Discriminators]] = {}
+    for node in nodes:
+        held.setdefault(node[0], []).append(values[node])
+    return frozenset(index for index, rows in held.items() if any_conflict(rows))
+
+
+def _links(
+    holders: Mapping[QualifiedKey, Sequence[Node]],
+    values: Mapping[Node, Discriminators],
+) -> list[_Link]:
+    """
+    List every pair of rows sharing a key, strongest first.
+
+    A cover-year link is left out when either row's candidates in the
+    other's input, the rows there holding the key, conflict with one another.
+    """
     links: list[_Link] = []
     for (key, _), nodes in holders.items():
         strength = _strength(key)
+        unsure = (
+            _unsure_inputs(nodes, values)
+            if key[0] == NAME_YEAR_KEY_KIND
+            else frozenset()
+        )
         links.extend(
             (strength, one, other)
             for index, one in enumerate(nodes)
             for other in nodes[index + 1 :]
+            if one[0] not in unsure and other[0] not in unsure
         )
     return sorted(links)
 
@@ -186,10 +211,10 @@ class _Grouper:
     """Group the rows of ranked inputs and report what disagreed."""
 
     def __init__(self, inputs: Sequence[Sequence[Mapping[str, Any]]]) -> None:
-        """Qualify every row's keys, and note its discriminator."""
+        """Qualify every row's keys, and note its discriminators."""
         self._qualified = [_qualify(entries) for entries in inputs]
         self._discriminators = {
-            (input_index, row): discriminator(entry)
+            (input_index, row): discriminators(entry)
             for input_index, entries in enumerate(inputs)
             for row, entry in enumerate(entries)
         }
@@ -213,7 +238,7 @@ class _Grouper:
             for qkey in self._keys(node):
                 holders.setdefault(qkey, []).append(node)
         groups = _Groups({node: self._discriminators[node] for node in nodes})
-        for strength, one, other in _links(holders):
+        for strength, one, other in _links(holders, self._discriminators):
             groups.link(one, other, guarded=strength == _NAME_YEAR_STRENGTH)
         return groups.groups()
 

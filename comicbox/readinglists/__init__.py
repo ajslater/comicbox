@@ -29,10 +29,10 @@ from comicbox.readinglists.compare import Comparison, Verdict, compare
 from comicbox.readinglists.formats import ReadingListFormat
 from comicbox.readinglists.formats.metron_api import MetronListSummary
 from comicbox.readinglists.identity import (
+    Discriminators,
     EntryKey,
     ParsedIssue,
-    discriminator,
-    discriminators_conflict,
+    discriminators,
     entry_keys,
     name_variants,
     normalize_series,
@@ -115,6 +115,7 @@ __all__ = (
     "CatalogEntry",
     "CombineResult",
     "Comparison",
+    "Discriminators",
     "EntryKey",
     "EntryOrigin",
     "IdConflict",
@@ -136,8 +137,7 @@ __all__ = (
     "combine",
     "compare",
     "detect_format",
-    "discriminator",
-    "discriminators_conflict",
+    "discriminators",
     "dumps",
     "entry_from_comic",
     "entry_keys",

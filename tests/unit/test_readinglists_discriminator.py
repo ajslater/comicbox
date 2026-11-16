@@ -1,14 +1,17 @@
 """
-The cover-year key compares like with like (R3-G).
+The cover-year key compares like with like (R3-G, R3-H).
 
-A row's discriminator is its name key's: the start year, or the volume
-number. Two can be compared when both are years or both are volume
-numbers, and conflict when they can be compared and differ.
+A row has up to two discriminators, one of each kind: the year-like one,
+its start year or a volume number of 1900 or more, and its small volume
+number. Two rows conflict when they have one of the same kind and those
+differ. A row is not linked by its cover-year key into an input whose rows
+holding it conflict with one another.
 """
 
 from __future__ import annotations
 
 import io
+import itertools
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -18,11 +21,11 @@ from rich.console import Console
 
 from comicbox.readinglists import (
     ENTRIES_KEY,
+    Discriminators,
     Verdict,
     combine,
     compare,
-    discriminator,
-    discriminators_conflict,
+    discriminators,
     reading_lists_from_comics,
 )
 from comicbox.readinglists.match import match_comics, plan_arcs
@@ -36,6 +39,7 @@ def _entry(
     series: str = "The Unbeatable Squirrel Girl",
     start_year: int | None = None,
     volume: int | None = None,
+    cover: date = _COVER,
     **fields: Any,
 ) -> dict[str, Any]:
     names: dict[str, Any] = {"name": series}
@@ -44,7 +48,7 @@ def _entry(
     entry: dict[str, Any] = {
         "series": names,
         "issue": {"name": "1"},
-        "date": {"cover_date": _COVER},
+        "date": {"cover_date": cover},
         **fields,
     }
     if volume is not None:
@@ -75,39 +79,45 @@ _BARE = _entry()
 @pytest.mark.parametrize(
     ("one", "other", "conflict"),
     [
-        (2011, 2016, True),
-        (1, 2, True),
-        (1, 1, False),
-        (2016, 2016, False),
+        (Discriminators(2011), Discriminators(2016), True),
+        (Discriminators(volume=1), Discriminators(volume=2), True),
+        (Discriminators(volume=1), Discriminators(volume=1), False),
+        (Discriminators(2016), Discriminators(2016), False),
         # A start year and a small volume number cannot be compared.
-        (2016, 2, False),
-        (None, 1, False),
-        (None, None, False),
+        (Discriminators(2016), Discriminators(volume=2), False),
+        (Discriminators(), Discriminators(volume=1), False),
+        (Discriminators(), Discriminators(), False),
+        # Both kinds: either one differing is enough.
+        (Discriminators(1991, 2), Discriminators(volume=1), True),
+        (Discriminators(1991, 2), Discriminators(2016, 2), True),
+        (Discriminators(1991, 2), Discriminators(1991), False),
+        (Discriminators(1991, 2), Discriminators(volume=2), False),
     ],
 )
-def test_discriminators_conflict(
-    one: int | None, other: int | None, *, conflict: bool
+def test_two_rows_conflict_when_they_differ_in_a_kind_they_share(
+    one: Discriminators, other: Discriminators, *, conflict: bool
 ) -> None:
-    assert discriminators_conflict(one, other) is conflict
-    assert discriminators_conflict(other, one) is conflict
+    assert one.conflicts(other) is conflict
+    assert other.conflicts(one) is conflict
 
 
 @pytest.mark.parametrize(
     ("entry", "value"),
     [
-        (_entry(start_year=2015), 2015),
-        (_entry(volume=2), 2),
-        # The name key's: the start year first.
-        (_entry(start_year=2015, volume=2), 2015),
-        (_BARE, None),
-        # No issue, so no name key.
-        ({"series": {"name": "X"}, "volume": {"number": 2}}, None),
+        (_entry(start_year=2015), Discriminators(2015)),
+        (_entry(volume=2), Discriminators(volume=2)),
+        (_entry(start_year=1991, volume=2), Discriminators(1991, 2)),
+        # A volume number of 1900 or more is year-like, as a CBL's is.
+        (_entry(volume=2006), Discriminators(2006)),
+        # The start year is the year-like one when there are two.
+        (_entry(start_year=2011, volume=2016), Discriminators(2011)),
+        (_BARE, Discriminators()),
     ],
 )
-def test_the_discriminator_is_the_name_keys(
-    entry: dict[str, Any], value: int | None
+def test_a_row_has_a_discriminator_of_each_kind(
+    entry: dict[str, Any], value: Discriminators
 ) -> None:
-    assert discriminator(entry) == value
+    assert discriminators(entry) == value
 
 
 # ------------------------------------------------------------------ combine
@@ -225,3 +235,88 @@ def test_the_volumes_an_entry_fits_are_named(
     volumes: tuple[int, ...], text: str
 ) -> None:
     assert volumes_text(volumes) == text
+
+
+# ------------------------------------------------------- R3-H: two kinds
+
+_XMEN_COVER = date(1991, 10, 1)
+_XMEN_V2 = _entry(series="X-Men", start_year=1991, volume=2, cover=_XMEN_COVER)
+_XMEN_V1 = _entry(series="X-Men", volume=1, cover=_XMEN_COVER)
+_XMEN_BARE = _entry(series="X-Men", cover=_XMEN_COVER)
+
+
+def test_a_row_with_both_discriminators_is_told_apart_by_its_volume() -> None:
+    """X-Men (1991) volume 2 #1 and X-Men volume 1 #1, both 1991, joined."""
+    assert _groups(_list(_XMEN_V2), _list(_XMEN_V1)) == [{(0, 0)}, {(1, 0)}]
+    assert compare(_list(_XMEN_V2), _list(_XMEN_V1)).verdict is Verdict.UNRELATED
+
+
+def test_a_row_with_both_still_joins_a_row_of_its_volume() -> None:
+    same = _entry(series="X-Men", volume=2, cover=_XMEN_COVER)
+    assert _groups(_list(_XMEN_V2), _list(same)) == [{(0, 0), (1, 0)}]
+
+
+def test_a_cover_year_match_of_another_volume_number_is_refused() -> None:
+    comics = {Path("v2.cbz"): _XMEN_V2}
+    assert match_comics(_list(_XMEN_V1), comics).found == ()
+
+
+def test_an_entry_that_fits_a_row_with_both_and_another_volume_is_ambiguous() -> None:
+    comics = {Path("v1.cbz"): _XMEN_V1, Path("v2.cbz"): _XMEN_V2}
+
+    (found,) = match_comics(_list(_XMEN_BARE), comics).found
+
+    assert all(comic.ambiguous for comic in found.comics)
+    assert found.volumes == (1, 2)
+
+
+def test_beside_a_strong_match_a_cover_year_one_agrees_in_the_kind_they_share() -> None:
+    metron = {"identifiers": {"metron": {"key": "7"}}}
+    comics = {
+        Path("strong.cbz"): {**_XMEN_V2, **metron},
+        Path("vol1.cbz"): _XMEN_V1,
+        Path("vol2.cbz"): _entry(series="X-Men", volume=2, cover=_XMEN_COVER),
+        Path("y1991.cbz"): _entry(series="X-Men", start_year=1991, cover=_XMEN_COVER),
+    }
+
+    (found,) = match_comics(_list({**_XMEN_BARE, **metron}), comics).found
+
+    assert found.paths == (Path("strong.cbz"), Path("vol2.cbz"), Path("y1991.cbz"))
+    assert not found.ambiguous
+
+
+# ---------------------------------- R3-H: a row that fits two conflicting rows
+
+_AV_COVER = date(2016, 1, 1)
+_AV2011 = _entry(series="Avengers", start_year=2011, cover=_AV_COVER)
+_AV2016 = _entry(series="Avengers", start_year=2016, cover=_AV_COVER)
+_AV_BARE = _entry(series="Avengers", cover=_AV_COVER)
+
+
+@pytest.mark.parametrize("rows", list(itertools.permutations((_AV2011, _AV2016))))
+def test_a_row_that_fits_two_rows_of_an_input_that_conflict_joins_neither(
+    rows: tuple[dict[str, Any], ...],
+) -> None:
+    """A=[Avengers (2011) #1, Avengers (2016) #1], B=[Avengers #1]: B joined the first."""
+    assert _groups(_list(*rows), _list(_AV_BARE)) == [{(0, 0)}, {(0, 1)}, {(1, 0)}]
+    assert _groups(_list(_AV_BARE), _list(*rows)) == [{(0, 0)}, {(1, 0)}, {(1, 1)}]
+
+
+@pytest.mark.parametrize("order", list(itertools.permutations(range(3))), ids=str)
+def test_from_arcs_folds_no_copy_it_cannot_place(order: tuple[int, ...]) -> None:
+    rows = (_AV2011, _AV2016, _AV_BARE)
+    comics = [{**rows[index], "arcs": {"Standoff": {}}} for index in order]
+
+    (reading_list,) = reading_lists_from_comics(comics)
+
+    assert len(reading_list[ENTRIES_KEY]) == 3
+
+
+@pytest.mark.parametrize("bare_first", [False, True])
+def test_from_arcs_still_folds_a_copy_into_its_one_volume(*, bare_first: bool) -> None:
+    rows = (_AV_BARE, _AV2011) if bare_first else (_AV2011, _AV_BARE)
+    comics = [{**row, "arcs": {"Standoff": {}}} for row in rows]
+
+    (reading_list,) = reading_lists_from_comics(comics)
+
+    assert len(reading_list[ENTRIES_KEY]) == 1

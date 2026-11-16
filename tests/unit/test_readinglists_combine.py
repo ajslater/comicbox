@@ -16,8 +16,7 @@ from comicbox.readinglists import (
     OrderConflict,
     ReadingListError,
     combine,
-    discriminator,
-    discriminators_conflict,
+    discriminators,
     entry_keys,
     load,
 )
@@ -283,13 +282,15 @@ class _Issue:
     year: int
     comicvine: str
     metron: str
-    # A volume number, which a row always carries, in place of a start year.
+    # A volume number. Such an issue's row has its start year (``year``),
+    # its volume number, both or neither.
     volume: int | None = None
 
 
 # Every row of a numbered volume carries this cover date: two volumes' rows
-# share the cover-year key, and only their volume numbers tell them apart.
+# share the cover-year key, and only their discriminators tell them apart.
 _VOLUME_COVER = date(2015, 1, 1)
+_VOLUME_FORMS = ("both", "year", "volume", "neither")
 
 
 def _random_inputs(seed: int) -> list[dict[str, Any]]:
@@ -298,8 +299,9 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
 
     Every third issue has a twin with the same series, year and number and
     ids of its own, as a reprint has: rows a name key cannot tell apart.
-    Some issues come in volumes 1 and 2, with one cover year: rows that
-    differ only in a small volume number.
+    Some issues come in volumes 1 and 2, started in 1999 and 2014, with one
+    cover year: their rows have a start year and a volume number, one of
+    them, or neither.
     """
     rng = random.Random(seed)  # noqa: S311 - a test fixture, not a secret
     pool = [
@@ -318,9 +320,14 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
     )
     pool.extend(
         _Issue(
-            f"Series {number % 4}", number, 0, f"cv{number}v{v}", f"m{number}v{v}", v
+            f"Series {number % 4}",
+            number,
+            1999 if v == 1 else 2014,
+            f"cv{number}v{v}",
+            f"m{number}v{v}",
+            v,
         )
-        for number in range(30, 34)
+        for number in range(30, 42)
         for v in (1, 2)
     )
     inputs = []
@@ -342,11 +349,20 @@ def _random_row(rng: random.Random, issue: _Issue) -> dict[str, Any]:
     if issue.volume is None:
         row = _entry(issue.number, series=issue.series, year=year)
     else:
-        row = _entry(issue.number, series=issue.series, year=None, cover=_VOLUME_COVER)
-        row["volume"] = {"number": issue.volume}
+        form = rng.choice(_VOLUME_FORMS)
+        row = _entry(
+            issue.number,
+            series=issue.series,
+            year=issue.year if form in {"both", "year"} else None,
+            cover=_VOLUME_COVER,
+        )
+        if form in {"both", "volume"}:
+            row["volume"] = {"number": issue.volume}
     ids = (("comicvine", issue.comicvine), ("metron", issue.metron))
+    # A volume's rows carry fewer ids, so more of them join by cover year.
+    odds = 0.6 if issue.volume is None else 0.25
     if identifiers := {
-        source: {"key": key} for source, key in ids if rng.random() < 0.6
+        source: {"key": key} for source, key in ids if rng.random() < odds
     }:
         row["identifiers"] = identifiers
     return row
@@ -403,73 +419,87 @@ def _rows(result: Any, moves: list[list[int]] | None = None) -> set[frozenset]:
     }
 
 
-def _cover_year_rows(
-    entries: list[dict[str, Any]],
-) -> dict[Any, dict[int | None, list[int]]]:
-    """Index rows by their cover-year key, then by discriminator."""
-    held: dict[Any, dict[int | None, list[int]]] = {}
-    for row, entry in enumerate(entries):
-        for key in entry_keys(entry):
-            if key[0] == "name-year":
-                by_value = held.setdefault(key, {})
-                by_value.setdefault(discriminator(entry), []).append(row)
-    return held
-
-
-def _swap_conflicting(entries: list[dict[str, Any]]) -> list[int]:
+def _without_repeats(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
-    Swap each pair of rows that share a cover-year key and conflict.
+    Drop each row that repeats an earlier one: shares a key, and no conflict.
 
-    Each must be its input's only row of that key and discriminator, so the
-    swap moves no repeat of an issue past another. Returns the row each
-    position now holds.
+    What is left has no repeated issue: rows that share a key are of two
+    volumes.
     """
-    order = list(range(len(entries)))
-    for by_value in _cover_year_rows(entries).values():
-        alone = [
-            rows[0] for value, rows in by_value.items() if value and len(rows) == 1
-        ]
-        if len(alone) == 2 and discriminators_conflict(
-            *(discriminator(entries[row]) for row in alone)
+    kept: list[tuple[frozenset, Any, dict[str, Any]]] = []
+    for entry in entries:
+        keys, value = frozenset(entry_keys(entry)), discriminators(entry)
+        if not any(
+            keys & other_keys and not value.conflicts(other_value)
+            for other_keys, other_value, _ in kept
         ):
-            one, other = alone
-            order[one], order[other] = order[other], order[one]
-    return order
+            kept.append((keys, value, entry))
+    return [entry for _, _, entry in kept]
+
+
+def _two_volumes(inputs: list[dict[str, Any]], members: frozenset) -> bool:
+    """
+    Tell whether a group holds rows that say they are of two volumes.
+
+    Worked out here from the generated fields, not by ``discriminators``: two
+    start years, or two volume numbers, that differ. A start year and a
+    volume number cannot be compared, and may join.
+    """
+    rows = [inputs[index][ENTRIES_KEY][row] for index, row in members]
+    years = {row["series"].get("start_year") for row in rows} - {None}
+    volumes = {(row.get("volume") or {}).get("number") for row in rows} - {None}
+    return len(years) > 1 or len(volumes) > 1
 
 
 @pytest.mark.parametrize("seed", range(40))
-def test_rows_that_conflict_join_alike_in_either_order(seed: int) -> None:
+def test_the_grouping_survives_permuting_an_inputs_rows(seed: int) -> None:
     """
-    No group holds two rows of two volumes, and swapping such rows changes none.
+    No group holds two rows of two volumes, and no row order changes a group.
 
-    An id could join two volumes' rows, but the generator's ids are each
-    volume's own.
+    Rows have both discriminators, one or neither. An id could join two
+    volumes' rows, but the generator's ids are each volume's own.
     """
-    inputs = _random_inputs(seed)
-    moves = [_swap_conflicting(list(rl[ENTRIES_KEY])) for rl in inputs]
-    swapped = [
+    rng = random.Random(seed)  # noqa: S311 - a test fixture, not a secret
+    inputs = [
+        {**rl, ENTRIES_KEY: _without_repeats(rl[ENTRIES_KEY])}
+        for rl in _random_inputs(seed)
+    ]
+    moves = [
+        rng.sample(range(len(rl[ENTRIES_KEY])), len(rl[ENTRIES_KEY])) for rl in inputs
+    ]
+    permuted = [
         {**rl, ENTRIES_KEY: [rl[ENTRIES_KEY][row] for row in order]}
         for rl, order in zip(inputs, moves, strict=True)
     ]
 
     result = combine(inputs)
 
-    for members in _rows(result):
-        values = [
-            discriminator(inputs[index][ENTRIES_KEY][row]) for index, row in members
-        ]
-        assert not any(
-            discriminators_conflict(one, other) for one in values for other in values
-        )
-    assert _rows(combine(swapped), moves) == _rows(result)
+    assert not any(_two_volumes(inputs, members) for members in _rows(result))
+    assert _rows(combine(permuted), moves) == _rows(result)
 
 
-def test_the_generator_swaps_rows_that_conflict() -> None:
-    """The order test is only worth having if some seed swaps a pair."""
-    assert any(
-        _swap_conflicting(list(rl[ENTRIES_KEY])) != list(range(len(rl[ENTRIES_KEY])))
+def test_the_generator_draws_every_form_and_rows_that_conflict() -> None:
+    """The order test is only worth having if inputs keep rows of two volumes."""
+    rows = [
+        entry
         for seed in range(40)
         for rl in _random_inputs(seed)
+        for entry in _without_repeats(rl[ENTRIES_KEY])
+        if entry.get("date")
+    ]
+    forms = {
+        (value.year is not None, value.volume is not None)
+        for value in map(discriminators, rows)
+    }
+    assert forms == {(True, True), (True, False), (False, True), (False, False)}
+    assert any(
+        discriminators(one).conflicts(discriminators(other))
+        and set(entry_keys(one)) & set(entry_keys(other))
+        for seed in range(40)
+        for rl in _random_inputs(seed)
+        for kept in [_without_repeats(rl[ENTRIES_KEY])]
+        for one in kept
+        for other in kept
     )
 
 
