@@ -295,6 +295,26 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self.close()
         self._cleanup_tmp_archive(tmp_path, new_path)
 
+    def _read_unrewritten_pdf_files(
+        self, pf: ZipFile, files: Mapping[str, Any]
+    ) -> dict[str, bytes]:
+        """
+        Under ``keep``, read the PDF's tag files this write does not replace.
+
+        pymupdf's ``embfile_del`` removes the right file only when it is the
+        first embedded one; any other takes part of its neighbour with it. So
+        a PDF write removes every tag file in order, as one without ``keep``
+        always has, and ``keep`` puts these back as they were.
+        """
+        if (rewritten := self._rewritten_names(files)) is None:
+            return {}
+        return {
+            path: pf.read(path)
+            for path in self.namelist()
+            if (name := Path(path).name.lower()) in _ALL_ARCHIVE_METADATA_FILENAMES
+            and name not in rewritten
+        }
+
     def _update_pdffile(self, files: Mapping, mupdf_metadata: Mapping) -> None:
         if not self._path:
             reason = "No pdfile path to write to."
@@ -308,8 +328,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
             if delete_all_tags or files:
-                self._archive_remove_metadata_files(pf, self._rewritten_names(files))
-                self._archive_write_metadata_files(pf, files)
+                unread = self._read_unrewritten_pdf_files(pf, files)
+                self._archive_remove_metadata_files(pf)
+                self._archive_write_metadata_files(pf, {**unread, **files})
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping

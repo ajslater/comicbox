@@ -267,6 +267,7 @@ class ComicboxSources(ComicboxArchive):
         computed / final-metadata caches via the shared reset.
         """
         self._loaded.pop(source, None)
+        self._failed_loads = {key for key in self._failed_loads if key[0] != source}
         self._normalized.pop(source, None)
         self._reset_loaded_forward_caches()
 

@@ -30,6 +30,7 @@ from tests.const import CBI_CBR_SOURCE_PATH, CIX_CBT_SOURCE_PATH, CIX_PDF_SOURCE
 from tests.util.comics import JSON, make_comic
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
 
 _CIX = "COMIC_INFO"
@@ -50,6 +51,12 @@ def _tag_files(path: Path) -> tuple[list[str], bytes]:
             if not name.lower().endswith((".jpg", ".png", ".webp"))
         )
         return names, archive.comment
+
+
+def _member(names: Iterable[str], filename: str) -> str:
+    """Find the one archive member, at any depth, with this file name."""
+    (name,) = (name for name in names if name.lower().endswith(filename.lower()))
+    return name
 
 
 def _tags(path: Path, config: Any = None) -> dict[str, Any]:
@@ -160,9 +167,7 @@ def test_keep_copies_an_unread_format_into_a_converted_cbz(tmp_path: Path) -> No
     path = tmp_path / "comic.cbt"
     shutil.copy(CIX_CBT_SOURCE_PATH, path)
     with Comicbox(path) as box:
-        (metron_name,) = [
-            name for name in box.namelist() if name.lower().endswith("metroninfo.xml")
-        ]
+        metron_name = _member(box.namelist(), "MetronInfo.xml")
         metron = box.get_page_by_filename(metron_name)
 
     result = write_metadata(
@@ -175,7 +180,10 @@ def test_keep_copies_an_unread_format_into_a_converted_cbz(tmp_path: Path) -> No
     assert cbz == path.with_suffix(".cbz")
     with zipfile.ZipFile(cbz) as archive:
         assert archive.read(metron_name) == metron
-        assert "Kept" in archive.read("ComicInfo.xml").decode()
+        # Rewritten where the comic carries it, not beside it at the root.
+        info = _member(archive.namelist(), "ComicInfo.xml")
+        assert info == metron_name.replace("metroninfo", "comicinfo")
+        assert "Kept" in archive.read(info).decode()
 
 
 def test_keep_converts_a_cbr_with_its_comment(tmp_path: Path) -> None:
@@ -358,3 +366,6 @@ def test_the_main_cli_stamps_a_keep_write_as_a_named_one(tmp_path: Path) -> None
     stamped = _tags(named)
     assert "tagger" in stamped
     assert _tags(kept).keys() == stamped.keys()
+
+
+# ------------------------------------------------------- R3-G: G1 to G4

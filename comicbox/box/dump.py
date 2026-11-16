@@ -1,11 +1,13 @@
 """Writing Methods."""
 
 from collections.abc import Mapping
+from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from comicbox.box.pages import ComicboxPages
-from comicbox.exceptions import ArchiveWriteError
+from comicbox.exceptions import UnparsedTagFileError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.comicbox.schema import EXT_KEY
 from comicbox.formats.sources import MetadataSources
@@ -14,6 +16,9 @@ ARCHIVE_FORMATS = frozenset(
     MetadataSources.ARCHIVE_FILE.value.formats
     + MetadataSources.ARCHIVE_COMMENT.value.formats
 )
+# comicbox cannot write a PDF's own metadata (_dump_format_to_archive
+# returns before its branch), so keep has nothing to write for it.
+_KEEP_UNWRITABLE = frozenset({MetadataFormats.PDF})
 
 
 def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mapping:
@@ -35,6 +40,24 @@ def _without_filename_only_keys(schema, denormalized_metadata: Mapping) -> Mappi
     return stripped
 
 
+def _dump_format(
+    fmt: MetadataFormats,
+    schema: Any,
+    denormalized_metadata: Mapping,
+    files: dict[str, Mapping],
+    comment: dict[str, bytes | None],
+) -> None:
+    """Write a format as a file under its own name, or as the comment."""
+    if fmt in MetadataSources.ARCHIVE_FILE.value.formats:
+        files[fmt.value.filename] = schema.dumps(
+            _without_filename_only_keys(schema, denormalized_metadata)
+        )
+    elif fmt in MetadataSources.ARCHIVE_COMMENT.value.formats:
+        cmnt = schema.dumps(denormalized_metadata)
+        cmnt = cmnt.encode(errors="replace")
+        comment["c"] = cmnt
+
+
 class ComicboxDump(ComicboxPages):
     """Writing Methods."""
 
@@ -52,8 +75,8 @@ class ComicboxDump(ComicboxPages):
                 f"Not writing {self._path}: its {names} could not be parsed,"
                 " so keep cannot keep it."
             )
-            raise ArchiveWriteError(reason)
-        return self._config.write.formats | carried.formats
+            raise UnparsedTagFileError(reason)
+        return (self._config.write.formats | carried.formats) - _KEEP_UNWRITABLE
 
     def get_write_formats(self) -> frozenset[MetadataFormats] | None:
         """
@@ -101,7 +124,7 @@ class ComicboxDump(ComicboxPages):
         self, formats: frozenset[MetadataFormats]
     ) -> frozenset[MetadataFormats]:
         """If no formats given to PDF -> CBZ convert default to ComicInfo."""
-        if self._config.convert.cbz:
+        if self._config.convert.cbz and self._defaults_to_comic_info():
             formats_without_pdf = formats - {MetadataFormats.PDF}
             if not formats_without_pdf:
                 logger.info(
@@ -110,6 +133,25 @@ class ComicboxDump(ComicboxPages):
                 )
                 formats = frozenset(formats_without_pdf | {MetadataFormats.COMIC_INFO})
         return formats
+
+    def _defaults_to_comic_info(self) -> bool:
+        """
+        Whether the PDF to CBZ default may add ComicInfo.
+
+        Under keep, only for a PDF, and never over a ComicInfo the archive
+        carries and the read configuration did not read: keep replaces no
+        tag file it did not read, and an untagged comic gains none.
+        """
+        if not self._config.write.keep_formats:
+            return True
+        if not self._archive_is_pdf:
+            return False
+        unread = MetadataFormats.COMIC_INFO not in self.get_carried_formats().formats
+        filename = MetadataFormats.COMIC_INFO.value.filename.lower()
+        return not (
+            unread
+            and any(Path(name).name.lower() == filename for name in self.namelist())
+        )
 
     def _dump_format_to_archive(
         self,
@@ -132,24 +174,43 @@ class ComicboxDump(ComicboxPages):
             mupdf_md = schema.dump(denormalized_metadata) or {}
             if isinstance(mupdf_md, Mapping):
                 pdf_md.update(mupdf_md.get(schema.ROOT_TAG, {}))
-        elif self._keeps_in_comment(fmt):
+        elif self._config.write.keep_formats:
+            self._dump_kept_format(fmt, schema, denormalized_metadata, files, comment)
+        else:
+            _dump_format(fmt, schema, denormalized_metadata, files, comment)
+
+    def _dump_kept_format(
+        self,
+        fmt: MetadataFormats,
+        schema: Any,
+        denormalized_metadata: Mapping,
+        files: dict[str, Mapping],
+        comment: dict[str, bytes | None],
+    ) -> None:
+        """
+        Write a format under keep wherever the comic carries it.
+
+        A ComicBookInfo comment stays a comment, and a file is written back
+        at every member path that bears its name, read or not: the write
+        removes each of them, and no copy may be left stale to win the next
+        read. A format the comic does not carry is written as any write
+        writes it.
+        """
+        written = False
+        in_comment = self.get_carried_formats().in_comment
+        if fmt in MetadataSources.ARCHIVE_COMMENT.value.formats and in_comment:
             comment["c"] = schema.dumps(denormalized_metadata).encode(errors="replace")
-        elif fmt in MetadataSources.ARCHIVE_FILE.value.formats:
-            files[fmt.value.filename] = schema.dumps(
+            written = True
+        filename = fmt.value.filename.lower()
+        for path in self.namelist():
+            if Path(path).name.lower() != filename:
+                continue
+            files[path] = schema.dumps(
                 _without_filename_only_keys(schema, denormalized_metadata)
             )
-        elif fmt in MetadataSources.ARCHIVE_COMMENT.value.formats:
-            cmnt = schema.dumps(denormalized_metadata)
-            cmnt = cmnt.encode(errors="replace")
-            comment["c"] = cmnt
-
-    def _keeps_in_comment(self, fmt: MetadataFormats) -> bool:
-        """Whether ``keep`` writes this format back as the archive comment it was."""
-        return (
-            self._config.write.keep_formats
-            and fmt in MetadataSources.ARCHIVE_COMMENT.value.formats
-            and self.get_carried_formats().in_comment
-        )
+            written = True
+        if not written:
+            _dump_format(fmt, schema, denormalized_metadata, files, comment)
 
     def _dump_to_archive(self, formats: frozenset[MetadataFormats]) -> None:
         """Prepare archive files and comment and write to archive."""

@@ -153,6 +153,8 @@ class ComicboxInit:
         if metadata:
             self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
         self._loaded: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
+        # (source, path) of each source whose parser failed.
+        self._failed_loads: set[tuple[MetadataSources, str]] = set()
         self._normalized: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
         self._path_mtime_dttm: datetime | None = None
         self._dict_formats: frozenset[MetadataFormats] = frozenset()

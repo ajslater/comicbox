@@ -1,8 +1,8 @@
 """Parsing methods."""
 
+import json
 import os
-from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
@@ -50,6 +50,8 @@ class CarriedFormats:
     formats: frozenset[MetadataFormats]
     unreadable: tuple[str, ...]
     in_comment: bool
+    # An archive comment that is not ComicBookInfo: free text.
+    free_comment: bool = False
 
 
 def _tag_source_name(source: MetadataSources, data: SourceData) -> str:
@@ -58,11 +60,65 @@ def _tag_source_name(source: MetadataSources, data: SourceData) -> str:
     return _TAG_SOURCE_NAMES.get(source, source.value.label)
 
 
-def _is_json(text: Any) -> bool:
-    """Tell an archive comment that tries to be JSON from free text."""
+def _is_comic_book_info(text: Any) -> bool:
+    """
+    Tell a ComicBookInfo comment from free text.
+
+    It is ComicBookInfo only as JSON with ComicBookInfo's root key: any
+    other comment, a brace or JSON included, is free text.
+    """
+    from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
+
     if isinstance(text, bytes):
         text = text.decode(errors="replace")
-    return isinstance(text, str) and text.lstrip().startswith("{")
+    try:
+        data = json.loads(text)
+    except (TypeError, ValueError):
+        return False
+    return isinstance(data, dict) and ComicBookInfoSchema.ROOT_DATA_KEY in data
+
+
+class _Carrying:
+    """Gather what a comic carries, one tag source at a time."""
+
+    def __init__(self) -> None:
+        self.formats: set[MetadataFormats] = set()
+        self.unreadable: list[str] = []
+        self.in_comment = False
+        self.free_comment = False
+
+    def add(
+        self,
+        source: MetadataSources,
+        data: SourceData,
+        failed: Collection[tuple[MetadataSources, str]],
+    ) -> None:
+        """
+        Sort one tag source: carried, carried and empty, unreadable, or free text.
+
+        A well-formed file that yields nothing is carried, and empty; only
+        one whose parser failed is unreadable.
+        """
+        is_comment = source is MetadataSources.ARCHIVE_COMMENT
+        if is_comment and not _is_comic_book_info(data.data):
+            self.free_comment = True
+            return
+        if (source, str(data.path)) in failed:
+            self.unreadable.append(_tag_source_name(source, data))
+            return
+        if data.fmt is None:
+            return
+        self.formats.add(data.fmt)
+        self.in_comment |= is_comment
+
+    def result(self) -> CarriedFormats:
+        """Freeze what was gathered."""
+        return CarriedFormats(
+            frozenset(self.formats),
+            tuple(self.unreadable),
+            self.in_comment,
+            self.free_comment,
+        )
 
 
 class ComicboxLoad(ComicboxSources):
@@ -175,6 +231,7 @@ class ComicboxLoad(ComicboxSources):
                 return MappingProxyType(md), fmt
         except Exception as exc:
             self._except_on_load(source, fmt, exc)
+            self._failed_loads.add((source, str(source_data.path)))
         return None, None
 
     def _set_loaded_metadata(self, source: MetadataSources) -> None:
@@ -207,26 +264,13 @@ class ComicboxLoad(ComicboxSources):
         excludes is neither. An archive comment of free text is not a tag
         file, so it is neither too.
         """
-        formats: set[MetadataFormats] = set()
-        unreadable: list[str] = []
-        in_comment = False
+        carried = _Carrying()
         for source in TAG_SOURCES:
-            loaded = Counter(
-                (str(metadata.path), metadata.fmt)
-                for metadata in self.get_loaded_metadata(source) or ()
-            )
+            # Loads the source, recording any file whose parser failed.
+            self.get_loaded_metadata(source)
             for data in self.get_source_metadata(source) or ():
-                key = (str(data.path), data.fmt)
-                if loaded[key]:
-                    loaded[key] -= 1
-                    if data.fmt is not None:
-                        formats.add(data.fmt)
-                        in_comment |= source is MetadataSources.ARCHIVE_COMMENT
-                elif source is not MetadataSources.ARCHIVE_COMMENT or _is_json(
-                    data.data
-                ):
-                    unreadable.append(_tag_source_name(source, data))
-        return CarriedFormats(frozenset(formats), tuple(unreadable), in_comment)
+                carried.add(source, data, self._failed_loads)
+        return carried.result()
 
     def get_loaded_metadata(
         self, source: MetadataSources

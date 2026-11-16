@@ -41,6 +41,10 @@ class ArchiveWriteError(ArchiveError):
     """An archive could not be written, repacked, or renamed."""
 
 
+class UnparsedTagFileError(ArchiveWriteError):
+    """A keep write refused: a tag file the comic carries did not parse."""
+
+
 class DestinationOccupiedError(ArchiveWriteError):
     """
     A write's destination path is held by another file or writer.

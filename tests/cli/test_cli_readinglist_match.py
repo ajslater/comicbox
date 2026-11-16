@@ -808,21 +808,20 @@ def test_a_comic_with_an_unreadable_tag_file_is_never_written(
 
 
 @pytest.mark.parametrize(
-    ("comment", "written"),
+    "comment",
     [
-        # Free text is not a tag file: comicbox's usual write replaces it.
-        ("Scanned by a friend", True),
-        # A ComicBookInfo comment that does not parse is one.
-        ('{"ComicBookInfo/1.0": {"series": "Civil War",', False),
+        "Scanned by a friend",
+        # Not JSON, so not ComicBookInfo, whatever it starts with.
+        '{"ComicBookInfo/1.0": {"series": "Civil War",',
     ],
 )
-def test_an_archive_comment_is_unreadable_only_when_it_is_json(
+def test_an_archive_comment_that_is_not_comic_book_info_is_free_text(
     capsys: pytest.CaptureFixture[str],
     reading_list: Path,
     tmp_path: Path,
     comment: str,
-    written: bool,
 ) -> None:
+    """Free text is not a tag file: comicbox's usual write replaces it."""
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         comment=comment,
@@ -833,9 +832,9 @@ def test_an_archive_comment_is_unreadable_only_when_it_is_json(
 
     code, out, _ = _write(capsys, str(reading_list), str(path.parent), apply=True)
 
-    assert (code == 0) is written
-    assert ("added 'Civil War' #1" in _flat(out)) is written
-    assert ("its archive comment could not be read" in _flat(out)) is not written
+    assert code == 0
+    assert "added 'Civil War' #1" in _flat(out)
+    assert "could not be read" not in _flat(out)
 
 
 @pytest.mark.parametrize(

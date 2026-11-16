@@ -15,7 +15,11 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
-from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveTypeError
+from comicbox.exceptions import (
+    OnlineLookupAbortedError,
+    UnparsedTagFileError,
+    UnsupportedArchiveTypeError,
+)
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.series_cache import (
@@ -32,10 +36,11 @@ if TYPE_CHECKING:
 
     from comicbox.config.settings import ComicboxSettings
 
-#: Expected per-file failures: the path simply isn't an archive we can
-#: open. A traceback tells the user nothing the message doesn't, so these
-#: log one line. Anything else is a bug and earns the stack.
-_EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError,)
+#: Expected per-file failures: the path isn't an archive we can open, or
+#: a keep write refused a comic whose tag file did not parse. A traceback
+#: tells the user nothing the message doesn't, so these log one line.
+#: Anything else is a bug and earns the stack.
+_EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError, UnparsedTagFileError)
 
 #: The online sources that hold process-wide clients to release at the
 #: end of a run. Named, not imported: see `_close_shared_online_sessions`.

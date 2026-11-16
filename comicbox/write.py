@@ -671,6 +671,8 @@ def _build_write_settings(
     # Passing a resolved default here instead would overwrite whatever a
     # config file or --merge-mode had established, making those surfaces
     # dead for every API caller.
+    # Deleting all tags wins over keeping them, as it does from the config.
+    keep = keep and not base.write.delete_all_tags
     new_write = (
         replace(base.write, formats=formats, keep_formats=keep)
         if merge_mode is None
