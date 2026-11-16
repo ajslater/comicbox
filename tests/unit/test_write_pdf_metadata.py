@@ -196,3 +196,24 @@ def test_delete_all_tags_clears_what_w_pdf_maps(tmp_path: Path) -> None:
     assert after["creationDate"] == before["creationDate"]
     assert after["trapped"] == before["trapped"]
     assert _custom_key(path) == "kept"
+
+
+def test_keep_leaves_a_pdfs_own_fields_when_pdf_was_not_read(tmp_path: Path) -> None:
+    """E7: keep writes what it read; a PDF's own metadata unread is not cleared."""
+    path = tmp_path / "cix.pdf"
+    shutil.copy(CIX_PDF_SOURCE_PATH, path)
+    before = _info(path)
+
+    result = write_metadata(
+        path,
+        {"summary": "Kept"},
+        formats=["keep"],
+        base_config=get_config(
+            Namespace(comicbox=Namespace(**{"read.formats": ["cix"]}))
+        ),
+    )
+
+    assert result.written, result.error
+    after = _info(path)
+    mapped = ("title", "author", "subject", "keywords", "creator", "producer")
+    assert {key: after[key] for key in mapped} == {key: before[key] for key in mapped}

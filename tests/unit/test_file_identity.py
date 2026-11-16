@@ -100,3 +100,24 @@ def test_the_nfc_and_nfd_spellings_of_one_name_are_one_file(tmp_path: Path) -> N
 
     assert file_key(composed) == file_key(decomposed)
     assert _same_files([composed, decomposed]).same_as == {decomposed: composed}
+
+
+def test_an_inode_of_0_is_never_trusted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """E7: a filesystem that reports inode 0, with links, made every comic one."""
+    paths = _comics(tmp_path, 3)
+    real_stat = Path.stat
+
+    def stat(self: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        result = real_stat(self, *args, **kwargs)
+        if self.suffix.lower() not in _COMIC_SUFFIXES:
+            return result
+        fields = list(result[:10])
+        fields[1], fields[3] = 0, 2  # st_ino, st_nlink
+        return os.stat_result(fields)
+
+    monkeypatch.setattr(Path, "stat", stat)
+
+    assert len({file_key(path) for path in paths}) == len(paths)
+    assert _same_files(paths).same_as == {}
