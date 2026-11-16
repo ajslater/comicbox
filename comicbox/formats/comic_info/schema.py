@@ -165,7 +165,8 @@ class ComicInfoSubSchema(XmlSubHeadSchema):
     Imprint = XmlStringField()
     Genre = XmlStringSetField(as_string=True)
     Tags = XmlStringSetField(as_string=True)
-    Web = XmlStringSetField(separators=" ", as_string=True)
+    # Kept in the file's order: the first url for a database names its id.
+    Web = XmlStringListField(separators=" ", as_string=True, sort=False)
     PageCount = XmlIntegerField(minimum=0)  # recaluculated by comicbox
     LanguageISO = XmlLanguageField()
     Format = XmlOriginalFormatField()

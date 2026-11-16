@@ -357,17 +357,15 @@ one that would read the arc back as other arcs, such as a ComicInfo for a name
 with a comma, is not written, and says which file. A format named that a comic
 lacks adds a file, and on the next read its values join the comic's others by
 precedence, as every tag file's do, so `-w cix,keep` on a MetronInfo comic can
-change its merged title. Without `keep`, a write also clears a free-text archive
-comment, as every comicbox write does: the comic's line says so, and the summary
-and the `keep` hint count it with the tag files:
+change its merged title. A free-text archive comment, such as a scanner's note,
+is not a tag format and is left, with or without `keep`:
 
 ```text
 · Marvel/Civil War 001.cbz would add 'Civil War' #1; would remove MetronInfo.xml
 · Marvel/Civil War 002.cbr would add 'Civil War' #2; would convert to Civil War 002.cbz and keep the CBR
 ✗ Marvel/Civil War 003.cbr not written: Civil War 003.cbz already exists
-· Marvel/Civil War 004.cbz would add 'Civil War' #4; would clear the archive comment
-Dry run: 3 of 4 matched comics would change; --apply writes them.
-2 comics would lose a tag file or the archive comment.
+Dry run: 2 of 3 matched comics would change; --apply writes them.
+1 comic would lose a tag file.
 1 matched comic not written; see above.
 Add keep to -w to keep them: -w cix,keep.
 ```

@@ -447,8 +447,6 @@ def _change_text(
     if write.removes:
         removes = "removed" if done else "would remove"
         detail += f"; {removes} {', '.join(write.removes)}"
-    if write.clears_comment:
-        detail += f"; {'cleared' if done else 'would clear'} the archive comment"
     return detail
 
 

@@ -119,6 +119,44 @@ def test_keep_leaves_a_free_text_comment(tmp_path: Path) -> None:
     assert _tag_files(path) == (["comicbox.json"], b"Scanned by a friend")
 
 
+def test_a_write_without_keep_leaves_a_free_text_comment(tmp_path: Path) -> None:
+    """B1: -w cix emptied a scanner's note, which is no tag format."""
+    path = make_comic(tmp_path / "cw1.cbz", comment="Scanned by a friend", **_TAGS)
+
+    write_metadata(path, _PATCH, formats=[_CIX])
+
+    assert _tag_files(path) == (["comicinfo.xml"], b"Scanned by a friend")
+
+
+def test_a_write_without_keep_removes_a_comicbookinfo_comment(tmp_path: Path) -> None:
+    path = make_comic(tmp_path / "cw1.cbz", formats=(JSON, "COMIC_BOOK_INFO"), **_TAGS)
+
+    write_metadata(path, _PATCH, formats=[_CIX])
+
+    assert _tag_files(path) == (["comicinfo.xml"], b"")
+
+
+def test_a_comicbookinfo_write_leaves_a_free_text_comment(tmp_path: Path) -> None:
+    """-w cbi writes a comic-book-info.json, so the note has nothing to make way for."""
+    path = make_comic(tmp_path / "cw1.cbz", comment="Scanned by a friend", **_TAGS)
+
+    write_metadata(path, _PATCH, formats=["COMIC_BOOK_INFO"])
+
+    assert _tag_files(path) == (["comic-book-info.json"], b"Scanned by a friend")
+
+
+def test_delete_all_tags_still_clears_a_free_text_comment(tmp_path: Path) -> None:
+    path = make_comic(tmp_path / "cw1.cbz", comment="Scanned by a friend", **_TAGS)
+    config = get_config(
+        Namespace(comicbox=Namespace(write=Namespace(delete_all_tags=True)))
+    )
+
+    with Comicbox(path, config=config) as car:
+        car.dump()
+
+    assert _tag_files(path) == ([], b"")
+
+
 def test_keep_on_a_pdf_keeps_its_metadata_and_its_comicinfo(tmp_path: Path) -> None:
     path = tmp_path / "cix.pdf"
     shutil.copy(CIX_PDF_SOURCE_PATH, path)

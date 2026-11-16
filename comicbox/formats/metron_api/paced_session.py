@@ -178,9 +178,9 @@ def fetch_hooks(
     """
     Watch the mokkari calls this thread makes inside the block.
 
-    ``abort`` is asked before each send: when it returns true, the call
-    raises ``OnlineLookupAbortedError``. A cancel therefore waits for at
-    most the one gate wait under way. ``on_page`` sees every raw response,
+    ``abort`` is asked before each send, and while the send waits at the
+    gate: when it returns true, the call raises
+    ``OnlineLookupAbortedError``. ``on_page`` sees every raw response,
     after the gate has; it must not raise, and a raise is logged and
     dropped like any other observer failure. Other threads never see
     them, even one that inherits this context.
@@ -198,8 +198,14 @@ def _here() -> _FetchHooks | None:
     return hooks if hooks is not None and hooks.here() else None
 
 
+def _abort_hook() -> Callable[[], bool] | None:
+    """Get the abort hook this thread set, if any."""
+    hooks = _here()
+    return hooks.abort if hooks is not None else None
+
+
 def _abort_if_asked() -> None:
-    if (hooks := _here()) is not None and hooks.abort is not None and hooks.abort():
+    if (abort := _abort_hook()) is not None and abort():
         reason = "Metron fetch cancelled."
         raise OnlineLookupAbortedError(reason)
 
@@ -242,10 +248,12 @@ class GateRateLimiter:
         """
         _abort_if_asked()
         started = time.monotonic()
-        admitted = self._gate.acquire()
+        # The gate asks the hook while it waits, so a cancel does not sit
+        # out a wait that can last a minute.
+        admitted = self._gate.acquire(abort=_abort_hook())
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
         try:
-            # A cancel that came during the wait is honoured before the send.
+            # A cancel that came as the slot freed is honoured before the send.
             _abort_if_asked()
         except OnlineLookupAbortedError:
             # Nothing was sent: give the slot back, uncounted. mokkari never

@@ -386,3 +386,79 @@ def test_a_rename_onto_its_own_name_says_nothing(tmp_path: Path) -> None:
 
     assert not [message for message in messages if "Renamed" in message]
     assert landed.exists()
+
+
+def _rename_messages(path: Path) -> tuple[list[str], Path | None]:
+    from loguru import logger
+
+    messages: list[str] = []
+    handler = logger.add(messages.append, format="{message}")
+    try:
+        with Comicbox(path) as car:
+            car.rename_file()
+            landed = car.get_path()
+    finally:
+        logger.remove(handler)
+    return messages, landed
+
+
+@pytest.mark.parametrize("link", ["hard", "symbolic"])
+def test_a_rename_onto_another_name_for_itself_says_so(
+    tmp_path: Path, link: str
+) -> None:
+    """A3: onto a hard link of itself, rename logged "Renamed" and did nothing."""
+    cbz = tmp_path / "x.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, cbz)
+    with Comicbox(cbz) as car:
+        predicted = tmp_path / car.predict_filename()
+    if link == "hard":
+        predicted.hardlink_to(cbz)
+    else:
+        predicted.symlink_to(cbz.name)
+
+    messages, landed = _rename_messages(cbz)
+
+    assert not [message for message in messages if "Renamed" in message]
+    assert [m.strip() for m in messages if m.startswith("Not renamed")] == [
+        f"Not renamed: {predicted} is already a name for {cbz}"
+    ]
+    assert landed == cbz
+    assert cbz.is_file()
+    assert not cbz.is_symlink()
+    assert predicted.exists()
+
+
+def test_a_link_is_never_renamed_onto_its_target(tmp_path: Path) -> None:
+    """Renaming a link onto the file it names would leave a link to itself."""
+    real = tmp_path / "A.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, real)
+    link = tmp_path / "a.cbz"
+    try:
+        link.symlink_to(real.name)
+    except FileExistsError:
+        pytest.skip("a case-insensitive disk cannot hold both names")
+
+    assert not Comicbox._respell(link, real)
+
+    assert real.is_file()
+    assert not real.is_symlink()
+
+
+def test_a_link_still_changes_the_case_of_its_own_name(tmp_path: Path) -> None:
+    """On a case-insensitive disk a link's name is respelled like a file's."""
+    real = tmp_path / "real" / "x.cbz"
+    real.parent.mkdir()
+    shutil.copy(CIX_CBZ_SOURCE_PATH, real)
+    library = tmp_path / "library"
+    library.mkdir()
+    link = library / "x.cbz"
+    link.symlink_to(real)
+    respelled = library / "X.cbz"
+    if not respelled.exists():
+        pytest.skip("a case-sensitive disk holds the two names apart")
+
+    assert Comicbox._respell(link, respelled)
+
+    assert [path.name for path in library.iterdir()] == ["X.cbz"]
+    assert respelled.is_symlink()
+    assert real.is_file()

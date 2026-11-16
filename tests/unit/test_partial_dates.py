@@ -49,7 +49,11 @@ def _date(fmt: MetadataFormats, text: str) -> dict[str, Any]:
         ("2006", DateParts(2006, None, None)),
         ("2006-07", DateParts(2006, 7, None)),
         ("July 2006", DateParts(2006, 7, None)),
+        # B2: dateutil read six digits as 20 June 2007.
+        ("200607", DateParts(2006, 7, None)),
+        (" 190012 ", DateParts(1900, 12, None)),
         ("2006-07-04", DateParts(2006, 7, 4)),
+        ("20060704", DateParts(2006, 7, 4)),
         ("15", DateParts(None, None, 15)),
         ("10:30", DateParts(None, None, None)),
         ("not a date", None),
@@ -66,6 +70,7 @@ def test_date_parts_fills_in_nothing(text: str, parts: DateParts | None) -> None
         ("2006", {"year": 2006}),
         ("2006-07", {"year": 2006, "month": 7}),
         ("July 2006", {"year": 2006, "month": 7}),
+        ("200607", {"year": 2006, "month": 7}),
     ],
 )
 def test_a_partial_cover_date_is_kept_as_its_parts(
@@ -85,6 +90,19 @@ def test_a_whole_date_is_still_a_date(
         "month": 7,
         "day": 4,
     }
+
+
+def test_six_digits_that_cannot_be_a_year_and_month_go_to_dateutil() -> None:
+    """Only a year from 1900 to 2100 and a month from 01 to 12 is read so."""
+    for text, year in (("200613", 2006), ("189912", 1899)):
+        parts = date_parts(text)
+        assert parts is None or parts.year != year, text
+
+
+def test_an_unquoted_six_digit_yaml_date_is_a_year_and_month() -> None:
+    """``-m "date: {cover_date: 200607}"`` hands the field an integer."""
+    text = "comicbox:\n  series: {name: Civil War}\n  date:\n    cover_date: 200607\n"
+    assert _date(MetadataFormats.COMICBOX_YAML, text) == {"year": 2006, "month": 7}
 
 
 def test_a_partial_store_date_is_dropped() -> None:

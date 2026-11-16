@@ -1,5 +1,6 @@
 """Date & Time fields."""
 
+import re
 import sys
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -22,6 +23,14 @@ else:
 # the same over both, and a part it lacks takes each default's.
 _PROBES = (datetime(2000, 1, 1), datetime(2001, 2, 2))  # noqa: DTZ001
 
+# Six digits that can be a year and a month. dateutil reads six digits as a
+# day, a month and a two-digit year, so 200607 was 20 June 2007. ISO 8601
+# allows no YYYYMM for that ambiguity, but for a comic's date year and month
+# is far the likelier meaning.
+_YEAR_MONTH_RE = re.compile(r"(\d{4})(\d{2})")
+_YEARS = range(1900, 2101)
+_MONTHS = range(1, 13)
+
 
 @dataclass(frozen=True, slots=True)
 class DateParts:
@@ -37,14 +46,27 @@ class DateParts:
         return None not in (self.year, self.month, self.day)
 
 
+def _year_month(text: str) -> DateParts | None:
+    """Read six digits as a year and a month, if they can be."""
+    if not (match := _YEAR_MONTH_RE.fullmatch(text.strip())):
+        return None
+    year, month = int(match[1]), int(match[2])
+    if year in _YEARS and month in _MONTHS:
+        return DateParts(year, month, None)
+    return None
+
+
 def date_parts(text: str) -> DateParts | None:
     """
     Parse the parts of a date a string holds, filling in none of the rest.
 
     dateutil fills a missing part from its default, today's date unless told
     otherwise, so ``2006-07`` parsed on the 14th became the 14th of July.
-    None for a string that holds no date at all.
+    Six digits are a year and a month, ``200607``, when they can be. None
+    for a string that holds no date at all.
     """
+    if (year_month := _year_month(text)) is not None:
+        return year_month
     try:
         first, second = (parser.parse(text, default=probe) for probe in _PROBES)
     except (ValueError, OverflowError):
