@@ -330,9 +330,10 @@ optional config file, in that order of precedence.
 
     Values are parsed as YAML scalars, so `true`, `0.9`, and `24h` get the types
     the config file would give them. A value that doesn't fit its key is an
-    error rather than being silently ignored. For list-valued keys use either an
-    indexed form (`COMICBOX_READ__FORMATS__0=cix`) or, for
-    `online.lookup.sources`, a comma-separated string.
+    error rather than being silently ignored. A list-valued key takes a string
+    the way its CLI option does: comma-separated for the formats and delete keys
+    (`COMICBOX_WRITE__FORMATS=cix,mi`), whole for `-m` and `-i` values. The
+    indexed form (`COMICBOX_READ__FORMATS__0=cix`) works for any list.
 
 - **Log level** is set with the `LOGLEVEL` environment variable:
 

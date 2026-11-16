@@ -6,6 +6,15 @@ from collections.abc import Mapping
 from pathlib import Path
 
 from confuse import Configuration, EnvSource
+from confuse.templates import (
+    MappingTemplate,
+    OneOf,
+    Optional,
+    Sequence,
+    String,
+    Template,
+    TypeTemplate,
+)
 from loguru import logger
 
 from comicbox.version import PACKAGE_NAME
@@ -48,7 +57,76 @@ def _warn_legacy_env_vars(env: Mapping[str, str]) -> None:
             logger.warning(f"{old} is no longer read. Use {new} instead.")
 
 
-def _add_env(config: Configuration) -> None:
+_CONTAINER_TYPES = frozenset({list, tuple, set, frozenset})
+# How a list-valued setting takes one string from the environment, as the CLI
+# takes its option: split on commas, as -w is, or whole, as -m and -i are.
+_SPLIT = "split"
+_WHOLE = "whole"
+
+
+def _takes_a_string(template: Template) -> bool:
+    return isinstance(template, String) or (
+        isinstance(template, TypeTemplate) and template.typ is str
+    )
+
+
+def _list_kind(template: Template | None) -> str | None:
+    """
+    Say how a setting reads a list from one string, or None if it is no list.
+
+    A setting that also accepts a string, such as print phases or online
+    sources, gives it a meaning of its own, and is left alone.
+    """
+    if isinstance(template, Optional):
+        template = template.subtemplate
+    if isinstance(template, Sequence):
+        return _WHOLE
+    if isinstance(template, TypeTemplate):
+        return _SPLIT if template.typ in _CONTAINER_TYPES else None
+    if isinstance(template, OneOf):
+        return _one_of_kind(template)
+    return None
+
+
+def _one_of_kind(template: OneOf) -> str | None:
+    """Say how a choice of templates reads a list from one string."""
+    allowed = list(template.allowed)
+    if any(_takes_a_string(sub) for sub in allowed):
+        return None
+    kinds = {_list_kind(sub) for sub in allowed} - {None}
+    if _WHOLE in kinds:
+        return _WHOLE
+    return _SPLIT if kinds else None
+
+
+def _lists_from_strings(values: Mapping, template: Template | None) -> dict:
+    """
+    Read a plain environment string at a list-valued setting as that list.
+
+    ``COMICBOX_WRITE__FORMATS=cix,mi`` was read one character at a time;
+    only the indexed ``COMICBOX_WRITE__FORMATS__0=cix`` worked.
+    """
+    if isinstance(template, Optional):
+        template = template.subtemplate
+    subtemplates = (
+        template.subtemplates if isinstance(template, MappingTemplate) else {}
+    )
+    read: dict = {}
+    for key, value in values.items():
+        sub = subtemplates.get(key)
+        if isinstance(value, Mapping):
+            read[key] = _lists_from_strings(value, sub)
+        elif isinstance(value, str) and (kind := _list_kind(sub)):
+            if kind == _SPLIT:
+                read[key] = [item.strip() for item in value.split(",") if item.strip()]
+            else:
+                read[key] = [value]
+        else:
+            read[key] = value
+    return read
+
+
+def _add_env(config: Configuration, template: Template | None = None) -> None:
     """
     Overlay env vars onto the config tree.
 
@@ -60,11 +138,13 @@ def _add_env(config: Configuration) -> None:
     every real env knob had to be hand-parsed elsewhere.
 
     EnvSource lowercases keys after the prefix, splits on ``__``, and
-    parses values as YAML scalars, so types match the YAML file layer.
+    parses values as YAML scalars, so types match the YAML file layer. A
+    plain string at a list-valued setting of ``template`` is read as the
+    CLI reads that option (``_lists_from_strings``).
     """
     _warn_legacy_env_vars(os.environ)
     env_source = EnvSource(_ENV_PREFIX, sep=_ENV_SEP, loader=config.loader)
-    config.set({PACKAGE_NAME: dict(env_source)})
+    config.set({PACKAGE_NAME: _lists_from_strings(dict(env_source), template)})
 
 
 def _config_path(args: Namespace | Mapping) -> str | Path | None:
@@ -101,9 +181,11 @@ def _add_config_file(args: Namespace | Mapping, config: Configuration) -> None:
 
 
 def read_config_sources(
-    config: Configuration, args: Namespace | Mapping | None
+    config: Configuration,
+    args: Namespace | Mapping | None,
+    template: Template | None = None,
 ) -> None:
-    """Read config sources in order."""
+    """Read config sources in order; ``template`` is the package's settings."""
     # User config, then the package defaults beneath it. Read separately:
     # confuse's read() adds them in that order, so a malformed user file
     # raised before the defaults were ever added and validation then died
@@ -119,7 +201,7 @@ def read_config_sources(
         _add_config_file(args, config)
 
     # Env vars
-    _add_env(config)
+    _add_env(config, template)
 
     # Args (highest priority — must override config files and env vars).
     # Mapping uses .set() so it lands on top of the source stack like

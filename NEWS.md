@@ -39,6 +39,8 @@
 - `--rename` changes the case of a name on a case-insensitive disk, where it
   said "Renamed" and changed nothing, and says nothing for a comic already at
   its name.
+- An environment variable for a list setting reads a plain string as its CLI
+  option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
 - ComicInfo keeps every story arc's number when another arc has none.
 - Online summaries no longer show HTML entities such as `&amp;`.
 - A cache lifetime written as a number, such as `ttl: 0`, no longer stops the

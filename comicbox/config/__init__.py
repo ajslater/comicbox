@@ -299,7 +299,7 @@ def _build_settings(
 def _read_settings(args: Namespace | Mapping | None, modname: str) -> ComicboxSettings:
     """Layer every config source and reduce the result to settings."""
     config = Configuration(PACKAGE_NAME, modname=modname, read=False)
-    read_config_sources(config, args)
+    read_config_sources(config, args, _TEMPLATE.subtemplates[PACKAGE_NAME])
 
     config_program = config[PACKAGE_NAME]
     compute_config(config_program)
