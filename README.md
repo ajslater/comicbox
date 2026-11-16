@@ -242,6 +242,21 @@ comicbox --import ComicInfo.xml -w cix "My Overtagged Comic.cbz"
 You can also drop individual keys with `-D`/`--delete-keys` using dotted glom
 paths, e.g. `-D series,reprints.0.series`.
 
+### How Tags Are Written
+
+- A CBZ is re-tagged in place: only its trailing tag files, central directory
+  and end record are rewritten, never its pages. A CBZ whose tag files come
+  before its pages, as some other tools write them, is rewritten whole once,
+  pages first and tags last, and patched in place after that.
+- A write that fails leaves the comic as it was.
+- A write interrupted by a kill is undone the next time comicbox opens the
+  comic. Until then other readers see a damaged archive.
+- For the length of a write, a hidden journal file,
+  `.<comic name>.comicbox-journal.tmp`, sits beside the comic. A comic whose
+  journal's writer is still running is refused as having a write in progress.
+- A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
+  converted through a hidden temporary `.<comic name>.comicbox.tmp`.
+
 ### Reading Lists
 
 `comicbox readinglist`, or `comicbox rl`, reads, converts, combines and compares

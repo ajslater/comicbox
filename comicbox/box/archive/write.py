@@ -11,6 +11,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
+from comicbox.box.archive.journal import TAIL_CAP, TailJournal
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
@@ -26,7 +27,9 @@ if TYPE_CHECKING:
 
 FileKey: TypeAlias = tuple[int, int] | Path
 
-_RECOMPRESS_SUFFIX = ".comicbox_tmp_zip"
+# A conversion's temporary archive: a dot name ending in .tmp, never a comic
+# suffix, so a library watcher skips its creation and its replace alike.
+_TMP_ARCHIVE_SUFFIX = ".comicbox.tmp"
 _CBZ_SUFFIX = ".cbz"
 # What a sniffed archive really is, for a message about one misnamed.
 _ARCHIVE_KINDS = MappingProxyType(
@@ -58,6 +61,11 @@ def file_key(path: Path) -> FileKey:
     except OSError:
         return path.resolve()
     return (stat.st_dev, stat.st_ino)
+
+
+def tmp_archive_path(path: Path) -> Path:
+    """Name the temporary archive a conversion of this one writes first."""
+    return path.with_name(f".{path.name}{_TMP_ARCHIVE_SUFFIX}")
 
 
 def _claim_destination(destination: Path, source: Path) -> None:
@@ -199,13 +207,17 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         self, zf: ZipFile, only: frozenset[str] | None = None
     ) -> None:
         """Remove metadata files from archive: all, or ``only`` those named."""
-        for path in self.namelist():
-            if self._is_replaced(path, only):
-                # zipremove patches remove()/repack() onto the stdlib
-                # ZipFile, which lacks both through at least Python 3.14,
-                # so the typeshed stubs can't see either method.
-                zf.remove(path)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
-        zf.repack()  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
+        # zipremove patches remove()/repack() onto the stdlib ZipFile, which
+        # lacks both through at least Python 3.14, so the typeshed stubs
+        # can't see either method.
+        removed = [
+            zf.remove(info)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
+            for info in tuple(zf.infolist())
+            if self._is_replaced(info.filename, only)
+        ]
+        # Strip only these. A bare repack() strips every unreferenced entry
+        # it finds, before the tail as well, which no rollback could see.
+        zf.repack(removed)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
 
     def _archive_write_metadata_files(
         self, zf: "ZipFile | PDFFile", files: Mapping[str, bytes]
@@ -292,10 +304,42 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 compresslevel=9,
             )
 
+    def _tail_offset(self, path: Path, rewritten: frozenset[str] | None) -> int | None:
+        """
+        Find the first byte an in-place write changes; None to copy the archive.
+
+        It is the lower of the first removed tag file's offset and the start
+        of the central directory: the write changes every byte from there to
+        the end, and none before. A tag file stored before a member that is
+        kept, as when another tool wrote ComicInfo.xml first, would have every
+        later member slid down over its old place; that write, and one whose
+        tail is over ``TAIL_CAP``, copies the archive instead. The copy puts
+        pages first and tags last, so every later write patches the tail.
+        """
+        with ZipFile(path) as zf:
+            infos = zf.infolist()
+            start_dir = zf.start_dir
+        removed = [
+            info.header_offset
+            for info in infos
+            if self._is_replaced(info.filename, rewritten)
+        ]
+        offset = min((*removed, start_dir))
+        kept_after = any(
+            info.header_offset > offset
+            for info in infos
+            if not self._is_replaced(info.filename, rewritten)
+        )
+        if kept_after or path.stat().st_size - offset > TAIL_CAP:
+            return None
+        return offset
+
     def _patch_zipfile(self, files: Mapping[str, bytes], comment: bytes | None) -> None:
         """
         In place remove and append to existing zipfile.
 
+        Only the tail changes, and ``TailJournal`` puts it back if the write
+        fails, or, through its journal, if it is killed part way.
         A ``comment`` of None, from a ``keep`` write, leaves the comment.
         """
         if not self._path:
@@ -303,7 +347,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         rewritten = self._rewritten_names(files)
         self.close()
-        with ZipFile(self._path, "a") as zf:
+        if (offset := self._tail_offset(self._path, rewritten)) is None:
+            logger.debug(f"{self._path}: rewriting it whole, pages first, tags last.")
+            self._create_zipfile(files, comment)
+            return
+        with TailJournal(self._path, offset), ZipFile(self._path, "a") as zf:
             self._archive_remove_metadata_files(zf, rewritten)
             self._archive_write_metadata_files(zf, files)
             if comment is not None:
@@ -322,21 +370,27 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         # Keep the whole source name in the temp file's. Sharing one temp
         # path between archives that differ only by suffix let concurrent
         # writers unlink each other's in-progress file and then replace a
-        # half-written one onto the destination.
-        tmp_path = self._path.with_name(self._path.name + _RECOMPRESS_SUFFIX)
+        # half-written one onto the destination. A leftover from a write
+        # that was killed is removed here.
+        tmp_path = tmp_archive_path(self._path)
         new_path = self._get_new_archive_path()
         tmp_path.unlink(missing_ok=True)
         logger.info(f"Creating {new_path}...")
-        with ZipFile(tmp_path, "x") as zf:
-            # Pages first, metadata last. A later in-place re-tag removes the
-            # trailing metadata and appends the new copy, so repack has nothing
-            # after it to shift: no page byte is ever rewritten, and a write
-            # interrupted partway can only damage bytes past the last page.
-            # Metadata written first sat at offset 0 and made every subsequent
-            # write slide the whole archive down over its own pages.
-            self._copy_archive_files_to_new_archive(zf, self._rewritten_names(files))
-            self._archive_write_metadata_files(zf, files)
-            zf.comment = self._get_comment() if comment is None else comment
+        try:
+            with ZipFile(tmp_path, "x") as zf:
+                # Pages first, metadata last. A later in-place re-tag removes
+                # the trailing metadata and appends the new copy, so repack has
+                # nothing after it to shift: no page byte is ever rewritten.
+                # Metadata written first sat at offset 0 and made every
+                # subsequent write slide the whole archive down over its pages.
+                self._copy_archive_files_to_new_archive(
+                    zf, self._rewritten_names(files)
+                )
+                self._archive_write_metadata_files(zf, files)
+                zf.comment = self._get_comment() if comment is None else comment
+        except BaseException:
+            tmp_path.unlink(missing_ok=True)
+            raise
 
         # Cleanup
         self.close()
@@ -417,11 +471,20 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         self.close()
         delete_all_tags = self._config.write.delete_all_tags
-        with self._archive_cls(self._path) as pf:
+        pf = self._archive_cls(self._path)
+        try:
             if delete_all_tags or mupdf_metadata:
                 pf.write_metadata(mupdf_metadata)
             if delete_all_tags or files:
                 self._replace_pdf_tag_files(pf, files)
+        except BaseException:
+            # pdffile's close() saves a changed document even after an
+            # error, which wrote a half-done write over the PDF. Dropped
+            # unsaved, the PDF on disk is as it was.
+            del pf
+            raise
+        # pdffile saves to a temporary file and replaces the PDF with it.
+        pf.close()
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping

@@ -17,9 +17,9 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.box.archive.write import (
-    _RECOMPRESS_SUFFIX,
     _claim_destination,
     _release_destination,
+    tmp_archive_path,
 )
 from comicbox.config import get_config
 from comicbox.exceptions import DestinationOccupiedError
@@ -165,9 +165,7 @@ def test_conversion_temp_files_do_not_collide(tmp_path: Path) -> None:
     cbt = tmp_path / "Temp v1 #001 (2001).cbt"
     cb7 = tmp_path / "Temp v1 #001 (2001).cb7"
 
-    assert cbt.with_name(cbt.name + _RECOMPRESS_SUFFIX) != cb7.with_name(
-        cb7.name + _RECOMPRESS_SUFFIX
-    )
+    assert tmp_archive_path(cbt) != tmp_archive_path(cb7)
 
 
 def _convert_same_stem_pair(tmp_path: Path) -> tuple[Path, Path, list, list]:

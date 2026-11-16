@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, ClassVar
 from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
+from comicbox.box.archive.journal import replay_journal
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import UnsupportedArchiveTypeError
 
@@ -94,6 +95,10 @@ class ComicboxInit:
         ``comicbox.logger.init_logging`` themselves.
         """
         self._path = self._validate_path(path)
+        if self._path:
+            # A comic a killed write left half done is put back before it is
+            # read, or refused while its writer still runs.
+            replay_journal(self._path)
         # Lazy import: comicbox.config imports comicbox.formats which
         # transitively imports this module — keep the top-level import
         # graph acyclic.

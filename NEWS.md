@@ -28,6 +28,13 @@
   comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
   the list as a story arc: a dry run unless given `--apply`.
 
+### ♻️ Changed
+
+- A tag write that fails leaves the comic as it was, and one interrupted by a
+  kill is undone the next time comicbox opens the comic; until then other
+  readers see a damaged archive. A hidden journal file sits beside the comic for
+  the length of a write.
+
 ### 🐛 Fixed
 
 - `-w pdf` writes a PDF's own metadata, which it never did, and `-w keep`

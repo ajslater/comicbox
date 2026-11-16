@@ -22,7 +22,7 @@ else:
     from typing_extensions import override
 
 
-DestinationKind = Literal["convert", "rename", "inflight"]
+DestinationKind = Literal["convert", "rename", "inflight", "writing"]
 
 
 class ComicboxError(Exception):
@@ -57,7 +57,9 @@ class DestinationOccupiedError(ArchiveWriteError):
     would repack to already exists (or another archive in the same batch
     claims it, in which case ``occupant`` names it); ``"rename"`` -- the
     predicted filename is taken; ``"inflight"`` -- another writer in this
-    process holds the destination right now (transient; retry later).
+    process holds the destination right now (transient; retry later);
+    ``"writing"`` -- its write journal's writer is still running, in this
+    process or another on this host (transient; retry later).
     """
 
     def __init__(
@@ -78,6 +80,8 @@ class DestinationOccupiedError(ArchiveWriteError):
         """Render the frozen message text for this collision kind."""
         if self.kind == "inflight":
             return f"{self.destination} is already being written by another archive."
+        if self.kind == "writing":
+            return f"{self.destination} has a write in progress."
         if self.occupant is not None:
             return f"{self.destination} is also the destination of {self.occupant}."
         return f"{self.destination} already exists."
