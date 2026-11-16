@@ -25,6 +25,7 @@ from comicbox.box.archive.journal.record import (
     is_valid,
     is_young,
     journal_path,
+    owes_rollback,
     read_journal,
     restore,
 )
@@ -49,7 +50,9 @@ def _judge(path: Path, found: Found) -> _Verdict:
     whole = verifies(path)
     if not is_valid(found) or found.header is None:
         return _Verdict.INCOMPLETE if whole else _Verdict.INCOMPLETE_DAMAGED
-    if whole:
+    if whole and not owes_rollback(found):
+        # One that owes a rollback is replayed even so: a failed write can
+        # leave an archive that verifies, missing what it did not finish.
         return _Verdict.WHOLE
     return _Verdict.REPLAY if fits(path, found.header) else _Verdict.UNFIT
 

@@ -15,6 +15,7 @@ from comicbox.box.archive.journal.record import (
     closed,
     flush,
     journal_path,
+    mark_owed,
     opened,
     read_range,
     restore,
@@ -68,6 +69,7 @@ class TailJournal:
             before_sha256=sha256(before),
             host=socket.gethostname(),
             pid=os.getpid(),
+            rollback=0,
         )
         self._write_journal(header)
         return self
@@ -159,9 +161,11 @@ class TailJournal:
         try:
             restore(self._path, self._offset, self._tail, self._length)
         except OSError as exc:
+            # The archive can verify now, half written: the journal must say
+            # it is owed a rollback, or the next open would keep that.
             kept = (
                 f"{self._journal.name} will undo it the next time comicbox opens it"
-                if self._journaled
+                if self._journaled and mark_owed(self._journal)
                 else "it may be damaged"
             )
             logger.error(

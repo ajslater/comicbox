@@ -29,6 +29,7 @@ TAIL_CAP = 16 * 1024 * 1024
 #: on another host, is a write in flight; an older one is stale.
 IN_FLIGHT_AGE = 5 * 60
 MAGIC = b"comicbox-journal 1\n"
+_NOT_OWED = b'"rollback": 0'
 # The bytes before the tail whose checksum the journal keeps.
 BEFORE_SIZE = 64 * 1024
 _MAX_HEADER_SIZE = 4096
@@ -73,6 +74,9 @@ class Header:
     before_sha256: str
     host: str
     pid: int
+    # 1 once its writer's rollback failed: it owes one, and is replayed
+    # whether or not the archive verifies. Written 0, so it is set in place.
+    rollback: int
 
     def to_bytes(self) -> bytes:
         """Render the marker and header lines."""
@@ -184,6 +188,31 @@ def _writer_named(header: Header) -> bool:
     return header.pid > 0
 
 
+def owes_rollback(found: Found) -> bool:
+    """Tell whether a journal's writer failed to roll its write back."""
+    return found.header is not None and found.header.rollback == 1
+
+
+def mark_owed(journal: Path) -> bool:
+    """
+    Mark a journal as owing a rollback, in place; whether it could be.
+
+    One byte of its header changes, so an open that finds nothing there
+    pays nothing for it, and a later process can read it.
+    """
+    try:
+        with journal.open("r+b") as stream:
+            head = stream.read(len(MAGIC) + _MAX_HEADER_SIZE)
+            if (at := head.find(_NOT_OWED)) < 0:
+                return False
+            stream.seek(at + len(_NOT_OWED) - 1)
+            stream.write(b"1")
+            flush(stream)
+    except OSError:
+        return False
+    return True
+
+
 def is_valid(found: Found) -> bool:
     """
     Tell whether a journal is whole and right, so a write may be undone by it.
@@ -195,7 +224,8 @@ def is_valid(found: Found) -> bool:
     if header is None or not _writer_named(header):
         return False
     return (
-        0 <= header.before_offset <= header.offset <= header.length
+        header.rollback in (0, 1)
+        and 0 <= header.before_offset <= header.offset <= header.length
         and header.length - header.offset == len(found.tail) <= TAIL_CAP
         and sha256(found.tail) == header.tail_sha256
     )
@@ -250,6 +280,9 @@ def in_flight(journal: Path, found: Found) -> bool:
             return True
     header = found.header
     if header is None or not _writer_named(header) or not is_young(found):
+        return False
+    if header.rollback:
+        # Its writer gave up on it: that write is over.
         return False
     if header.host != socket.gethostname():
         return True

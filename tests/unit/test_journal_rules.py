@@ -539,3 +539,75 @@ def test_an_orphaned_entry_before_the_tail_is_left_in_place(tmp_path: Path) -> N
     assert write_metadata(path, _TAGS, formats=[_CIX]).written
 
     assert path.read_bytes()[:start_dir] == before[:start_dir]
+
+
+# --------------------------------------------------- a rollback still owed
+
+
+_OPEN_IN_ANOTHER = """
+import sys
+from pathlib import Path
+from comicbox.box import Comicbox
+Comicbox(Path(sys.argv[1])).close()
+"""
+
+
+def _fail_second_tag_file_and_rollback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail the second tag file, then the rollback; zipfile still closes whole."""
+    real_writestr = zipfile.ZipFile.writestr
+    calls = {"writes": 0}
+
+    def writestr(self: zipfile.ZipFile, *args: Any, **kwargs: Any) -> None:
+        calls["writes"] += 1
+        if calls["writes"] == 2:
+            raise OSError(errno.ENOSPC, "No space left on device")
+        real_writestr(self, *args, **kwargs)
+
+    def restore(*_args: Any) -> None:
+        raise OSError(errno.EIO, "the disk went away")
+
+    monkeypatch.setattr(zipfile.ZipFile, "writestr", writestr)
+    monkeypatch.setattr(tail_module, "restore", restore)
+
+
+@pytest.mark.parametrize("where", ["this process", "another process"])
+def test_a_failed_rollback_is_owed_and_replayed_though_the_archive_verifies(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, where: str
+) -> None:
+    """D10: the half-done archive verified, so rule 8 kept it."""
+    path = _comic(tmp_path)
+    original = path.read_bytes()
+    _fail_second_tag_file_and_rollback(monkeypatch)
+
+    assert not _retag(path, "Half").written
+    monkeypatch.undo()
+    with zipfile.ZipFile(path) as archive:
+        assert archive.testzip() is None
+    assert path.read_bytes() != original
+
+    if where == "this process":
+        Comicbox(path).close()
+    else:
+        opened = subprocess.run(  # noqa: S603
+            [sys.executable, "-c", _OPEN_IN_ANOTHER, str(path)], check=False
+        )
+        assert opened.returncode == 0
+
+    assert path.read_bytes() == original
+    assert not journal_path(path).exists()
+
+
+def test_a_rollback_that_cannot_be_marked_owed_is_an_error_naming_the_comic(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    path = _comic(tmp_path)
+    _fail_second_tag_file_and_rollback(monkeypatch)
+    monkeypatch.setattr(tail_module, "mark_owed", lambda _journal: False)
+    handler_id = logger.add(caplog.handler, level=0)
+    try:
+        assert not _retag(path, "Half").written
+    finally:
+        logger.remove(handler_id)
+
+    errors = [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR]
+    assert any(str(path) in error and "may be damaged" in error for error in errors)
