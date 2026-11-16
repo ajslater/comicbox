@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, TypeAlias
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 from loguru import logger
 from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
@@ -411,6 +411,8 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         if not self._path:
             reason = "Cannot write zipfile metadata without a path."
             raise ArchiveWriteError(reason)
+        if self._archive_is_pdf:
+            self._refuse_unconvertible_pdf(files)
         # Keep the whole source name in the temp file's. Sharing one temp
         # path between archives that differ only by suffix let concurrent
         # writers unlink each other's in-progress file and then replace a
@@ -450,7 +452,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         return True
 
     def _refuse_unsafe_pdf_attachments(
-        self, pf: "PDFFile", embedded: list[str], kept: list[str]
+        self,
+        pf: "PDFFile",
+        embedded: list[str],
+        kept: list[str],
+        doing: str = "replace its tag files",
     ) -> None:
         """
         Refuse an attachment that cannot be put back as it was.
@@ -467,10 +473,31 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             else:
                 continue
             reason = (
-                f"{self._path}: cannot replace its tag files without harming the"
+                f"{self._path}: cannot {doing} without harming the"
                 f" attachment {name!r}, which {why}."
             )
             raise UnsafePdfAttachmentError(reason)
+
+    @staticmethod
+    def _pdf_embedded_names(pf: "PDFFile") -> list[str]:
+        """List a PDF's embedded files, in its own order."""
+        names = pf.namelist()
+        # pdffile lists the embedded files in the PDF's own order, then pages.
+        return names[: len(names) - len(pf.pagelist())]
+
+    def _refuse_unconvertible_pdf(self, files: Mapping[str, Any]) -> None:
+        """
+        Refuse a PDF whose attachments a conversion would not carry over whole.
+
+        One named like a page number was read as that page, so the CBZ had
+        the page twice and lost the attachment; one of two sharing a name
+        was lost the same way.
+        """
+        pf = cast("PDFFile", self._get_archive())
+        embedded = self._pdf_embedded_names(pf)
+        rewritten = self._rewritten_names(files)
+        kept = [name for name in embedded if not self._is_replaced(name, rewritten)]
+        self._refuse_unsafe_pdf_attachments(pf, embedded, kept, "convert it to a CBZ")
 
     def _replace_pdf_tag_files(self, pf: "PDFFile", files: Mapping[str, bytes]) -> None:
         """
@@ -487,9 +514,7 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         attachments after the last replaced one are not touched.
         """
         rewritten = self._rewritten_names(files)
-        names = pf.namelist()
-        # pdffile lists the embedded files in the PDF's own order, then pages.
-        embedded = names[: len(names) - len(pf.pagelist())]
+        embedded = self._pdf_embedded_names(pf)
         replaced = [self._is_replaced(name, rewritten) for name in embedded]
         last = max(
             (i for i, is_replaced in enumerate(replaced) if is_replaced), default=-1

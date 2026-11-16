@@ -196,3 +196,39 @@ def test_an_attachment_that_cannot_be_put_back_refuses_the_write(
     assert isinstance(result.error, UnsafePdfAttachmentError)
     assert repr(first) in str(result.error)
     assert path.read_bytes() == original
+
+
+@pytest.mark.parametrize("unsafe", ["page", "duplicate"])
+def test_converting_a_pdf_with_an_attachment_that_would_be_lost_is_refused(
+    tmp_path: Path, unsafe: str
+) -> None:
+    """
+    D8: an attachment named "1" was read as page 1.
+
+    The CBZ had page 1 twice and no attachment. Refused before anything is
+    written, as a PDF write is.
+    """
+    path = tmp_path / "comic.pdf"
+    shutil.copy(CIX_PDF_SOURCE_PATH, path)
+    name = "1" if unsafe == "page" else "notes.txt"
+    with pymupdf.open(path) as doc:
+        doc.embfile_add(name, b"an attachment")
+        doc.embfile_add("later.txt", b"stored last")
+        doc.saveIncr()
+    if unsafe == "duplicate":
+        _rename_third_attachment(path, "later.txt", "notes.txt")
+    original = path.read_bytes()
+
+    result = write_metadata(
+        path,
+        {"summary": "New"},
+        formats=["COMIC_INFO"],
+        base_config=_config(**{"convert.cbz": True}),
+    )
+
+    assert not result.written
+    assert isinstance(result.error, UnsafePdfAttachmentError)
+    assert "convert it to a CBZ" in str(result.error)
+    assert path.read_bytes() == original
+    assert not path.with_suffix(".cbz").exists()
+    assert {p.name for p in tmp_path.iterdir()} == {"comic.pdf"}
