@@ -260,7 +260,8 @@ paths, e.g. `-D series,reprints.0.series`.
   this host, or by any on another host, is refused as having a write in
   progress.
 - A PDF is saved to a temporary file that replaces it, and a CBR, CBT or CB7 is
-  converted through a hidden temporary `.<comic name>.comicbox.tmp`.
+  converted through a hidden temporary `.<comic name>.comicbox.tmp`. Where a
+  comic's name is too long for these names, a hash of it stands in.
 
 ### Reading Lists
 

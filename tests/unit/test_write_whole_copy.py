@@ -243,3 +243,15 @@ def test_a_tail_over_the_cap_is_written_on_a_copy(
 
     assert copies == [path]
     assert _summary(path) == "New"
+
+
+def test_a_tags_first_comic_with_a_long_name_takes_a_write(tmp_path: Path) -> None:
+    """D11: a name over 241 bytes left no room for the temporary archive's."""
+    path = _odd_zip(tmp_path / ("c" * 251 + ".cbz"))
+    before = _members(path)
+
+    assert _retag(path).written
+
+    assert _members(path) == before
+    assert _summary(path) == "New"
+    assert _leftovers(tmp_path) == set()

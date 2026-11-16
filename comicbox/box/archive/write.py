@@ -15,6 +15,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
 from comicbox.box.archive.journal import TAIL_CAP, TailJournal, replay_journal
+from comicbox.box.archive.journal.record import hidden_name
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
 from comicbox.enums.comicbox import FileTypeEnum
@@ -72,7 +73,7 @@ def file_key(path: Path) -> FileKey:
 
 def tmp_archive_path(path: Path) -> Path:
     """Name the temporary archive a conversion of this one writes first."""
-    return path.with_name(f".{path.name}{_TMP_ARCHIVE_SUFFIX}")
+    return path.with_name(hidden_name(path.name, _TMP_ARCHIVE_SUFFIX))
 
 
 def _claim_destination(destination: Path, source: Path) -> None:

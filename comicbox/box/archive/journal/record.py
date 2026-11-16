@@ -33,6 +33,10 @@ _NOT_OWED = b'"rollback": 0'
 # The bytes before the tail whose checksum the journal keeps.
 BEFORE_SIZE = 64 * 1024
 _MAX_HEADER_SIZE = 4096
+# The longest file name most filesystems take, in bytes, and the length of
+# the hash that stands in for a comic's name past it.
+_NAME_MAX = 255
+_SHORT_DIGEST = 32
 # Lookups that find no journal there: nothing, a name too long, a non-directory.
 _NO_JOURNAL = frozenset({errno.ENOENT, errno.ENAMETOOLONG, errno.ENOTDIR, errno.EISDIR})
 _READ_FLAGS = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY", 0)
@@ -42,6 +46,22 @@ _READ_FLAGS = os.O_RDONLY | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_BINARY
 # is stale to the process that wrote it.
 _OPEN: set[str] = set()
 _OPEN_GUARD = Lock()
+
+
+def hidden_name(name: str, suffix: str) -> str:
+    """
+    Name a hidden file beside a comic: ``.<name><suffix>``.
+
+    Where that is longer than a directory takes (255 bytes), a hash of the
+    comic's name stands in for it, still dot-named and ending ``suffix``, so
+    a long-named comic still gets its journal and its temporary archive.
+    Each comic has one name or the other, so a look costs the same.
+    """
+    full = f".{name}{suffix}"
+    if len(os.fsencode(full)) <= _NAME_MAX:
+        return full
+    digest = hashlib.sha256(os.fsencode(name)).hexdigest()[:_SHORT_DIGEST]
+    return f".{digest}{suffix}"
 
 
 def journal_path(path: Path) -> Path:
@@ -54,7 +74,7 @@ def journal_path(path: Path) -> Path:
     is the file's own.
     """
     real = path.resolve() if path.is_symlink() else path
-    return real.with_name(f".{real.name}{JOURNAL_SUFFIX}")
+    return real.with_name(hidden_name(real.name, JOURNAL_SUFFIX))
 
 
 def claimed_path(journal: Path) -> Path:

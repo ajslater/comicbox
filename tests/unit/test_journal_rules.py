@@ -611,3 +611,18 @@ def test_a_rollback_that_cannot_be_marked_owed_is_an_error_naming_the_comic(
 
     errors = [r.getMessage() for r in caplog.records if r.levelno >= logging.ERROR]
     assert any(str(path) in error and "may be damaged" in error for error in errors)
+
+
+def test_a_long_named_comics_killed_write_is_undone(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """D11: a name over 233 bytes got no journal at all."""
+    path = _comic(tmp_path, "c" * 251 + ".cbz")
+    original, final, journal = _killed(monkeypatch, path)
+    journal_file = _place(path, _mid_tail(original, final, journal), journal)
+    assert len(journal_file.name) < len(path.name)
+
+    assert _summary(path) is None
+
+    assert path.read_bytes() == original
+    assert not journal_file.exists()
