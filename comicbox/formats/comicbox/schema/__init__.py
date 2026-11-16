@@ -341,7 +341,6 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
         schema=VolumeSchema,
         field=IntegerField(minimum=0),
         name_key=NUMBER_KEY,
-        primitive_type=int,
     )
 
 

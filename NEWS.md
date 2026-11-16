@@ -34,6 +34,8 @@
   rewrites it too.
 - A PDF write no longer overwrites another attachment with the old ComicInfo, or
   fails and loses tag files when a PDF has several.
+- A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
+  YAML, JSON or a library patch is read, where it was dropped without a word.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a
   ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
   turned the comment into a file.
