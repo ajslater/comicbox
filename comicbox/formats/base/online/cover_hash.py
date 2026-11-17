@@ -1,5 +1,5 @@
 """
-Cover-hash primitives and the matcher's hashing-invocation policy.
+Cover-hash primitives, cover-search hashes, and the matcher's hashing policy.
 
 pHash (8x8 = 64 bits), computed in pure Python bit for bit the way
 `imagehash.phash` computes it, because Metron's precomputed hashes
@@ -23,8 +23,10 @@ import re
 import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from enum import StrEnum
 from io import BytesIO
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from loguru import logger
 
@@ -114,12 +116,91 @@ def phash_int(image: PILImage) -> int:
     return bits
 
 
+def _hex(bits: int) -> str:
+    """Format a 64-bit pHash the way imagehash prints one."""
+    return f"{bits:0{_HEX_DIGITS}x}"
+
+
 def compute_phash(image_bytes: bytes) -> str:
     """Return the pHash of an image as a 16-digit lowercase hex string."""
     from PIL import Image
 
     with Image.open(BytesIO(image_bytes)) as img:
-        return f"{phash_int(img):0{_HEX_DIGITS}x}"
+        return _hex(phash_int(img))
+
+
+# ------------------------------------------------------- cover search hashes
+# What to send a cover search (Metron's `cover_hash_near`, metron#683) and
+# how close a match on each hash must be to be accepted. The numbers are
+# metron-tagger's (Metron-Project/metron-tagger#294), calibrated on 802
+# comics already tagged with their Metron id, and metron#683's README.
+
+# Single covers are about 0.65 wide-to-high and wraparound spreads about
+# 1.3, so anything wider than this is a spread.
+_SPREAD_ASPECT: Final = 1.2
+# The furthest a whole-cover match may be. Digital editions without the
+# print cover's price and UPC box land 10-18 bits from Metron's print
+# cover; at 20 one comic matched the wrong issue.
+FULL_COVER_ACCEPT_BITS: Final = 18
+# The furthest a half-spread match may be. One half of a spread is the
+# back cover, so a half is held to a tighter limit than a whole cover.
+HALF_COVER_ACCEPT_BITS: Final = 10
+
+
+class CoverPart(StrEnum):
+    """Which part of the local cover a search hash was taken from."""
+
+    FULL = "full"
+    RIGHT = "right half"
+    LEFT = "left half"
+
+
+@dataclass(frozen=True, slots=True)
+class SearchHash:
+    """One hash to search by cover with, and how close a match on it must be."""
+
+    phash: str
+    accept_bits: int
+    part: CoverPart
+
+
+def search_hashes(image_bytes: bytes) -> tuple[SearchHash, ...]:
+    """
+    Return the hashes to search for a cover by, in the order to try them.
+
+    The cover is hashed as displayed: an EXIF rotation is applied first,
+    so a portrait cover stored sideways matches the upright cover on the
+    server and isn't mistaken for a spread.
+
+    Metron stores only the front cover, so a wraparound spread is searched
+    by its halves first: the right half (the usual front cover), then the
+    left half (the front of a right-to-left book). The whole image comes
+    last, in case it is a genuinely landscape single cover. The split is at
+    the exact midpoint: moving it even a pixel can change the hash by a few
+    bits, so there is no adjustment for spines or margins.
+    """
+    from PIL import Image, ImageOps
+
+    with Image.open(BytesIO(image_bytes)) as img:
+        # pHash converts to grayscale itself; doing it once here saves
+        # repeating the full-size conversion for each half.
+        upright = ImageOps.exif_transpose(img).convert("L")
+    width, height = upright.size
+    full = SearchHash(_hex(phash_int(upright)), FULL_COVER_ACCEPT_BITS, CoverPart.FULL)
+    if not height or width / height <= _SPREAD_ASPECT:
+        return (full,)
+    mid = width // 2
+    halves = (
+        (CoverPart.RIGHT, (mid, 0, width, height)),
+        (CoverPart.LEFT, (0, 0, mid, height)),
+    )
+    return (
+        *(
+            SearchHash(_hex(phash_int(upright.crop(box))), HALF_COVER_ACCEPT_BITS, part)
+            for part, box in halves
+        ),
+        full,
+    )
 
 
 def parse_hash(hex_str: str) -> int:
@@ -133,6 +214,19 @@ def parse_hash(hex_str: str) -> int:
 def hamming_distance(a: str, b: str) -> int:
     """Hamming distance between two hex-encoded pHash strings."""
     return (parse_hash(a) ^ parse_hash(b)).bit_count()
+
+
+def cover_distance(a: str | None, b: str | None) -> int | None:
+    """
+    Hamming distance between two pHashes, or None if they can't be compared.
+
+    For hashes that come from a server: a missing, malformed or wrong-sized
+    hash is a row that can't be ranked, not an error.
+    """
+    try:
+        return hamming_distance(a or "", b or "")
+    except ValueError:
+        return None
 
 
 def cover_score(local_hash: str, candidate_hash: str) -> float:

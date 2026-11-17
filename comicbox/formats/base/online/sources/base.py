@@ -274,6 +274,36 @@ class OnlineSource(ABC):
         """One volume-scoped API call; sources without a fast path omit it."""
         raise NotImplementedError
 
+    def can_search_by_cover(self, profile: ComicProfile) -> bool:  # noqa: ARG002
+        """
+        Whether `search_by_cover` would send a request for this comic.
+
+        Asked before the comic's cover is read and hashed, so a source
+        that can't search by cover, or a profile missing what the query
+        needs to stay narrow, costs nothing. The default is False.
+        """
+        return False
+
+    def search_by_cover(
+        self,
+        profile: ComicProfile,
+        cover_hash: str,
+    ) -> list[Candidate]:
+        """
+        Find the issues whose cover is near ``cover_hash``, in one request.
+
+        ``cover_hash`` is a 64-bit pHash as 16 hex digits. Every candidate
+        returned carries its own cover hash in `precomputed_cover_hash`, so
+        the caller can measure each distance itself. The profile narrows
+        the query (issue number, cover year): a hash alone can't tell
+        unrelated covers apart, since they can be a few bits away.
+
+        Called only after `can_search_by_cover` said yes. An empty list
+        means the search ran and found nothing. Failures propagate, as
+        from `search`. Sources without a cover search don't override it.
+        """
+        raise NotImplementedError
+
     def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:  # noqa: B027
         """
         Optionally pull a whole volume's issue list in one go.

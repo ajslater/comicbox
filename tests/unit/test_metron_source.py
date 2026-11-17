@@ -1216,6 +1216,23 @@ def _http_api_error(
             RetryCategory.AUTH,
             id="api-error-chained-403",
         ),
+        # DRF rejecting a filter value is a request comicbox built wrong;
+        # a replay can only be rejected the same way.
+        pytest.param(
+            _http_api_error(
+                400,
+                "https://metron.cloud/api/issue/?cover_hash_near=xyz",
+                body='{"cover_hash_near": ["Enter a 16-character hexadecimal '
+                'perceptual hash."]}',
+            ),
+            RetryCategory.INVALID,
+            id="api-error-chained-400",
+        ),
+        pytest.param(
+            _http_api_error(404, "https://metron.cloud/api/issue/999999999/"),
+            RetryCategory.NOT_FOUND,
+            id="api-error-chained-404",
+        ),
         # A throttle served with a non-429 status still retries: the
         # wording is checked before the status.
         pytest.param(

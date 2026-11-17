@@ -93,7 +93,8 @@ them so you never have to:
 Comicbox can identify a comic and tag it from an online database. **Metron** and
 **ComicVine** are supported. It searches by the series, issue, and year it knows
 about, ranks candidates, breaks close calls with cover-image matching, and
-writes the best result.
+writes the best result. Metron is asked by the comic's cover first, and a cover
+that clearly matches one issue is written without the name search.
 
 ```sh
 # Interactive: prompts only when the match isn't clear.

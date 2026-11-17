@@ -32,14 +32,21 @@
 - `comicbox rl match FILE DIR` shows which of a list's issues a directory of
   comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
   the list as a story arc: a dry run unless given `--apply`.
+- Metron tagging finds a comic by its cover first: a clear cover match is
+  written without a name search, and prompts also offer the issues the cover
+  search found.
 
 ### ♻️ Changed
 
+- `--match careful` also writes a clear Metron cover match; `--match ask` lists
+  it first.
 - A tag write that fails while comicbox is running leaves the comic as it was. A
   process killed in the middle of one can still leave the tag files damaged, as
   before; the pages are never touched.
 - `-w` keeps a free-text archive comment, such as a scanner's note, and clears
   only a ComicBookInfo comment.
+- A comic Metron finds only by its cover prompts, or skips under
+  `--prompts never`, instead of reporting no match.
 - Online tagging warns and finds no Metron match for a comic with a series name
   but no issue number or year, where it prompted with every issue of every
   series with that name in it. `--series-id metron:ID` still searches one.
@@ -110,6 +117,7 @@
 - Online summaries no longer show HTML entities such as `&amp;`.
 - A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
   config from loading.
+- Metron 400 and 404 responses fail at once instead of retrying.
 
 ### 🧑‍💻 Developer
 
