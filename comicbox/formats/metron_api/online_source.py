@@ -1262,13 +1262,16 @@ class MetronOnlineSource(OnlineSource):
         8,026 rows: about 81 requests, some 2% of a day's quota, for a
         prompt nobody could use. An issue number or a cover year bounds
         the result. A volume does not, since most series are volume 1.
+
+        Warns rather than logging at debug: the lookup goes on to report
+        an ordinary empty search, which alone would read as a real miss.
         """
         if strip_issue_leading_zeros(profile.issue) or profile.year is not None:
             return True
-        logger.debug(
-            f"online {self.name}: no issue number or year for series_name="
-            f"{profile.series!r}; skipping a search that would page through "
-            "every issue of every series with that name in it"
+        logger.warning(
+            f"online {self.name}: series {profile.series!r} has no issue number "
+            "or year, so it is not searched by name. Add one, or use "
+            f"--series-id {self.name}:<series_id> or --id {self.name}:<issue_id>."
         )
         return False
 
