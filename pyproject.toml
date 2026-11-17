@@ -104,6 +104,7 @@ test = [
   "imagehash>=4.3.2",
   "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
+  "pytest-xdist~=3.8",
   "pytest~=9.0",
 ]
 docs = ["mkdocstrings-python~=2.0", "zensical~=0.1"]
@@ -214,6 +215,9 @@ omit = [
 [tool.pytest]
 minversion = "9.0"
 addopts = [
+  "--numprocesses=auto",
+  # Whole modules per worker: 44s against 71s for the default per-test load.
+  "--dist=loadfile",
   "--cov",
   "--cov-append",
   "--cov-report=html",

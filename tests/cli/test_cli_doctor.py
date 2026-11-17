@@ -108,11 +108,16 @@ def test_problems_flag_stays_out_of_a_normal_run(
 
 @pytest.mark.parametrize("flag", ["--config", "-c"])
 def test_bad_cli_config_is_misconfigured(
-    capsys: pytest.CaptureFixture[str], tmp_path: Path, flag: str
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    flag: str,
 ) -> None:
-    bad = tmp_path / "bad.yaml"
-    bad.write_text("comicbox:\n  general: [\n")
-    code, out, _ = _run(capsys, "doctor", flag, str(bad))
+    # The found column folds a long path, so an absolute tmp_path could
+    # split the name across lines ("bad.ya ml") wherever the fold lands.
+    (tmp_path / "bad.yaml").write_text("comicbox:\n  general: [\n")
+    monkeypatch.chdir(tmp_path)
+    code, out, _ = _run(capsys, "doctor", flag, "bad.yaml")
     assert code == 1
     assert "✗ MISCONFIGURED --config" in out
     assert "bad.yaml" in out
