@@ -47,9 +47,9 @@
   only a ComicBookInfo comment.
 - A comic Metron finds only by its cover prompts, or skips under
   `--prompts never`, instead of reporting no match.
-- Online tagging finds no Metron match for a comic with a series name but no
-  issue number or year, where it prompted with every issue of every series with
-  that name in it. `--series-id metron:ID` still searches one.
+- Online tagging warns and finds no Metron match for a comic with a series name
+  but no issue number or year, where it prompted with every issue of every
+  series with that name in it. `--series-id metron:ID` still searches one.
 
 ### 🗑️ Deprecated
 
