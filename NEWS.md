@@ -40,6 +40,9 @@
   before; the pages are never touched.
 - `-w` keeps a free-text archive comment, such as a scanner's note, and clears
   only a ComicBookInfo comment.
+- Online tagging finds no Metron match for a comic with a series name but no
+  issue number or year, where it prompted with every issue of every series with
+  that name in it. `--series-id metron:ID` still searches one.
 
 ### 🗑️ Deprecated
 
