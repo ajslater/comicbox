@@ -19,7 +19,7 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -43,16 +43,6 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.matcher import CoverMatch, Resolution
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
     from comicbox.formats.base.online.sources.base import OnlineSource
-
-
-# How alike the comic's series name and a cover match's must be before the
-# match may seed the series cache. A cover match only needs the names to
-# share a word, and caching what "Star Wars" turned out to be (*The Book of
-# Boba Fett*) would tag the next "Star Wars #5", from any Star Wars series,
-# as Boba Fett #5 without a search. WRatio scores a name that is only part
-# of the other 0.90, and the same name with an article or punctuation
-# changed 0.95 or more.
-_COVER_MATCH_CACHE_SERIES_FLOOR: Final = 0.95
 
 
 @dataclass(frozen=True, slots=True)
@@ -293,10 +283,20 @@ class ComicboxOnlineCovers(ComicboxNormalize):
     def _cover_match_may_seed_cache(
         profile: ComicProfile, candidate: Candidate
     ) -> bool:
-        """Whether a cover match's series is safe to cache under this profile."""
-        from comicbox.formats.base.online.signals import s_series
+        """
+        Whether a cover match's series is safe to cache under this profile.
 
-        return s_series(profile, candidate) >= _COVER_MATCH_CACHE_SERIES_FLOOR
+        Only when the two names are the same name: the same distinctive
+        words (`series_words`), so case, accents, punctuation and stop words
+        don't matter ("Avengers" is "The Avengers"). A cover match only
+        needs the names to share a word, and caching what "Star Wars" turned
+        out to be (*The Book of Boba Fett*) would tag the next "Star Wars
+        #5", from any Star Wars series, as Boba Fett #5 without a search.
+        """
+        from comicbox.formats.base.online.signals import series_words
+
+        words = series_words(profile.series or "")
+        return bool(words) and words == series_words(candidate.summary.series)
 
     def _rank_candidates(
         self,

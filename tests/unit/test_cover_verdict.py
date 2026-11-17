@@ -16,6 +16,7 @@ from comicbox.formats.base.online.cover_hash import (
 )
 from comicbox.formats.base.online.matcher import (
     COVER_ACCEPT_MARGIN_BITS,
+    COVER_BETTER_NAME_WINDOW_BITS,
     cover_verdict,
     rank_by_cover_distance,
 )
@@ -179,3 +180,66 @@ def test_a_pinned_series_skips_the_series_check() -> None:
 
     assert _verdict(row) is None
     assert _verdict(row, series_pinned=True) == 1
+
+
+# ------------------------------------------------- better-named runner-up
+
+
+_ULTIMATE = ComicProfile(series="Ultimate X-Men", issue="1", issue_int=1, year=2024)
+
+
+def _ultimate_verdict(*rows: tuple[int, Candidate]) -> int | None:
+    match = cover_verdict(
+        list(rows), FULL_COVER_ACCEPT_BITS, _ULTIMATE, series_pinned=False
+    )
+    return match.candidate.issue_id if match else None
+
+
+def test_a_collected_edition_closer_than_the_issue_is_not_taken() -> None:
+    """
+    Decline a closer cover from a worse-named series.
+
+    The 2026-11-17 calibration case: a trade paperback reusing the issue's
+    cover was 2 bits away, the issue itself 6.
+    """
+    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate X-Men")
+
+    assert _ultimate_verdict((2, tpb), (6, issue)) is None
+
+
+def test_a_better_named_row_past_the_window_does_not_overrule() -> None:
+    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate X-Men")
+
+    far = 2 + COVER_BETTER_NAME_WINDOW_BITS + 1
+    assert _ultimate_verdict((2, tpb), (far, issue)) == 160512
+
+
+def test_a_near_row_of_the_same_name_does_not_overrule() -> None:
+    """A second record of the same series' #1 is not a better name."""
+    first, second = (
+        _candidate(1, series="Ultimate X-Men"),
+        _candidate(2, series="Ultimate X-Men"),
+    )
+
+    assert _ultimate_verdict((2, first), (4, second)) == 1
+
+
+def test_a_better_named_row_from_another_series_does_not_overrule() -> None:
+    """Only rows whose series agrees with the comic's can overrule."""
+    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
+    unrelated = _candidate(9, series="Monster High")
+
+    assert _ultimate_verdict((2, tpb), (6, unrelated)) == 160512
+
+
+def test_a_pinned_series_skips_the_better_name_check() -> None:
+    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate X-Men")
+
+    match = cover_verdict(
+        [(2, tpb), (6, issue)], FULL_COVER_ACCEPT_BITS, _ULTIMATE, series_pinned=True
+    )
+    assert match is not None
+    assert match.candidate.issue_id == 160512

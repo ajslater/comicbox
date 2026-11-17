@@ -706,12 +706,22 @@ def _apply_cover_hashing(
 # match in metron-tagger's calibration led the next result by 2. The rule
 # and its numbers are metron-tagger's (Metron-Project/metron-tagger#294),
 # calibrated on 802 comics already tagged with their Metron id, with no
-# wrong match.
+# wrong match. Comicbox adds one check, `COVER_BETTER_NAME_WINDOW_BITS`,
+# from its own calibration:
+# tasks/online-tagging/calibration-notes/2026-11-17-metron-cover-search.md
 
 # How far the closest cover must lead the next one. The tightest correct
 # lead seen was 2 bits, so a tie (an issue and a trade paperback sharing a
 # cover) is never taken.
 COVER_ACCEPT_MARGIN_BITS: Final = 2
+
+# How near another series' cover must be for its better-matching name to
+# overrule the closest cover. A collected edition reuses an issue's cover
+# art, and can be the closer of the two: an Ultimate X-Men #1 (2024) file
+# was 2 bits from *Ultimate X-Men by Peach Momoko* #1 and 6 from the issue.
+# On 782 correct matches across both calibration passes, no row this near
+# had a better-matching name, at any window from 4 to 16 bits.
+COVER_BETTER_NAME_WINDOW_BITS: Final = 8
 
 
 @dataclass(frozen=True, slots=True)
@@ -753,16 +763,21 @@ def cover_verdict(
     """
     Accept the closest cover of one cover search, or None.
 
-    It is accepted when all three hold:
+    It is accepted when all four hold:
 
     - It is within ``accept_bits`` (`SearchHash.accept_bits`: tighter for
       half a spread, since one half is the back cover).
     - It leads the next result by at least `COVER_ACCEPT_MARGIN_BITS`.
     - Its series shares a distinctive word with the comic's
       (`series_words_agree`). Unrelated covers can be within 8 bits, and a
-      shared issue number doesn't make them the same comic. Skipped when
-      the user pinned the series (``series_pinned``), since the search was
-      already limited to it.
+      shared issue number doesn't make them the same comic.
+    - No other row within `COVER_BETTER_NAME_WINDOW_BITS` of it, from a
+      series that also agrees, has a name matching the comic's better
+      (`s_series`): the closest cover may be a collected edition reusing
+      the issue's art.
+
+    The two series checks are skipped when the user pinned the series
+    (``series_pinned``), since the search was already limited to it.
 
     ``ranked`` is one search's results, closest first
     (`rank_by_cover_distance`); the runner-up is measured against the same
@@ -776,11 +791,26 @@ def cover_verdict(
         return None
     if runner_up_bits is not None and runner_up_bits - bits < COVER_ACCEPT_MARGIN_BITS:
         return None
-    if not series_pinned and not series_words_agree(
-        profile.series, best.summary.series
+    if not series_pinned and (
+        not series_words_agree(profile.series, best.summary.series)
+        or _better_named_rival(ranked, profile)
     ):
         return None
     return CoverMatch(best, bits, runner_up_bits, len(ranked))
+
+
+def _better_named_rival(
+    ranked: Sequence[tuple[int, Candidate]], profile: ComicProfile
+) -> bool:
+    """Whether a row near the closest cover has a better-matching series name."""
+    bits, best = ranked[0]
+    best_score = s_series(profile, best)
+    return any(
+        other_bits - bits <= COVER_BETTER_NAME_WINDOW_BITS
+        and series_words_agree(profile.series, other.summary.series)
+        and s_series(profile, other) > best_score
+        for other_bits, other in ranked[1:]
+    )
 
 
 class OnlineMatcher:

@@ -464,6 +464,9 @@ def test_a_failed_fetch_of_a_cover_match_falls_through(
             True,
             id="article-differs-is-cached",
         ),
+        # WRatio scored this pair 0.90, under the old 0.95 floor.
+        pytest.param("Avengers", "The Avengers", True, id="short-name-article"),
+        pytest.param("G O D S", "G.O.D.S.", True, id="punctuation-differs"),
         # The next "Star Wars #5" from any Star Wars series would otherwise
         # be tagged as Boba Fett #5 without a search.
         pytest.param(
@@ -472,6 +475,7 @@ def test_a_failed_fetch_of_a_cover_match_falls_through(
             False,
             id="part-of-the-name-is-not-cached",
         ),
+        pytest.param("Batman", "Batman: Off-World", False, id="one-word-of-the-name"),
     ],
 )
 def test_only_a_cover_match_on_the_same_name_seeds_the_series_cache(
@@ -513,3 +517,21 @@ def test_rows_from_several_hashes_rank_by_their_closest_distance() -> None:
         2,
         1,
     ]
+
+
+def test_a_collected_edition_sharing_the_cover_is_left_to_the_name_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The 2026-11-17 calibration case, through the real lookup."""
+    tpb = _candidate(160512, 2, series="Ultimate X-Men by Peach Momoko")
+    issue = _candidate(111932, 6, series="Ultimate X-Men")
+    run = _run(
+        monkeypatch,
+        series="Ultimate X-Men",
+        cover_replies=[[tpb, issue]],
+        name_candidates=[issue, tpb],
+        prompts="ask",
+    )
+
+    assert run.source.search_calls == 1
+    assert 160512 not in run.source.get_calls
