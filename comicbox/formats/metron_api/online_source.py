@@ -19,6 +19,7 @@ from contextlib import contextmanager
 from dataclasses import replace
 from datetime import timedelta
 from functools import partial
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -392,9 +393,20 @@ def _issue_url(issue_id: int) -> str:
 # mentions credentials or an api key.
 _RATE_LIMIT_MARKERS: Final = ("rate limit", "throttl", "too many requests")
 
-# Statuses that mean "these credentials will never work". Metron's 429 is
-# already a RateLimitError, so it never reaches the status check.
-_AUTH_STATUSES: Final = frozenset({401, 403})
+# What a chained HTTP status means; any status not listed is TRANSIENT.
+# Metron's 429 is already a RateLimitError, so it never reaches this map.
+# A 400 is DRF rejecting a filter value (a malformed cover hash, an
+# out-of-range distance, an unparsable date): comicbox built a bad
+# request, and replaying it verbatim can only fail the same way. A 404 is
+# an id Metron does not have.
+_STATUS_CATEGORIES: Final = MappingProxyType(
+    {
+        400: RetryCategory.INVALID,
+        401: RetryCategory.AUTH,
+        403: RetryCategory.AUTH,
+        404: RetryCategory.NOT_FOUND,
+    }
+)
 
 # Credential wording, used only for the ApiError paths that carry no
 # chained response (the 2xx `detail` body and pydantic validation).
@@ -428,9 +440,7 @@ def _classify_api_error(exc: BaseException) -> RetryCategory:
         return RetryCategory.RATE_LIMIT
     status = getattr(getattr(exc.__cause__, "response", None), "status_code", None)
     if status is not None:
-        return (
-            RetryCategory.AUTH if status in _AUTH_STATUSES else RetryCategory.TRANSIENT
-        )
+        return _STATUS_CATEGORIES.get(status, RetryCategory.TRANSIENT)
     if any(marker in msg for marker in _AUTH_MARKERS):
         return RetryCategory.AUTH
     return RetryCategory.TRANSIENT
