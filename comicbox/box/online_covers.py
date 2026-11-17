@@ -17,7 +17,9 @@ because `close()` belongs with the resources it releases.
 from __future__ import annotations
 
 import sys
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from operator import itemgetter
+from typing import TYPE_CHECKING, Final
 
 from loguru import logger
 
@@ -32,14 +34,70 @@ else:
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.cover_hash import (
         CoverFetchPool,
         CoverHashUrlCache,
         SearchHash,
     )
-    from comicbox.formats.base.online.matcher import CoverMatch
-    from comicbox.formats.base.online.profile import ComicProfile
+    from comicbox.formats.base.online.matcher import CoverMatch, Resolution
+    from comicbox.formats.base.online.profile import Candidate, ComicProfile
     from comicbox.formats.base.online.sources.base import OnlineSource
+
+
+# How alike the comic's series name and a cover match's must be before the
+# match may seed the series cache. A cover match only needs the names to
+# share a word, and caching what "Star Wars" turned out to be (*The Book of
+# Boba Fett*) would tag the next "Star Wars #5", from any Star Wars series,
+# as Boba Fett #5 without a search. WRatio scores a name that is only part
+# of the other 0.90, and the same name with an article or punctuation
+# changed 0.95 or more.
+_COVER_MATCH_CACHE_SERIES_FLOOR: Final = 0.95
+
+
+@dataclass(frozen=True, slots=True)
+class CoverSearchResult:
+    """What a search by cover found."""
+
+    # The match the verdict accepted, if any.
+    match: CoverMatch | None = None
+    # Every row worth offering in a prompt, closest cover first: those whose
+    # series agrees with the comic's (all of them, under a pinned series),
+    # each at its closest distance across the hashes tried.
+    candidates: tuple[Candidate, ...] = ()
+
+
+def _keep_closest(
+    closest: dict[int, tuple[int, Candidate]],
+    ranked: Sequence[tuple[int, Candidate]],
+) -> None:
+    """Record each ranked row at the smallest distance any hash gave it."""
+    for bits, candidate in ranked:
+        seen = closest.get(candidate.issue_id)
+        if seen is None or bits < seen[0]:
+            closest[candidate.issue_id] = (bits, candidate)
+
+
+def _offered(
+    closest: dict[int, tuple[int, Candidate]],
+    profile: ComicProfile,
+    *,
+    series_pinned: bool,
+) -> tuple[Candidate, ...]:
+    """
+    Return the rows a prompt may offer, closest cover first.
+
+    Rows from an unrelated series are mostly the same issue number with a
+    cover a few bits away, so offering them would turn a comic Metron
+    doesn't have into a prompt of wrong issues.
+    """
+    from comicbox.formats.base.online.signals import series_words_agree
+
+    return tuple(
+        candidate
+        for _, candidate in sorted(closest.values(), key=itemgetter(0))
+        if series_pinned or series_words_agree(profile.series, candidate.summary.series)
+    )
 
 
 class ComicboxOnlineCovers(ComicboxNormalize):
@@ -176,9 +234,9 @@ class ComicboxOnlineCovers(ComicboxNormalize):
 
     def _cover_search(
         self, source: OnlineSource, profile: ComicProfile, *, series_pinned: bool
-    ) -> CoverMatch | None:
+    ) -> CoverSearchResult:
         """
-        Search ``source`` by this comic's cover; return an accepted match.
+        Search ``source`` by this comic's cover.
 
         Each search hash is tried in turn (`search_hashes`: a spread's
         halves before the whole) until one search's closest result passes
@@ -186,20 +244,23 @@ class ComicboxOnlineCovers(ComicboxNormalize):
         comics, and none when the source can't search by cover, the
         profile can't narrow the query, or there is no cover to hash.
 
-        A failed search ends the cover search, not the lookup: the caller
-        falls back to the name search, as for any cover the verdict
-        doesn't accept. An abort is re-raised, since it ends the lookup.
+        The result carries the accepted match, if any, and the rows worth
+        offering if the comic ends at a prompt. A failed search ends the
+        cover search, not the lookup, keeping the rows found before it. An
+        abort is re-raised, since it ends the lookup.
         """
         # Read structurally, as the lookup reads `search_skip_reason`: a
         # source is whatever implements search() and friends.
         can_search = getattr(source, "can_search_by_cover", None)
         if can_search is None or not can_search(profile):
-            return None
+            return CoverSearchResult()
         from comicbox.formats.base.online.matcher import (
             cover_verdict,
             rank_by_cover_distance,
         )
 
+        closest: dict[int, tuple[int, Candidate]] = {}
+        match: CoverMatch | None = None
         for search_hash in self._local_cover_search_hashes():
             try:
                 rows = source.search_by_cover(profile, search_hash.phash)
@@ -207,12 +268,13 @@ class ComicboxOnlineCovers(ComicboxNormalize):
                 raise
             except Exception as exc:
                 logger.warning(f"online {source.name}: cover search failed: {exc}")
-                return None
+                break
             ranked = rank_by_cover_distance(search_hash.phash, rows)
             logger.debug(
                 f"online {source.name}: cover search by the {search_hash.part}: "
                 f"closest distances {[bits for bits, _ in ranked[:3]]}"
             )
+            _keep_closest(closest, ranked)
             match = cover_verdict(
                 ranked, search_hash.accept_bits, profile, series_pinned=series_pinned
             )
@@ -222,8 +284,83 @@ class ComicboxOnlineCovers(ComicboxNormalize):
                     f"on the {search_hash.part} at {match.bits} bits "
                     f"(next {match.runner_up_bits})"
                 )
-                return match
-        return None
+                break
+        return CoverSearchResult(
+            match, _offered(closest, profile, series_pinned=series_pinned)
+        )
+
+    @staticmethod
+    def _cover_match_may_seed_cache(
+        profile: ComicProfile, candidate: Candidate
+    ) -> bool:
+        """Whether a cover match's series is safe to cache under this profile."""
+        from comicbox.formats.base.online.signals import s_series
+
+        return s_series(profile, candidate) >= _COVER_MATCH_CACHE_SERIES_FLOOR
+
+    def _rank_candidates(
+        self,
+        profile: ComicProfile,
+        source_name: str,
+        candidates: list[Candidate],
+        online: OnlineSettings,
+    ) -> list[Candidate]:
+        """Score and sort candidates under this source's thresholds."""
+        from comicbox.config.online.settings import (
+            resolve_auto_threshold,
+            resolve_disambiguation_margin,
+            resolve_min_confidence,
+        )
+        from comicbox.formats.base.online.matcher import OnlineMatcher
+
+        return OnlineMatcher().rank(
+            profile,
+            candidates,
+            local_hash_provider=self._local_cover_phash,
+            candidate_hash_batch_fetcher=self._candidate_cover_hash_batch_fetcher,
+            threshold=resolve_auto_threshold(online, source_name),
+            min_confidence=resolve_min_confidence(online, source_name),
+            disambiguation_margin=resolve_disambiguation_margin(online, source_name),
+        )
+
+    def _cover_prompt(
+        self,
+        profile: ComicProfile,
+        source_name: str,
+        online: OnlineSettings,
+        candidates: list[Candidate],
+        cover: CoverSearchResult,
+    ) -> Resolution:
+        """
+        Build the prompt over the name search's rows and the cover rows.
+
+        The union is ranked by the matcher like any candidate set, which
+        hashes the cover rows for free (each carries its cover hash). A
+        prompt re-resolved after a session change reads the list as ranked,
+        so the matcher's order stands. The one exception is the cover
+        verdict's match, which leads: it is here under ``ask``, where every
+        other mode would have written it, or when its fetch failed. Under
+        ``--prompts never`` the prompt is a skip.
+        """
+        from comicbox.config.online.settings import Prompts
+        from comicbox.formats.base.online.matcher import Resolution, ResolutionKind
+
+        listed = {c.issue_id for c in candidates}
+        pool = [*candidates, *(c for c in cover.candidates if c.issue_id not in listed)]
+        ranked = self._rank_candidates(profile, source_name, pool, online)
+        if cover.match is not None:
+            chosen_id = cover.match.candidate.issue_id
+            ranked.sort(key=lambda c: c.issue_id != chosen_id)
+        kind = (
+            ResolutionKind.SKIP
+            if online.lookup.prompts is Prompts.NEVER
+            else ResolutionKind.PROMPT
+        )
+        logger.info(
+            f"online {source_name}: offering {len(ranked)} candidates, "
+            f"{len(pool) - len(candidates)} of them from the cover search"
+        )
+        return Resolution(kind, None, tuple(ranked))
 
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""

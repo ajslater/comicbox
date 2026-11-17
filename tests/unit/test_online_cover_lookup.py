@@ -17,7 +17,15 @@ import pytest
 
 from comicbox.box import Comicbox
 from comicbox.box.online_lookup import ComicboxOnlineLookup
-from comicbox.events import AutoWritten, Event, SearchCompleted, SearchStarted
+from comicbox.events import (
+    SKIP_MATCHER_DECLINED,
+    AutoWritten,
+    Event,
+    NoMatch,
+    SearchCompleted,
+    SearchStarted,
+    Skipped,
+)
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.cover_hash import (
@@ -31,6 +39,8 @@ from comicbox.formats.sources import MetadataSources
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from comicbox.formats.base.online.selector import SelectorResult
 
 _HASH = "95977c2b3129c2d3"
 _FULL = (SearchHash(_HASH, FULL_COVER_ACCEPT_BITS, CoverPart.FULL),)
@@ -84,12 +94,12 @@ class _CoverSource:
         credentials: Any,
         settings: Any,
         cover_replies: list[list[Candidate] | Exception],
-        name_candidates: Sequence[Candidate],
+        name_candidates: Sequence[Candidate] | Exception,
         get_error: Exception | None,
     ) -> None:
         del credentials, settings
         self._cover_replies = cover_replies
-        self._name_candidates = list(name_candidates)
+        self._name_candidates = name_candidates
         self._get_error = get_error
         self.cover_calls: list[str] = []
         self.search_calls = 0
@@ -113,6 +123,8 @@ class _CoverSource:
     def search(self, profile: Any) -> list[Candidate]:
         del profile
         self.search_calls += 1
+        if isinstance(self._name_candidates, Exception):
+            raise self._name_candidates
         return list(self._name_candidates)
 
     def get(self, issue_id: int) -> dict[str, Any]:
@@ -125,14 +137,27 @@ class _CoverSource:
     def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:
         del volume_id, cluster_size
 
+    def enrich_prompt_candidates(
+        self, candidates: Sequence[Candidate]
+    ) -> tuple[Candidate, ...]:
+        return tuple(candidates)
+
 
 class _Run:
-    """One lookup: the box, its fake source, events and series cache."""
+    """One lookup: its fake source, events, series cache and any prompt."""
 
-    def __init__(self, source: _CoverSource, events: list[Event], cache: dict) -> None:
+    def __init__(
+        self,
+        source: _CoverSource,
+        events: list[Event],
+        cache: dict,
+        offered: list[list[int]],
+    ) -> None:
         self.source = source
         self.events = events
         self.cache = cache
+        # The issue ids of each prompt the selector was shown, in order.
+        self.offered = offered
 
     def kinds(self, kind: type[Event]) -> list[Event]:
         return [e for e in self.events if isinstance(e, kind)]
@@ -142,10 +167,11 @@ def _run(
     monkeypatch: pytest.MonkeyPatch,
     *,
     cover_replies: list[list[Candidate] | Exception],
-    name_candidates: Sequence[Candidate] = (),
+    name_candidates: Sequence[Candidate] | Exception = (),
     hashes: tuple[SearchHash, ...] = _FULL,
     series: str = "Lois Lane",
     get_error: Exception | None = None,
+    prompts: str = "never",
     **comicbox_options: Any,
 ) -> _Run:
     sources: list[_CoverSource] = []
@@ -172,7 +198,7 @@ def _run(
             online_sources=["metron"],
             general=Namespace(metadata=metadata),
             auth=["metron:key=k"],
-            prompts="never",
+            prompts=prompts,
             **comicbox_options,
         )
     )
@@ -180,10 +206,20 @@ def _run(
     monkeypatch.setattr(cb, "_local_cover_search_hashes", lambda: hashes)
     events: list[Event] = []
     cache: dict = {}
+    offered: list[list[int]] = []
+
+    def selector(
+        profile: Any, candidates: Sequence[Candidate], ctx: Any
+    ) -> SelectorResult:
+        del profile, ctx
+        offered.append([c.issue_id for c in candidates])
+        return ("skip", None)
+
     cb.set_event_handler(events.append)
     cb.set_series_cache(cache)
+    cb.set_online_selector(selector)
     cb.run_online_lookup()
-    return _Run(sources[0], events, cache)
+    return _Run(sources[0], events, cache, offered)
 
 
 def test_an_accepted_cover_match_skips_the_name_search(
@@ -218,15 +254,125 @@ def test_an_unaccepted_cover_falls_through_to_the_name_search(
     # One search, as far as an event consumer can tell.
     assert len(run.kinds(SearchStarted)) == 1
     assert len(run.kinds(SearchCompleted)) == 1
+    # The name search's solo match is written: cover rows don't turn an
+    # auto-write into a prompt.
+    assert run.source.get_calls == [3]
 
 
-def test_ask_mode_never_sends_a_cover_search(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``ask`` never writes unprompted, so the request would be wasted."""
-    run = _run(monkeypatch, cover_replies=[[_candidate(9110, 0)]], match="ask")
+def test_ask_mode_offers_the_cover_match_first_without_writing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``ask`` never writes unprompted; the match every other mode writes leads."""
+    run = _run(
+        monkeypatch,
+        cover_replies=[[_candidate(9110, 0)]],
+        # Ranks ahead of the cover match on its own: same metadata, lower id.
+        name_candidates=[_candidate(3, 30)],
+        match="ask",
+        prompts="ask",
+    )
 
-    assert run.source.cover_calls == []
-    assert run.source.search_calls == 1
+    assert run.source.cover_calls == [_HASH]
     assert run.source.get_calls == []
+    assert run.offered == [[9110, 3]]
+
+
+def test_a_name_prompt_gains_the_cover_rows_once_each(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run = _run(
+        monkeypatch,
+        # A tie, so no verdict; issue 4 is also a name-search row.
+        cover_replies=[[_candidate(4, 3), _candidate(5, 3)]],
+        # Two rows the metadata can't tell apart: a prompt.
+        name_candidates=[_candidate(3, 30), _candidate(4, 30)],
+        prompts="ask",
+    )
+
+    (offered,) = run.offered
+    assert sorted(offered) == [3, 4, 5]
+
+
+def test_nothing_found_by_name_offers_the_cover_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run = _run(
+        monkeypatch,
+        cover_replies=[[_candidate(1, 3), _candidate(2, 3)]],
+        prompts="ask",
+    )
+
+    assert run.source.search_calls == 1
+    assert run.offered == [[1, 2]]
+    assert run.kinds(NoMatch) == []
+
+
+def test_a_failed_name_search_still_offers_the_cover_rows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run = _run(
+        monkeypatch,
+        cover_replies=[[_candidate(1, 3), _candidate(2, 3)]],
+        name_candidates=RuntimeError("502"),
+        prompts="ask",
+    )
+
+    assert run.offered == [[1, 2]]
+
+
+def test_under_prompts_never_the_cover_rows_skip_rather_than_miss(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A comic with plausible covers is deferred, not written off as a miss."""
+    run = _run(monkeypatch, cover_replies=[[_candidate(1, 3), _candidate(2, 3)]])
+
+    assert run.offered == []
+    assert run.kinds(NoMatch) == []
+    (skipped,) = run.kinds(Skipped)
+    assert isinstance(skipped, Skipped)
+    assert skipped.reason == SKIP_MATCHER_DECLINED
+
+
+def test_rows_from_an_unrelated_series_are_not_offered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The closest cover is another series' issue: neither taken nor offered."""
+    run = _run(
+        monkeypatch,
+        cover_replies=[
+            [
+                _candidate(1, 2, series="Monster High"),
+                _candidate(2, 9),
+                _candidate(6, 9),
+            ]
+        ],
+        prompts="ask",
+    )
+
+    assert run.source.get_calls == []
+    (offered,) = run.offered
+    assert sorted(offered) == [2, 6]
+
+
+def test_rows_found_before_a_failed_cover_search_are_kept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    right = _bits_away(30)
+    hashes = (
+        SearchHash(right, HALF_COVER_ACCEPT_BITS, CoverPart.RIGHT),
+        SearchHash(_HASH, FULL_COVER_ACCEPT_BITS, CoverPart.FULL),
+    )
+    # Past the half limit, so not taken, but still worth offering.
+    near_right = replace(_candidate(4, 0), precomputed_cover_hash=_bits_away(15, right))
+    run = _run(
+        monkeypatch,
+        hashes=hashes,
+        cover_replies=[[near_right], RuntimeError("502")],
+        prompts="ask",
+    )
+
+    assert run.source.cover_calls == [right, _HASH]
+    assert run.offered == [[4]]
 
 
 def test_careful_mode_writes_a_cover_match(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -343,3 +489,27 @@ def test_only_a_cover_match_on_the_same_name_seeds_the_series_cache(
 
     assert run.source.get_calls == [9110]
     assert (77 in run.cache.values()) is cached
+
+
+def test_rows_from_several_hashes_rank_by_their_closest_distance() -> None:
+    """Each row is offered at the smallest distance any hash gave it."""
+    from comicbox.box.online_covers import _keep_closest, _offered
+    from comicbox.formats.base.online.profile import ComicProfile
+
+    a, b = _candidate(1, 0), _candidate(2, 0)
+    other = _candidate(3, 0, series="Monster High")
+    profile = ComicProfile(series="Lois Lane", issue="5", issue_int=5, year=2020)
+    closest: dict[int, tuple[int, Candidate]] = {}
+
+    _keep_closest(closest, [(12, a), (14, b), (1, other)])
+    _keep_closest(closest, [(3, b), (9, a)])
+
+    assert [c.issue_id for c in _offered(closest, profile, series_pinned=False)] == [
+        2,
+        1,
+    ]
+    assert [c.issue_id for c in _offered(closest, profile, series_pinned=True)] == [
+        3,
+        2,
+        1,
+    ]
