@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.cover_hash import (
         CoverFetchPool,
         CoverHashUrlCache,
+        SearchHash,
     )
 
 
@@ -45,6 +46,8 @@ class ComicboxOnlineCovers(ComicboxNormalize):
     _cover_fetch_pool: CoverFetchPool | None = None
     _local_cover_phash_computed: bool = False
     _local_cover_phash_value: str | None = None
+    # None until computed; an empty tuple means there is no usable cover.
+    _local_cover_search_hashes_value: tuple[SearchHash, ...] | None = None
 
     def _get_cover_hash_cache(self) -> CoverHashUrlCache | None:
         """
@@ -136,16 +139,42 @@ class ComicboxOnlineCovers(ComicboxNormalize):
         finally:
             self._close_cover_hash_resources()
 
+    def _read_local_cover(self) -> bytes | None:
+        """Read the comic's cover image, or None when there isn't one."""
+        try:
+            return self.get_cover_page(pdf_format="pixmap", skip_metadata=True) or None  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
+        except Exception as exc:
+            logger.debug(f"local cover: fetch failed: {exc}")
+            return None
+
+    def _local_cover_search_hashes(self) -> tuple[SearchHash, ...]:
+        """
+        Compute the hashes to search for this comic by cover, once per box.
+
+        Separate from `_local_cover_phash`, which the matcher compares
+        candidates against: these are uprighted and split for spreads
+        (`search_hashes`), and are only worth reading the cover for when a
+        source can search by cover at all.
+        """
+        if self._local_cover_search_hashes_value is not None:
+            return self._local_cover_search_hashes_value
+        hashes: tuple[SearchHash, ...] = ()
+        if cover_bytes := self._read_local_cover():
+            try:
+                from comicbox.formats.base.online.cover_hash import search_hashes
+
+                hashes = search_hashes(cover_bytes)
+            except Exception as exc:
+                logger.warning(f"local cover: search hashes failed: {exc}")
+        self._local_cover_search_hashes_value = hashes
+        return hashes
+
     def _local_cover_phash(self) -> str | None:
         """Compute the comic's pHash on demand, cached on the box instance."""
         if self._local_cover_phash_computed:
             return self._local_cover_phash_value
         self._local_cover_phash_computed = True
-        try:
-            cover_bytes = self.get_cover_page(pdf_format="pixmap", skip_metadata=True)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
-        except Exception as exc:
-            logger.debug(f"local cover: fetch failed: {exc}")
-            return None
+        cover_bytes = self._read_local_cover()
         if not cover_bytes:
             return None
         try:
