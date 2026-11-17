@@ -216,6 +216,19 @@ def hamming_distance(a: str, b: str) -> int:
     return (parse_hash(a) ^ parse_hash(b)).bit_count()
 
 
+def cover_distance(a: str | None, b: str | None) -> int | None:
+    """
+    Hamming distance between two pHashes, or None if they can't be compared.
+
+    For hashes that come from a server: a missing, malformed or wrong-sized
+    hash is a row that can't be ranked, not an error.
+    """
+    try:
+        return hamming_distance(a or "", b or "")
+    except ValueError:
+        return None
+
+
 def cover_score(local_hash: str, candidate_hash: str) -> float:
     """
     Convert a Hamming distance into a [0, 1] similarity score.

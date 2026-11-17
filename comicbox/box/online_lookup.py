@@ -29,13 +29,13 @@ import sys
 import threading
 from dataclasses import dataclass, replace
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from glom import glom
 from loguru import logger
 
 from comicbox.box.online_covers import ComicboxOnlineCovers
-from comicbox.config.online.settings import MatchMode, Prompts
+from comicbox.config.online.settings import MatchMode, Prompts, resolve_match
 from comicbox.events import (
     SKIP_MATCHER_DECLINED,
     AutoWritten,
@@ -79,6 +79,7 @@ from comicbox.formats.base.online.series_cache import (
     release_series,
 )
 from comicbox.formats.base.online.session_state import OnlineSessionState
+from comicbox.formats.base.online.signals import s_series
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
@@ -245,6 +246,21 @@ def _series_fingerprint(profile: ComicProfile) -> str:
     volume = str(profile.volume or "")
     start_year = str(profile.series_start_year or "")
     return f"{series}|{volume}|{start_year}|{publisher}"
+
+
+# How alike the comic's series name and a cover match's must be before the
+# match may seed the series cache. A cover match only needs the names to
+# share a word, and caching what "Star Wars" turned out to be (*The Book of
+# Boba Fett*) would tag the next "Star Wars #5", from any Star Wars series,
+# as Boba Fett #5 without a search. WRatio scores a name that is only part
+# of the other 0.90, and the same name with an article or punctuation
+# changed 0.95 or more.
+_COVER_MATCH_CACHE_SERIES_FLOOR: Final = 0.95
+
+
+def _may_seed_series_cache(profile: ComicProfile, candidate: Candidate) -> bool:
+    """Whether a cover match's series is safe to cache under this profile."""
+    return s_series(profile, candidate) >= _COVER_MATCH_CACHE_SERIES_FLOOR
 
 
 def _detect_cv_id_disagreement(
@@ -898,13 +914,17 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
     def _run_search(
         self, source: OnlineSource, profile: ComicProfile, path: Path | None
     ) -> tuple[list[Candidate] | None, str]:
-        """Emit SearchStarted, invoke source.search, emit SearchCompleted."""
+        """
+        Invoke source.search and emit SearchCompleted.
+
+        `_search_path` has already emitted SearchStarted, once for the
+        cover search and this name search together.
+        """
         search_issue = strip_issue_leading_zeros(profile.issue)
         criteria_summary = (
             f"series={profile.series!r} issue={search_issue!r} year={profile.year}"
         )
         logger.info(f"online {source.name}: searching with {criteria_summary}")
-        self._emit(SearchStarted(path=path, source=source.name))
         try:
             candidates = source.search(profile)
         except OnlineLookupAbortedError:
@@ -943,7 +963,12 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         return self._handle_prompt(source, resolution.candidates)
 
     def _search_path(self, source: OnlineSource, online: OnlineSettings) -> bool:
-        """Search → rank → resolve → fetch on accept. True when accepted."""
+        """
+        Search → rank → resolve → fetch on accept. True when accepted.
+
+        A source that can search by cover is asked that first; a cover
+        match its verdict accepts is written without the name search.
+        """
         profile = self._build_profile()
         path = getattr(self, "_path", None)
         if not (profile.series or profile.issue or profile.year):
@@ -953,6 +978,9 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
                 f"filename. Use --id {source.name}:<issue_id> to tag by id."
             )
             return False
+        self._emit(SearchStarted(path=path, source=source.name))
+        if self._accept_cover_match(source, online, profile, path):
+            return True
         candidates, criteria_summary = self._run_search(source, profile, path)
         if candidates is None:
             return False
@@ -961,6 +989,47 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             return False
         resolution = self._resolve_with_matcher(source.name, candidates, online)
         return self._apply_resolution(source, resolution, path)
+
+    def _accept_cover_match(
+        self,
+        source: OnlineSource,
+        online: OnlineSettings,
+        profile: ComicProfile,
+        path: Path | None,
+    ) -> bool:
+        """
+        Search by cover, and write the match if the verdict accepts one.
+
+        Writes under every match mode but ``ask``, which never writes
+        unprompted, so the cover search isn't sent at all there. The
+        verdict is metron-tagger's calibrated rule (see `cover_verdict`),
+        which is stronger evidence than the metadata score's "unambiguous"
+        test that ``careful`` otherwise writes on.
+
+        False when nothing was accepted, or the fetch of an accepted match
+        failed; either way the name search runs next, as it does after a
+        series-cache hit whose fetch fails.
+        """
+        if resolve_match(online, source.name) is MatchMode.ASK:
+            return False
+        match = self._cover_search(
+            source, profile, series_pinned=source.name in online.lookup.series_ids
+        )
+        if match is None:
+            return False
+        self._emit(
+            SearchCompleted(
+                path=path, source=source.name, n_candidates=match.n_candidates
+            )
+        )
+        candidate = match.candidate
+        return self._accept(
+            source,
+            candidate.issue_id,
+            outcome_stats.record_auto_write,
+            emit_auto_written=True,
+            candidate=candidate if _may_seed_series_cache(profile, candidate) else None,
+        )
 
     def _report_empty_search(
         self, source: OnlineSource, criteria_summary: str, path: Path | None

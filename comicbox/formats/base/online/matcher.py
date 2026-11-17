@@ -9,6 +9,8 @@ Public surface:
 - ``OnlineMatcher.rank`` — score and sort candidates against a profile.
 - ``OnlineMatcher.resolve`` — apply the Match Resolution Policy
   (auto-write / prompt / skip / no-match).
+- ``cover_verdict`` — accept a cover search's closest result outright,
+  by cover distance rather than by blended score.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from enum import StrEnum
+from operator import itemgetter
 from typing import TYPE_CHECKING, Final
 
 from loguru import logger
@@ -29,6 +32,7 @@ from comicbox.config.online.settings import (
     resolve_min_confidence,
     resolve_solo_threshold,
 )
+from comicbox.formats.base.online.cover_hash import cover_distance
 from comicbox.formats.base.online.cover_hash import cover_score as _cover_score
 from comicbox.formats.base.online.signals import (
     s_issue,
@@ -36,10 +40,11 @@ from comicbox.formats.base.online.signals import (
     s_publisher,
     s_series,
     s_year,
+    series_words_agree,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
@@ -691,6 +696,91 @@ def _apply_cover_hashing(
         )
     rescored.sort(key=_candidate_sort_key)
     return _apply_tied_metadata_tiebreak(rescored)
+
+
+# ------------------------------------------------------------ cover verdict
+# A cover search (`OnlineSource.search_by_cover`) narrowed by issue number
+# and cover year decides by cover alone, not through the blended score:
+# at `W_COVER` = 0.20, two candidates with the same metadata need covers
+# 32 bits apart to clear `disambiguation_margin`, while the closest correct
+# match in metron-tagger's calibration led the next result by 2. The rule
+# and its numbers are metron-tagger's (Metron-Project/metron-tagger#294),
+# calibrated on 802 comics already tagged with their Metron id, with no
+# wrong match.
+
+# How far the closest cover must lead the next one. The tightest correct
+# lead seen was 2 bits, so a tie (an issue and a trade paperback sharing a
+# cover) is never taken.
+COVER_ACCEPT_MARGIN_BITS: Final = 2
+
+
+@dataclass(frozen=True, slots=True)
+class CoverMatch:
+    """A cover search's accepted candidate, and how decisively it won."""
+
+    candidate: Candidate
+    bits: int
+    runner_up_bits: int | None
+    # How many comparable rows the deciding search returned.
+    n_candidates: int
+
+
+def rank_by_cover_distance(
+    cover_hash: str, candidates: Iterable[Candidate]
+) -> list[tuple[int, Candidate]]:
+    """
+    Pair each candidate with its cover's distance from ``cover_hash``.
+
+    Closest first. A candidate whose cover hash can't be compared is
+    dropped. The sort is stable, so ties keep the server's order.
+    """
+    ranked = [
+        (bits, c)
+        for c in candidates
+        if (bits := cover_distance(cover_hash, c.precomputed_cover_hash)) is not None
+    ]
+    ranked.sort(key=itemgetter(0))
+    return ranked
+
+
+def cover_verdict(
+    ranked: Sequence[tuple[int, Candidate]],
+    accept_bits: int,
+    profile: ComicProfile,
+    *,
+    series_pinned: bool,
+) -> CoverMatch | None:
+    """
+    Accept the closest cover of one cover search, or None.
+
+    It is accepted when all three hold:
+
+    - It is within ``accept_bits`` (`SearchHash.accept_bits`: tighter for
+      half a spread, since one half is the back cover).
+    - It leads the next result by at least `COVER_ACCEPT_MARGIN_BITS`.
+    - Its series shares a distinctive word with the comic's
+      (`series_words_agree`). Unrelated covers can be within 8 bits, and a
+      shared issue number doesn't make them the same comic. Skipped when
+      the user pinned the series (``series_pinned``), since the search was
+      already limited to it.
+
+    ``ranked`` is one search's results, closest first
+    (`rank_by_cover_distance`); the runner-up is measured against the same
+    hash, never across the hashes of a spread.
+    """
+    if not ranked:
+        return None
+    bits, best = ranked[0]
+    runner_up_bits = ranked[1][0] if len(ranked) > 1 else None
+    if bits > accept_bits:
+        return None
+    if runner_up_bits is not None and runner_up_bits - bits < COVER_ACCEPT_MARGIN_BITS:
+        return None
+    if not series_pinned and not series_words_agree(
+        profile.series, best.summary.series
+    ):
+        return None
+    return CoverMatch(best, bits, runner_up_bits, len(ranked))
 
 
 class OnlineMatcher:

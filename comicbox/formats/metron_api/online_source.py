@@ -1482,18 +1482,15 @@ class MetronOnlineSource(OnlineSource):
         search off for the rest of the process. The one search that found
         out has already paid for the pages.
         """
-        from comicbox.formats.base.online.cover_hash import hamming_distance
+        from comicbox.formats.base.online.cover_hash import cover_distance
 
-        kept: list[Candidate] = []
-        for candidate in candidates:
-            try:
-                bits = hamming_distance(
-                    cover_hash, candidate.precomputed_cover_hash or ""
-                )
-            except ValueError:
-                bits = None
-            if bits is not None and bits <= _COVER_SEARCH_MAX_BITS:
-                kept.append(candidate)
+        kept = [
+            candidate
+            for candidate in candidates
+            if (bits := cover_distance(cover_hash, candidate.precomputed_cover_hash))
+            is not None
+            and bits <= _COVER_SEARCH_MAX_BITS
+        ]
         if len(kept) != len(candidates):
             _cover_search_unsupported.set()
             warn_once(
