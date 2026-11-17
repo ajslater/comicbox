@@ -155,6 +155,58 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     assert fake.issues_list_calls == []
 
 
+@pytest.mark.parametrize(
+    "profile",
+    [
+        ComicProfile(series="ee"),
+        ComicProfile(series="ee", issue="  "),
+        # A volume does not narrow: most series are volume 1.
+        ComicProfile(series="ee", volume=1),
+    ],
+)
+def test_search_makes_no_request_with_only_a_series_name(
+    monkeypatch: pytest.MonkeyPatch, profile: ComicProfile
+) -> None:
+    """
+    A series name with no number and no year is not searched at all.
+
+    `series_name` is a substring match, and mokkari follows every page, so
+    `ee.cbz` once cost about 81 requests for 8,026 rows. The result reads
+    as no match, not as a quota skip to retry tomorrow.
+    """
+    fake = _FakeMokkari(
+        issues_by_key={"ee": [_FakeBaseIssue(iid=1, number="1", series_name="Steel")]}
+    )
+    src = _make_metron_source(monkeypatch, fake)
+    assert src.search(profile) == []
+    assert fake.issues_list_calls == []
+    assert src.search_skip_reason is None
+
+
+@pytest.mark.parametrize(
+    ("issue", "year", "expected_filters"),
+    [
+        ("007", None, {"number": "7"}),
+        ("0", None, {"number": "0"}),
+        (None, 1986, {"cover_year": 1986}),
+    ],
+)
+def test_search_by_name_runs_with_a_number_or_a_year(
+    monkeypatch: pytest.MonkeyPatch,
+    issue: str | None,
+    year: int | None,
+    expected_filters: dict[str, Any],
+) -> None:
+    """Either an issue number or a cover year is enough to search by name."""
+    row = _FakeBaseIssue(iid=42, number="1", series_name="Watchmen")
+    fake = _FakeMokkari(issues_by_key={"Watchmen": [row]})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue=issue, year=year)
+
+    assert [c.issue_id for c in src.search(profile)] == [42]
+    assert fake.issues_list_calls == [{"series_name": "Watchmen", **expected_filters}]
+
+
 def test_search_issues_list_uses_series_name_directly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -332,6 +384,21 @@ def test_series_id_works_without_profile_series(
     profile = ComicProfile(issue="1", issue_int=1)  # no series at all
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [9002]
+
+
+def test_series_id_searches_without_a_number_or_a_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The by-name guard leaves --series-id alone: one series is its own bound."""
+    issues = {
+        300: [_FakeBaseIssue(iid=9003, number="1", series_name="Direct", series_id=300)]
+    }
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=300)
+    candidates = src.search(ComicProfile(series="Direct"))
+
+    assert fake.issues_list_calls == [{"series_id": 300}]
+    assert [c.issue_id for c in candidates] == [9003]
 
 
 def test_to_candidate_propagates_series_id_from_search_result(
