@@ -1158,6 +1158,8 @@ class MetronOnlineSource(OnlineSource):
 
         No series-discovery step, no per-series fan-out, and at most two
         requests: the exact call, and one wide fallback when it misses.
+        None at all for a series name with no issue number and no year;
+        see `_name_search_worth_a_call`.
 
         Not decorated with ``@with_retry()``: every API call inside is
         individually retried by its leaf wrapper (`_issues_list_with_retry`),
@@ -1193,6 +1195,8 @@ class MetronOnlineSource(OnlineSource):
                 f"online {self.name}: no series in profile; cannot search Metron "
                 "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
             )
+            return []
+        if not self._name_search_worth_a_call(profile):
             return []
 
         candidates = self._search_exact(session, profile)
@@ -1247,6 +1251,29 @@ class MetronOnlineSource(OnlineSource):
         )
         issues = self._issues_list_with_retry(session, params)
         return [self._to_candidate(i) for i in issues]
+
+    def _name_search_worth_a_call(self, profile: ComicProfile) -> bool:
+        """
+        Whether anything narrows a by-name search below a whole catalog.
+
+        `series_name` is a substring match, so a name alone returns every
+        issue of every series whose name contains it, and mokkari follows
+        every `next` page. On 2026-11-17 a file named `ee.cbz` matched
+        8,026 rows: about 81 requests, some 2% of a day's quota, for a
+        prompt nobody could use. An issue number or a cover year bounds
+        the result. A volume does not, since most series are volume 1.
+
+        Warns rather than logging at debug: the lookup goes on to report
+        an ordinary empty search, which alone would read as a real miss.
+        """
+        if strip_issue_leading_zeros(profile.issue) or profile.year is not None:
+            return True
+        logger.warning(
+            f"online {self.name}: series {profile.series!r} has no issue number "
+            "or year, so it is not searched by name. Add one, or use "
+            f"--series-id {self.name}:<series_id> or --id {self.name}:<issue_id>."
+        )
+        return False
 
     def _search_exact(self, session: Session, profile: ComicProfile) -> list[Candidate]:
         """
