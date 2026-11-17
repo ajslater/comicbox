@@ -27,7 +27,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
-from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.profile import Candidate, ComicProfile
 from comicbox.formats.base.online.retry import (
     _RATE_LIMIT_SCHEDULE,
     RetryCategory,
@@ -155,6 +155,21 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     assert fake.issues_list_calls == []
 
 
+def _search_and_warnings(
+    src: MetronOnlineSource, profile: ComicProfile
+) -> tuple[list[Candidate], list[str]]:
+    """Run a search, returning its candidates and the warnings it logged."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        candidates = src.search(profile)
+    finally:
+        loguru_logger.remove(handler_id)
+    return candidates, messages
+
+
 @pytest.mark.parametrize(
     "profile",
     [
@@ -172,15 +187,21 @@ def test_search_makes_no_request_with_only_a_series_name(
 
     `series_name` is a substring match, and mokkari follows every page, so
     `ee.cbz` once cost about 81 requests for 8,026 rows. The result reads
-    as no match, not as a quota skip to retry tomorrow.
+    as no match, not as a quota skip to retry tomorrow, so a warning says
+    why and how to tag the comic anyway.
     """
     fake = _FakeMokkari(
         issues_by_key={"ee": [_FakeBaseIssue(iid=1, number="1", series_name="Steel")]}
     )
     src = _make_metron_source(monkeypatch, fake)
-    assert src.search(profile) == []
+    candidates, warnings = _search_and_warnings(src, profile)
+
+    assert candidates == []
     assert fake.issues_list_calls == []
     assert src.search_skip_reason is None
+    assert len(warnings) == 1
+    assert "'ee' has no issue number or year" in warnings[0]
+    assert "--series-id metron:" in warnings[0]
 
 
 @pytest.mark.parametrize(
@@ -202,9 +223,11 @@ def test_search_by_name_runs_with_a_number_or_a_year(
     fake = _FakeMokkari(issues_by_key={"Watchmen": [row]})
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(series="Watchmen", issue=issue, year=year)
+    candidates, warnings = _search_and_warnings(src, profile)
 
-    assert [c.issue_id for c in src.search(profile)] == [42]
+    assert [c.issue_id for c in candidates] == [42]
     assert fake.issues_list_calls == [{"series_name": "Watchmen", **expected_filters}]
+    assert warnings == []
 
 
 def test_search_issues_list_uses_series_name_directly(
