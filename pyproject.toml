@@ -102,7 +102,6 @@ test = [
   "coverage~=7.0",
   "deepdiff~=9.0",
   "imagehash>=4.3.2",
-  "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
   "pytest-xdist~=3.8",
   "pytest~=9.0",
@@ -231,7 +230,6 @@ junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]
 pythonpath = ["."]
-asyncio_mode = "strict"
 
 [tool.radon]
 exclude = "*~,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py,tasks/*"
