@@ -1,0 +1,17 @@
+{
+  "fileDetails": {
+    "version": 1.0,
+    "UUID": "0d3f6c2a-9b1e-4f7a-8c5d-2e6b9a1f4c3d"
+  },
+  "listDetails": {
+    "name": "Minimal"
+  },
+  "issueList": [
+    {
+      "seriesName": "Civil War",
+      "seriesStartYear": 2006,
+      "issueNumber": "1",
+      "issueCoverDate": "2006-07-01"
+    }
+  ]
+}

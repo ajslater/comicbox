@@ -124,5 +124,15 @@ comicbox:
       # simyan manages ComicVine's internally.
       per_source: {}
 
+  readinglists:
+    # The GitHub repository and ref holding DieselTech's CBL reading lists,
+    # which `comicbox rl search catalog` and `fetch catalog:PATH` read.
+    catalog_repo: DieselTech/CBL-ReadingLists
+    catalog_ref: main
+    # How long the catalog index is reused before it is revalidated.
+    catalog_ttl: 4h
+    # The largest reading list a fetch downloads, in bytes (16 MiB).
+    max_download_bytes: 16777216
+
   # Targets (CLI positional args).
   paths: null

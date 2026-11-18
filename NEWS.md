@@ -1,5 +1,44 @@
 # 📰 News
 
+## v5.7.0
+
+### ✨ Added
+
+- Reading lists: `comicbox readinglist` (or `rl`) and the
+  `comicbox.readinglists` API read, validate and write ComicRack CBL, json-cbl
+  and comicbox YAML or JSON lists, combine and compare lists of one event, and
+  build lists from story arc tags. They never write over an existing file
+  without `--overwrite`.
+- `ReadingListSession` fetches reading lists from URLs, with a download size cap
+  set by the new `readinglists` config group.
+- `ReadingListSession` searches and fetches Metron reading lists and story arcs
+  with your Metron API token, sharing tagging's rate limit and response cache.
+  Long lists report progress page by page and can be cancelled between pages.
+- `ReadingListSession` fetches Comic Vine story arcs with your Comic Vine API
+  key, sharing tagging's hourly budgets and response cache. Each issue comes
+  with its series, start year, number and dates, so the list matches your comics
+  and combines with Metron's list of the arc. A spent budget fails the fetch at
+  once, saying when it frees.
+- `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
+  on GitHub, with each list's curator read from its name or folder. The index is
+  cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
+  configurable, so a fork works. A renamed list is still found by its sha.
+- `comicbox rl search metron|catalog QUERY` and
+  `comicbox rl fetch metron:ID | metron-arc:ID | comicvine-arc:ID | catalog:PATH | URL`,
+  with progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over
+  a file without `--overwrite`.
+- `comicbox rl match FILE DIR` shows which of a list's issues a directory of
+  comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
+  the list as a story arc: a dry run unless given `--apply`.
+
+### 🐛 Fixed
+
+- `comicbox rl` exits quietly when its output is closed, as by `| head -1`,
+  where it failed and stopped `write-arcs --apply` part way.
+- `write-arcs --delete-orig` removes every other name of a converted original,
+  hard links included.
+- Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
+
 ## v5.6.2
 
 ### ✨ Added

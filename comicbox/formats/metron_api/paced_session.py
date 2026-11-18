@@ -63,7 +63,11 @@ ask U7.
 
 from __future__ import annotations
 
+import threading
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -82,10 +86,13 @@ from mokkari.session import (
     HEADER_SUSTAINED_RESET,
 )
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     import requests
     from mokkari.rate_limit import RateLimitStatus
     from mokkari.session import Session
@@ -135,6 +142,74 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
+# Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
+# mokkari fetches every page of a list inside that one blocking call, and it
+# is synchronous, so its rate-limiter and response hooks run on the calling
+# thread and see these. Unset by default: tagging neither cancels inside a
+# call nor counts pages, and behaves exactly as it did without them.
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchHooks:
+    """The hooks one fetch set, and the thread they belong to."""
+
+    thread: int
+    abort: Callable[[], bool] | None
+    on_page: Callable[[requests.Response], None] | None
+
+    def here(self) -> bool:
+        """Whether this is the thread that set them."""
+        # A thread can inherit a context: a free-threaded build's threads
+        # do, as does one run with Context.run. The hooks are not its own.
+        return threading.get_ident() == self.thread
+
+
+_fetch_hooks: ContextVar[_FetchHooks | None] = ContextVar(
+    "comicbox_metron_fetch_hooks", default=None
+)
+
+
+@contextmanager
+def fetch_hooks(
+    *,
+    abort: Callable[[], bool] | None = None,
+    on_page: Callable[[requests.Response], None] | None = None,
+) -> Generator[None]:
+    """
+    Watch the mokkari calls this thread makes inside the block.
+
+    ``abort`` is asked before each send, and while the send waits at the
+    gate: when it returns true, the call raises
+    ``OnlineLookupAbortedError``. ``on_page`` sees every raw response,
+    after the gate has; it must not raise, and a raise is logged and
+    dropped like any other observer failure. Other threads never see
+    them, even one that inherits this context.
+    """
+    token = _fetch_hooks.set(_FetchHooks(threading.get_ident(), abort, on_page))
+    try:
+        yield
+    finally:
+        _fetch_hooks.reset(token)
+
+
+def _here() -> _FetchHooks | None:
+    """Get the hooks this thread set, if any."""
+    hooks = _fetch_hooks.get()
+    return hooks if hooks is not None and hooks.here() else None
+
+
+def _abort_hook() -> Callable[[], bool] | None:
+    """Get the abort hook this thread set, if any."""
+    hooks = _here()
+    return hooks.abort if hooks is not None else None
+
+
+def _abort_if_asked() -> None:
+    if (abort := _abort_hook()) is not None and abort():
+        reason = "Metron fetch cancelled."
+        raise OnlineLookupAbortedError(reason)
+
+
 class GateRateLimiter:
     """
     Adapts a `RateGate` to mokkari's `RateLimiter` protocol.
@@ -171,9 +246,20 @@ class GateRateLimiter:
         it. mokkari calls `_acquire_rate_limit_slot` BEFORE its
         try/finally, so a raise here is never paired with a `release`.
         """
+        _abort_if_asked()
         started = time.monotonic()
-        self._gate.acquire()
+        # The gate asks the hook while it waits, so a cancel does not sit
+        # out a wait that can last a minute.
+        admitted = self._gate.acquire(abort=_abort_hook())
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
+        try:
+            # A cancel that came as the slot freed is honoured before the send.
+            _abort_if_asked()
+        except OnlineLookupAbortedError:
+            # Nothing was sent: give the slot back, uncounted. mokkari never
+            # releases a slot whose acquire raised.
+            self._gate.withdraw(admitted)
+            raise
 
     def on_rate_limited(self, retry_after: float) -> None:
         """
@@ -227,6 +313,8 @@ def install_response_observer(session: Session, gate: RateGate) -> None:
         # so nothing in this hook may raise.
         try:
             _feed_gate(gate, response)
+            if (hooks := _here()) is not None and hooks.on_page is not None:
+                hooks.on_page(response)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"metron: rate-limit observation failed: {exc!r}")
 

@@ -41,6 +41,7 @@ import datetime as dt
 import threading
 import time
 from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Final
@@ -72,6 +73,10 @@ _SLACK_S: Final[float] = 2.0
 # `Retry-After` can never park a worker indefinitely. A worker that hits
 # this re-evaluates rather than gives up.
 _MAX_WAIT_S: Final[float] = 300.0
+
+# How often a wait that can be cancelled wakes to ask whether it has been.
+# A cancel sets a flag the gate cannot be notified by, so it is polled.
+_ABORT_POLL_S: Final[float] = 0.25
 
 # Sustained-quota watermarks, as a fraction of the reported daily limit.
 # WARN is a heads-up only. COLD_FLOOR is where the gate stops admitting
@@ -197,13 +202,20 @@ class RateGate:
 
     # -- admission ------------------------------------------------------------
 
-    def acquire(self) -> None:
+    def acquire(self, abort: Callable[[], bool] | None = None) -> float:
         """
         Block until a send is within pace, then record it.
 
+        Returns the time it was admitted at, which `withdraw` takes back.
         Raises `OnlineLookupAbortedError` when the daily quota is spent —
         every further request would be refused, and a 429 costs the same
         daily budget as a success, so there is nothing to gain by trying.
+
+        ``abort`` is asked each time the send has to wait, and the wait
+        wakes every `_ABORT_POLL_S` to ask again. When it returns true,
+        nothing is admitted and this raises `OnlineLookupAbortedError`.
+        It is asked with the gate held, so it must be quick, like
+        ``Event.is_set``.
         """
         started = self._clock()
         with self._cond:
@@ -217,12 +229,33 @@ class RateGate:
                     self._in_flight += 1
                     self._sends += 1
                     break
+                if abort is not None:
+                    if abort():
+                        reason = "online: cancelled while waiting for the rate limit"
+                        raise OnlineLookupAbortedError(reason)
+                    wait = min(wait, _ABORT_POLL_S)
                 self._cond.wait(min(wait, _MAX_WAIT_S))
             blocked = self._clock() - started
             if blocked > 0:
                 self._blocked_seconds += blocked
         if blocked >= 1.0:
             logger.debug(f"online rate gate: paced a request by {blocked:.1f}s")
+        return now
+
+    def withdraw(self, admitted: float) -> None:
+        """
+        Take back an admission whose send was never made.
+
+        The slot ``acquire`` recorded at ``admitted`` is given back, so the
+        window does not hold it for a minute, and the send is not counted.
+        A cooldown that rebuilt the window since has already replaced it.
+        """
+        with self._cond:
+            with suppress(ValueError):
+                self._slots.remove(admitted)
+            self._sends = max(0, self._sends - 1)
+            self._in_flight = max(0, self._in_flight - 1)
+            self._cond.notify_all()
 
     def release(self) -> None:
         """Retire one in-flight request and wake a waiter."""

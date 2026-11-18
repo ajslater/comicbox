@@ -560,7 +560,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
 
 
 def add_online_auth_group(parser: ArgumentParser) -> None:
-    """Add ``--auth``."""
+    """Add ``--auth``; the reading-list CLI shares it."""
     group = parser.add_argument_group("online: auth")
     group.add_argument(
         "-a",
@@ -582,7 +582,7 @@ def add_online_auth_group(parser: ArgumentParser) -> None:
 
 
 def add_online_cache_group(parser: ArgumentParser) -> None:
-    """Add the online cache options."""
+    """Add the online cache options; the reading-list CLI shares them."""
     group = parser.add_argument_group("online: cache")
     group.add_argument(
         "--cache",

@@ -71,11 +71,14 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
     from datetime import timedelta
     from pathlib import Path
 
     from simyan.comicvine import Comicvine
+    from simyan.schemas.issue import BasicIssue
+    from simyan.schemas.story_arc import StoryArc
+    from simyan.schemas.volume import BasicVolume
 
     from comicbox.config.online.settings import OnlineSettings
     from comicbox.formats.base.online.profile import ComicProfile
@@ -98,6 +101,12 @@ _SEARCH_DEADLINE_S = 45.0
 # The endpoint pool `probe` spends from. simyan names a pool after the
 # resource, and nothing else comicbox does lists origins.
 _PROBE_POOL: Final = "origins"
+
+# The pools the reading-list calls spend from. simyan names a detail
+# endpoint's pool `get_<resource>` and a list endpoint's after the list.
+_STORY_ARC_POOL: Final = "get_story_arc"
+_ISSUES_POOL: Final = "issues"
+_VOLUMES_POOL: Final = "volumes"
 
 # Comic Vine's cap is per hour, so its sliding window is an hour wide.
 # In milliseconds to match pyrate-limiter's `item_timestamp` stamps.
@@ -316,6 +325,11 @@ def _refuse_spent_pool(settings: OnlineSettings, pool: str) -> None:
         at = datetime.fromtimestamp(reset, tz=UTC).astimezone()
         reason += f"; a call frees at {at:%H:%M}"
     raise RateLimitError(reason)
+
+
+def _id_filter(ids: Sequence[int]) -> dict[str, str]:
+    """Filter a list endpoint to some ids: Comic Vine ORs a field's values."""
+    return {"filter": "id:" + "|".join(str(id_) for id_ in ids)}
 
 
 def _drop_v2_cache_table(cache_path: Path) -> None:
@@ -630,6 +644,29 @@ class ComicVineOnlineSource(OnlineSource):
         finally:
             close_client(client)
         return shared_client_rate_limit_status(self._settings)
+
+    # -- reading lists ----------------------------------------------------
+    # One attempt each through the shared client, and no retry: a
+    # reading-list fetch reports a failure to its caller, and an hour's
+    # wait for a spent pool is refused before the request, not slept.
+
+    def story_arc(self, arc_id: int) -> StoryArc:
+        """Fetch a story arc: its name, dates and its issues' ids."""
+        _refuse_spent_pool(self._settings, _STORY_ARC_POOL)
+        self._record_api_call("get_story_arc")
+        return self._get_session().get_story_arc(arc_id)
+
+    def issues_by_id(self, ids: Sequence[int]) -> list[BasicIssue]:
+        """List the issues with these ids, one call for each 100."""
+        _refuse_spent_pool(self._settings, _ISSUES_POOL)
+        self._record_api_call("list_issues")
+        return self._get_session().list_issues(_id_filter(ids), max_results=len(ids))
+
+    def volumes_by_id(self, ids: Sequence[int]) -> list[BasicVolume]:
+        """List the volumes with these ids, one call for each 100."""
+        _refuse_spent_pool(self._settings, _VOLUMES_POOL)
+        self._record_api_call("list_volumes")
+        return self._get_session().list_volumes(_id_filter(ids), max_results=len(ids))
 
     @staticmethod
     def _cache_expiry(resolved: tuple[Path, timedelta] | None) -> Any:

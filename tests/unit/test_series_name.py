@@ -1,4 +1,4 @@
-"""One series normalizer for the online matcher (B6)."""
+"""One series normalizer for the online matcher and reading lists (B6)."""
 
 import random
 import re
