@@ -16,12 +16,12 @@ from __future__ import annotations
 import shutil
 import sys
 from io import StringIO
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from comicbox import cli, logger
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CBI_CBR_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -139,3 +139,96 @@ def test_config_error_brackets_survive_rich(tmp_path: Path) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-v"])
+
+
+def _logged(monkeypatch: pytest.MonkeyPatch, *argv: str) -> tuple[int, str, str]:
+    """Run ``cli.main``; return its exit code, stdout, and what it logged, tracebacks too."""
+    from loguru import logger as loguru_logger
+
+    # The runner replaces every sink with its own, enqueued; keep this one.
+    monkeypatch.setattr("comicbox.run.init_logging", lambda *_: None)
+    messages: list[str] = []
+    handler = loguru_logger.add(messages.append, format="{message}\n{exception}")
+    try:
+        code, out = _run_cli(*argv)
+    finally:
+        loguru_logger.remove(handler)
+    return code, out, "".join(messages)
+
+
+def _occupied(tmp_path: Path) -> tuple[tuple[str, ...], str]:
+    comic = tmp_path / "c.cbr"
+    shutil.copy(CBI_CBR_SOURCE_PATH, comic)
+    comic.with_suffix(".cbz").write_text("someone else's comic")
+    return ("--cbz", str(comic)), "c.cbz already exists"
+
+
+def _not_a_directory(tmp_path: Path) -> tuple[tuple[str, ...], str]:
+    comic = tmp_path / "x.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, comic)
+    target = tmp_path / "notadir"
+    target.touch()
+    return ("-x", "0", "-d", str(target), str(comic)), "is not a directory"
+
+
+@pytest.mark.parametrize("refusal", [_occupied, _not_a_directory])
+def test_a_deliberate_refusal_is_one_line_and_still_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, refusal: Any
+) -> None:
+    """B1: an occupied destination, the 5.2.0 refusal, printed a traceback."""
+    argv, message = refusal(tmp_path)
+
+    code, out, logged = _logged(monkeypatch, *argv)
+
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert message in logged
+    assert "Traceback" not in logged
+
+
+def test_an_unexpected_failure_keeps_its_traceback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from comicbox.run import Runner
+
+    def boom(*_: Any) -> None:
+        reason = "boom"
+        raise RuntimeError(reason)
+
+    monkeypatch.setattr(Runner, "run_on_file", boom)
+    comic = tmp_path / "x.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, comic)
+
+    code, _, logged = _logged(monkeypatch, "-p", str(comic))
+
+    assert code == 1
+    assert "Traceback" in logged
+    assert "RuntimeError: boom" in logged
+
+
+@pytest.mark.parametrize("jobs", ["1", "2"])
+def test_a_missing_path_fails_once_and_the_rest_still_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, jobs: str
+) -> None:
+    """A path naming nothing was logged twice and the run exited 0."""
+    good, _corrupt = _batch(tmp_path)
+    missing = tmp_path / "no_such.cbz"
+
+    code, out, logged = _logged(
+        monkeypatch, "-j", jobs, str(missing), *(str(p) for p in good)
+    )
+
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert logged.count(f"{missing} does not exist.") == 1
+    assert "Traceback" not in logged
+    assert logged.count("No action performed") == len(good)
+
+
+def test_a_lone_missing_path_exits_one(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    code, out, logged = _logged(monkeypatch, "-j", "2", str(tmp_path / "no.cbz"))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert "No files to process" not in logged

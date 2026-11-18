@@ -15,10 +15,13 @@ from typing import TYPE_CHECKING
 
 from rapidfuzz import fuzz
 
+from comicbox.series_name import normalize_series
+
 if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import Candidate, ComicProfile
 
 import re
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Final
 
@@ -30,28 +33,11 @@ _YEAR_ANCHORS: Final[MappingProxyType[int, float]] = MappingProxyType(
 )
 _YEAR_DECAY_ZERO: Final[int] = 7
 
-_VOLUME_SUFFIX_RE = re.compile(
-    r"\s*(?:\(\s*)?(?:vol(?:ume|\.)?)\s*\d+\s*\)?", re.IGNORECASE
-)
 _PUBLISHER_NOISE_RE = re.compile(
     r"\b(?:inc|incorporated|comics?|publishing|press|llc|ltd|publications?)\b\.?",
     re.IGNORECASE,
 )
 _NON_ALPHANUM_RE = re.compile(r"[^a-z0-9]+")
-
-
-def normalize_series(name: str) -> str:
-    """Lowercase, strip volume suffixes, collapse non-alphanumeric runs."""
-    s = name.lower()
-    s = _VOLUME_SUFFIX_RE.sub(" ", s)
-    s = _NON_ALPHANUM_RE.sub(" ", s)
-    return " ".join(s.split())
-
-
-# Backward-compat alias for the previously-private helper. Other modules
-# in `comicbox.formats.base.online` import the public `normalize_series`; keep the
-# old name resolving until those migrations land.
-_normalize_series = normalize_series
 
 
 def _normalize_publisher(name: str) -> str:
@@ -60,6 +46,72 @@ def _normalize_publisher(name: str) -> str:
     s = _PUBLISHER_NOISE_RE.sub(" ", s)
     s = _NON_ALPHANUM_RE.sub(" ", s)
     return " ".join(s.split())
+
+
+# Words too common in series names to show two names are the same series:
+# darkseid's `remove_articles` list, which metron-tagger's cover search
+# uses (metron-tagger#294), plus "vs". "it's" is absent because the
+# apostrophe has already joined it to "its".
+_SERIES_STOP_WORDS: Final = frozenset(
+    {
+        "a",
+        "am",
+        "an",
+        "and",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "for",
+        "if",
+        "is",
+        "issue",
+        "it",
+        "its",
+        "itself",
+        "of",
+        "or",
+        "so",
+        "the",
+        "vs",
+        "with",
+    }
+)
+# A hyphen, slash or apostrophe inside a word joins its parts, so
+# "Spider-Man" is one word and doesn't match "Iron Man" on "man".
+_SERIES_WORD_JOINERS_RE: Final = re.compile(r"(?<=\w)[-/'\u2019](?=\w)")
+
+
+def series_words(name: str) -> frozenset[str]:
+    """
+    Return the distinctive words of a series name, for telling names apart.
+
+    Words are normalized as `normalize_series` normalizes a name, after a
+    hyphen, slash or apostrophe inside a word joins it. Stop words are
+    dropped. Each pair of neighbouring words is also included joined, so
+    Metron's "Batman / Superman" (a spaced slash, two words) and a
+    filename's "Batman-Superman" (one word) share "batmansuperman".
+    """
+    words = [
+        word
+        for word in normalize_series(_SERIES_WORD_JOINERS_RE.sub("", name)).split()
+        if word not in _SERIES_STOP_WORDS
+    ]
+    return frozenset((*words, *(a + b for a, b in pairwise(words))))
+
+
+def series_words_agree(a: str | None, b: str | None) -> bool:
+    """
+    Whether two series names share a distinctive word.
+
+    A coarse check, by design: a filename often names only part of a
+    series ("Star Wars" for *Star Wars: The Book of Boba Fett*), so this
+    asks only whether the names could be the same series, not how alike
+    they are. It is what stops a close cover from another series with the
+    same issue number being taken as a match.
+    """
+    return bool(a and b and series_words(a) & series_words(b))
 
 
 def s_series(profile: ComicProfile, candidate: Candidate) -> float:
@@ -71,14 +123,14 @@ def s_series(profile: ComicProfile, candidate: Candidate) -> float:
     so a comic filed under a localized or variant title still matches
     its canonical volume.
     """
-    if not profile.series or not (a := _normalize_series(profile.series)):
+    if not profile.series or not (a := normalize_series(profile.series)):
         return 0.0
     summary = candidate.summary
     return max(
         (
             float(fuzz.WRatio(a, b)) / 100.0
             for name in (summary.series, *summary.alt_series)
-            if name and (b := _normalize_series(name))
+            if name and (b := normalize_series(name))
         ),
         default=0.0,
     )

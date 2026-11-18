@@ -18,6 +18,7 @@ from collections import OrderedDict
 from dataclasses import replace
 from datetime import timedelta
 from functools import partial
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -39,6 +40,10 @@ from comicbox.formats.base.online.sources.base import (
     claim_cache_refresh,
 )
 from comicbox.formats.base.online.warn_once import warn_once
+from comicbox.formats.metron_api.cover_search import (
+    MAX_COVER_HASH_DISTANCE,
+    issues_by_cover_hash,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
@@ -58,6 +63,7 @@ if TYPE_CHECKING:
     from mokkari.sqlite_cache import SqliteCache
 
     from comicbox.formats.base.online.profile import ComicProfile
+    from comicbox.formats.metron_api.cover_search import CoverMatch
 
 # Sessions are shared across the API token that built them (see
 # `_get_session`) — not `db_path` like the old pyrate_limiter override
@@ -133,6 +139,23 @@ _MAX_PROMPT_SERIES_LOOKUPS: Final[int] = 6
 _prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
 _prefetch_lock = threading.Lock()
 
+# Cover search (`cover_search`), narrowed the way metron-tagger narrows it
+# (metron-tagger#294). It asks for the widest distance Metron allows;
+# acceptance is decided by the caller at a tighter limit, so the extra
+# width only adds candidates to rank.
+# Filename years are often the release year, which can differ from the
+# cover year, so the cover-date range is a year either side.
+_COVER_YEAR_TOLERANCE: Final = 1
+# A year outside this range would make a cover date Metron rejects with a
+# 400. `parse_year` takes any four digits, "0000" included.
+_COVER_YEARS: Final = range(1900, 2100)
+
+# Set once a cover search comes back with rows `cover_hash_near` could not
+# have returned: a Metron without the filter, which DRF silently ignores.
+# Every later cover search in the process is skipped, because each one
+# would page through every issue matching the number and date range.
+_cover_search_unsupported = threading.Event()
+
 
 def _has_prefetch(volume_id: int) -> bool:
     """Whether this volume's issue list has already been pulled."""
@@ -179,7 +202,7 @@ def close_shared_sessions() -> None:
 
 def reset_shared_sessions() -> None:
     """
-    Drop every shared session and gate.
+    Drop every shared session and gate, and forget a cover-search refusal.
 
     The test seam, and what the at-fork handler calls in a child. Mirrors
     the ComicVine source's `reset_shared_sessions`.
@@ -187,6 +210,7 @@ def reset_shared_sessions() -> None:
     with _session_cache_lock:
         _session_cache.clear()
         _gate_cache.clear()
+    _cover_search_unsupported.clear()
 
 
 def _after_fork_in_child() -> None:
@@ -390,9 +414,20 @@ def _issue_url(issue_id: int) -> str:
 # mentions credentials or an api key.
 _RATE_LIMIT_MARKERS: Final = ("rate limit", "throttl", "too many requests")
 
-# Statuses that mean "these credentials will never work". Metron's 429 is
-# already a RateLimitError, so it never reaches the status check.
-_AUTH_STATUSES: Final = frozenset({401, 403})
+# What a chained HTTP status means; any status not listed is TRANSIENT.
+# Metron's 429 is already a RateLimitError, so it never reaches this map.
+# A 400 is DRF rejecting a filter value (a malformed cover hash, an
+# out-of-range distance, an unparsable date): comicbox built a bad
+# request, and replaying it verbatim can only fail the same way. A 404 is
+# an id Metron does not have.
+_STATUS_CATEGORIES: Final = MappingProxyType(
+    {
+        400: RetryCategory.INVALID,
+        401: RetryCategory.AUTH,
+        403: RetryCategory.AUTH,
+        404: RetryCategory.NOT_FOUND,
+    }
+)
 
 # Credential wording, used only for the ApiError paths that carry no
 # chained response (the 2xx `detail` body and pydantic validation).
@@ -426,9 +461,7 @@ def _classify_api_error(exc: BaseException) -> RetryCategory:
         return RetryCategory.RATE_LIMIT
     status = getattr(getattr(exc.__cause__, "response", None), "status_code", None)
     if status is not None:
-        return (
-            RetryCategory.AUTH if status in _AUTH_STATUSES else RetryCategory.TRANSIENT
-        )
+        return _STATUS_CATEGORIES.get(status, RetryCategory.TRANSIENT)
     if any(marker in msg for marker in _AUTH_MARKERS):
         return RetryCategory.AUTH
     return RetryCategory.TRANSIENT
@@ -1071,6 +1104,8 @@ class MetronOnlineSource(OnlineSource):
 
         No series-discovery step, no per-series fan-out, and at most two
         requests: the exact call, and one wide fallback when it misses.
+        None at all for a series name with no issue number and no year;
+        see `_name_search_worth_a_call`.
 
         Not decorated with ``@with_retry()``: every API call inside is
         individually retried by its leaf wrapper (`_issues_list_with_retry`),
@@ -1106,6 +1141,8 @@ class MetronOnlineSource(OnlineSource):
                 f"online {self.name}: no series in profile; cannot search Metron "
                 "(use --id metron:<id> for direct lookup, or --series-id metron:<id>)"
             )
+            return []
+        if not self._name_search_worth_a_call(profile):
             return []
 
         candidates = self._search_exact(session, profile)
@@ -1160,6 +1197,29 @@ class MetronOnlineSource(OnlineSource):
         )
         issues = self._issues_list_with_retry(session, params)
         return [self._to_candidate(i) for i in issues]
+
+    def _name_search_worth_a_call(self, profile: ComicProfile) -> bool:
+        """
+        Whether anything narrows a by-name search below a whole catalog.
+
+        `series_name` is a substring match, so a name alone returns every
+        issue of every series whose name contains it, and mokkari follows
+        every `next` page. On 2026-11-17 a file named `ee.cbz` matched
+        8,026 rows: about 81 requests, some 2% of a day's quota, for a
+        prompt nobody could use. An issue number or a cover year bounds
+        the result. A volume does not, since most series are volume 1.
+
+        Warns rather than logging at debug: the lookup goes on to report
+        an ordinary empty search, which alone would read as a real miss.
+        """
+        if strip_issue_leading_zeros(profile.issue) or profile.year is not None:
+            return True
+        logger.warning(
+            f"online {self.name}: series {profile.series!r} has no issue number "
+            "or year, so it is not searched by name. Add one, or use "
+            f"--series-id {self.name}:<series_id> or --id {self.name}:<issue_id>."
+        )
+        return False
 
     def _search_exact(self, session: Session, profile: ComicProfile) -> list[Candidate]:
         """
@@ -1282,6 +1342,102 @@ class MetronOnlineSource(OnlineSource):
                 "server that supports the filter would not have sent them.",
             )
         return kept
+
+    def _build_cover_search_params(
+        self, profile: ComicProfile
+    ) -> dict[str, Any] | None:
+        """
+        Build the filters that narrow a cover search, or None if there are none.
+
+        The issue number and cover year do most of the narrowing: a hash on
+        its own can't tell apart unrelated covers a few bits away. A
+        ``--series-id`` narrows further than a year can, so it replaces the
+        date range rather than joining it; a file's year is often the
+        series' start year, which would exclude later issues.
+
+        None, so no request, without an issue number, and without either a
+        series id or a plausible year: a query that loose returns hundreds
+        of covers for nothing to rank but the hash.
+        """
+        number = strip_issue_leading_zeros(profile.issue)
+        if not number:
+            return None
+        params: dict[str, Any] = {"number": number}
+        series_id = self._settings.lookup.series_ids.get(self.name)
+        if series_id is not None:
+            params["series_id"] = series_id
+            return params
+        year = profile.year
+        if year is None or year not in _COVER_YEARS:
+            return None
+        params["cover_date_range_after"] = f"{year - _COVER_YEAR_TOLERANCE}-01-01"
+        params["cover_date_range_before"] = f"{year + _COVER_YEAR_TOLERANCE}-12-31"
+        return params
+
+    @override
+    def can_search_by_cover(self, profile: ComicProfile) -> bool:
+        """Metron can, unless the server ignored the filter earlier this run."""
+        return (
+            not _cover_search_unsupported.is_set()
+            and self._build_cover_search_params(profile) is not None
+        )
+
+    @override
+    def search_by_cover(
+        self, profile: ComicProfile, cover_hash: str
+    ) -> list[Candidate]:
+        """
+        One `issues_by_cover_hash` call, at the widest distance Metron allows.
+
+        Not decorated with ``@with_retry()`` for the reason `search` isn't:
+        `_issues_by_cover_hash_with_retry` carries the call's retry budget.
+        Like `search`, it declines (returns []) once the daily quota is down
+        to the reserve.
+        """
+        params = self._build_cover_search_params(profile)
+        if params is None or not self._may_start_cold_search():
+            return []
+        session = self._get_session()
+        matches = self._issues_by_cover_hash_with_retry(session, cover_hash, params)
+        return self._drop_beyond_cover_range(matches)
+
+    def _drop_beyond_cover_range(self, matches: list[CoverMatch]) -> list[Candidate]:
+        """
+        Keep only the rows `cover_hash_near` could have returned.
+
+        A Metron without the filter (one that predates metron#683, or a
+        rollback) ignores it as DRF ignores any unknown filter, and answers
+        with every issue matching the number and date range. That isn't a
+        wider search, it's a different one: a 40-bit cover would rank as a
+        candidate. So rows without a comparable hash, or further than the
+        distance asked for, are dropped, and their presence turns cover
+        search off for the rest of the process. The one search that found
+        out has already paid for the pages.
+        """
+        kept = [
+            match
+            for match in matches
+            if match.distance is not None and match.distance <= MAX_COVER_HASH_DISTANCE
+        ]
+        if len(kept) != len(matches):
+            _cover_search_unsupported.set()
+            warn_once(
+                "metron:cover-hash-near-ignored",
+                f"online {self.name}: Metron returned issues that "
+                "cover_hash_near could not have, so it is ignoring the "
+                "filter. Cover search is off for the rest of this run.",
+            )
+        return [self._to_candidate(match.issue) for match in kept]
+
+    @with_retry()
+    def _issues_by_cover_hash_with_retry(
+        self, session: Session, cover_hash: str, params: dict[str, Any]
+    ) -> list[CoverMatch]:
+        """Per-call retry wrapper around `issues_by_cover_hash`, one `issues_list`."""
+        self._record_api_call("issues_list")
+        return issues_by_cover_hash(
+            session, cover_hash, MAX_COVER_HASH_DISTANCE, params
+        )
 
     @with_retry()
     def _issues_list_with_retry(

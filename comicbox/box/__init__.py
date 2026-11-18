@@ -48,7 +48,7 @@ class Comicbox(
         if (convert.extract_pages_from, convert.extract_pages_to) != (None, None):
             self.extract_pages_config()
             noop = False
-        if write.formats or convert.cbz or write.delete_all_tags:
+        if write.formats or write.keep_formats or convert.cbz or write.delete_all_tags:
             self.dump()
             noop = False
         return noop

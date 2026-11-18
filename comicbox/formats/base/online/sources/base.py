@@ -59,23 +59,28 @@ def refresh_cache_unlink_once(cache_path: Path) -> None:
         logger.debug(f"refresh-cache: removed {cache_path}")
 
 
-def resolve_cache_db_path(
-    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
-) -> Path:
+def resolve_cache_dir(cache_dir: Path | None, *, create: bool = True) -> Path:
     """
-    Resolve a source's cache sqlite path.
+    Resolve the online cache directory.
 
     Honours an explicit ``online.cache_dir``; otherwise uses the
     platformdirs user cache path for comicbox. ``create=False`` skips
-    making the parent directory, for read-only callers (a budget
-    readout) that must not have side effects.
+    making it, for read-only callers (a budget readout) that must not
+    have side effects.
     """
     if cache_dir is None:
         cache_dir = user_cache_path("comicbox") / "online"
     cache_dir = Path(cache_dir).expanduser()
     if create:
         cache_dir.mkdir(parents=True, exist_ok=True)
-    return cache_dir / f"{name}_{suffix}.sqlite"
+    return cache_dir
+
+
+def resolve_cache_db_path(
+    cache_dir: Path | None, name: str, suffix: str = "cache", *, create: bool = True
+) -> Path:
+    """Resolve a source's cache sqlite path in the online cache directory."""
+    return resolve_cache_dir(cache_dir, create=create) / f"{name}_{suffix}.sqlite"
 
 
 class OnlineSource(ABC):
@@ -267,6 +272,36 @@ class OnlineSource(ABC):
         self, volume_id: int, issue_number: str | None
     ) -> Candidate | None:
         """One volume-scoped API call; sources without a fast path omit it."""
+        raise NotImplementedError
+
+    def can_search_by_cover(self, profile: ComicProfile) -> bool:  # noqa: ARG002
+        """
+        Whether `search_by_cover` would send a request for this comic.
+
+        Asked before the comic's cover is read and hashed, so a source
+        that can't search by cover, or a profile missing what the query
+        needs to stay narrow, costs nothing. The default is False.
+        """
+        return False
+
+    def search_by_cover(
+        self,
+        profile: ComicProfile,
+        cover_hash: str,
+    ) -> list[Candidate]:
+        """
+        Find the issues whose cover is near ``cover_hash``, in one request.
+
+        ``cover_hash`` is a 64-bit pHash as 16 hex digits. Every candidate
+        returned carries its own cover hash in `precomputed_cover_hash`, so
+        the caller can measure each distance itself. The profile narrows
+        the query (issue number, cover year): a hash alone can't tell
+        unrelated covers apart, since they can be a few bits away.
+
+        Called only after `can_search_by_cover` said yes. An empty list
+        means the search ran and found nothing. Failures propagate, as
+        from `search`. Sources without a cover search don't override it.
+        """
         raise NotImplementedError
 
     def prefetch_volume(self, volume_id: int, cluster_size: int) -> None:  # noqa: B027

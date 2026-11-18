@@ -3,7 +3,7 @@
 import re
 import sys
 from decimal import Decimal
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 from loguru import logger
 from marshmallow import fields
@@ -19,36 +19,34 @@ if sys.version_info >= (3, 12):
 else:
     from typing_extensions import override
 
-NumberType = int | float | Decimal
+NumT = TypeVar("NumT", bound=int | float | Decimal)
 PAGE_COUNT_KEY = "page_count"
 
 
-class RangedNumberMixin:
+class RangedNumberMixin(Generic[NumT]):
     """Number range methods."""
 
     ZERO_FILL: int = 0
-    _min: NumberType | None = None
-    _max: NumberType | None = None
+    _min: NumT | None = None
+    _max: NumT | None = None
 
-    def _set_range(
-        self, minimum: NumberType | None, maximum: NumberType | None
-    ) -> None:
+    def _set_range(self, minimum: NumT | None, maximum: NumT | None) -> None:
         self._min = minimum
         self._max = maximum
 
     @classmethod
-    def parse_str(cls, num_obj) -> NumberType | None:
+    def parse_str(cls, num_obj) -> NumT | None:
         """Parse numerical string method."""
         raise NotImplementedError
 
-    def _deserialize_pre(self, value: Any) -> NumberType | None:
+    def _deserialize_pre(self, value: Any) -> NumT | None:
         result = self.parse_str(value) if isinstance(value, str) else value
         if is_empty(result):
             return None
         return result
 
-    def _deserialize_post(self, value: NumberType | None) -> NumberType | None:
-        result: NumberType | None = value
+    def _deserialize_post(self, value: NumT | None) -> NumT | None:
+        result: NumT | None = value
         if result is not None:
             old_result = result
             if self._min is not None:
@@ -61,12 +59,12 @@ class RangedNumberMixin:
 
     def _serialize_post(self, result: Any) -> Any:
         """Zero pad as_string numbers for sorting."""
-        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        if self.as_string and self.ZERO_FILL and result is not None:  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
             result = str(result).zfill(self.ZERO_FILL)
         return result
 
 
-class IntegerField(fields.Integer, RangedNumberMixin):
+class IntegerField(fields.Integer, RangedNumberMixin[int]):
     """Durable integer field."""
 
     _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
@@ -95,10 +93,10 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         pre_value = self._deserialize_pre(value)
         result = super()._deserialize(pre_value, *args, **kwargs)
-        return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
+        return self._deserialize_post(result)
 
     @override
     def _serialize(self, *args: Any, **kwargs: Any) -> int:
@@ -106,7 +104,7 @@ class IntegerField(fields.Integer, RangedNumberMixin):
         return self._serialize_post(result)
 
 
-class DecimalField(fields.Decimal, RangedNumberMixin):
+class DecimalField(fields.Decimal, RangedNumberMixin[Decimal]):
     """Durable Decimal field that parses some fractions."""
 
     DECIMAL_MATCHER = re.compile(r"\d*\.?\d+")
@@ -137,17 +135,28 @@ class DecimalField(fields.Decimal, RangedNumberMixin):
         self._set_range(minimum, maximum)
 
     @override
-    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _deserialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self, value: Any, *args: Any, **kwargs: Any
     ) -> Decimal | None:
         pre_value = self._deserialize_pre(value)
         result = super()._deserialize(pre_value, *args, **kwargs)
-        return self._deserialize_post(result)  #  pyright: ignore[reportReturnType], # ty: ignore[invalid-return-type]
+        return self._deserialize_post(result)
 
     @override
     def _serialize(self, *args: Any, **kwargs: Any) -> Any:
         result = super()._serialize(*args, **kwargs)
         return self._serialize_post(result)
+
+
+class SignedDecimalField(DecimalField):
+    """
+    A decimal that keeps a leading minus sign.
+
+    Issue -1 is a real issue number; DecimalField reads only digits, so its
+    "-1" was 1.
+    """
+
+    DECIMAL_MATCHER = re.compile(r"-?\d*\.?\d+")
 
 
 class BooleanField(fields.Boolean):

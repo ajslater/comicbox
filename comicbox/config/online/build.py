@@ -15,6 +15,7 @@ instead of going through confuse because:
 
 from __future__ import annotations
 
+import math
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
@@ -57,6 +58,8 @@ _TTL_UNIT_SECONDS: Mapping[str, int] = {
     "d": 86400,
     "w": 604800,
 }
+# The online cache's lifetime when cache.ttl is missing or unparsable.
+_DEFAULT_CACHE_TTL = timedelta(days=7)
 
 
 def _coalesce(*values: Any) -> Any:
@@ -67,24 +70,62 @@ def _coalesce(*values: Any) -> Any:
     return None
 
 
-def _parse_ttl(raw: str | None) -> timedelta:
-    """Parse a simple duration string like '7d', '24h', '60m', '0' → timedelta."""
+def _unparsable_ttl(raw: Any, default: timedelta, label: str) -> timedelta:
+    logger.warning(
+        f"unparsable {label} {raw!r}, defaulting to {_format_ttl(default)} "
+        "(use forms like 7d, 24h, 60m, or 0)"
+    )
+    return default
+
+
+def _ttl_from_seconds(seconds: float, default: timedelta, label: str) -> timedelta:
+    if seconds >= 0 and math.isfinite(seconds):
+        return timedelta(seconds=seconds)
+    return _unparsable_ttl(seconds, default, label)
+
+
+def parse_ttl(
+    raw: str | float | None,
+    *,
+    default: timedelta = _DEFAULT_CACHE_TTL,
+    label: str = "cache.ttl",
+) -> timedelta:
+    """
+    Parse a duration like '7d', '24h', '60m' or '0', or a number of seconds.
+
+    A number is accepted as YAML writes it, so ``ttl: 0`` works as the
+    warning below suggests. A missing or unparsable value falls back to
+    ``default``; the warning names the setting by ``label``, so each
+    caller's lifetime stays its own.
+    """
     if raw is None:
-        return timedelta(days=7)
-    raw = raw.strip().lower()
-    if not raw or raw == "0":
+        return default
+    if isinstance(raw, int | float) and not isinstance(raw, bool):
+        return _ttl_from_seconds(raw, default, label)
+    text = str(raw).strip().lower()
+    if not text or text == "0":
         return timedelta(0)
-    suffix = raw[-1]
+    suffix = text[-1]
     try:
         if suffix in _TTL_UNIT_SECONDS:
-            return timedelta(seconds=int(raw[:-1]) * _TTL_UNIT_SECONDS[suffix])
-        return timedelta(seconds=int(raw))
+            return timedelta(seconds=int(text[:-1]) * _TTL_UNIT_SECONDS[suffix])
+        return timedelta(seconds=int(text))
     except ValueError:
-        logger.warning(
-            f"unparsable cache.ttl {raw!r}, defaulting to 7d "
-            "(use forms like 7d, 24h, 60m, or 0)"
-        )
-        return timedelta(days=7)
+        return _unparsable_ttl(text, default, label)
+
+
+# The units a lifetime is spelled in, largest first. Not weeks: the config
+# writes 7d, and the warning said "defaulting to 7d" before this was shared.
+_TTL_SPELLING_UNITS = (("d", 86400), ("h", 3600), ("m", 60))
+
+
+def _format_ttl(ttl: timedelta) -> str:
+    """Spell a lifetime as the config does: 7d, 4h, 30m, or seconds."""
+    seconds = int(ttl.total_seconds())
+    for suffix, unit in _TTL_SPELLING_UNITS:
+        if seconds and seconds % unit == 0:
+            return f"{seconds // unit}{suffix}"
+    return str(seconds)
 
 
 def _parse_explicit_db_id(
@@ -297,7 +338,7 @@ def _build_cache(
     return OnlineCacheSettings(
         mode=cache_mode,
         dir=cache_dir,
-        ttl=_parse_ttl(cache_ttl_raw),
+        ttl=parse_ttl(cache_ttl_raw),
     )
 
 

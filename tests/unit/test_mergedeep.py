@@ -95,10 +95,11 @@ def test_merge_mutates_dest_in_place_and_returns_it() -> None:
 
 def test_merged_in_source_values_are_deep_copies() -> None:
     """Later mutation of a source must not leak into the merged dest."""
-    source_list = [1, [2]]
+    inner = [2]
+    source_list = [1, inner]
     dest: dict = {}
     merge(dest, {"new": source_list}, strategy=Strategy.REPLACE)
-    source_list[1].append(99)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+    inner.append(99)
     assert dest == {"new": [1, [2]]}
 
 

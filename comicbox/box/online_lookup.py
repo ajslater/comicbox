@@ -35,7 +35,7 @@ from glom import glom
 from loguru import logger
 
 from comicbox.box.online_covers import ComicboxOnlineCovers
-from comicbox.config.online.settings import MatchMode, Prompts
+from comicbox.config.online.settings import MatchMode, Prompts, resolve_match
 from comicbox.events import (
     SKIP_MATCHER_DECLINED,
     AutoWritten,
@@ -92,8 +92,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable, MutableMapping
     from pathlib import Path
 
+    from comicbox.box.online_covers import CoverSearchResult
     from comicbox.config.online.settings import OnlineSettings
     from comicbox.events import Event, EventHandler
+    from comicbox.formats.base.online.matcher import CoverMatch
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
@@ -245,6 +247,18 @@ def _series_fingerprint(profile: ComicProfile) -> str:
     volume = str(profile.volume or "")
     start_year = str(profile.series_start_year or "")
     return f"{series}|{volume}|{start_year}|{publisher}"
+
+
+def _has_search_criteria(source_name: str, profile: ComicProfile) -> bool:
+    """Whether the profile has anything to search by; warn when it doesn't."""
+    if profile.series or profile.issue or profile.year:
+        return True
+    logger.warning(
+        f"online {source_name}: no search criteria — couldn't extract "
+        "series, issue#, or year from the comic's metadata or "
+        f"filename. Use --id {source_name}:<issue_id> to tag by id."
+    )
+    return False
 
 
 def _detect_cv_id_disagreement(
@@ -637,26 +651,10 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
     def _resolve_with_matcher(
         self, source_name: str, candidates: list[Candidate], online: OnlineSettings
     ) -> Resolution:
-        from comicbox.config.online.settings import (
-            resolve_auto_threshold,
-            resolve_disambiguation_margin,
-            resolve_min_confidence,
+        ranked = self._rank_candidates(
+            self._build_profile(), source_name, candidates, online
         )
-
-        threshold = resolve_auto_threshold(online, source_name)
-        min_conf = resolve_min_confidence(online, source_name)
-        margin = resolve_disambiguation_margin(online, source_name)
-        matcher = OnlineMatcher()
-        ranked = matcher.rank(
-            self._build_profile(),
-            candidates,
-            local_hash_provider=self._local_cover_phash,
-            candidate_hash_batch_fetcher=self._candidate_cover_hash_batch_fetcher,
-            threshold=threshold,
-            min_confidence=min_conf,
-            disambiguation_margin=margin,
-        )
-        return matcher.resolve(ranked, online, source_name)
+        return OnlineMatcher().resolve(ranked, online, source_name)
 
     def _selector_for_run(self) -> SelectorCallback:
         return self._online_selector or cli_selector
@@ -898,13 +896,17 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
     def _run_search(
         self, source: OnlineSource, profile: ComicProfile, path: Path | None
     ) -> tuple[list[Candidate] | None, str]:
-        """Emit SearchStarted, invoke source.search, emit SearchCompleted."""
+        """
+        Invoke source.search and emit SearchCompleted.
+
+        `_search_path` has already emitted SearchStarted, once for the
+        cover search and this name search together.
+        """
         search_issue = strip_issue_leading_zeros(profile.issue)
         criteria_summary = (
             f"series={profile.series!r} issue={search_issue!r} year={profile.year}"
         )
         logger.info(f"online {source.name}: searching with {criteria_summary}")
-        self._emit(SearchStarted(path=path, source=source.name))
         try:
             candidates = source.search(profile)
         except OnlineLookupAbortedError:
@@ -943,23 +945,114 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         return self._handle_prompt(source, resolution.candidates)
 
     def _search_path(self, source: OnlineSource, online: OnlineSettings) -> bool:
-        """Search → rank → resolve → fetch on accept. True when accepted."""
+        """
+        Search → rank → resolve → fetch on accept. True when accepted.
+
+        A source that can search by cover is asked that first. A cover
+        match its verdict accepts is written without the name search,
+        except under ``ask``. Cover rows that weren't written are offered
+        if the name search ends in a prompt or finds nothing.
+        """
         profile = self._build_profile()
         path = getattr(self, "_path", None)
-        if not (profile.series or profile.issue or profile.year):
-            logger.warning(
-                f"online {source.name}: no search criteria — couldn't extract "
-                "series, issue#, or year from the comic's metadata or "
-                f"filename. Use --id {source.name}:<issue_id> to tag by id."
-            )
+        if not _has_search_criteria(source.name, profile):
             return False
+        self._emit(SearchStarted(path=path, source=source.name))
+        cover = self._cover_search(
+            source, profile, series_pinned=source.name in online.lookup.series_ids
+        )
+        if self._write_cover_match(source, online, profile, path, cover.match):
+            return True
         candidates, criteria_summary = self._run_search(source, profile, path)
+        if cover.candidates:
+            return self._resolve_with_cover_rows(
+                source, online, candidates or [], cover, path
+            )
+        return self._resolve_name_search(
+            source, online, candidates, criteria_summary, path
+        )
+
+    def _resolve_name_search(
+        self,
+        source: OnlineSource,
+        online: OnlineSettings,
+        candidates: list[Candidate] | None,
+        criteria_summary: str,
+        path: Path | None,
+    ) -> bool:
+        """Resolve the name search alone: a failure, nothing found, or a ranking."""
         if candidates is None:
             return False
         if not candidates:
             self._report_empty_search(source, criteria_summary, path)
             return False
         resolution = self._resolve_with_matcher(source.name, candidates, online)
+        return self._apply_resolution(source, resolution, path)
+
+    def _write_cover_match(
+        self,
+        source: OnlineSource,
+        online: OnlineSettings,
+        profile: ComicProfile,
+        path: Path | None,
+        match: CoverMatch | None,
+    ) -> bool:
+        """
+        Write the match a cover search's verdict accepted, if there is one.
+
+        Not under ``ask``, which never writes unprompted. Under every other
+        mode, ``careful`` included, the verdict is metron-tagger's
+        calibrated rule (see `cover_verdict`), which is stronger evidence
+        than the metadata score's "unambiguous" test those modes otherwise
+        write on.
+
+        False when there's nothing to write or the fetch failed; the name
+        search runs next, as it does after a series-cache hit whose fetch
+        fails.
+        """
+        if match is None or resolve_match(online, source.name) is MatchMode.ASK:
+            return False
+        self._emit(
+            SearchCompleted(
+                path=path, source=source.name, n_candidates=match.n_candidates
+            )
+        )
+        candidate = match.candidate
+        return self._accept(
+            source,
+            candidate.issue_id,
+            outcome_stats.record_auto_write,
+            emit_auto_written=True,
+            candidate=candidate
+            if self._cover_match_may_seed_cache(profile, candidate)
+            else None,
+        )
+
+    def _resolve_with_cover_rows(
+        self,
+        source: OnlineSource,
+        online: OnlineSettings,
+        candidates: list[Candidate],
+        cover: CoverSearchResult,
+        path: Path | None,
+    ) -> bool:
+        """
+        Resolve the name search, offering the cover rows if it would prompt.
+
+        A name-search auto-write stands: cover rows never turn it into a
+        prompt. Anything else (a prompt, a skip, no match, nothing found or
+        a failed name search) ends at a prompt over both sets of rows, or a
+        skip under ``--prompts never``. The cover rows don't auto-write by
+        metadata score here; only the cover verdict writes on cover
+        evidence.
+        """
+        if candidates:
+            resolution = self._resolve_with_matcher(source.name, candidates, online)
+            if resolution.kind is ResolutionKind.AUTO_WRITE:
+                return self._apply_resolution(source, resolution, path)
+        resolution = self._cover_prompt(
+            self._build_profile(), source.name, online, candidates, cover
+        )
         return self._apply_resolution(source, resolution, path)
 
     def _report_empty_search(

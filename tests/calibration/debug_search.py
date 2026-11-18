@@ -83,7 +83,7 @@ def _print_issue(issue: object) -> None:
     )
     cover_date = getattr(issue, "cover_date", None)
     print(  # noqa: T201
-        f"      id={issue.id} series={issue_series_repr!r} "  # ty: ignore[unresolved-attribute]
+        f"      id={issue.id} series={issue_series_repr!r} "  # ty: ignore[missing-attribute]
         f"number={getattr(issue, 'number', '?')!r} "
         f"cover_date={cover_date}"
     )
@@ -100,7 +100,7 @@ def _probe_issues_list(
         params = _build_issues_list_params(profile, series_id)
         print(f"\n  [follow-up] issues_list(params={params!r})")  # noqa: T201
         try:
-            issues = list(session.issues_list(params=params))  # ty: ignore[unresolved-attribute]
+            issues = list(session.issues_list(params=params))  # ty: ignore[missing-attribute]
         except Exception as exc:
             print(f"    EXCEPTION: {exc!r}")  # noqa: T201
             continue
@@ -128,7 +128,7 @@ def _metron_series_probe(session: Any, label: str, query: str) -> None:
 
 def _debug_metron(profile: object, online: object) -> None:
     print("\n=== Metron debug ===")  # noqa: T201
-    creds = online.auth.sources.get("metron")  # ty: ignore[unresolved-attribute]
+    creds = online.auth.sources.get("metron")  # ty: ignore[missing-attribute]
     if creds is None:
         print("  metron not configured; skipping")  # noqa: T201
         return
@@ -137,7 +137,7 @@ def _debug_metron(profile: object, online: object) -> None:
         print("  metron not configured; skipping")  # noqa: T201
         return
     session = src._get_session()
-    series_name = profile.series  # ty: ignore[unresolved-attribute]
+    series_name = profile.series  # ty: ignore[missing-attribute]
 
     # 1. Exactly what production sends.
     print(f"\n  [as-is] series_list(name={series_name!r})")  # noqa: T201
@@ -168,13 +168,13 @@ def _debug_metron(profile: object, online: object) -> None:
 
 def _debug_comicvine(profile: object, online: object) -> None:
     print("\n=== ComicVine debug ===")  # noqa: T201
-    creds = online.auth.sources.get("comicvine")  # ty: ignore[unresolved-attribute]
+    creds = online.auth.sources.get("comicvine")  # ty: ignore[missing-attribute]
     if creds is None or not creds.api_key:
         print("  comicvine not configured; skipping")  # noqa: T201
         return
     src = ComicVineOnlineSource(creds, online)  # ty: ignore[invalid-argument-type]
     session = src._get_session()
-    series_name = profile.series  # ty: ignore[unresolved-attribute]
+    series_name = profile.series  # ty: ignore[missing-attribute]
 
     print(f"\n  [as-is] search_volumes(query={series_name!r}, max_results=20)")  # noqa: T201
     try:

@@ -17,7 +17,7 @@ dependencies = [
   "loguru~=0.7",
   "marshmallow-union>=0.1.15.post1",
   "marshmallow~=4.3",
-  "mokkari~=5.0.0",
+  "mokkari~=5.1.0",
   "nh3>=0.3.5",
   "packaging>=24.0",
   "pillow>=12.2.0",
@@ -55,7 +55,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = "LGPL-3.0-only"
 name = "comicbox"
-version = "5.6.1"
+version = "5.6.2"
 
 [[project.authors]]
 name = "AJ Slater"
@@ -87,7 +87,7 @@ lint = [
   "basedpyright~=1.38",
   "check-jsonschema~=0.36",
   "codespell~=2.4",
-  "complexipy~=8.2",
+  "complexipy~=9.0",
   "djlint~=1.3.dev0",
   "icecream~=2.1",
   "pathspec~=1.1.0",
@@ -102,8 +102,8 @@ test = [
   "coverage~=7.0",
   "deepdiff~=9.0",
   "imagehash>=4.3.2",
-  "pytest-asyncio~=1.0",
   "pytest-cov~=7.0",
+  "pytest-xdist~=3.8",
   "pytest~=9.0",
 ]
 docs = ["mkdocstrings-python~=2.0", "zensical~=0.1"]
@@ -162,6 +162,7 @@ exclude = [
   "test-results",
   "typings",
   "vulture_ignorelist.py",
+  "tasks",
 ]
 pythonVersion = "3.11"
 failOnWarnings = false
@@ -213,6 +214,9 @@ omit = [
 [tool.pytest]
 minversion = "9.0"
 addopts = [
+  "--numprocesses=auto",
+  # Whole modules per worker: 44s against 71s for the default per-test load.
+  "--dist=loadfile",
   "--cov",
   "--cov-append",
   "--cov-report=html",
@@ -226,10 +230,9 @@ junit_family = "xunit2"
 strict = true
 testpaths = ["tests"]
 pythonpath = ["."]
-asyncio_mode = "strict"
 
 [tool.radon]
-exclude = "*~,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py"
+exclude = "*~,config/*,dist/*,frontend/*,node_modules/*,site/*,test-results/*,typings/*,vulture_ignorelist.py,tasks/*"
 
 [tool.ruff]
 builtins = ["ic"]
@@ -240,6 +243,7 @@ extend-exclude = [
   "test-results",
   "typings",
   "vulture_ignorelist.py",
+  "tasks",
 ]
 show-fixes = true
 target-version = "py311"
@@ -370,6 +374,7 @@ exclude = [
   "test-results",
   "typings",
   "vulture_ignorelist.py",
+  "tasks",
 ]
 
 [tool.ty.rules]
@@ -392,7 +397,7 @@ include = [
 ]
 
 [tool.ty.overrides.rules]
-invalid-attribute-override = "ignore"
+incompatible-attribute-override = "ignore"
 
 [tool.vulture]
 exclude = [
@@ -403,6 +408,7 @@ exclude = [
   "*/site/*",
   "*/test-results/*",
   "*/typings/*",
+  "*/tasks/*",
 ]
 min_confidence = 61
 sort_by_size = true

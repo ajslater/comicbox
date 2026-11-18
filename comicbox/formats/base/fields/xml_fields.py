@@ -59,7 +59,7 @@ class CDataFieldMixin:
             reason = f"No {CDATA_KEY} in {tuple(value.keys())}"
             raise ValidationError(reason)
         value = get_cdata(value)
-        return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        return super()._deserialize(value, *args, **kwargs)  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
 
 
 # FIELDS

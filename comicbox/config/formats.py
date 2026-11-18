@@ -2,10 +2,16 @@
 
 import contextlib
 from collections.abc import Iterable, Mapping
-from typing import Any
+from types import MappingProxyType
+from typing import Any, Final
 
 from confuse import Subview, exceptions
 from loguru import logger
+
+# Format keys still read, with a warning, and left out of the help: each
+# maps to the key to use instead. cbl for ComicBookInfo goes in comicbox
+# 6.0, since CBL is a ComicRack reading list.
+DEPRECATED_FORMAT_KEYS: Final = MappingProxyType({"cbl": "cbi"})
 
 
 def _raw_or_empty(view: Subview) -> Iterable[Any]:
@@ -64,6 +70,12 @@ def _resolve_formats(
         raw_ignore = _raw_or_empty(ignore_view)
         ignore_keys = frozenset({str(k).strip() for k in raw_ignore})
 
+    for key in sorted(keys & DEPRECATED_FORMAT_KEYS.keys()):
+        logger.warning(
+            f"Action '{label}': format key '{key}' is deprecated and will be"
+            f" removed in comicbox 6.0; use '{DEPRECATED_FORMAT_KEYS[key]}'."
+        )
+
     fmts, keys = _get_formats_from_keys(keys, ignore_keys)
 
     # Report on invalid formats.
@@ -75,11 +87,26 @@ def _resolve_formats(
     return frozenset(fmts)
 
 
+# Among the write format keys, not a format: keep the formats a comic
+# already carries, writing them back beside those named.
+KEEP_KEYWORD = "keep"
+
+
+def split_keep(keys: Iterable[Any]) -> tuple[list[str], bool]:
+    """Take the ``keep`` keyword out of format keys; say whether it was there."""
+    stripped = [str(key).strip() for key in keys]
+    formats = [key for key in stripped if key.lower() != KEEP_KEYWORD]
+    return formats, len(formats) != len(stripped)
+
+
 def transform_keys_to_formats(config: Subview) -> None:
     """Transform schema config keys to format enums."""
     if config["write"]["delete_all_tags"].get(bool):
         config["read"]["formats"].set(frozenset())
         config["write"]["formats"].set(frozenset())
+        # Deleting all tags wins over keeping them. Set either way: the key
+        # has no default in the YAML, and compute_config reads it.
+        config["write"]["keep_formats"].set(False)
         config["convert"]["export_formats"].set(frozenset())
         return
 
@@ -91,8 +118,12 @@ def transform_keys_to_formats(config: Subview) -> None:
         read_fmts -= except_fmts
     config["read"]["formats"].set(read_fmts)
 
+    write_keys, keep = split_keep(_raw_or_empty(config["write"]["formats"]))
+    config["write"]["formats"].set(write_keys)
     write_fmts = _resolve_formats(config["write"]["formats"], "write")
     config["write"]["formats"].set(write_fmts)
+    # Only the keyword sets it, whatever a config file says.
+    config["write"]["keep_formats"].set(keep)
 
     export_fmts = _resolve_formats(
         config["convert"]["export_formats"], "convert.export_formats"

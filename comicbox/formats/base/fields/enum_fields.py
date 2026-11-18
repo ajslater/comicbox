@@ -72,7 +72,7 @@ class FuzzyEnumMixin:
         and missed snake_case input entirely.
         """
         key: str = value.value if isinstance(value, Enum) else str(value)
-        enum_map = self._enum_map  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[unresolved-attribute]
+        enum_map = self._enum_map  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
         for key_variation in self.get_ordered_key_variations(key):
             if enum := enum_map.get(key_variation):
                 return enum

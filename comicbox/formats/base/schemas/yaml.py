@@ -59,6 +59,9 @@ class YamlRenderModule(BaseRenderModule):
 
     @classmethod
     def _config_yaml(cls, yaml: YAML) -> None:
+        # ruamel aliases any object written twice, such as one date for a
+        # cover and a store date: &id001 and *id001. comicbox writes none.
+        yaml.representer.ignore_aliases = lambda *_data: True
         yaml.sort_base_mapping_type_on_output = True  # pyright: ignore[reportAttributeAccessIssue]
         yaml.representer.add_representer(Decimal, cls._decimal_representer)
         yaml.representer.add_representer(type(None), cls._none_representer)

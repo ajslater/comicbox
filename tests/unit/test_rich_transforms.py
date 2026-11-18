@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
+import pytest
+
 from comicbox.enums.comicbox import SeriesStatusEnum
 from comicbox.formats.base.online.sanitize import strip_html
 from comicbox.formats.base.online.transform_helpers import (
@@ -43,6 +45,30 @@ def test_strip_html_drops_dangerous() -> None:
 def test_strip_html_handles_none_and_empty() -> None:
     assert strip_html(None) is None
     assert strip_html("") == ""
+
+
+@pytest.mark.parametrize(
+    ("html", "text"),
+    [
+        ("Tom & Jerry <b>meet</b>", "Tom & Jerry meet"),
+        ("Tom &amp; Jerry", "Tom & Jerry"),
+        ("&lt;b&gt; is a tag", "<b> is a tag"),
+        ("&quot;Quoted&quot; &#8212; dash", '"Quoted" \u2014 dash'),
+    ],
+)
+def test_strip_html_returns_text_not_html(html: str, text: str) -> None:
+    assert strip_html(html) == text
+
+
+def test_a_tagged_summary_is_not_html_escaped() -> None:
+    """The tagging path: Metron's desc becomes the comic's summary."""
+    from comicbox.formats.metron_api.transform import MetronApiTransform
+    from tests.util.metron_transport import issue_detail
+
+    issue = issue_detail(1)
+    issue["desc"] = "<p>Tom &amp; Jerry <b>meet</b> &lt;again&gt;</p>"
+    comicbox = dict(MetronApiTransform().to_comicbox({"metron_api": issue}))
+    assert comicbox["comicbox"]["summary"] == "Tom & Jerry meet <again>"
 
 
 # ----------------------------------------------------- helpers

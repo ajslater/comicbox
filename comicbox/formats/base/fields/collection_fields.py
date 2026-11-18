@@ -244,7 +244,7 @@ class StringListField(fields.List):
         return result
 
     @override
-    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[invalid-method-override]
+    def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
         self, value: set[str], *args: Any, **kwargs: Any
     ) -> list[str | None] | str | None:
         if not value:
@@ -263,7 +263,7 @@ class StringSetField(StringListField):
     """A set of non-empty strings."""
 
     @override
-    def _deserialize(self, *args: Any, **kwargs: Any) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[invalid-method-override]
+    def _deserialize(self, *args: Any, **kwargs: Any) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         """Cast to a set."""
         str_list = super()._deserialize(*args, **kwargs)
         if not str_list:

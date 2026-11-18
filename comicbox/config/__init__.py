@@ -102,6 +102,8 @@ _TEMPLATE = MappingTemplate(
                         "stamp": bool,
                         "stamp_notes": bool,
                         "delete_all_tags": bool,
+                        # Set by the keep keyword among the formats.
+                        "keep_formats": Optional(bool, default=False),
                     }
                 ),
                 "print": MappingTemplate(
@@ -134,6 +136,7 @@ _TEMPLATE = MappingTemplate(
                     MappingTemplate(
                         {
                             "all_write_formats": frozenset,
+                            "is_write_keep": bool,
                             "read_filename_formats": frozenset,
                             "read_file_formats": frozenset,
                             "read_metadata_lower_filenames": frozenset,
@@ -208,6 +211,7 @@ def _build_write_settings(write_block: Any) -> WriteSettings:
         stamp=bool(write_block.stamp),
         stamp_notes=bool(write_block.stamp_notes),
         delete_all_tags=bool(write_block.delete_all_tags),
+        keep_formats=bool(write_block.keep_formats),
     )
 
 
@@ -255,6 +259,7 @@ def _build_settings(
         online=online,
         paths=tuple(inner.paths or ()),
         all_write_formats=frozenset(computed.all_write_formats),
+        is_write_keep=bool(computed.is_write_keep),
         read_filename_formats=frozenset(computed.read_filename_formats),
         read_file_formats=frozenset(computed.read_file_formats),
         read_metadata_lower_filenames=frozenset(computed.read_metadata_lower_filenames),
@@ -266,7 +271,7 @@ def _build_settings(
 def _read_settings(args: Namespace | Mapping | None, modname: str) -> ComicboxSettings:
     """Layer every config source and reduce the result to settings."""
     config = Configuration(PACKAGE_NAME, modname=modname, read=False)
-    read_config_sources(config, args)
+    read_config_sources(config, args, _TEMPLATE.subtemplates[PACKAGE_NAME])
 
     config_program = config[PACKAGE_NAME]
     compute_config(config_program)

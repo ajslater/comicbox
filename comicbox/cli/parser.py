@@ -86,6 +86,20 @@ class LazyEpilog:
         return build_epilog()
 
 
+class RichArgumentParser(ArgumentParser):
+    """
+    An ArgumentParser whose help is rich by default.
+
+    Its subcommands' parsers are built from the same class, so they are
+    rich too without each naming the formatter.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """Default the formatter to rich."""
+        kwargs.setdefault("formatter_class", RichHelpFormatter)
+        super().__init__(*args, **kwargs)
+
+
 class CSVAction(Action):
     """Parse comma delimited sequences."""
 
@@ -266,8 +280,14 @@ def _add_write_group(parser: ArgumentParser) -> None:
         default=None,
         dest="write.formats",
         help=(
-            "Write comic metadata formats back to the archive. cbt and cbr files are always"
-            " exported to a cbz file. Format keys listed below."
+            "Write comic metadata formats back to the archive, removing every other tag"
+            " file, unless 'keep' is among them: '-w keep' writes back the formats the"
+            " comic has, '-w cix,keep' adds ComicInfo to them. A free-text archive"
+            " comment, such as a scanner's note, is kept unless cbi is written in its"
+            " place. A format the archive can't"
+            " hold, such as pdf in a cbz, is skipped with a warning, and naming only"
+            " such formats is refused. cbr, cbt and cb7 files are always converted to"
+            " a cbz file. Format keys listed below."
         ),
     )
     group.add_argument(
@@ -310,7 +330,10 @@ def _add_write_group(parser: ArgumentParser) -> None:
         action="store_true",
         default=None,
         dest="write.delete_all_tags",
-        help="Delete all tags from the archive. Overrides --write.",
+        help=(
+            "Delete all tags from the archive: every tag file, the archive comment, and"
+            " a PDF's own metadata. Overrides --write."
+        ),
     )
 
 
@@ -351,8 +374,8 @@ def _add_print_group(parser: ArgumentParser) -> None:
         dest="print.validate",
         help=(
             "Validate formats against schema if available. Schemas like ComicInfo enforce a "
-            "strict tag order. Schemas available at "
-            "https://github.com/ajslater/comicbox/tree/main/schemas"
+            "strict tag order. Schema references at "
+            "https://comicbox.readthedocs.io/schema/"
         ),
     )
 
@@ -366,8 +389,10 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         default=None,
         dest="convert.cbz",
         help=(
-            "Export the archive to CBZ format and rewrite all metadata formats found. "
-            "When converting PDFs, by default a pixmap is taken of the page. "
+            "Export the archive to CBZ format. Without [cyan]--write[/cyan] it writes "
+            "back the tag formats the comic has; a PDF with no embedded tag file "
+            "gets ComicInfo. "
+            "When converting PDFs, by default each page is rendered to a jpeg. "
             "Try [cyan]--pdf-pages image[/cyan] if the PDF is a comic with only one big "
             "image per page."
         ),
@@ -534,7 +559,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_auth_group(parser: ArgumentParser) -> None:
+def add_online_auth_group(parser: ArgumentParser) -> None:
+    """Add ``--auth``."""
     group = parser.add_argument_group("online: auth")
     group.add_argument(
         "-a",
@@ -555,7 +581,8 @@ def _add_online_auth_group(parser: ArgumentParser) -> None:
     )
 
 
-def _add_online_cache_group(parser: ArgumentParser) -> None:
+def add_online_cache_group(parser: ArgumentParser) -> None:
+    """Add the online cache options."""
     group = parser.add_argument_group("online: cache")
     group.add_argument(
         "--cache",
@@ -639,11 +666,10 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     if not PDF_ENABLED:
         description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
 
-    parser = ArgumentParser(
+    parser = RichArgumentParser(
         prog=prog,
         description=description,
-        epilog=LazyEpilog(),  # pyright: ignore[reportArgumentType] # ty: ignore[invalid-argument-type]
-        formatter_class=RichHelpFormatter,
+        epilog=LazyEpilog(),
         add_help=False,
     )
     _add_general_group(parser)
@@ -652,8 +678,8 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     _add_print_group(parser)
     _add_convert_group(parser)
     _add_online_lookup_group(parser)
-    _add_online_auth_group(parser)
-    _add_online_cache_group(parser)
+    add_online_auth_group(parser)
+    add_online_cache_group(parser)
     _add_online_tuning_group(parser)
     _add_target_group(parser)
     parser.add_argument(

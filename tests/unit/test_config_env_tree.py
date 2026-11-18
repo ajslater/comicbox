@@ -11,7 +11,9 @@ confuse upgrade quietly changing EnvSource semantics.
 """
 
 from argparse import Namespace
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 from confuse import ConfigError
@@ -138,3 +140,77 @@ def test_every_legacy_name_maps_to_a_live_var() -> None:
     for old, new in _LEGACY_ENV_VARS.items():
         assert new.startswith("COMICBOX_")
         assert "__" in new, f"{old} maps to {new}, which isn't a tree path"
+
+
+def _write_formats(config: Any) -> set[str]:
+    return {fmt.name for fmt in config.write.formats}
+
+
+def _read_formats(config: Any) -> set[str]:
+    return {fmt.name for fmt in config.read.formats}
+
+
+def _export_formats(config: Any) -> set[str]:
+    return {fmt.name for fmt in config.convert.export_formats}
+
+
+@pytest.mark.parametrize(
+    ("variable", "value", "read", "expected"),
+    [
+        # Split on commas, as the CLI's -w, -f, --read-except, -e and -D are.
+        ("COMICBOX_WRITE__FORMATS", "cix", _write_formats, {"COMIC_INFO"}),
+        (
+            "COMICBOX_WRITE__FORMATS",
+            "cix, mi",
+            _write_formats,
+            {"COMIC_INFO", "METRON_INFO"},
+        ),
+        ("COMICBOX_READ__FORMATS", "cix", _read_formats, {"COMIC_INFO"}),
+        (
+            "COMICBOX_CONVERT__EXPORT_FORMATS",
+            "cix,mi",
+            _export_formats,
+            {"COMIC_INFO", "METRON_INFO"},
+        ),
+        (
+            "COMICBOX_GENERAL__DELETE_KEYS",
+            "summary,notes",
+            lambda config: config.general.delete_keys,
+            frozenset({"summary", "notes"}),
+        ),
+        # Whole, as the CLI's -m and -i take each value.
+        (
+            "COMICBOX_GENERAL__METADATA_CLI",
+            "{summary: x, notes: y}",
+            lambda config: config.general.metadata_cli,
+            ("{summary: x, notes: y}",),
+        ),
+        (
+            "COMICBOX_CONVERT__IMPORT_PATHS",
+            "a,b.json",
+            lambda config: config.convert.import_paths,
+            (Path("a,b.json"),),
+        ),
+    ],
+)
+def test_a_plain_string_at_a_list_setting_is_that_list(
+    monkeypatch: pytest.MonkeyPatch,
+    variable: str,
+    value: str,
+    read: Callable[[Any], Any],
+    expected: Any,
+) -> None:
+    """B4: COMICBOX_WRITE__FORMATS=cix was read as c, i and x."""
+    monkeypatch.setenv(variable, value)
+    assert read(get_config(None)) == expected
+
+
+def test_a_setting_that_takes_a_string_keeps_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Print phases are a string of letters, not a comma-separated list."""
+    monkeypatch.setenv("COMICBOX_PRINT__PHASES", "ns")
+    assert {phase.name for phase in get_config(None).print.phases} == {
+        "NORMALIZED",
+        "SOURCE",
+    }

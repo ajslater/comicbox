@@ -105,6 +105,9 @@ def _set_computed(config: Subview) -> None:
     export: frozenset = config["convert"]["export_formats"].get(frozenset)
     all_write_fmts = frozenset(write | export)
     config["computed"]["all_write_formats"].set(all_write_fmts)
+    # The keep keyword's formats are known only per comic; its consumers
+    # take this beside all_write_formats, as they take the named ones.
+    config["computed"]["is_write_keep"].set(config["write"]["keep_formats"].get(bool))
     read: frozenset = config["read"]["formats"].get(frozenset)
     rfnf = frozenset(frozenset(MetadataSources.ARCHIVE_FILENAME.value.formats) & read)
     config["computed"]["read_filename_formats"].set(rfnf)

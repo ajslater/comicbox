@@ -27,7 +27,7 @@ from requests import Response
 from requests.exceptions import HTTPError
 
 from comicbox.config.online.settings import OnlineSettings, OnlineSourceCredentials
-from comicbox.formats.base.online.profile import ComicProfile
+from comicbox.formats.base.online.profile import Candidate, ComicProfile
 from comicbox.formats.base.online.retry import (
     _RATE_LIMIT_SCHEDULE,
     RetryCategory,
@@ -153,6 +153,81 @@ def test_search_returns_empty_with_no_series(monkeypatch: pytest.MonkeyPatch) ->
     profile = ComicProfile(issue="7", issue_int=7, year=1952)
     assert src.search(profile) == []
     assert fake.issues_list_calls == []
+
+
+def _search_and_warnings(
+    src: MetronOnlineSource, profile: ComicProfile
+) -> tuple[list[Candidate], list[str]]:
+    """Run a search, returning its candidates and the warnings it logged."""
+    from loguru import logger as loguru_logger
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        candidates = src.search(profile)
+    finally:
+        loguru_logger.remove(handler_id)
+    return candidates, messages
+
+
+@pytest.mark.parametrize(
+    "profile",
+    [
+        ComicProfile(series="ee"),
+        ComicProfile(series="ee", issue="  "),
+        # A volume does not narrow: most series are volume 1.
+        ComicProfile(series="ee", volume=1),
+    ],
+)
+def test_search_makes_no_request_with_only_a_series_name(
+    monkeypatch: pytest.MonkeyPatch, profile: ComicProfile
+) -> None:
+    """
+    A series name with no number and no year is not searched at all.
+
+    `series_name` is a substring match, and mokkari follows every page, so
+    `ee.cbz` once cost about 81 requests for 8,026 rows. The result reads
+    as no match, not as a quota skip to retry tomorrow, so a warning says
+    why and how to tag the comic anyway.
+    """
+    fake = _FakeMokkari(
+        issues_by_key={"ee": [_FakeBaseIssue(iid=1, number="1", series_name="Steel")]}
+    )
+    src = _make_metron_source(monkeypatch, fake)
+    candidates, warnings = _search_and_warnings(src, profile)
+
+    assert candidates == []
+    assert fake.issues_list_calls == []
+    assert src.search_skip_reason is None
+    assert len(warnings) == 1
+    assert "'ee' has no issue number or year" in warnings[0]
+    assert "--series-id metron:" in warnings[0]
+
+
+@pytest.mark.parametrize(
+    ("issue", "year", "expected_filters"),
+    [
+        ("007", None, {"number": "7"}),
+        ("0", None, {"number": "0"}),
+        (None, 1986, {"cover_year": 1986}),
+    ],
+)
+def test_search_by_name_runs_with_a_number_or_a_year(
+    monkeypatch: pytest.MonkeyPatch,
+    issue: str | None,
+    year: int | None,
+    expected_filters: dict[str, Any],
+) -> None:
+    """Either an issue number or a cover year is enough to search by name."""
+    row = _FakeBaseIssue(iid=42, number="1", series_name="Watchmen")
+    fake = _FakeMokkari(issues_by_key={"Watchmen": [row]})
+    src = _make_metron_source(monkeypatch, fake)
+    profile = ComicProfile(series="Watchmen", issue=issue, year=year)
+    candidates, warnings = _search_and_warnings(src, profile)
+
+    assert [c.issue_id for c in candidates] == [42]
+    assert fake.issues_list_calls == [{"series_name": "Watchmen", **expected_filters}]
+    assert warnings == []
 
 
 def test_search_issues_list_uses_series_name_directly(
@@ -332,6 +407,21 @@ def test_series_id_works_without_profile_series(
     profile = ComicProfile(issue="1", issue_int=1)  # no series at all
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [9002]
+
+
+def test_series_id_searches_without_a_number_or_a_year(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The by-name guard leaves --series-id alone: one series is its own bound."""
+    issues = {
+        300: [_FakeBaseIssue(iid=9003, number="1", series_name="Direct", series_id=300)]
+    }
+    fake = _FakeMokkari(issues_by_key=issues)
+    src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=300)
+    candidates = src.search(ComicProfile(series="Direct"))
+
+    assert fake.issues_list_calls == [{"series_id": 300}]
+    assert [c.issue_id for c in candidates] == [9003]
 
 
 def test_to_candidate_propagates_series_id_from_search_result(
@@ -1125,6 +1215,23 @@ def _http_api_error(
             _http_api_error(403, "https://metron.cloud/api/issue/1/"),
             RetryCategory.AUTH,
             id="api-error-chained-403",
+        ),
+        # DRF rejecting a filter value is a request comicbox built wrong;
+        # a replay can only be rejected the same way.
+        pytest.param(
+            _http_api_error(
+                400,
+                "https://metron.cloud/api/issue/?cover_hash_near=xyz",
+                body='{"cover_hash_near": ["Enter a 16-character hexadecimal '
+                'perceptual hash."]}',
+            ),
+            RetryCategory.INVALID,
+            id="api-error-chained-400",
+        ),
+        pytest.param(
+            _http_api_error(404, "https://metron.cloud/api/issue/999999999/"),
+            RetryCategory.NOT_FOUND,
+            id="api-error-chained-404",
         ),
         # A throttle served with a non-429 status still retries: the
         # wording is checked before the status.

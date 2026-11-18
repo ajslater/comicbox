@@ -34,6 +34,9 @@ comicbox:
     merge_order: null
 
   write:
+    # Format keys, as -w takes them. Without keep, the formats named are
+    # written and every other tag file is removed; keep among them, as in
+    # [cix, keep] or [keep], keeps the formats a comic already has.
     formats: []
     # How supplied metadata (-m, --import, the write API's patch, the
     # config metadata block) merges into a comic's existing tags.

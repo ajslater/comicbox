@@ -1,5 +1,98 @@
 # 📰 News
 
+## v5.6.2
+
+### ✨ Added
+
+- `-w keep` writes back the tag formats a comic already has, and `-w cix,keep`
+  adds ComicInfo to them, removing none.
+- Metron tagging finds a comic by its cover first: a clear cover match is
+  written without a name search, and prompts also offer the issues the cover
+  search found.
+
+### ♻️ Changed
+
+- `--match careful` also writes a clear Metron cover match; `--match ask` lists
+  it first.
+- A tag write that fails while comicbox is running leaves the comic as it was. A
+  process killed in the middle of one can still leave the tag files damaged, as
+  before; the pages are never touched.
+- `-w` keeps a free-text archive comment, such as a scanner's note, and clears
+  only a ComicBookInfo comment.
+- A comic Metron finds only by its cover prompts, or skips under
+  `--prompts never`, instead of reporting no match.
+- Online tagging warns and finds no Metron match for a comic with a series name
+  but no issue number or year, where it prompted with every issue of every
+  series with that name in it. `--series-id metron:ID` still searches one.
+
+### 🗑️ Deprecated
+
+> [!NOTE]
+>
+> - The `cbl` format key for ComicBookInfo, removed in 6.0. Use `cbi`.
+
+### 🐛 Fixed
+
+- `-w pdf` writes a PDF's own metadata, which it never did, clearing a field the
+  metadata no longer has, and removes its embedded tag files, as `-w` does in a
+  zip, so what it wrote reads back. `-w keep` rewrites both, and
+  `--delete-all-tags` now clears a PDF's own metadata too.
+- `-w` naming only formats a comic cannot hold, such as `-w pdf` on a CBZ, is
+  refused, where it removed every tag file and wrote none; one it cannot hold
+  beside others it can is skipped with a warning.
+- A PDF write no longer overwrites another attachment with the old ComicInfo, or
+  fails and loses tag files when a PDF has several. Converting a PDF whose
+  attachment is named like a page number, or like a page it converts to
+  (`1.jpeg`), is refused, where its CBZ had the page twice and lost the
+  attachment.
+- A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
+  YAML, JSON or a library patch is read, where it was dropped without a word.
+- `write_metadata` and `bulk_write` write nothing for a patch that does not
+  load, and return the error, where they rewrote the comic and reported success.
+- `--cbz` without `-w` writes back only the tag formats the comic carried, a
+  ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
+  turned the comment into a file. It warns of an `-m` or `--import` value none
+  of those formats can hold.
+- Online tagging matches accented and non-Latin series names: `Pokémon` was
+  compared as `pok mon`, and a Japanese or Cyrillic name as nothing.
+- Tag files are written into an archive in one fixed order.
+- Comic YAML repeats a value it holds twice, such as one date for cover and
+  store, instead of writing `&id001` and `*id001`.
+- Issue `-1` is read as the number -1; it was read as a suffix, with no number.
+- A partial date, such as CoMet's `2006` or `2006-07`, is read as its year and
+  month; it was completed with today's month or day.
+- A cover date from a higher source, such as `-m`, replaces a comic's own date
+  that it contradicts, where the old date or its day survived; a year, month or
+  day given alone still changes only that part.
+- A comic a run reaches by several paths, such as a file and a link to it under
+  `-r`, is processed once, through the file.
+- A batch write that names one archive twice, by a link and its target, no
+  longer writes it twice at once and damages it.
+- A RAR or 7z archive named `.cbz` is refused in one line that names its real
+  type, where a write failed with an error.
+- A conversion onto a file already there, and a page extraction to a target that
+  is not a directory, are reported in one line, without a traceback.
+- A write that replaces or removes a tag file comicbox could not parse warns,
+  naming it.
+- `--rename` changes the case of a name on a case-insensitive disk, and says so
+  when a link to the comic already has the new name, where it said "Renamed" and
+  changed nothing. It says nothing for a comic already at its name.
+- A path that does not exist fails the run, logged once, where it exited 0.
+- A ComicInfo `Web` holding two urls for one database reads the first url's id
+  every time, and is written back in its order.
+- A six-digit date such as `200607` reads as July 2006, not 20 June 2007.
+- An environment variable for a list setting reads a plain string as its CLI
+  option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
+- ComicInfo keeps every story arc's number when another arc has none.
+- Online summaries no longer show HTML entities such as `&amp;`.
+- A cache lifetime written as a number, such as `ttl: 0`, no longer stops the
+  config from loading.
+- Metron 400 and 404 responses fail at once instead of retrying.
+
+### 🧑‍💻 Developer
+
+- Requires mokkari 5.1.
+
 ## v5.6.1
 
 ### 🐛 Fixed
@@ -856,10 +949,12 @@
 
 ## v2.0.4
 
-### 🧑‍💻 Developer
+### 💥 Breaking Changes
 
-- The confuse library dependency doesn't support Python 3.14. So neither does
-  comicbox :(
+> [!WARNING]
+>
+> - The confuse library dependency doesn't support Python 3.14. So neither does
+>   comicbox :(
 
 ## v2.0.3
 
@@ -1114,16 +1209,13 @@
 > [!WARNING]
 >
 > - Breaking API, CLI & Config changes.
+> - Python version now >=3.9
 
 ### ✨ Added
 
 - Write metadata from the command line.
 - Optional PDF support. Install as `comicbox[pdf]`
 - Extract a range of pages from the cli.
-
-### 🧑‍💻 Developer
-
-- Python version now >=3.9
 
 ## v0.9.1
 

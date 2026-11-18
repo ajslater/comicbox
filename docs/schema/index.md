@@ -137,6 +137,10 @@ example json into a
 | Archive       | Zip & Rar Comments   |
 | Import/Export | comic-book-info.json |
 
+An archive comment that is not ComicBookInfo JSON, such as a scanner's note, is
+not a tag format: `-w` leaves it unless it writes ComicBookInfo in its place,
+and `--delete-all-tags` clears it.
+
 #### ComicBookInfo Role primary attribute
 
 The per-credit `primary` flag is kept, on the role it describes:
@@ -151,7 +155,9 @@ xml file.
 [Adobe PDF Standard](https://opensource.adobe.com/dc-acrobat-sdk-docs/standards/pdfstandards/pdf/PDF32000_2008.pdf)
 § 14.3.3 Document Information Dictionary
 
-PDF metadata is only read or written from and to PDF files.
+PDF metadata is only read or written from and to PDF files. `-w pdf` (or `keep`,
+for a PDF that has some) rewrites it, clearing a field the metadata no longer
+has, and `--delete-all-tags` clears it.
 
 | Location      | Name             |
 | ------------- | ---------------- |

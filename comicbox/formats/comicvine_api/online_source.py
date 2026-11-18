@@ -36,6 +36,7 @@ import threading
 import time
 from contextlib import closing, suppress
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
@@ -295,6 +296,26 @@ def shared_client_rate_limit_status(
         create=False,
     )
     return _read_rate_limit_buckets(path)
+
+
+def _refuse_spent_pool(settings: OnlineSettings, pool: str) -> None:
+    """
+    Raise ``RateLimitError`` when an endpoint pool has spent its hour.
+
+    simyan would otherwise block for up to twice its timeout waiting for a
+    slot, and then fail anyway: a slot frees only when the oldest call in
+    the hour ages out, which the message says.
+    """
+    from simyan.errors import RateLimitError
+
+    window = shared_client_rate_limit_status(settings).get(pool, {})
+    if window.get("remaining") != 0:
+        return
+    reason = f"the hourly {pool} budget is spent"
+    if (reset := window.get("reset_epoch")) is not None:
+        at = datetime.fromtimestamp(reset, tz=UTC).astimezone()
+        reason += f"; a call frees at {at:%H:%M}"
+    raise RateLimitError(reason)
 
 
 def _drop_v2_cache_table(cache_path: Path) -> None:
@@ -600,13 +621,8 @@ class ComicVineOnlineSource(OnlineSource):
         that shared bucket file, so it counts.
         """
         from requests_cache import DO_NOT_CACHE
-        from simyan.errors import RateLimitError
 
-        before = shared_client_rate_limit_status(self._settings).get(_PROBE_POOL, {})
-        if before.get("remaining") == 0:
-            # simyan would block for up to twice its timeout waiting for a slot.
-            reason = f"the hourly {_PROBE_POOL} budget is spent"
-            raise RateLimitError(reason)
+        _refuse_spent_pool(self._settings, _PROBE_POOL)
         client = self._new_client(DO_NOT_CACHE)
         try:
             self._record_api_call("list_origins")

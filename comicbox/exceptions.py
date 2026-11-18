@@ -41,6 +41,18 @@ class ArchiveWriteError(ArchiveError):
     """An archive could not be written, repacked, or renamed."""
 
 
+class UnparsedTagFileError(ArchiveWriteError):
+    """A keep write refused: a tag file the comic carries did not parse."""
+
+
+class UnwritableFormatError(ArchiveWriteError):
+    """A write refused: -w names no format this archive can hold."""
+
+
+class UnsafePdfAttachmentError(ArchiveWriteError):
+    """A PDF write refused: replacing its tag files would harm another attachment."""
+
+
 class DestinationOccupiedError(ArchiveWriteError):
     """
     A write's destination path is held by another file or writer.
@@ -92,6 +104,15 @@ class ConfigurationError(ComicboxError, ValueError):
     A config file, env var, or argument holds a value comicbox rejects.
 
     Also a ValueError, which is what these sites raised before this class
+    existed, so callers catching that keep working.
+    """
+
+
+class ComicNotFoundError(ComicboxError, FileNotFoundError):
+    """
+    A comic path names nothing on disk.
+
+    Also a FileNotFoundError, which is what this raised before this class
     existed, so callers catching that keep working.
     """
 

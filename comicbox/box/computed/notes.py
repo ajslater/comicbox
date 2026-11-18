@@ -199,10 +199,12 @@ class ComicboxComputedNotes(ComicboxComputedUrlIdentifiers):
             return None
         date_str = match.group("reldate")
         try:
-            return _DATE_FIELD._deserialize(date_str)  # noqa: SLF001
+            parsed = _DATE_FIELD._deserialize(date_str)  # noqa: SLF001
         except Exception:
             logger.debug(f"Unparsable RELDATE {date_str}")
-        return None
+            return None
+        # A partial date gives no cover date to compute from.
+        return parsed if isinstance(parsed, date) else None
 
     def _set_computed_notes_date(
         self, sub_data: dict[str, Any], notes: str, sub_md: dict[str, Any]

@@ -10,6 +10,7 @@ would really block.
 from __future__ import annotations
 
 import pytest
+from mokkari.rate_limit import DEFAULT_BURST_PERIOD, DEFAULT_BURST_SLACK
 
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online.rate_gate import (
@@ -38,6 +39,18 @@ class _Clock:
 @pytest.fixture
 def clock() -> _Clock:
     return _Clock()
+
+
+def test_slot_lifetime_matches_mokkari() -> None:
+    """
+    The gate holds a slot as long as mokkari's own limiters do.
+
+    The numbers are copied so importing the gate stays mokkari-free. If a
+    mokkari release re-measures Metron's window or the slack, this fails at
+    the bump rather than leaving the two pacing differently.
+    """
+    assert _WINDOW_S == DEFAULT_BURST_PERIOD
+    assert _SLACK_S == DEFAULT_BURST_SLACK
 
 
 def _gate(clock: _Clock, **kwargs) -> RateGate:

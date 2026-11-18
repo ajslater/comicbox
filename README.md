@@ -90,7 +90,8 @@ them so you never have to:
 Comicbox can identify a comic and tag it from an online database. **Metron** and
 **ComicVine** are supported. It searches by the series, issue, and year it knows
 about, ranks candidates, breaks close calls with cover-image matching, and
-writes the best result.
+writes the best result. Metron is asked by the comic's cover first, and a cover
+that clearly matches one issue is written without the name search.
 
 ```sh
 # Interactive: prompts only when the match isn't clear.
@@ -190,8 +191,14 @@ phases, and the online tagging tables. A few representative commands:
 # Print the merged metadata comicbox reads from a comic.
 comicbox -p "comic.cbz"
 
-# Set a field and write it as ComicInfo.xml inside the archive.
+# Set a field and write it as ComicInfo.xml inside the archive. -w writes only
+# the formats named and removes every other tag file.
 comicbox -m "{publisher: SmallComics}" -w cix "comic.cbz"
+
+# Set a field and write it back in every format the comic already has, or add
+# ComicInfo.xml to them: keep removes nothing.
+comicbox -m "{publisher: SmallComics}" -w keep "comic.cbz"
+comicbox -m "{publisher: SmallComics}" -w cix,keep "comic.cbz"
 
 # Recursively set a field across an entire library.
 comicbox --recurse -m "{publisher: 'SC Comics'}" -w cix ./comics/
@@ -235,6 +242,31 @@ comicbox --import ComicInfo.xml -w cix "My Overtagged Comic.cbz"
 
 You can also drop individual keys with `-D`/`--delete-keys` using dotted glom
 paths, e.g. `-D series,reprints.0.series`.
+
+### How Tags Are Written
+
+- A CBZ is re-tagged in place: only its trailing tag files, central directory
+  and end record are rewritten, never its pages. A CBZ whose tag files come
+  before its pages, as some other tools write them, is written once on a copy
+  that then replaces it, every other member kept as it was and the tags moved
+  last, and patched in place after that.
+- `-w` removes every tag file it does not name and a ComicBookInfo comment; a
+  free-text archive comment, such as a scanner's note, stays unless `-w cbi`
+  writes ComicBookInfo in its place. In a PDF, `-w` removes the embedded tag
+  files it does not name, as in a zip, and rewrites the PDF's own metadata only
+  for `pdf` or `keep`. `--delete-all-tags` clears all of these.
+- A write that fails while comicbox is running leaves the comic as it was.
+- A process killed in the middle of a re-tag can leave the tag files damaged;
+  the pages are never touched.
+- A copy is written through a hidden temporary `.<comic name>.comicbox.tmp`,
+  which replaces the comic keeping its mode, and its owner and group where they
+  may be set. On Linux it keeps the comic's extended attributes too; on macOS
+  they are not carried over, so a Finder tag on a comic written through a copy
+  is lost. A leftover copy is removed by the next write. A directory that cannot
+  hold the copy gets the in-place write, with a warning. A PDF is saved to a
+  temporary file that replaces it, and a CBR, CBT or CB7 is converted through
+  `.<comic name>.comicbox.tmp` too. Where a comic's name is too long for that
+  name, a hash of it stands in.
 
 ## 🛠 API
 
@@ -283,10 +315,11 @@ print(dest.destination, dest.converts, dest.occupied)
 
 Every operational error these APIs raise derives from
 `comicbox.exceptions.ComicboxError` — `ArchiveError`, `ArchiveWriteError`,
-`DestinationOccupiedError`, `MetadataError`, `ExportError`,
-`WriteValidationError`, `OnlineConfigurationError`, `OnlineLookupAbortedError`,
-and `UnsupportedArchiveTypeError` — so consumers can `except ComicboxError`
-without swallowing unrelated programming errors.
+`DestinationOccupiedError`, `UnwritableFormatError`, `ComicNotFoundError`,
+`ConfigurationError`, `MetadataError`, `ExportError`, `WriteValidationError`,
+`OnlineConfigurationError`, `OnlineLookupAbortedError`, and
+`UnsupportedArchiveTypeError` — so consumers can `except ComicboxError` without
+swallowing unrelated programming errors.
 
 ## ⚙️ Configuration
 
@@ -296,7 +329,7 @@ optional config file, in that order of precedence.
 - **Defaults** live in
   [`config_default.yaml`](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml),
   which also documents the nested config groups (`general`, `read`, `write`,
-  `convert`, `compute`, and `online`).
+  `print`, `convert`, `compute`, and `online`).
 - **Config file** — point at one with `-c PATH`, or place it at
   `~/.config/comicbox/config.yaml`.
 - **Environment variables** are prefixed with `COMICBOX_`, and name their config
@@ -310,9 +343,10 @@ optional config file, in that order of precedence.
 
     Values are parsed as YAML scalars, so `true`, `0.9`, and `24h` get the types
     the config file would give them. A value that doesn't fit its key is an
-    error rather than being silently ignored. For list-valued keys use either an
-    indexed form (`COMICBOX_READ__FORMATS__0=cix`) or, for
-    `online.lookup.sources`, a comma-separated string.
+    error rather than being silently ignored. A list-valued key takes a string
+    the way its CLI option does: comma-separated for the formats and delete keys
+    (`COMICBOX_WRITE__FORMATS=cix,mi`), whole for `-m` and `-i` values. The
+    indexed form (`COMICBOX_READ__FORMATS__0=cix`) works for any list.
 
 - **Log level** is set with the `LOGLEVEL` environment variable:
 

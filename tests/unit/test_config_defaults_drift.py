@@ -41,7 +41,7 @@ from typing import Any
 
 import yaml
 
-from comicbox.config.online.build import _parse_ttl
+from comicbox.config.online.build import parse_ttl
 from comicbox.config.online.settings import OnlineSettings
 from comicbox.config.settings import (
     ComicboxSettings,
@@ -73,7 +73,7 @@ _DEFAULTS = ComicboxSettings(
 _FIELD_ALIASES = {"read.except": "except_formats"}
 
 # Paths whose YAML text needs decoding before comparison.
-_VALUE_DECODERS = {"online.cache.ttl": _parse_ttl}
+_VALUE_DECODERS = {"online.cache.ttl": parse_ttl}
 
 # YAML keys whose dataclass default deliberately differs. Keep the
 # reason; drop the entry when the divergence goes away.
@@ -98,8 +98,10 @@ _NO_YAML_KEY = {
     "online.lookup.enabled": "Runtime-only: set by --online, never persisted.",
     "online.lookup.ids": "Runtime-only: set by --id.",
     "online.lookup.series_ids": "Runtime-only: set by --series-id.",
+    "write.keep_formats": "Runtime-only: set by the keep keyword in write.formats.",
     "online.auth.sources": "See the online.auth divergence note above.",
     "all_write_formats": "Computed by compute_config().",
+    "is_write_keep": "Computed by compute_config().",
     "read_filename_formats": "Computed by compute_config().",
     "read_file_formats": "Computed by compute_config().",
     "read_metadata_lower_filenames": "Computed by compute_config().",

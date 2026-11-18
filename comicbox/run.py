@@ -6,16 +6,25 @@ import sys
 import threading
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
-from comicbox.exceptions import OnlineLookupAbortedError, UnsupportedArchiveTypeError
+from comicbox.exceptions import (
+    ComicNotFoundError,
+    DestinationOccupiedError,
+    ExportError,
+    OnlineLookupAbortedError,
+    UnparsedTagFileError,
+    UnsafePdfAttachmentError,
+    UnsupportedArchiveTypeError,
+    UnwritableFormatError,
+)
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.series_cache import (
@@ -28,14 +37,27 @@ from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
     from argparse import Namespace
-    from collections.abc import Iterator, Mapping
+    from collections.abc import Iterable, Iterator, Mapping
 
     from comicbox.config.settings import ComicboxSettings
 
-#: Expected per-file failures: the path simply isn't an archive we can
-#: open. A traceback tells the user nothing the message doesn't, so these
-#: log one line. Anything else is a bug and earns the stack.
-_EXPECTED_FILE_ERRORS = (UnsupportedArchiveTypeError,)
+#: Expected per-file failures, refusals comicbox makes on purpose: the path
+#: names nothing or isn't an archive we can open, a keep write refused a
+#: comic whose tag file did not parse, a write or rename would land on a
+#: file already there, a PDF write would harm another attachment, -w names
+#: no format the archive can hold, or an export or extraction target is
+#: unsafe or not a directory. A traceback tells the user nothing the
+#: message doesn't, so these log one line. Anything else is a bug and earns
+#: the stack.
+_EXPECTED_FILE_ERRORS = (
+    ComicNotFoundError,
+    UnsupportedArchiveTypeError,
+    UnparsedTagFileError,
+    DestinationOccupiedError,
+    UnsafePdfAttachmentError,
+    UnwritableFormatError,
+    ExportError,
+)
 
 #: The online sources that hold process-wide clients to release at the
 #: end of a run. Named, not imported: see `_close_shared_online_sessions`.
@@ -75,14 +97,65 @@ def _close_shared_online_sessions() -> None:
             module.close_shared_sessions()
 
 
+# Derived from the file-type enum so a newly supported archive can't be
+# left out of a recursive walk. Hardcoding the set is what dropped .cb7.
+_RECURSE_SUFFIXES = frozenset(
+    {"." + file_type.value.lower() for file_type in FileTypeEnum}
+)
+
+
+def iter_recurse(path: Path) -> Iterator[Path]:
+    """Yield every comic archive under a directory, in sorted order."""
+    for full_path in sorted(path.rglob("*")):
+        if not full_path.is_file():
+            continue
+        if full_path.suffix.lower() not in _RECURSE_SUFFIXES:
+            continue
+        yield full_path
+
+
+@dataclass(frozen=True, slots=True)
+class _SameFiles:
+    """
+    The paths of a run that name a file the run reaches by another path too.
+
+    ``process_as`` maps the one path of each such file that is processed
+    to its real path: a path that is not a symbolic link, or else the
+    link's target. ``same_as`` maps every other path to that real path.
+    """
+
+    process_as: Mapping[Path, Path] = field(default_factory=dict)
+    same_as: Mapping[Path, Path] = field(default_factory=dict)
+
+
+def _same_files(paths: Iterable[Path]) -> _SameFiles:
+    """
+    Group a run's paths by the file they name.
+
+    With -r over a directory holding real.cbt and link.cbt -> real.cbt,
+    both were converted, and --delete-orig deleted the link and kept the
+    file. A file the run reaches by one path is left as it is, a symbolic
+    link included, and so is one path given twice.
+    """
+    from comicbox.box.archive.write import file_key
+
+    groups: dict[Any, list[Path]] = {}
+    for path in dict.fromkeys(paths):
+        groups.setdefault(file_key(path), []).append(path)
+    process_as: dict[Path, Path] = {}
+    same_as: dict[Path, Path] = {}
+    for members in groups.values():
+        if len(members) < 2:  # noqa: PLR2004
+            continue
+        chosen = next((path for path in members if not path.is_symlink()), members[0])
+        real = chosen.resolve() if chosen.is_symlink() else chosen
+        process_as[chosen] = real
+        same_as.update({path: real for path in members if path != chosen})
+    return _SameFiles(process_as, same_as)
+
+
 class Runner:
     """Main runner."""
-
-    # Derived from the file-type enum so a newly supported archive can't be
-    # left out of a recursive walk. Hardcoding the set is what dropped .cb7.
-    _RECURSE_SUFFIXES = frozenset(
-        {"." + file_type.value.lower() for file_type in FileTypeEnum}
-    )
 
     def __init__(self, config: Namespace | Mapping | ComicboxSettings | None) -> None:
         """Initialize actions and config."""
@@ -92,6 +165,8 @@ class Runner:
         #: wrong; `comicbox.cli.main` exits non-zero when it's non-empty.
         self.failure_count = 0
         self._failure_lock = threading.Lock()
+        #: A file the run reaches by several paths, processed once.
+        self._same_files = _SameFiles()
         #: Batch-wide series cache for online tagging (series-first
         #: batching, plan §3.10). `OnlineSession` has always had one; the
         #: CLI did not, so `comicbox --online` re-ran the full candidate
@@ -114,24 +189,22 @@ class Runner:
         self._series_cluster_sizes: Counter[str] = Counter()
         init_logging(self._config.general.loglevel)
 
-    def _iter_recurse(self, path: Path) -> Iterator[Path]:
-        for full_path in sorted(path.rglob("*")):
-            if not full_path.is_file():
-                continue
-            if full_path.suffix.lower() not in self._RECURSE_SUFFIXES:
-                continue
-            yield full_path
+    @staticmethod
+    def _iter_recurse(path: Path) -> Iterator[Path]:
+        return iter_recurse(path)
 
     def _expand_paths(self) -> list[Path]:
-        """Flatten config.paths, expanding directories under --recurse."""
+        """
+        Flatten config.paths, expanding directories under --recurse.
+
+        A path that names nothing is kept, so its dispatch reports it and
+        counts it as failed once, whichever branch the run takes.
+        """
         out: list[Path] = []
         for raw in self._config.paths or ():
             if not raw:
                 continue
             path = Path(raw)
-            if not path.exists():
-                logger.error(f"{path} does not exist.")
-                continue
             if path.is_dir():
                 if self._config.general.recurse:
                     out.extend(self._iter_recurse(path))
@@ -178,13 +251,16 @@ class Runner:
     def run_on_file(self, path: Path | str | None) -> None:
         """Run operations on one file (single-file CLI invocation)."""
         if path:
+            # A path that names nothing gets as far as `Comicbox`, which
+            # raises `ComicNotFoundError`: a failed file, not a skipped one.
             path = Path(path)
-            if not path.exists():
-                logger.error(f"{path} does not exist.")
-                return
             if path.is_dir() and self._config.general.recurse:
                 self.recurse(path)
                 return
+            if real := self._same_files.same_as.get(path):
+                logger.info(f"{path}: same file as {real}")
+                return
+            path = self._same_files.process_as.get(path, path)
 
         with Comicbox(path, config=self._config) as car:
             if self._config.online.lookup.enabled:
@@ -363,6 +439,7 @@ class Runner:
             # which handles directory expansion under `--recurse`, so the
             # actual processing is unchanged.
             paths = self._expand_paths()
+            self._same_files = _same_files(paths)
             self._maybe_auto_engage_effort(len(paths))
             self._note_series_clusters(paths)
             if self._config.online.lookup.enabled:
@@ -384,6 +461,7 @@ class Runner:
         if not paths:
             logger.warning("No files to process")
             return
+        self._same_files = _same_files(paths)
         self._maybe_auto_engage_effort(len(paths))
         self._note_series_clusters(paths)
         if len(paths) == 1:

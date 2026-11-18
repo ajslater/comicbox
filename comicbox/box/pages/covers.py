@@ -51,12 +51,12 @@ class ComicboxPagesCovers(ComicboxMetadata):
             logger.warning(f"{self._path} could not find cover filename")
         return cover_paths
 
-    def get_cover_paths(self) -> tuple[str, str, str]:
+    def get_cover_paths(self) -> tuple[str, ...]:
         """Get filename of most likely coverpage."""
         # This could be a generator?
         if self._cover_paths is None:
             self._cover_paths = self._get_cover_paths()
-        return self._cover_paths  # pyright: ignore[reportReturnType], #ty: ignore[invalid-return-type]
+        return self._cover_paths
 
     def _get_cover_page_skip_metadata(self, pdf_format: str = "") -> bytes:
         first_pagename = self.get_pagename(0)

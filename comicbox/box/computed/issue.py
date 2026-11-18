@@ -8,8 +8,8 @@ from loguru import logger
 from comicbox.box.computed.stamp import ComicboxComputedStamp
 from comicbox.empty import is_empty
 from comicbox.formats.base.fields.comicbox import NAME_KEY
-from comicbox.formats.base.fields.fields import StringField
-from comicbox.formats.base.fields.number_fields import DecimalField
+from comicbox.formats.base.fields.fields import IssueField, StringField
+from comicbox.formats.base.fields.number_fields import SignedDecimalField
 from comicbox.formats.comicbox.schema import (
     ALTERNATIVE_ISSUE_KEY,
     ISSUE_KEY,
@@ -21,7 +21,6 @@ from comicbox.formats.comicbox.schema import (
 )
 
 ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
-_PARSE_ISSUE_MATCHER = re.compile(r"(\d*\.?\d*)(.*)")
 # MangaVolume is a free string. A single number or a "first-last" range is
 # what publishers actually write, so comicbox reads those into the volume
 # numbers for clients rather than making every client parse it.
@@ -31,18 +30,18 @@ _PARSE_MANGA_VOLUME_MATCHER = re.compile(r"^\s*(\d+)\s*(?:-\s*(\d+)\s*)?$")
 class ComicboxComputedIssue(ComicboxComputedStamp):
     """Comicbox Computed Issue tags."""
 
-    def _parse_issue_match(
+    def _parse_issue_parts(
         self,
-        match: re.Match[str],
+        issue_name: str,
         old_issue_number: Any,
         old_issue_suffix: Any,
         issue: dict[str, Any],
     ) -> None:
-        """Use regex match to break the issue into parts."""
-        issue_number, issue_suffix = match.groups()
+        """Break the issue name into parts."""
+        issue_number, issue_suffix = IssueField.split_issue(issue_name)
         if is_empty(old_issue_number) and not is_empty(issue_number):
             try:
-                issue_number = DecimalField().deserialize(
+                issue_number = SignedDecimalField().deserialize(
                     issue_number, NUMBER_KEY, issue
                 )
                 issue[NUMBER_KEY] = issue_number
@@ -73,10 +72,9 @@ class ComicboxComputedIssue(ComicboxComputedStamp):
                 # number — the one case where the name is the only place the
                 # number is written — never got parsed at all.
                 and (is_empty(old_issue_number) or not old_issue_suffix)
-                and (match := _PARSE_ISSUE_MATCHER.match(issue_name))
             ):
-                self._parse_issue_match(
-                    match, old_issue_number, old_issue_suffix, issue
+                self._parse_issue_parts(
+                    issue_name, old_issue_number, old_issue_suffix, issue
                 )
         except Exception:
             logger.debug(f"{self._path} Error parsing issue into components: {issue}")

@@ -14,7 +14,7 @@ from zipremove import ZipFile, is_zipfile
 
 from comicbox._pdf import PDF_ENABLED
 from comicbox.enums.comicbox import FileTypeEnum
-from comicbox.exceptions import UnsupportedArchiveTypeError
+from comicbox.exceptions import ComicNotFoundError, UnsupportedArchiveTypeError
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -62,7 +62,7 @@ class ComicboxInit:
             return path
         if not path.exists():
             reason = f"{path} does not exist."
-            raise FileNotFoundError(reason)
+            raise ComicNotFoundError(reason)
         if path.is_dir():
             reason = f"{path} is a directory."
             raise IsADirectoryError(reason)
@@ -153,6 +153,8 @@ class ComicboxInit:
         if metadata:
             self._sources[MetadataSources.API] = [SourceData(metadata, fmt=fmt)]
         self._loaded: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
+        # (source, path) of each source whose parser failed.
+        self._failed_loads: set[tuple[MetadataSources, str]] = set()
         self._normalized: dict[MetadataSources, tuple[LoadedMetadata, ...]] = {}
         self._path_mtime_dttm: datetime | None = None
         self._dict_formats: frozenset[MetadataFormats] = frozenset()

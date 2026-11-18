@@ -57,6 +57,7 @@ _CONVERT_NO_PATH_FIELDS: tuple[tuple[str, str, Any], ...] = (
 
 _WRITE_NO_PATH_FIELDS: tuple[tuple[str, str, Any], ...] = (
     ("formats", "write", frozenset()),
+    ("keep_formats", "write keep", False),
     ("delete_all_tags", "delete_all_tags", False),
 )
 

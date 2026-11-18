@@ -23,7 +23,9 @@ gone; `GateRateLimiter` below is the registration that replaced it.
 
 ### Why comicbox keeps `RateGate` and not mokkari's `HeaderPacedRateLimiter`
 
-4.8.0 ships a reference limiter. comicbox does not adopt it:
+4.8.0 ships a reference limiter. comicbox does not adopt it. 5.1.0
+closed one gap: it now holds each slot 2 s past Metron's 60 s window,
+the slack `RateGate` already had (mokkari#198). The rest remain:
 
 | Concern | `RateGate` (comicbox) | `HeaderPacedRateLimiter` (mokkari) |
 | --- | --- | --- |
@@ -34,7 +36,7 @@ gone; `GateRateLimiter` below is the registration that replaced it.
 | Daily quota | warns at 10 %, stops cold searches at 2 %/min 25, aborts with `OnlineLookupAbortedError` at 0 (5.1.1's `Skipped(reason="quota_reserved")` depends on this) | raises `RateLimitError` from the server's epoch reset against the LOCAL clock -- the clock-drift trap the gate was designed around |
 | `rate_limit.per_minute` ceiling | honoured, as `config_limit` | none |
 | Stats for the end-of-run summary | `stats()` | none |
-| Clock | monotonic only; never converts a `-Reset` | mixes monotonic (burst) and wall clock (sustained) |
+| Clock | monotonic only; never converts a `-Reset` | mixes monotonic (burst) and wall clock (sustained, and since 5.1.0 an exhausted burst's `-Reset`, capped at one window) |
 
 4.9.0 adds `RedisRateLimiter`, which paces the same way but keeps its
 state in Redis so several processes on one account share a window. The

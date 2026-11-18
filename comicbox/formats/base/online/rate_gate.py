@@ -62,6 +62,12 @@ _WINDOW_S: Final[float] = 60.0
 # a slot a beat before the server does and spend it on a 429.
 _SLACK_S: Final[float] = 2.0
 
+# Both numbers are mokkari's too, as `DEFAULT_BURST_PERIOD` and
+# `DEFAULT_BURST_SLACK`: mokkari 5.1.0 gave its own limiters this slack
+# (mokkari#198). They are copied rather than imported because importing
+# `mokkari.rate_limit` loads mokkari's whole session stack, and nothing
+# else here needs it. `test_rate_gate` fails if the two drift apart.
+
 # Ceiling on a single wait inside the gate, so a bad header or a wild
 # `Retry-After` can never park a worker indefinitely. A worker that hits
 # this re-evaluates rather than gives up.

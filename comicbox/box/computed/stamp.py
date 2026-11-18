@@ -86,6 +86,7 @@ class ComicboxComputedStamp(ComicboxComputedPages):
         if not (
             self._config.write.stamp
             or self._config.all_write_formats
+            or self._config.is_write_keep
             or self._config.convert.cbz
             or self._config.convert.export_formats
         ):

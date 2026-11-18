@@ -1,6 +1,7 @@
 """Comicbox Fields."""
 
 import sys
+from collections.abc import Mapping
 from inspect import isclass
 from typing import Any
 
@@ -76,7 +77,12 @@ class SimpleNamedDictField(Union):
 
 
 class SimpleNamedNestedField(Union):
-    """Return a union of a nested schema and an alternate field."""
+    """
+    A nested schema that also reads a plain name or number.
+
+    ``series: Civil War`` is read as ``series: {name: Civil War}``, and
+    ``volume: 2006`` as ``volume: {number: 2006}``.
+    """
 
     def __init__(
         self,
@@ -84,29 +90,32 @@ class SimpleNamedNestedField(Union):
         schema: type[BaseSubSchema] = IdentifiedNameSchema,
         field: Field | type[Field] = StringField,
         name_key: str = NAME_KEY,
-        primitive_type: type = str,
         **kwargs: Any,
     ) -> None:
         """Create the union."""
         self._name_key = name_key
-        self._primitive_type = primitive_type
         if isclass(field):
             field = field()
+        self._plain_field: Field = field
         fields = [Nested(schema(ignore_errors=UNION_SCHEMA_IGNORE_ERRORS)), field]
         super().__init__(fields, *args, **kwargs)
 
     @override
     def _deserialize(
         self,
-        value: dict[str, Any],
-        *args: Any,
+        value: Any,
+        attr: str | None = None,
+        data: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> dict:
-        result = super()._deserialize(value, *args, **kwargs)
-        if isinstance(result, self._primitive_type):
-            complex_value = {self._name_key: result}
-            result = super()._deserialize(complex_value, *args, **kwargs)
-        return result
+        if not isinstance(value, Mapping):
+            # The nested schema reads a value that is not a mapping as empty,
+            # without an error, so the union never reached the plain field
+            # and a plain name was dropped unlogged. Read it here: an invalid
+            # one raises, and its schema logs the drop.
+            plain = self._plain_field.deserialize(value, attr, data, **kwargs)
+            value = {self._name_key: plain}
+        return super()._deserialize(value, attr, data, **kwargs)
 
 
 class RoleField(PrettifiedStringField):
