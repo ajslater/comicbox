@@ -19,7 +19,6 @@ from typing import Any
 import pytest
 
 from comicbox.box.archive.write import file_key
-from comicbox.readinglists.tagging import group_files
 from comicbox.run import _same_files
 from tests.const import CIX_CBT_SOURCE_PATH
 
@@ -55,7 +54,6 @@ def test_comics_sharing_one_inode_number_are_different_files(tmp_path: Path) -> 
 
     assert len({file_key(path) for path in paths}) == len(paths)
     assert _same_files(paths).same_as == {}
-    assert set(group_files(paths, file_key)) == set(paths)
 
 
 def test_hard_links_are_one_file(tmp_path: Path) -> None:

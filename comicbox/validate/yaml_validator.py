@@ -22,8 +22,7 @@ def _jsonable(data: Any) -> Any:
     Make loaded YAML look like the JSON the schema describes.
 
     JSON keys are strings, and JSON has no date type: YAML loads page
-    numbers as int keys and dates as date objects, wherever they sit, in a
-    comic's cover date or in every entry of a reading list.
+    numbers as int keys and dates as date objects, wherever they sit.
     """
     if isinstance(data, Mapping):
         return {str(key): _jsonable(value) for key, value in data.items()}

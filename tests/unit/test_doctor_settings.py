@@ -210,15 +210,3 @@ def test_missing_cli_config_is_one_row(tmp_path: Path) -> None:
     ]
     assert rows[0].detail == "not found"
     assert ctx.settings is None
-
-
-def test_reading_list_settings_are_known(tmp_path: Path) -> None:
-    """The readinglists group is a real group; a typo in it still warns."""
-    _user_config(
-        tmp_path,
-        "comicbox:\n  readinglists:\n    catalog_repo: me/lists\n"
-        "    catalog_ref: dev\n    catalog_ttl: 1h\n    max_download_bytes: 1000\n"
-        "    catalog_tll: 2h\n",
-    )
-    rows = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
-    assert [row.detail for row in rows] == ["readinglists.catalog_tll is ignored"]

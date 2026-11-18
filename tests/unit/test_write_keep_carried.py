@@ -226,7 +226,7 @@ def test_keep_refuses_an_unparseable_comic_in_one_line(
 def test_a_tag_source_that_yields_nothing_is_not_unparseable(
     tmp_path: Path, extra: dict[str, Any], files: list[str]
 ) -> None:
-    """G4: these could never be written with keep, nor tagged by write-arcs."""
+    """G4: these could never be written with keep."""
     path = make_comic(tmp_path / "cw1.cbz", **extra, **_TAGS)
     comment = _tag_files(path)[1]
 

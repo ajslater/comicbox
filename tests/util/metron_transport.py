@@ -137,21 +137,13 @@ def issue_row(issue_id: int) -> dict[str, Any]:
 
 
 def issue_page(
-    rows: list[dict[str, Any]],
-    next_page: str | None = None,
-    count: int | None = None,
-    previous_page: str | None = None,
+    rows: list[dict[str, Any]], next_page: str | None = None
 ) -> dict[str, Any]:
-    """
-    Wrap rows in mokkari's paginated list envelope.
-
-    ``count`` is the whole list's length, as Metron sends it on every
-    page; it defaults to this page's.
-    """
+    """Wrap issue rows in mokkari's paginated list envelope."""
     return {
-        "count": len(rows) if count is None else count,
+        "count": len(rows),
         "next": next_page,
-        "previous": previous_page,
+        "previous": None,
         "results": rows,
     }
 
@@ -202,85 +194,4 @@ def series_detail(series_id: int = 7) -> dict[str, Any]:
         "issue_count": 12,
         "resource_url": f"https://metron.cloud/series/test-{series_id}/",
         "modified": "2020-01-01T00:00:00-05:00",
-    }
-
-
-_MODIFIED = "2024-05-01T12:00:00-04:00"
-_LIST_SERIES = {"id": 7, "name": "Civil War", "volume": 1, "year_began": 2006}
-
-
-def reading_list_detail(list_id: int = 1, **fields: Any) -> dict[str, Any]:
-    """Build a `reading_list(id)` payload; ``fields`` override any key."""
-    return {
-        "id": list_id,
-        "user": {"id": 3, "username": "curator"},
-        "name": "Civil War",
-        "slug": "civil-war",
-        "desc": "<p>The <b>Superhuman Registration Act</b> divides them.</p>",
-        "list_type": "Event",
-        "is_private": False,
-        "attribution_source": "CBRO",
-        "attribution_url": "https://www.comicbookreadingorders.com/marvel/events/civil-war/",
-        "previous": None,
-        "next": None,
-        "average_rating": 4.5,
-        "rating_count": 2,
-        "items_url": f"https://metron.cloud/api/reading_list/{list_id}/items/",
-        "resource_url": f"https://metron.cloud/reading-lists/{list_id}/",
-        "modified": _MODIFIED,
-        **fields,
-    }
-
-
-def reading_list_item(
-    issue_id: int, order: int | None = None, issue_type: str = "Core"
-) -> dict[str, Any]:
-    """Build one `reading_list_items` row, its item id the issue's."""
-    return {
-        "id": issue_id,
-        "issue": {
-            "id": issue_id,
-            "series": _LIST_SERIES,
-            "number": str(issue_id),
-            "cover_date": "2006-07-01",
-            "store_date": "2006-05-03",
-            "cv_id": 1000 + issue_id,
-            "gcd_id": None,
-            "modified": _MODIFIED,
-        },
-        "order": order,
-        "issue_type": issue_type,
-    }
-
-
-def reading_list_row(list_id: int = 1, **fields: Any) -> dict[str, Any]:
-    """Build one `reading_lists_list` row; ``fields`` override any key."""
-    return {
-        "id": list_id,
-        "name": "Civil War",
-        "slug": "civil-war",
-        "user": {"id": 3, "username": "curator"},
-        "list_type": "Event",
-        "is_private": False,
-        "attribution_source": "CBRO",
-        "average_rating": 4.5,
-        "rating_count": 2,
-        "modified": _MODIFIED,
-        **fields,
-    }
-
-
-def arc_detail(arc_id: int = 5, **fields: Any) -> dict[str, Any]:
-    """Build an `arc(id)` payload; ``fields`` override any key."""
-    return {
-        "id": arc_id,
-        "name": "Civil War",
-        "modified": _MODIFIED,
-        "desc": "<p>Hero against hero.</p>",
-        "image": None,
-        "cv_id": 40000,
-        "gcd_id": None,
-        "resource_url": f"https://metron.cloud/arc/civil-war-{arc_id}/",
-        "attribution": [],
-        **fields,
     }

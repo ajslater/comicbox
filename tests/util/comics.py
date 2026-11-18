@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import zipfile
 from typing import TYPE_CHECKING, Any
@@ -15,31 +14,12 @@ JSON = "COMICBOX_JSON"
 
 
 def comic_tags(
-    *,
-    series: str,
-    number: str,
-    start_year: int | None = None,
-    volume: int | None = None,
-    cover_date: str | None = None,
-    ids: dict[str, str] | None = None,
-    arcs: dict[str, int | None] | None = None,
+    *, series: str, number: str, volume: int | None = None
 ) -> dict[str, Any]:
     """Build the comicbox tags of one comic."""
-    series_tags: dict[str, Any] = {"name": series}
-    if start_year is not None:
-        series_tags["start_year"] = start_year
-    comic: dict[str, Any] = {"series": series_tags, "issue": {"name": number}}
+    comic: dict[str, Any] = {"series": {"name": series}, "issue": {"name": number}}
     if volume is not None:
         comic["volume"] = {"number": volume}
-    if cover_date is not None:
-        comic["date"] = {"cover_date": cover_date}
-    if ids:
-        comic["identifiers"] = {source: {"key": key} for source, key in ids.items()}
-    if arcs:
-        comic["arcs"] = {
-            name: {} if arc_number is None else {"number": arc_number}
-            for name, arc_number in arcs.items()
-        }
     return comic
 
 
@@ -80,18 +60,3 @@ def make_comic(
         if comment is not None:
             archive.comment = comment.encode()
     return path
-
-
-def tag_files(path: Path) -> list[str]:
-    """List a CBZ's members other than its page."""
-    with zipfile.ZipFile(path) as archive:
-        return sorted(name for name in archive.namelist() if name != "page-0.jpg")
-
-
-def digests(directory: Path) -> dict[Path, str]:
-    """Hash every file under a directory, to show a run changed none."""
-    return {
-        path: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(directory.rglob("*"))
-        if path.is_file()
-    }

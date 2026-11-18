@@ -1,10 +1,9 @@
 """
 Drift guard: the published comicbox JSON Schemas must match their models.
 
-The JSON Schema files in ``comicbox/schemas/v3.0/`` and
-``comicbox/schemas/reading-list/v1.0/`` are hand-maintained and serve as the
-production validators for the comicbox-native comic and reading-list formats, but
-nothing generates them from the Marshmallow schemas.
+The JSON Schema files in ``comicbox/schemas/v3.0/`` are hand-maintained and serve
+as the production validators for the comicbox-native comic formats, but nothing
+generates them from the Marshmallow schemas.
 
 This test walks the Marshmallow schema tree (the source of truth) and the JSON Schema
 in parallel -- following ``$ref``s relative to the file that holds them,
@@ -31,7 +30,6 @@ from marshmallow.fields import Nested
 from marshmallow_union import Union
 
 from comicbox.formats.comicbox.schema.json_schema import ComicboxJsonSchema
-from comicbox.readinglists.schema import ReadingListJsonSchema
 from comicbox.validate.base import SCHEMA_PATH
 
 if TYPE_CHECKING:
@@ -41,10 +39,6 @@ if TYPE_CHECKING:
 # (model, root JSON Schema file) pairs.
 SCHEMA_PAIRS: tuple[tuple[type[Schema], Path], ...] = (
     (ComicboxJsonSchema, SCHEMA_PATH / "v3.0" / "comicbox-v3.0.schema.json"),
-    (
-        ReadingListJsonSchema,
-        SCHEMA_PATH / "reading-list" / "v1.0" / "reading-list-v1.0.schema.json",
-    ),
 )
 
 # Marshmallow base class -> JSON Schema ``type``. Order matters: ``Integer`` is a
@@ -81,7 +75,7 @@ def _resolve(node: dict, base: Path) -> tuple[dict, Path]:
     Follow ``$ref``s to the target schema object and the file that holds it.
 
     A ``$ref`` is relative to the file it appears in, as the runtime validator
-    resolves it, so a reading-list file can point into ``v3.0``.
+    resolves it.
     """
     seen: set[Path] = set()
     while "$ref" in node:
