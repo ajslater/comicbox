@@ -11,23 +11,19 @@ fail rather than the behavior quietly disappearing.
 
 from __future__ import annotations
 
-import contextvars
 import sys
-import threading
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import pytest
 
 from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats, warn_once
 from comicbox.formats.base.online.rate_gate import GateState, RateGate
-from comicbox.formats.metron_api import paced_session
 from comicbox.formats.metron_api.paced_session import (
     GateRateLimiter,
     build_paced_session,
     endpoint_from_url,
-    fetch_hooks,
     install_response_observer,
 )
 from tests.util.metron_transport import (
@@ -38,9 +34,6 @@ from tests.util.metron_transport import (
     issue_page,
     issue_row,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -61,9 +54,9 @@ class _RecordingGate(RateGate):
         self.cooldowns: list[float | None] = []
 
     @override
-    def acquire(self, abort: Callable[[], bool] | None = None) -> float:
+    def acquire(self) -> None:
         self.acquires += 1
-        return super().acquire(abort)
+        super().acquire()
 
     @override
     def release(self) -> None:
@@ -469,103 +462,3 @@ def test_requests_are_counted_per_endpoint(gate: _RecordingGate) -> None:
 )
 def test_endpoint_names(url: str, expected: str) -> None:
     assert endpoint_from_url(url) == expected
-
-
-# ------------------------------------------- reading-list hooks (S2)
-#
-# A reading-list fetch sets an abort check and a page observer around its
-# mokkari call. Tagging never sets them, so tagging must behave exactly
-# as it did before they existed.
-
-
-def _hooks() -> Any:
-    return paced_session._fetch_hooks.get()
-
-
-def test_the_hooks_are_unset_by_default() -> None:
-    assert _hooks() is None
-
-
-def test_without_hooks_a_paged_call_is_unchanged(gate: _RecordingGate) -> None:
-    """One slot per page and every page sent, as before the hooks."""
-    session, adapter = _paged(
-        gate,
-        [
-            Reply(issue_page([issue_row(1)], "https://metron.cloud/api/issue/?page=2")),
-            Reply(issue_page([issue_row(2)])),
-        ],
-    )
-
-    issues = session.issues_list(params={"series_id": 7})
-
-    assert [issue.id for issue in issues] == [1, 2]
-    assert len(adapter.urls) == 2
-    assert (gate.acquires, gate.releases, gate.observes) == (2, 2, 2)
-
-
-def test_the_hooks_are_unset_after_the_block_even_on_error() -> None:
-    seen: list[Any] = []
-
-    def fail_inside() -> None:
-        with fetch_hooks(abort=lambda: True, on_page=lambda _response: None):
-            seen.append(_hooks())
-            reason = "boom"
-            raise RuntimeError(reason)
-
-    with pytest.raises(RuntimeError):
-        fail_inside()
-
-    assert seen[0] is not None
-    assert _hooks() is None
-
-
-def test_hooks_do_not_reach_a_thread_that_inherits_them(
-    gate: _RecordingGate,
-) -> None:
-    """
-    A thread started inside a fetch, in a copy of its context, is not hooked.
-
-    Free-threaded builds start threads in their creator's context, and
-    ``Context.run`` does the same anywhere: a tagging call on such a thread
-    must not be cancelled by, or report pages to, a reading-list fetch.
-    """
-    session, adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
-    pages: list[Any] = []
-    results: list[Any] = []
-
-    def tag() -> None:
-        assert _hooks() is not None  # It did inherit them.
-        results.append(session.issues_list(params={"series_id": 7}))
-
-    with fetch_hooks(abort=lambda: True, on_page=pages.append):
-        worker = threading.Thread(target=contextvars.copy_context().run, args=(tag,))
-        worker.start()
-        worker.join()
-
-    assert [issue.id for issue in results[0]] == [1]
-    assert len(adapter.urls) == 1
-    assert pages == []
-
-
-def test_the_abort_check_stops_a_call_before_its_send(gate: _RecordingGate) -> None:
-    session, adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
-
-    with fetch_hooks(abort=lambda: True), pytest.raises(OnlineLookupAbortedError):
-        session.issues_list(params={"series_id": 7})
-
-    assert adapter.urls == []
-    assert gate.acquires == 0
-
-
-def test_a_failing_page_observer_cannot_break_a_send(gate: _RecordingGate) -> None:
-    session, _adapter = _paged(gate, [Reply(issue_page([issue_row(1)]))])
-
-    def explode(_response: Any) -> None:
-        reason = "observer bug"
-        raise RuntimeError(reason)
-
-    with fetch_hooks(on_page=explode):
-        issues = session.issues_list(params={"series_id": 7})
-
-    assert [issue.id for issue in issues] == [1]
-    assert gate.observes == 1

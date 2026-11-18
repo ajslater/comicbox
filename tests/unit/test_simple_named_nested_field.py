@@ -6,8 +6,7 @@ NEWS, that "named or numbered types ... may also be parse[d] by their simple
 name instead of requiring a complex object". ``SimpleNamedNestedField``'s
 branch for that never ran: the nested schema read a plain value as ``{}``
 without an error, so the union never tried the plain field, and the value
-was dropped with no log line. Reading lists read them too (AJ: comicbox is
-liberal when reading), and their read's warnings say what was read as what.
+was dropped with no log line.
 """
 
 from __future__ import annotations
@@ -24,7 +23,6 @@ from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
-from comicbox.readinglists.serialize import dumps, loads
 from comicbox.write import write_metadata
 from tests.const import TEST_FILES_DIR
 
@@ -126,29 +124,3 @@ def test_an_invalid_plain_value_is_logged_as_dropped(
     messages = "\n".join(record.getMessage() for record in warnings.records)
     assert "Dropped invalid metadata: volume='abc'" in messages
     assert "Dropped invalid metadata: series=['a', 'b']" in messages
-
-
-def test_a_reading_list_reads_a_plain_series_and_volume() -> None:
-    """Read, said, and written back as the objects its JSON Schema has."""
-    result = loads(
-        "reading_list:\n  name: X\n  entries:\n"
-        "    - series: Civil War\n      volume: 2006\n      issue: {name: '1'}\n",
-        fmt="yaml",
-    )
-
-    entry = {
-        "series": {"name": "Civil War"},
-        "volume": {"number": 2006},
-        "issue": {"name": "1"},
-    }
-    assert result.reading_list["entries"] == [entry]
-    assert "entries #1.series: 'Civil War' read as {'name': 'Civil War'}" in (
-        result.warnings
-    )
-    assert "entries #1.volume: 2006 read as {'number': 2006}" in result.warnings
-    written = dumps(result.reading_list, "yaml")
-    assert loads(written, fmt="yaml").reading_list["entries"] == [entry]
-    assert (
-        "- series:\n        name: Civil War\n      volume:\n        number: 2006"
-        in (written)
-    )

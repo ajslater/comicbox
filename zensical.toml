@@ -5,7 +5,6 @@ site_author = "AJ"
 site_description = "Comicbox Comic Metadata Reader & Writer"
 nav = [
   "NEWS.md",
-  "reading-lists.md",
   # The schema pages are children of the summary page, in the order it
   # describes them. The Filename page links comicfn2dict's own Filename
   # Format grammar, so the nav doesn't.
@@ -30,13 +29,7 @@ nav = [
       "schema/comicbox-v3.0/series.schema.md",
       "schema/comicbox-v3.0/alternative-name.schema.md",
       "schema/comicbox-v3.0/volume.schema.md"
-    ] },
-    { "Reading List 1.0" = [
-      "schema/reading-list-v1.0/index.md",
-      "schema/reading-list-v1.0/entry.schema.md",
-      "schema/reading-list-v1.0/source.schema.md"
-    ] },
-    { "json-cbl 1.0" = "schema/json-cbl-v1.0.schema.md" }
+    ] }
   ] },
   "TAGS.md"
 ]

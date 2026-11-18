@@ -1,8 +1,8 @@
 """
 Series names, normalized for comparing.
 
-One normalizer for the online matcher and for reading lists, so a name the
-matcher compares and a name a reading list keys on are the same string.
+One normalizer for the online matcher, so the name a filename gives and the
+name a database gives are compared as the same string.
 """
 
 import re
@@ -32,16 +32,6 @@ def normalize_series(name: str) -> str:
     lowercase letters and digits with single spaces between them.
     """
     return _spaced(_VOLUME_SUFFIX_RE.sub(" ", _folded(name)))
-
-
-def fold_text(text: str) -> str:
-    """
-    Fold text for searching, as series names are folded but for volumes.
-
-    A search for ``volume 3`` means those words; ``normalize_series``
-    would strip them.
-    """
-    return _spaced(_folded(text))
 
 
 def _folded(text: str) -> str:

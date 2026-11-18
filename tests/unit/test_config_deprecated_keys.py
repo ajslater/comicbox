@@ -1,8 +1,8 @@
 """
 A deprecated format key still works, says so, and is not advertised.
 
-cbl for ComicBookInfo goes in comicbox 6.0: CBL is a ComicRack reading
-list, which ``comicbox rl`` reads and writes as ``cbl``.
+cbl for ComicBookInfo goes in comicbox 6.0; ``DEPRECATED_FORMAT_KEYS`` says
+why.
 """
 
 from argparse import Namespace
@@ -14,7 +14,6 @@ from comicbox.config import get_config
 from comicbox.config.formats import DEPRECATED_FORMAT_KEYS
 from comicbox.config.settings import ComicboxSettings
 from comicbox.formats import MetadataFormats
-from comicbox.readinglists.cli.comics import _FORMAT_KEYS
 
 
 def _config_and_warnings(key: str) -> tuple[ComicboxSettings, list[str]]:
@@ -58,9 +57,3 @@ def test_help_table_leaves_deprecated_keys_out() -> None:
     listed = {key for cell in keys_column.cells for key in str(cell).split(", ")}
     assert "cbi" in listed
     assert not listed & DEPRECATED_FORMAT_KEYS.keys()
-
-
-def test_write_arcs_takes_no_deprecated_key() -> None:
-    """In comicbox rl, cbl is a reading list, never ComicBookInfo."""
-    assert "cbi" in _FORMAT_KEYS
-    assert not _FORMAT_KEYS.keys() & DEPRECATED_FORMAT_KEYS.keys()
