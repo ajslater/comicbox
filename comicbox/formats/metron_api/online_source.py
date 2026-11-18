@@ -40,6 +40,10 @@ from comicbox.formats.base.online.sources.base import (
     claim_cache_refresh,
 )
 from comicbox.formats.base.online.warn_once import warn_once
+from comicbox.formats.metron_api.cover_search import (
+    MAX_COVER_HASH_DISTANCE,
+    issues_by_cover_hash,
+)
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
@@ -59,6 +63,7 @@ if TYPE_CHECKING:
     from mokkari.sqlite_cache import SqliteCache
 
     from comicbox.formats.base.online.profile import ComicProfile
+    from comicbox.formats.metron_api.cover_search import CoverMatch
 
 # Sessions are shared across the API token that built them (see
 # `_get_session`) — not `db_path` like the old pyrate_limiter override
@@ -134,11 +139,10 @@ _MAX_PROMPT_SERIES_LOOKUPS: Final[int] = 6
 _prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
 _prefetch_lock = threading.Lock()
 
-# Cover search: Metron's `cover_hash_near` filter (metron#683), narrowed
-# the way metron-tagger narrows it (metron-tagger#294). The widest
-# distance Metron allows; acceptance is decided by the caller at a tighter
-# limit, so the extra width only adds candidates to rank.
-_COVER_SEARCH_MAX_BITS: Final = 20
+# Cover search (`cover_search`), narrowed the way metron-tagger narrows it
+# (metron-tagger#294). It asks for the widest distance Metron allows;
+# acceptance is decided by the caller at a tighter limit, so the extra
+# width only adds candidates to rank.
 # Filename years are often the release year, which can differ from the
 # cover year, so the cover-date range is a year either side.
 _COVER_YEAR_TOLERANCE: Final = 1
@@ -1358,10 +1362,7 @@ class MetronOnlineSource(OnlineSource):
         number = strip_issue_leading_zeros(profile.issue)
         if not number:
             return None
-        params: dict[str, Any] = {
-            "number": number,
-            "cover_hash_max_distance": _COVER_SEARCH_MAX_BITS,
-        }
+        params: dict[str, Any] = {"number": number}
         series_id = self._settings.lookup.series_ids.get(self.name)
         if series_id is not None:
             params["series_id"] = series_id
@@ -1386,30 +1387,21 @@ class MetronOnlineSource(OnlineSource):
         self, profile: ComicProfile, cover_hash: str
     ) -> list[Candidate]:
         """
-        One `issues_list` call filtered by ``cover_hash_near``.
-
-        Metron sorts the rows closest first and returns only issues with a
-        valid cover hash. It doesn't return the distance, so each row's
-        `precomputed_cover_hash` is what the caller measures against.
+        One `issues_by_cover_hash` call, at the widest distance Metron allows.
 
         Not decorated with ``@with_retry()`` for the reason `search` isn't:
-        `_issues_list_with_retry` carries the call's retry budget. Like
-        `search`, it declines (returns []) once the daily quota is down to
-        the reserve.
+        `_issues_by_cover_hash_with_retry` carries the call's retry budget.
+        Like `search`, it declines (returns []) once the daily quota is down
+        to the reserve.
         """
         params = self._build_cover_search_params(profile)
         if params is None or not self._may_start_cold_search():
             return []
-        params["cover_hash_near"] = cover_hash
         session = self._get_session()
-        issues = self._issues_list_with_retry(session, params)
-        return self._drop_beyond_cover_range(
-            [self._to_candidate(i) for i in issues], cover_hash
-        )
+        matches = self._issues_by_cover_hash_with_retry(session, cover_hash, params)
+        return self._drop_beyond_cover_range(matches)
 
-    def _drop_beyond_cover_range(
-        self, candidates: list[Candidate], cover_hash: str
-    ) -> list[Candidate]:
+    def _drop_beyond_cover_range(self, matches: list[CoverMatch]) -> list[Candidate]:
         """
         Keep only the rows `cover_hash_near` could have returned.
 
@@ -1422,16 +1414,12 @@ class MetronOnlineSource(OnlineSource):
         search off for the rest of the process. The one search that found
         out has already paid for the pages.
         """
-        from comicbox.formats.base.online.cover_hash import cover_distance
-
         kept = [
-            candidate
-            for candidate in candidates
-            if (bits := cover_distance(cover_hash, candidate.precomputed_cover_hash))
-            is not None
-            and bits <= _COVER_SEARCH_MAX_BITS
+            match
+            for match in matches
+            if match.distance is not None and match.distance <= MAX_COVER_HASH_DISTANCE
         ]
-        if len(kept) != len(candidates):
+        if len(kept) != len(matches):
             _cover_search_unsupported.set()
             warn_once(
                 "metron:cover-hash-near-ignored",
@@ -1439,7 +1427,17 @@ class MetronOnlineSource(OnlineSource):
                 "cover_hash_near could not have, so it is ignoring the "
                 "filter. Cover search is off for the rest of this run.",
             )
-        return kept
+        return [self._to_candidate(match.issue) for match in kept]
+
+    @with_retry()
+    def _issues_by_cover_hash_with_retry(
+        self, session: Session, cover_hash: str, params: dict[str, Any]
+    ) -> list[CoverMatch]:
+        """Per-call retry wrapper around `issues_by_cover_hash`, one `issues_list`."""
+        self._record_api_call("issues_list")
+        return issues_by_cover_hash(
+            session, cover_hash, MAX_COVER_HASH_DISTANCE, params
+        )
 
     @with_retry()
     def _issues_list_with_retry(
