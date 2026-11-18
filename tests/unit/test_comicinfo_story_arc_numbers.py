@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from comicbox.box import Comicbox
-from comicbox.readinglists import arc_patch
 from comicbox.write import write_metadata
 from tests.const import CIX_CBZ_SOURCE_PATH
 
@@ -52,13 +51,13 @@ def comic(tmp_path: Path) -> Path:
 def test_an_arc_without_a_number_keeps_the_others_numbers(
     comic: Path, fmt: str
 ) -> None:
-    write_metadata(comic, arc_patch("New Arc"), formats=[fmt])
+    write_metadata(comic, {"arcs": {"New Arc": {}}}, formats=[fmt])
     assert _arcs(comic) == {**_FIXTURE_ARCS, "New Arc": {}}
 
 
 @pytest.mark.parametrize("fmt", ["comic_info", "comicbox_json"])
 def test_an_arc_with_a_number_joins_the_others(comic: Path, fmt: str) -> None:
-    write_metadata(comic, arc_patch("New Arc", 7), formats=[fmt])
+    write_metadata(comic, {"arcs": {"New Arc": {"number": 7}}}, formats=[fmt])
     assert _arcs(comic) == {**_FIXTURE_ARCS, "New Arc": {"number": 7}}
 
 

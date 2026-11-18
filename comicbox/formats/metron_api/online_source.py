@@ -15,7 +15,6 @@ import sqlite3
 import sys
 import threading
 from collections import OrderedDict
-from contextlib import contextmanager
 from dataclasses import replace
 from datetime import timedelta
 from functools import partial
@@ -56,10 +55,9 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Generator, Mapping, Sequence
+    from collections.abc import Mapping, Sequence
     from pathlib import Path
 
-    from mokkari.cache import Cache, CacheKind
     from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
     from mokkari.session import Session
     from mokkari.sqlite_cache import SqliteCache
@@ -469,53 +467,6 @@ def _classify_api_error(exc: BaseException) -> RetryCategory:
     return RetryCategory.TRANSIENT
 
 
-class _RefreshingCache:
-    """
-    A mokkari ``Cache`` that misses every read and stores in another cache.
-
-    A Session on it fetches every response from Metron and leaves each one
-    in the shared cache, replacing the stale copy there. mokkari has no
-    per-call way to skip its cache; its public ``Cache`` protocol is the
-    seam. It is tagged, as the shared ``SqliteCache`` is, so each entry
-    keeps the tags later writes invalidate it by.
-    """
-
-    def __init__(self, cache: Cache) -> None:
-        """Store in ``cache``; never read from it."""
-        self._cache = cache
-
-    @property
-    def ttl_policy(self) -> Any:
-        """The shared cache's lifetimes, which decide what it keeps."""
-        return getattr(self._cache, "ttl_policy", None)
-
-    def get(self, key: str) -> Any | None:  # noqa: ARG002
-        """Miss, so the response is fetched from Metron."""
-        return None
-
-    def store(
-        self,
-        key: str,
-        value: Any,
-        *,
-        resource: str,
-        kind: CacheKind,
-        tags: Collection[str] = (),
-    ) -> None:
-        """Store the fresh response in the shared cache."""
-        if hasattr(self._cache, "invalidate_tags"):
-            store: Any = self._cache.store
-            store(key, value, resource=resource, kind=kind, tags=tags)
-        else:
-            self._cache.store(key, value, resource=resource, kind=kind)
-
-    def invalidate_tags(self, resource: str, tags: Collection[str]) -> object:
-        """Pass a write's invalidation on to the shared cache."""
-        if invalidate := getattr(self._cache, "invalidate_tags", None):
-            return invalidate(resource, tags)
-        return None
-
-
 def _open_cache(cache_path: Path, ttl: timedelta) -> SqliteCache | None:
     """
     Open the response cache, or return None to run without one.
@@ -650,44 +601,6 @@ class MetronOnlineSource(OnlineSource):
             self._warn_ignored_rate_limit_overrides()
             self._client = self._get_or_build_shared_session()
         return self._client
-
-    def session(self) -> Session:
-        """
-        Return the shared mokkari Session for this source's API token.
-
-        Reading lists call Metron through it, so their requests queue at
-        the same rate gate and fill the same response cache as tagging.
-        """
-        return self._get_session()
-
-    @contextmanager
-    def refreshing_session(self) -> Generator[Session]:
-        """
-        Get a Session that fetches from Metron past the response cache.
-
-        For a caller that knows the cached copy is stale, such as a list
-        found changed since it was cached. It queues at this token's rate
-        gate and stores what it fetches in the shared cache, replacing the
-        stale entries, so the next cached read is fresh too. Closed on exit.
-        Without a cache the shared Session already fetches everything.
-        """
-        from comicbox.formats.metron_api.paced_session import build_paced_session
-
-        shared = self.session()
-        cache, gate = shared.cache, self._gate()
-        if cache is None or gate is None:
-            yield shared
-            return
-        session = build_paced_session(
-            gate,
-            api_token=self._credential_key(),
-            cache=_RefreshingCache(cache),
-            user_agent=user_agent(),
-        )
-        try:
-            yield session
-        finally:
-            session.close()
 
     def _session_config_signature(self) -> tuple:
         """Return the per-instance settings a built Session bakes in."""

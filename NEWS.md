@@ -1,37 +1,11 @@
 # 📰 News
 
-## v5.7.0
+## v5.6.2
 
 ### ✨ Added
 
-- Reading lists: `comicbox readinglist` (or `rl`) and the
-  `comicbox.readinglists` API read, validate and write ComicRack CBL, json-cbl
-  and comicbox YAML or JSON lists, combine and compare lists of one event, and
-  build lists from story arc tags. They never write over an existing file
-  without `--overwrite`.
 - `-w keep` writes back the tag formats a comic already has, and `-w cix,keep`
   adds ComicInfo to them, removing none.
-- `ReadingListSession` fetches reading lists from URLs, with a download size cap
-  set by the new `readinglists` config group.
-- `ReadingListSession` searches and fetches Metron reading lists and story arcs
-  with your Metron API token, sharing tagging's rate limit and response cache.
-  Long lists report progress page by page and can be cancelled between pages.
-- `ReadingListSession` fetches Comic Vine story arcs with your Comic Vine API
-  key, sharing tagging's hourly budgets and response cache. Each issue comes
-  with its series, start year, number and dates, so the list matches your comics
-  and combines with Metron's list of the arc. A spent budget fails the fetch at
-  once, saying when it frees.
-- `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
-  on GitHub, with each list's curator read from its name or folder. The index is
-  cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
-  configurable, so a fork works. A renamed list is still found by its sha.
-- `comicbox rl search metron|catalog QUERY` and
-  `comicbox rl fetch metron:ID | metron-arc:ID | comicvine-arc:ID | catalog:PATH | URL`,
-  with progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over
-  a file without `--overwrite`.
-- `comicbox rl match FILE DIR` shows which of a list's issues a directory of
-  comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
-  the list as a story arc: a dry run unless given `--apply`.
 - Metron tagging finds a comic by its cover first: a clear cover match is
   written without a name search, and prompts also offer the issues the cover
   search found.
@@ -75,8 +49,6 @@
   YAML, JSON or a library patch is read, where it was dropped without a word.
 - `write_metadata` and `bulk_write` write nothing for a patch that does not
   load, and return the error, where they rewrote the comic and reported success.
-- `comicbox rl` exits quietly when its output is closed, as by `| head -1`,
-  where it failed and stopped `write-arcs --apply` part way.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a
   ComicBookInfo comment as a comment: it added `comicbox-cli.yaml` for `-m` and
   turned the comment into a file. It warns of an `-m` or `--import` value none
@@ -93,8 +65,7 @@
   that it contradicts, where the old date or its day survived; a year, month or
   day given alone still changes only that part.
 - A comic a run reaches by several paths, such as a file and a link to it under
-  `-r`, is processed once, through the file. `write-arcs --delete-orig` removes
-  every other name of a converted original, hard links included.
+  `-r`, is processed once, through the file.
 - A batch write that names one archive twice, by a link and its target, no
   longer writes it twice at once and damages it.
 - A RAR or 7z archive named `.cbz` is refused in one line that names its real
@@ -110,7 +81,6 @@
 - A ComicInfo `Web` holding two urls for one database reads the first url's id
   every time, and is written back in its order.
 - A six-digit date such as `200607` reads as July 2006, not 20 June 2007.
-- Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
 - An environment variable for a list setting reads a plain string as its CLI
   option does: `COMICBOX_WRITE__FORMATS=cix,mi` was read one letter at a time.
 - ComicInfo keeps every story arc's number when another arc has none.

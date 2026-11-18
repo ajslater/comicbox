@@ -7,11 +7,9 @@
 __pycache__
 bun.lock
 comicbox/schemas/*Info*.xsd
-comicbox/schemas/json-cbl-v1.0.schema.json
 dist
 node_modules
 schemas/*Info*.xsd
-schemas/json-cbl-v1.0.schema.json
 tasks
 test-results
 tests/**/*.json
