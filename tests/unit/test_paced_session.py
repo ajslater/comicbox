@@ -11,6 +11,7 @@ fail rather than the behavior quietly disappearing.
 
 from __future__ import annotations
 
+import contextlib
 import sys
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -228,7 +229,7 @@ def test_the_observer_needs_the_pooled_session(gate: _RecordingGate) -> None:
     """
     not_a_session = cast("Any", object())
     with pytest.raises(AttributeError):
-        install_response_observer(not_a_session, gate)
+        install_response_observer(not_a_session, GateRateLimiter(gate))
 
 
 # ------------------------------------------------------- header feedback
@@ -291,7 +292,9 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
     finally:
         loguru_logger.remove(handler_id)
 
-    assert outcome_stats.api_snapshot()["metron"].unthrottled == {200: 1}
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.unthrottled == {200: 1}
+    assert api.connection_failures == 0
     assert gate.observes == 1
     assert gate._state is GateState.OPEN
     assert sum("no X-RateLimit-* headers" in m for m in messages) == 1
@@ -317,7 +320,9 @@ def test_a_header_less_429_cools_down_without_teaching_the_gate(
     with pytest.raises(RateLimitError):
         session.issues_list(params={"series_id": 7})
 
-    assert outcome_stats.api_snapshot()["metron"].unthrottled == {429: 1}
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.unthrottled == {429: 1}
+    assert api.connection_failures == 0
     assert gate.observes == 0
     assert gate.cooldowns == [None]
     assert gate.stats().rejections == 1
@@ -353,6 +358,38 @@ def test_a_transport_failure_is_counted_separately(gate: _RecordingGate) -> None
     assert api.connection_failures == 1
     assert api.requests == {}
     assert api.unthrottled == {}
+
+
+@pytest.mark.parametrize(
+    "answered_first",
+    [True, False],
+    ids=["answered-then-failed", "failed-then-answered"],
+)
+def test_an_answered_send_does_not_leak_to_the_next(
+    gate: _RecordingGate, *, answered_first: bool
+) -> None:
+    """
+    Whether a send was answered is decided per send, not per thread.
+
+    Since mokkari 5.2.0 `release` gets None for a header-less answer as
+    well as for no answer, so the response observer marks the send
+    answered and `acquire` clears the mark. Two sends on one thread, one
+    of each kind, in either order, count exactly one failure.
+    """
+    from mokkari.exceptions import ApiError
+
+    answered = Reply(issue_page([issue_row(1)]), headers={})
+    failed = connection_error()
+    replies = [answered, failed] if answered_first else [failed, answered]
+    session, _adapter = _paged(gate, replies)
+
+    for _ in range(2):
+        with contextlib.suppress(ApiError):
+            session.issues_list(params={"series_id": 7})
+
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.connection_failures == 1
+    assert api.unthrottled == {200: 1}
 
 
 # --------------------------------------------- mokkari 4.8.0 pagination

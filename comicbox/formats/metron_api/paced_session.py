@@ -59,10 +59,17 @@ on any private seam. If mokkari renames `_http`,
 the suite fails loudly, which is the same fail-loud posture the old
 override had over a far smaller reach. A public accessor is upstream
 ask U7.
+
+Since mokkari 5.2.0 the observer also tells apart two sends `release`
+cannot: it is passed None both for a send that produced no response and
+for a response without `X-RateLimit-*` headers. The hook runs only on a
+response, so it marks the send answered, and `GateRateLimiter.release`
+counts a connection failure only for a send it never marked.
 """
 
 from __future__ import annotations
 
+import threading
 import time
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
@@ -73,7 +80,7 @@ from loguru import logger
 # Imported by name on purpose: these are mokkari's own header constants,
 # so an upstream rename breaks the import rather than quietly parsing
 # nothing and leaving the gate in its UNKNOWN state forever.
-from mokkari.session import (
+from mokkari.rate_limit import (
     HEADER_BURST_LIMIT,
     HEADER_BURST_REMAINING,
     HEADER_BURST_RESET,
@@ -135,30 +142,46 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
+class _SendState(threading.local):
+    """Per-thread record of the send in flight between acquire and release."""
+
+    answered = False
+
+
 class GateRateLimiter:
     """
     Adapts a `RateGate` to mokkari's `RateLimiter` protocol.
 
     mokkari dispatches `acquire` immediately before every HTTP send and
     `release` after it returns, from the one frame every public method
-    funnels through. The protocol is not `runtime_checkable`; mokkari
-    duck-types it and turns a missing method into `RateLimiterError`.
+    funnels through, on the sending thread. The protocol is not
+    `runtime_checkable`; mokkari duck-types it and turns a missing method
+    into `RateLimiterError`.
 
     Only `acquire` can stop a run. Since mokkari 4.9.0 an exception from
     `on_rate_limited` or `release` is logged and ignored, so neither may
     raise to abort; both must do their bookkeeping and return.
+
+    One Session, and so one limiter, serves the whole ``-j N`` pool, so
+    whether the send in flight was answered is kept per thread.
     """
 
     def __init__(self, gate: RateGate) -> None:
         """Pace one Session through ``gate``."""
         self._gate = gate
+        self._send = _SendState()
+
+    @property
+    def gate(self) -> RateGate:
+        """The gate this limiter paces through."""
+        return self._gate
 
     def acquire(self, status: RateLimitStatus) -> None:  # noqa: ARG002
         """
         Block at the gate until a slot is free, recording the wait.
 
         ``status`` is deliberately unused. It is mokkari's own merged
-        view -- `_parse_rate_limit_window` preserves the previous window
+        view -- `RateLimitStatus.merge_headers` keeps the previous window
         when a response carries none -- so it cannot tell a header-less
         response from the one before it, and folding it in after the
         response observer already did would pad the log a second time.
@@ -173,7 +196,12 @@ class GateRateLimiter:
         """
         started = time.monotonic()
         self._gate.acquire()
+        self._send.answered = False
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
+
+    def mark_answered(self) -> None:
+        """Record that the send in flight on this thread got a response."""
+        self._send.answered = True
 
     def on_rate_limited(self, retry_after: float) -> None:
         """
@@ -187,28 +215,33 @@ class GateRateLimiter:
         outcome_stats.record_rate_limit_rejection("metron")
         self._gate.cooldown(retry_after if retry_after > 0 else None)
 
-    def release(self, status: RateLimitStatus | None) -> None:
+    def release(self, status: RateLimitStatus | None) -> None:  # noqa: ARG002
         """
         Release the slot `acquire` took.
 
-        A None ``status`` means the send never produced a response:
-        mokkari re-raises `requests` ConnectionError and ReadTimeout as
-        `ApiError` from the same frame. Counting those separately matters
-        because a firewall-level ban (Metron's fail2ban jail drops the
-        IP) looks like nothing else from in here -- no status, no
-        headers, just timeouts.
+        A send the response observer never marked answered produced no
+        response: mokkari re-raises `requests` ConnectionError and
+        ReadTimeout as `ApiError` from the same frame. Counting those
+        separately matters because a firewall-level ban (Metron's
+        fail2ban jail drops the IP) looks like nothing else from in here
+        -- no status, no headers, just timeouts.
+
+        ``status`` is deliberately unused. Since mokkari 5.2.0 it is None
+        for a response that carried no `X-RateLimit-*` headers too, so it
+        cannot tell a proxy or bot-check page from a send that never
+        answered. The observer can, because it only runs on a response.
 
         The gate's log entry stays either way: a send that never answered
         may well have arrived and been counted by the server.
         """
-        if status is None:
+        if not self._send.answered:
             outcome_stats.record_connection_failure("metron")
         self._gate.release()
 
 
-def install_response_observer(session: Session, gate: RateGate) -> None:
+def install_response_observer(session: Session, limiter: GateRateLimiter) -> None:
     """
-    Feed every raw response's rate-limit headers to ``gate`` and the stats.
+    Feed every raw response's rate-limit headers to the gate and the stats.
 
     The hook fires inside `Session._http.request(...)`, so it runs
     BEFORE mokkari's `_update_rate_limit_status`, `_report_rate_limited`
@@ -216,17 +249,20 @@ def install_response_observer(session: Session, gate: RateGate) -> None:
     observe, then cool down, then release. Observing before the release
     matters -- the gate's in-flight count still includes this request, so
     its tighten-only math discounts only the OTHER sends the server may
-    not have counted yet.
+    not have counted yet. It also marks the send answered, so ``limiter``'s
+    `release` does not count it as a connection failure.
     """
 
     def _observe_response(response: requests.Response, **_kwargs: Any) -> None:
         # A `requests` response hook runs inside `_http.request`, outside
         # mokkari's `except (ConnectionError, ReadTimeout)`. An exception
-        # escaping here would surface as some other error entirely and
-        # `release(None)` would then miscount it as a connection failure,
-        # so nothing in this hook may raise.
+        # escaping here would surface as some other error entirely, so
+        # nothing in this hook may raise. Marking the send answered comes
+        # first, so even a failed observation is not miscounted as a
+        # connection failure.
         try:
-            _feed_gate(gate, response)
+            limiter.mark_answered()
+            _feed_gate(limiter.gate, response)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"metron: rate-limit observation failed: {exc!r}")
 
@@ -243,8 +279,9 @@ def build_paced_session(gate: RateGate, **session_kwargs: Any) -> Session:
     and ``rate_limiter``; the token is the only credential mokkari 5.0
     takes.
     """
-    session = mokkari.api(rate_limiter=GateRateLimiter(gate), **session_kwargs)
-    install_response_observer(session, gate)
+    limiter = GateRateLimiter(gate)
+    session = mokkari.api(rate_limiter=limiter, **session_kwargs)
+    install_response_observer(session, limiter)
     return session
 
 

@@ -40,10 +40,6 @@ from comicbox.formats.base.online.sources.base import (
     claim_cache_refresh,
 )
 from comicbox.formats.base.online.warn_once import warn_once
-from comicbox.formats.metron_api.cover_search import (
-    MAX_COVER_HASH_DISTANCE,
-    issues_by_cover_hash,
-)
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
@@ -59,11 +55,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
+    from mokkari.schemas.issue import CoverMatch
     from mokkari.session import Session
     from mokkari.sqlite_cache import SqliteCache
 
     from comicbox.formats.base.online.profile import ComicProfile
-    from comicbox.formats.metron_api.cover_search import CoverMatch
 
 # Sessions are shared across the API token that built them (see
 # `_get_session`) — not `db_path` like the old pyrate_limiter override
@@ -139,10 +135,10 @@ _MAX_PROMPT_SERIES_LOOKUPS: Final[int] = 6
 _prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
 _prefetch_lock = threading.Lock()
 
-# Cover search (`cover_search`), narrowed the way metron-tagger narrows it
-# (metron-tagger#294). It asks for the widest distance Metron allows;
-# acceptance is decided by the caller at a tighter limit, so the extra
-# width only adds candidates to rank.
+# Cover search (mokkari's `issues_by_cover_hash`), narrowed the way
+# metron-tagger narrows it (metron-tagger#294). It asks for the widest
+# distance Metron allows; acceptance is decided by the caller at a tighter
+# limit, so the extra width only adds candidates to rank.
 # Filename years are often the release year, which can differ from the
 # cover year, so the cover-date range is a year either side.
 _COVER_YEAR_TOLERANCE: Final = 1
@@ -751,9 +747,6 @@ class MetronOnlineSource(OnlineSource):
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
-        if issue is None:
-            msg = f"metron: issue {issue_id} not found"
-            raise LookupError(msg)
         dump: dict[str, Any] = issue.model_dump(mode="json")
         if isinstance(series_dump := dump.get("series"), dict):
             self._enrich_from_series(session, series_dump, issue.series.id)
@@ -1414,6 +1407,8 @@ class MetronOnlineSource(OnlineSource):
         search off for the rest of the process. The one search that found
         out has already paid for the pages.
         """
+        from mokkari.utils import MAX_COVER_HASH_DISTANCE
+
         kept = [
             match
             for match in matches
@@ -1434,10 +1429,10 @@ class MetronOnlineSource(OnlineSource):
         self, session: Session, cover_hash: str, params: dict[str, Any]
     ) -> list[CoverMatch]:
         """Per-call retry wrapper around `issues_by_cover_hash`, one `issues_list`."""
+        from mokkari.utils import MAX_COVER_HASH_DISTANCE
+
         self._record_api_call("issues_list")
-        return issues_by_cover_hash(
-            session, cover_hash, MAX_COVER_HASH_DISTANCE, params
-        )
+        return session.issues_by_cover_hash(cover_hash, MAX_COVER_HASH_DISTANCE, params)
 
     @with_retry()
     def _issues_list_with_retry(
