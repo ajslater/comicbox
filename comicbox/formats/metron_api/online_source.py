@@ -747,9 +747,6 @@ class MetronOnlineSource(OnlineSource):
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
-        if issue is None:
-            msg = f"metron: issue {issue_id} not found"
-            raise LookupError(msg)
         dump: dict[str, Any] = issue.model_dump(mode="json")
         if isinstance(series_dump := dump.get("series"), dict):
             self._enrich_from_series(session, series_dump, issue.series.id)

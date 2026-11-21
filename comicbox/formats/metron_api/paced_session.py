@@ -59,6 +59,12 @@ on any private seam. If mokkari renames `_http`,
 the suite fails loudly, which is the same fail-loud posture the old
 override had over a far smaller reach. A public accessor is upstream
 ask U7.
+
+Since mokkari 5.2.0 the observer also tells apart two sends `release`
+cannot: it is passed None both for a send that produced no response and
+for a response without `X-RateLimit-*` headers. The hook runs only on a
+response, so it marks the send answered, and `GateRateLimiter.release`
+counts a connection failure only for a send it never marked.
 """
 
 from __future__ import annotations
@@ -74,7 +80,7 @@ from loguru import logger
 # Imported by name on purpose: these are mokkari's own header constants,
 # so an upstream rename breaks the import rather than quietly parsing
 # nothing and leaving the gate in its UNKNOWN state forever.
-from mokkari.session import (
+from mokkari.rate_limit import (
     HEADER_BURST_LIMIT,
     HEADER_BURST_REMAINING,
     HEADER_BURST_RESET,

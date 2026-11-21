@@ -1,5 +1,16 @@
 # 📰 News
 
+## v5.6.3
+
+### ♻️ Changed
+
+- Metron cover searches are no longer cached: tagging a comic again asks Metron
+  about its cover again unless it already has a Metron id.
+
+### 🧑‍💻 Developer
+
+- Requires mokkari 5.2.
+
 ## v5.6.2
 
 ### ✨ Added
