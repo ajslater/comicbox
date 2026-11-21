@@ -1,6 +1,7 @@
 """Marshmallow Enum Fields."""
 
 import sys
+from collections.abc import Mapping
 from enum import Enum
 from types import MappingProxyType
 from typing import Any
@@ -101,8 +102,8 @@ class EnumField(FuzzyEnumMixin, fields.Enum):
     def _deserialize(
         self,
         value: Enum | str,
-        attr: str,
-        data: dict[str, Any],
+        attr: str | None,
+        data: Mapping[str, Any] | None,
         *args: Any,
         **kwargs: Any,
     ) -> Enum:
@@ -255,7 +256,7 @@ class PrettifiedStringField(FuzzyEnumMixin, StringField):
         return value
 
     @override
-    def _deserialize(self, value: Enum | str, *args: Any, **kwargs: Any) -> str:
+    def _deserialize(self, value: Any, *args: Any, **kwargs: Any) -> str:
         str_value: str = value.value if isinstance(value, Enum) else value
         str_value = super()._deserialize(str_value, *args, **kwargs)
         return self._prettify(str_value)
