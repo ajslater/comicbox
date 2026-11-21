@@ -51,7 +51,7 @@ class PyCountryField(StringField, ABC):
         return name.strip()
 
     @classmethod
-    def _get_pycountry(cls, tag: str, name: str) -> Data | None:
+    def _get_pycountry(cls, tag: str | None, name: str) -> Data | None:
         """Get pycountry object for a country or language tag."""
         try:
             cleaned = cls._clean_name(name)
@@ -86,7 +86,7 @@ class PyCountryField(StringField, ABC):
         return value, ()
 
     @classmethod
-    def _resolve(cls, attr: str, value: str, *, name: bool = False) -> str:
+    def _resolve(cls, attr: str | None, value: str, *, name: bool = False) -> str:
         """Resolve the pycountry part to a code or name and re-attach the suffix."""
         primary, suffix = cls._split(value)
         pc_obj = cls._get_pycountry(attr, primary)
@@ -99,8 +99,8 @@ class PyCountryField(StringField, ABC):
     @override
     def _deserialize(
         self,
-        value: str,
-        attr: str,
+        value: Any,
+        attr: str | None,
         *args: Any,
         **kwargs: Any,
     ) -> str:
@@ -111,8 +111,8 @@ class PyCountryField(StringField, ABC):
     @override
     def _serialize(
         self,
-        value: str,
-        attr: str,
+        value: str | None,
+        attr: str | None,
         *args: Any,
         **kwargs: Any,
     ) -> str:
