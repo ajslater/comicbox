@@ -187,6 +187,10 @@ class VerseDBOnlineSource(OnlineSource):
             # An unexpected status or an unparsable response: the same
             # request can only fail the same way.
             (VerseDBResponseError, RetryCategory.INVALID),
+            # A typo in auth.versedb.url: no retry can fix it. Both before
+            # TransportError, which UnsupportedProtocol subclasses.
+            (httpx.UnsupportedProtocol, RetryCategory.INVALID),
+            (httpx.InvalidURL, RetryCategory.INVALID),
             (httpx.TimeoutException, RetryCategory.TRANSIENT),
             (httpx.TransportError, RetryCategory.TRANSIENT),
         )

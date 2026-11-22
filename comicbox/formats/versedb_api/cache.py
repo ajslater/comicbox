@@ -9,7 +9,9 @@ an hour, so every repeat call answered from here is budget kept.
 The mode policy (off, refresh's wipe-once, ttl) is the shared
 `OnlineSource._resolve_response_cache`; this class only stores. A ttl of 0
 means keep forever, as both other sources treat it; ``cache.mode: off`` is
-the switch for not caching at all.
+the switch for not caching at all. A row's expiry is fixed when it is
+stored, so a caller can keep some answers for less: an empty result is kept
+for a day, as Metron's are, so an issue VerseDB adds tomorrow is found.
 
 The cache is an optimization, so it never fails a request. A read that
 errors is a miss and a write that errors is skipped, each warned once: the
@@ -39,10 +41,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _SOURCE: Final = "versedb"
+_COLUMNS: Final = ("key", "expires_at", "body")
 
 
 class ResponseCache:
-    """Response bodies keyed by request, each stamped with when it was stored."""
+    """Response bodies keyed by request, each stamped with when it expires."""
 
     def __init__(self, path: Path, ttl: timedelta) -> None:
         """Open or create the cache file and drop what has expired."""
@@ -61,24 +64,29 @@ class ResponseCache:
 
     def _create(self) -> None:
         with self._lock, self._conn:
+            columns = tuple(
+                row[1] for row in self._conn.execute("PRAGMA table_info(responses)")
+            )
+            if columns and columns != _COLUMNS:
+                # A layout this version doesn't write; it is only a cache.
+                self._conn.execute("DROP TABLE responses")
+            # expires_at is NULL for a row kept forever.
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS responses "
-                "(key TEXT PRIMARY KEY, stored_at REAL NOT NULL, body BLOB NOT NULL)"
+                "(key TEXT PRIMARY KEY, expires_at REAL, body BLOB NOT NULL)"
             )
-            if self._ttl_s > 0:
-                # Expired rows are never read again; without this the file
-                # would only grow.
-                self._conn.execute(
-                    "DELETE FROM responses WHERE stored_at < ?",
-                    (time.time() - self._ttl_s,),
-                )
+            # Expired rows are never read again; without this the file would
+            # only grow.
+            self._conn.execute(
+                "DELETE FROM responses WHERE expires_at < ?", (time.time(),)
+            )
 
     def get(self, key: str) -> bytes | None:
         """Return the stored body for ``key``, or None when absent, expired or unreadable."""
         try:
             with self._lock:
                 row = self._conn.execute(
-                    "SELECT stored_at, body FROM responses WHERE key = ?", (key,)
+                    "SELECT expires_at, body FROM responses WHERE key = ?", (key,)
                 ).fetchone()
         except sqlite3.Error as exc:
             warn_once(
@@ -89,19 +97,29 @@ class ResponseCache:
             return None
         if row is None:
             return None
-        stored_at, body = row
-        if self._ttl_s > 0 and stored_at + self._ttl_s < time.time():
+        expires_at, body = row
+        if expires_at is not None and expires_at < time.time():
             return None
         return bytes(body)
 
-    def set(self, key: str, body: bytes) -> None:
-        """Store ``body`` for ``key``, replacing what was there; skip on error."""
+    def set(self, key: str, body: bytes, *, max_ttl: timedelta | None = None) -> None:
+        """
+        Store ``body`` for ``key``, replacing what was there; skip on error.
+
+        ``max_ttl`` keeps this one row for less than the cache's ttl, and
+        caps a keep-forever ttl too.
+        """
+        ttl_s = self._ttl_s
+        if max_ttl is not None:
+            cap_s = max_ttl.total_seconds()
+            ttl_s = min(ttl_s, cap_s) if ttl_s > 0 else cap_s
+        expires_at = time.time() + ttl_s if ttl_s > 0 else None
         try:
             with self._lock, self._conn:
                 self._conn.execute(
-                    "INSERT OR REPLACE INTO responses (key, stored_at, body) "
+                    "INSERT OR REPLACE INTO responses (key, expires_at, body) "
                     "VALUES (?, ?, ?)",
-                    (key, time.time(), body),
+                    (key, expires_at, body),
                 )
         except sqlite3.Error as exc:
             warn_once(

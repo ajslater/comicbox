@@ -332,3 +332,17 @@ def test_a_spent_versedb_daily_cap_warns(
     row = _row(_report("versedb", argv=("--auth", "versedb:t")), "versedb")
     assert row.status is Status.WARN
     assert "request limit is reached" in row.detail
+
+
+def test_a_bare_versedb_403_warns_of_something_in_front(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Not "check the credentials": the refusal never reached VerseDB's API."""
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import Reply, VerseDBTransport
+
+    versedb = VerseDBTransport(lambda _r: Reply({"message": "x"}, 403, {}))
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    row = _row(_report("versedb", argv=("--auth", "versedb:t")), "versedb")
+    assert row.status is Status.WARN
+    assert "something in front of versedb replied" in row.detail

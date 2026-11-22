@@ -67,8 +67,14 @@ MAX_ISSUES_PER_PAGE: Final = 100
 _HEADER_LIMIT: Final = "x-ratelimit-limit"
 _HEADER_REMAINING: Final = "x-ratelimit-remaining"
 _HOUR_WINDOW: Final = "hour"
+# An empty answer is kept for a day, whatever the cache's ttl, as Metron's
+# are: an issue VerseDB adds tomorrow should be found tomorrow. AJ asked to
+# cache as much as possible; this is still caching, and spends at most one
+# request a day per empty question.
+EMPTY_RESULT_TTL: Final = timedelta(days=1)
 _OK: Final = 200
-_AUTH_STATUSES: Final = frozenset({401, 403})
+_UNAUTHORIZED: Final = 401
+_FORBIDDEN: Final = 403
 _NOT_FOUND: Final = 404
 _TOO_MANY_REQUESTS: Final = 429
 _SERVER_ERROR: Final = 500
@@ -79,7 +85,14 @@ class VerseDBError(Exception):
 
 
 class VerseDBAuthError(VerseDBError):
-    """HTTP 401 or 403: the token is missing, wrong or not allowed."""
+    """
+    HTTP 401 or 403: the request was refused, and retrying won't change that.
+
+    A 401 is a missing or wrong token. A 403 is a token without a scope the
+    request needs, or, when it carries no ``X-RateLimit-*`` headers,
+    something in front of VerseDB's API refusing it (it sits behind
+    Cloudflare).
+    """
 
 
 class VerseDBNotFoundError(VerseDBError):
@@ -193,8 +206,27 @@ def _quota_message(wait_s: float) -> str:
     )
 
 
-def _cache_key(endpoint: str, args: Sequence[Any], params: Mapping[str, Any]) -> str:
-    return f"{endpoint}:{json.dumps([list(args), dict(params)], sort_keys=True)}"
+def _cache_key(
+    base_url: str, endpoint: str, args: Sequence[Any], params: Mapping[str, Any]
+) -> str:
+    """
+    Key a request by everything its answer depends on but the token.
+
+    Every credential set shares one cache file, so the base url is part of
+    the key; the token never is.
+    """
+    request = json.dumps([list(args), dict(params)], sort_keys=True)
+    return f"{base_url} {endpoint}:{request}"
+
+
+def _is_empty(payload: Mapping[str, Any]) -> bool:
+    """Whether a list answer found nothing."""
+    data = payload.get("data")
+    return isinstance(data, list) and not data
+
+
+def _has_rate_limit_headers(headers: Mapping[str, str] | None) -> bool:
+    return bool(headers) and _header_int(headers or {}, _HEADER_LIMIT) is not None
 
 
 class VerseDBClient:
@@ -218,6 +250,7 @@ class VerseDBClient:
         from versedb import AuthenticatedClient
 
         self._endpoints = _endpoints()
+        self._base_url = base_url or DEFAULT_BASE_URL
         self._cache = cache
         self._lock = threading.Lock()
         self._local = threading.local()
@@ -228,7 +261,7 @@ class VerseDBClient:
         if transport is not None:
             httpx_args["transport"] = transport
         self._sdk = AuthenticatedClient(
-            base_url=base_url or DEFAULT_BASE_URL,
+            base_url=self._base_url,
             token=token,
             headers={"User-Agent": user_agent},
             timeout=httpx.Timeout(_TIMEOUT_S),
@@ -310,7 +343,7 @@ class VerseDBClient:
         import httpx
 
         cache = self._cache if use_cache else None
-        key = _cache_key(endpoint, args, params)
+        key = _cache_key(self._base_url, endpoint, args, params)
         if cache is not None and (payload := _cached_payload(cache, key)) is not None:
             return payload
         self._refuse_while_cooling_down()
@@ -329,9 +362,11 @@ class VerseDBClient:
         status = int(response.status_code)
         if status != _OK:
             self._raise_for_status(endpoint, status, response.headers)
+        payload = json.loads(response.content)
         if cache is not None and _storable(response.headers):
-            cache.set(key, response.content)
-        return json.loads(response.content)
+            max_ttl = EMPTY_RESULT_TTL if _is_empty(payload) else None
+            cache.set(key, response.content, max_ttl=max_ttl)
+        return payload
 
     def _raise_for_parse_failure(self, endpoint: str, exc: Exception) -> NoReturn:
         """Map a failed SDK parse by the status the hook saw, if it saw one."""
@@ -349,8 +384,17 @@ class VerseDBClient:
         self, endpoint: str, status: int, headers: Mapping[str, str] | None
     ) -> NoReturn:
         prefix = f"VerseDB {endpoint}: HTTP {status}"
-        if status in _AUTH_STATUSES:
+        if status == _UNAUTHORIZED:
             reason = f"{prefix}: check the API token"
+            raise VerseDBAuthError(reason)
+        if status == _FORBIDDEN:
+            if _has_rate_limit_headers(headers):
+                reason = f"{prefix}: the token may lack a scope this request needs"
+            else:
+                reason = (
+                    f"{prefix}: refused before it reached VerseDB's API, by a "
+                    "proxy or bot check, or the token lacks a scope it needs"
+                )
             raise VerseDBAuthError(reason)
         if status == _NOT_FOUND:
             raise VerseDBNotFoundError(prefix)
@@ -426,11 +470,12 @@ class VerseDBClient:
         """
         Count a response with no ``X-RateLimit-*`` headers.
 
-        VerseDB puts them on its 200s and 404s. A 401 or 403 is left out:
-        an unauthenticated request carries none, and that is the token's
-        fault, not something in front of the API.
+        VerseDB puts them on its 200s and 404s. Only a 401 is left out: an
+        unauthenticated request carries none, and that is the token's fault.
+        A bare 403 is counted, because a CDN or bot check in front of the API
+        refuses that way too, and the doctor's warning for it should fire.
         """
-        if status in _AUTH_STATUSES:
+        if status == _UNAUTHORIZED:
             return
         outcome_stats.record_unthrottled_response(SOURCE_NAME, status)
         warn_once(

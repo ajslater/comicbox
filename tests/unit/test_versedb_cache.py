@@ -144,3 +144,36 @@ def test_an_unopenable_cache_runs_uncached_and_deletes_nothing(tmp_path: Path) -
     blocked.mkdir()
     assert open_response_cache(blocked, timedelta(days=7)) is None
     assert blocked.is_dir()
+
+
+@pytest.mark.parametrize("ttl", [timedelta(0), timedelta(days=7)])
+def test_a_capped_row_expires_after_its_cap(
+    path: Path, monkeypatch: pytest.MonkeyPatch, ttl: timedelta
+) -> None:
+    """An empty answer is kept a day, even by a keep-forever cache."""
+    monkeypatch.setattr(_CLOCK, lambda: 1000.0)
+    cache = ResponseCache(path, ttl)
+    try:
+        cache.set("empty", b'{"data": []}', max_ttl=timedelta(days=1))
+        cache.set("full", b'{"data": [1]}')
+        monkeypatch.setattr(_CLOCK, lambda: 1000.0 + 86_401)
+        assert cache.get("empty") is None
+        assert cache.get("full") == b'{"data": [1]}'
+    finally:
+        cache.close()
+
+
+def test_an_older_table_layout_is_replaced(path: Path) -> None:
+    """Only a cache: a layout this version doesn't write is dropped, not misread."""
+    with closing(sqlite3.connect(path)) as conn, conn:
+        conn.execute(
+            "CREATE TABLE responses (key TEXT PRIMARY KEY, stored_at REAL, body BLOB)"
+        )
+        conn.execute("INSERT INTO responses VALUES ('k', 1.0, x'00')")
+    cache = ResponseCache(path, timedelta(days=7))
+    try:
+        assert cache.get("k") is None
+        cache.set("k", b"body")
+        assert cache.get("k") == b"body"
+    finally:
+        cache.close()

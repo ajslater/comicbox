@@ -342,6 +342,8 @@ def test_every_adapter_exception_is_classified() -> None:
         (client_module.VerseDBNotFoundError("x"), RetryCategory.NOT_FOUND),
         (client_module.VerseDBServerError("x"), RetryCategory.TRANSIENT),
         (client_module.VerseDBResponseError("x"), RetryCategory.INVALID),
+        (httpx.UnsupportedProtocol("x"), RetryCategory.INVALID),
+        (httpx.InvalidURL("x"), RetryCategory.INVALID),
         (httpx.ReadTimeout("x"), RetryCategory.TRANSIENT),
         (httpx.ConnectError("x"), RetryCategory.TRANSIENT),
         (RuntimeError("x"), None),

@@ -361,3 +361,65 @@ def test_a_send_with_no_response_counts_as_a_connection_failure() -> None:
     finally:
         client.close()
     assert outcome_stats.api_snapshot()["versedb"].connection_failures == 1
+
+
+def test_an_empty_answer_is_cached_for_a_day_only(
+    make_client, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """So a series or issue VerseDB adds tomorrow is found tomorrow."""
+    monkeypatch.setattr("comicbox.formats.versedb_api.cache.time.time", lambda: 1000.0)
+    cache = ResponseCache(tmp_path / "c.sqlite", timedelta(0))
+    empty = fixture("series_search")
+    empty["data"] = []
+    client, transport = make_client(_always(Reply(empty)), cache=cache)
+    client.search_series("Nonesuch", 10)
+    client.search_series("Nonesuch", 10)
+    assert len(transport.requests) == 1
+    monkeypatch.setattr(
+        "comicbox.formats.versedb_api.cache.time.time", lambda: 1000.0 + 86_401
+    )
+    client.search_series("Nonesuch", 10)
+    assert len(transport.requests) == 2
+
+
+def test_the_cache_key_carries_the_base_url(tmp_path: Path) -> None:
+    """Every credential set shares the file, so another server's answer is a miss."""
+    transport = VerseDBTransport()
+    clients = [
+        VerseDBClient(
+            "t",
+            user_agent="t",
+            base_url=base_url,
+            cache=ResponseCache(tmp_path / "c.sqlite", timedelta(days=1)),
+            transport=transport.transport,
+        )
+        for base_url in ("https://versedb.com", "https://staging.versedb.example")
+    ]
+    try:
+        for client in clients:
+            client.issue(1)
+    finally:
+        for client in clients:
+            client.close()
+    assert len(transport.requests) == 2
+
+
+def test_a_bare_403_is_named_as_refused_in_front_of_the_api() -> None:
+    """Behind Cloudflare, a 403 without VerseDB's headers is not the token's fault."""
+    outcome_stats.reset()
+    transport = VerseDBTransport(_always(Reply({"message": "x"}, 403, {})))
+    client = VerseDBClient("t", user_agent="t", transport=transport.transport)
+    try:
+        with pytest.raises(VerseDBAuthError, match="proxy or bot check"):
+            client.issue(1)
+    finally:
+        client.close()
+    assert outcome_stats.api_snapshot()["versedb"].unthrottled == {403: 1}
+
+
+def test_a_403_from_the_api_names_the_token_scope(make_client) -> None:
+    client, _ = make_client(
+        _always(Reply({"message": "This action is unauthorized."}, 403))
+    )
+    with pytest.raises(VerseDBAuthError, match="lack a scope"):
+        client.issue(1)
