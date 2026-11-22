@@ -310,6 +310,11 @@ class OnlineSession:
     every box the session spawns, so a change made at a prompt needs no
     mirroring back: the box and the session read the same owner.
 
+    ``sources`` is ordered, and its order is both run priority and merge
+    precedence: the first source runs first and, under ``first_wins``,
+    its match ends the lookup; with ``first_wins`` off every source runs
+    and the first one wins every tag they disagree on.
+
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources
     search, so one run can mix id retrieval and search and merge both.
@@ -350,8 +355,8 @@ class OnlineSession:
         # pool. Set before any source builds its client, since clients
         # bake the header in at construction.
         set_user_agent_context("lib", client=client_name)
-        # Order is run priority: the first source runs first and, under
-        # first_wins, its match ends the lookup for that comic.
+        # Order is run priority and merge precedence; see the class
+        # docstring.
         self._sources = tuple(dict.fromkeys(sources))
         self._validate_sources(self._sources)
         # Pinned per-source issue ids. A source with an id fetches it

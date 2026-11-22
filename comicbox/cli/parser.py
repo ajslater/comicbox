@@ -468,7 +468,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
             "every configured source, or a comma-separated list of sources "
             "to filter (e.g. [green]--online metron,comicvine,versedb[/green]). "
             "List order is run priority: the first source that matches "
-            "wins unless [cyan]--all-sources[/cyan] is set. A durable "
+            "wins, and with [cyan]--all-sources[/cyan] the first-listed "
+            "source wins where sources disagree. A durable "
             "order can be set via the [cyan]online.lookup.sources[/cyan] "
             "config key. See the [cyan]Online sources[/cyan] table below."
         ),
@@ -555,7 +556,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
             "[cyan]online.lookup.first_wins[/cyan] config key). Sources run "
             "in [cyan]--online[/cyan] / config-key order, defaulting to "
             "[green]metron[/green], [green]comicvine[/green], then "
-            "[green]versedb[/green]; per-source "
+            "[green]versedb[/green], and the first-listed source wins "
+            "where sources disagree; per-source "
             "[cyan]--id[/cyan] / [cyan]--series-id[/cyan] flags always run "
             "regardless."
         ),

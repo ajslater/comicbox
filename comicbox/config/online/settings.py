@@ -100,11 +100,13 @@ class OnlineLookupSettings:
     ids: Mapping[str, int] = field(default_factory=dict)
     series_ids: Mapping[str, int] = field(default_factory=dict)
 
-    # Ordered source selection AND run priority: the first listed source
-    # runs first, and with ``first_wins`` its match ends the lookup.
-    # None = every configured source in SOURCE_NAMES order. Durable via
-    # the ``online.lookup.sources`` config-file key; CLI --online and
-    # COMICBOX_ONLINE__LOOKUP__SOURCES override it.
+    # Ordered source selection, run priority AND merge precedence: the
+    # first listed source runs first; with ``first_wins`` its match ends
+    # the lookup, and without it the first listed source wins every tag
+    # the sources disagree on. None = every configured source in
+    # SOURCE_NAMES order. Durable via the ``online.lookup.sources``
+    # config-file key; CLI --online and COMICBOX_ONLINE__LOOKUP__SOURCES
+    # override it.
     sources: tuple[str, ...] | None = None
 
     # Behavior toggles.
@@ -112,7 +114,8 @@ class OnlineLookupSettings:
     prompts: Prompts = Prompts.ASK
     rematch: bool = False
     # Stop after the first source that contributes data (the cheap,
-    # default mode). False = query every selected source and merge
+    # default mode). False = query every selected source and merge, the
+    # first in ``sources`` order winning where they disagree
     # (CLI: --all-sources).
     first_wins: bool = True
 

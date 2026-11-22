@@ -68,17 +68,17 @@ def test_metadata_sources_enum_position() -> None:
     """
     Online sources sit between ARCHIVE_FILE and IMPORT_FILE per Phase 3.
 
-    VerseDB comes first of the three, so it has the lowest merge
-    precedence: Metron and Comic Vine overlay it on a conflict.
+    Their own order is the default merge precedence, later wins: VerseDB,
+    then Comic Vine, then Metron, which wins a conflict.
     """
     members = list(MetadataSources)
     archive_idx = members.index(MetadataSources.ARCHIVE_FILE)
     versedb_idx = members.index(MetadataSources.VERSEDB_API)
-    metron_idx = members.index(MetadataSources.METRON_API)
     comicvine_idx = members.index(MetadataSources.COMICVINE_API)
+    metron_idx = members.index(MetadataSources.METRON_API)
     import_idx = members.index(MetadataSources.IMPORT_FILE)
 
-    assert archive_idx < versedb_idx < metron_idx < comicvine_idx < import_idx
+    assert archive_idx < versedb_idx < comicvine_idx < metron_idx < import_idx
 
 
 def test_legacy_nested_removed() -> None:

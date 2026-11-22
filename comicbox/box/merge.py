@@ -1,11 +1,11 @@
 """Merge Metadata Methods."""
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import date
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
-from comicbox.box.online_lookup import ComicboxOnlineLookup
+from comicbox.box.online_lookup import ONLINE_SOURCE_BY_NAME, ComicboxOnlineLookup
 from comicbox.config.settings import MergeMode
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
@@ -45,6 +45,35 @@ _PATCH_SOURCES = frozenset(
         MetadataSources.API,
     }
 )
+
+_ONLINE_SOURCES = frozenset(ONLINE_SOURCE_BY_NAME.values())
+
+
+def _rank_online_sources(run_order: Iterable[str]) -> tuple[MetadataSources, ...]:
+    """
+    Order every source for the merge, the online ones by run order.
+
+    Each source overlays the ones merged before it, so the first source
+    in the run order goes last and wins every single-valued tag the
+    online sources disagree on; lists and keyed tags still combine. An
+    online source with answers that the run order leaves out ranks below
+    every listed one, in enum order. Every other source keeps its place,
+    and the online sources keep their slots in the enum among them.
+    """
+    listed = tuple(
+        dict.fromkeys(
+            ONLINE_SOURCE_BY_NAME[name]
+            for name in run_order
+            if name in ONLINE_SOURCE_BY_NAME
+        )
+    )
+    unlisted = (
+        src for src in MetadataSources if src in _ONLINE_SOURCES and src not in listed
+    )
+    ranked = iter((*unlisted, *reversed(listed)))
+    return tuple(
+        next(ranked) if src in _ONLINE_SOURCES else src for src in MetadataSources
+    )
 
 
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
@@ -174,10 +203,13 @@ class ComicboxMerge(ComicboxOnlineLookup):
 
     def _set_merged_metadata(self) -> None:
         """Overlay the metadatas in precedence order."""
-        # Order the md list by source precedence (config-overridable;
-        # falls back to the MetadataSources enum order when unset).
+        # An explicit read.merge_order is the whole order. Unset, it is
+        # the MetadataSources enum order with the online sources ranked
+        # by run order, so the first-listed online source wins.
         merged_sub_md: dict = {}
-        sources = self._config.read.merge_order or MetadataSources
+        sources = self._config.read.merge_order or _rank_online_sources(
+            self._online_run_order(self._config.online)
+        )
         for source in sources:
             self._merge_metadata_by_source(
                 source, merged_sub_md, self._merger_for_source(source)
