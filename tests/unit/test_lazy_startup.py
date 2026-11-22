@@ -53,6 +53,28 @@ def test_reading_a_comic_does_not_load_schema_validators() -> None:
     assert not packages & _VALIDATION_ONLY_PACKAGES
 
 
+@pytest.mark.parametrize(
+    "code",
+    [
+        "import comicbox.box",
+        "import comicbox.box.online_lookup",
+        "from comicbox.cli import main\nmain(('comicbox', '-v'))",
+    ],
+    ids=["box", "online_lookup", "run"],
+)
+def test_a_run_never_imports_the_versedb_sdk(code: str) -> None:
+    """
+    Loading the VerseDB SDK's endpoints costs about 0.8 s (1,011 models).
+
+    Only building a VerseDB client pays it, so neither an offline run nor
+    importing the online machinery may.
+    """
+    modules = _modules_loaded_by(code)
+    # The VerseDB format itself was loaded, so the check below means something.
+    assert "comicbox.formats.versedb_api" in modules
+    assert not {name for name in modules if name.split(".")[0] == "versedb"}
+
+
 def test_building_the_cli_parser_does_not_build_the_epilog() -> None:
     """The epilog's seven rich Tables are only ever printed by ``--help``."""
     modules = _modules_loaded_by(

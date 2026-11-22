@@ -43,11 +43,13 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from comicbox.config.online.settings import Prompts
+from comicbox.formats.base.online.attribution import source_attribution
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from comicbox.config.settings import ComicboxSettings
+    from comicbox.formats.base.online.attribution import SourceAttribution
     from comicbox.formats.base.online.profile import (
         Candidate,
         CandidateSummary,
@@ -120,6 +122,7 @@ def _build_lines(
     file_path: object,
     *,
     terse: bool,
+    attribution: SourceAttribution | None = None,
 ) -> list[str]:
     head = ["", f"Ambiguous match for {file_path}" if file_path else "Ambiguous match"]
     if profile.series or profile.issue or profile.year or profile.publisher:
@@ -133,6 +136,10 @@ def _build_lines(
         body.append("  " + _format_candidate_line(i, c))
         if not terse:
             body.extend(_format_aux_lines(c))
+    if attribution is not None:
+        # The source's terms want the credit near its data and readable
+        # without a click, so it shows even when terse drops the detail.
+        body.extend(["", f"  {attribution.text}: {attribution.url}"])
     body.extend(
         [
             "",
@@ -343,12 +350,15 @@ def cli_selector(
     aborts.
     """
     terse = _resolve_terse(ctx.settings)
+    attribution = source_attribution(ctx.source)
     if not terse:
         # Only the aux lines show what enrichment adds; terse hides them.
         candidates = ctx.enrich_candidates(candidates)
 
     while True:
-        for line in _build_lines(profile, candidates, ctx.file_path, terse=terse):
+        for line in _build_lines(
+            profile, candidates, ctx.file_path, terse=terse, attribution=attribution
+        ):
             print(line)  # noqa: T201
         raw = _prompt_line("Choose:")
         if raw is None:

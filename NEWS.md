@@ -1,5 +1,31 @@
 # 📰 News
 
+## v5.7.0
+
+### ✨ Added
+
+- VerseDB is a third online source: `--online versedb`, `--id versedb:NNN` and
+  `--series-id versedb:NNN`, with a personal access token from versedb.com in
+  `--auth versedb:TOKEN` or `COMICBOX_ONLINE__AUTH__VERSEDB__KEY`. It runs only
+  with a token, after Metron and Comic Vine, and their tags win where they
+  disagree.
+- A comic costs VerseDB about three requests. Answers are cached, and when
+  VerseDB says to slow down comicbox waits as long as it asks.
+  `comicbox doctor --online versedb` checks the token and shows the hour's
+  budget.
+- Tags carry each issue's versedb.com link, and ComicInfo and MetronInfo files
+  read it back as the VerseDB id.
+- Prompts credit VerseDB ("Data from VerseDB", linked) under its candidates, as
+  its terms ask.
+
+### 🧑‍💻 Developer
+
+- `OnlineSession` takes `versedb_key` and `versedb_url`, reports VerseDB's
+  hourly budget in `rate_limit_status()`, and exports `source_attribution()` so
+  a frontend can show the credit a source's terms require. The default sources
+  are still Metron and Comic Vine.
+- Requires versedb 1.0.
+
 ## v5.6.3
 
 ### ♻️ Changed

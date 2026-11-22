@@ -64,10 +64,15 @@ ONLINE_TEMPLATE = MappingTemplate(
                 "first_wins": bool,
             }
         ),
+        # One block per name in `SOURCE_NAMES`, spelled out because this
+        # module may not import the formats package. confuse drops keys a
+        # template doesn't name, so a source missing here would have its
+        # credentials silently ignored; a drift test keeps the two in step.
         "auth": MappingTemplate(
             {
                 "metron": _AUTH_SOURCE_TEMPLATE,
                 "comicvine": _AUTH_SOURCE_TEMPLATE,
+                "versedb": _AUTH_SOURCE_TEMPLATE,
             }
         ),
         "cache": MappingTemplate(

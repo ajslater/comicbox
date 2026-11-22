@@ -10,7 +10,8 @@ Built incrementally across milestones:
 - M5: interactive prompt + programmatic SelectorCallback API.
 - M6: ComicVine source via simyan.
 - M7: parallel batch processing.
+- VerseDB source via the `versedb` SDK, behind `versedb_api.client`.
 """
 
 # Source name constants, used as keys throughout the online subsystem.
-SOURCE_NAMES = ("metron", "comicvine")
+SOURCE_NAMES = ("metron", "comicvine", "versedb")

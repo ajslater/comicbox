@@ -46,6 +46,31 @@ def test_unknown_source_error_names_the_flag_and_the_valid_set() -> None:
         assert name in message
 
 
+def test_the_auth_template_names_every_source() -> None:
+    """
+    Drift guard: confuse drops keys its template doesn't name.
+
+    The template can't import ``SOURCE_NAMES`` (it is an import leaf), so a
+    source added to one and not the other would have its credentials
+    silently ignored.
+    """
+    from confuse.templates import MappingTemplate
+
+    from comicbox.config.online.template import ONLINE_TEMPLATE
+
+    auth = ONLINE_TEMPLATE.subtemplates["auth"]
+    assert isinstance(auth, MappingTemplate)
+    assert set(auth.subtemplates) == set(SOURCE_NAMES)
+
+
+def test_versedb_token_from_the_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The variable the README tells VerseDB users to set reaches the source."""
+    monkeypatch.setenv("COMICBOX_ONLINE__AUTH__VERSEDB__KEY", "versedb-token")
+    settings = _settings_for_online("versedb")
+    assert settings.online.lookup.sources == ("versedb",)
+    assert settings.online.auth.sources["versedb"].key == "versedb-token"
+
+
 def test_known_source_selects_only_that_source() -> None:
     """The whole point of naming a source: nothing else runs."""
     settings = _settings_for_online("metron")

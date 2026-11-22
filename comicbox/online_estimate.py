@@ -17,6 +17,10 @@ characteristic number of API requests:
 - Comic Vine discovers volumes, asks each surviving candidate for its
   issues, then fetches the issue it accepts. Only the middle step varies:
   ``Effort`` decides how many candidates are worth a call.
+- VerseDB searches series, lists the issues of every surviving series in
+  one call, then fetches the issue it accepts — a flat count, like Metron's.
+  Its free tier's 300/hour cap paces it; the 4,000/day cap is not modelled,
+  as no source's daily cap is.
 
 Match mode is not an input. It decides how a verdict is applied, never how
 many requests a search spends.
@@ -54,6 +58,7 @@ from comicbox.config.online.settings import Effort
 from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_HOUR,
     METRON_DEFAULT_PER_MINUTE,
+    VERSEDB_DEFAULT_PER_HOUR,
 )
 
 if TYPE_CHECKING:
@@ -68,6 +73,7 @@ __all__ = (
     "METRON_REQUESTS_PER_COMIC",
     "METRON_REQUESTS_PER_WARM_COMIC",
     "SOURCE_RATE_PER_MINUTE",
+    "VERSEDB_REQUESTS_PER_COMIC",
     "RunEstimate",
     "estimate_run",
     "metron_requests_for_batch",
@@ -84,6 +90,7 @@ SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
     {
         "metron": METRON_DEFAULT_PER_MINUTE,
         "comicvine": COMICVINE_DEFAULT_PER_HOUR // 60,
+        "versedb": VERSEDB_DEFAULT_PER_HOUR // 60,
     }
 )
 
@@ -123,6 +130,11 @@ COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT: Final = MappingProxyType(
         Effort.THOROUGH.value: 4,
     }
 )
+
+# VerseDB's cold comic: one series search, one issue list across every
+# surviving series, and the issue fetch. Provisional until a calibration run
+# measures it (Phase 4 of the VerseDB plan); effort does not move it.
+VERSEDB_REQUESTS_PER_COMIC: Final[int] = 3
 
 # Fallbacks for an unrecognized source. An unrecognized effort is priced as
 # ``balanced``, the shipped default.
@@ -232,6 +244,8 @@ def requests_per_comic(source: str, effort: str = Effort.BALANCED.value) -> int:
             + _comicvine_issue_list_requests(effort)
             + COMICVINE_FETCH_REQUESTS
         )
+    if source == "versedb":
+        return VERSEDB_REQUESTS_PER_COMIC
     return DEFAULT_REQUESTS_PER_COMIC
 
 

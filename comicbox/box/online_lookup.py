@@ -82,6 +82,7 @@ from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
+from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -115,6 +116,7 @@ _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
     {
         "metron": MetronOnlineSource,
         "comicvine": ComicVineOnlineSource,
+        "versedb": VerseDBOnlineSource,
     }
 )
 

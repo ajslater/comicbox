@@ -466,7 +466,7 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
         help=(
             "Enable online metadata lookup. Pass [green]all[/green] to use "
             "every configured source, or a comma-separated list of sources "
-            "to filter (e.g. [green]--online metron,comicvine[/green]). "
+            "to filter (e.g. [green]--online metron,comicvine,versedb[/green]). "
             "List order is run priority: the first source that matches "
             "wins unless [cyan]--all-sources[/cyan] is set. A durable "
             "order can be set via the [cyan]online.lookup.sources[/cyan] "
@@ -484,7 +484,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
             "Skip search; tag by exact issue id from named source. "
             "Implicitly enables online for that source. "
             "ComicVine accepts both [green]comicvine:NNN[/green] and "
-            "[green]comicvine:4000-NNN[/green]. Repeatable for cross-source "
+            "[green]comicvine:4000-NNN[/green]; VerseDB takes "
+            "[green]versedb:NNN[/green]. Repeatable for cross-source "
             "confirmation (first non-error wins). Errors out if more than "
             "one input comic is submitted. Sources listed in the "
             "[cyan]Online sources[/cyan] table below."
@@ -502,7 +503,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
             "Filename-extracted issue number and year still apply. "
             "Implicitly enables online for that source. "
             "ComicVine accepts both [green]comicvine:NNN[/green] "
-            "and [green]comicvine:4050-NNN[/green] (volume resource type)."
+            "and [green]comicvine:4050-NNN[/green] (volume resource type); "
+            "VerseDB takes [green]versedb:NNN[/green]."
         ),
     )
     group.add_argument(
@@ -552,7 +554,8 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
             "the first one that contributes data (overrides the "
             "[cyan]online.lookup.first_wins[/cyan] config key). Sources run "
             "in [cyan]--online[/cyan] / config-key order, defaulting to "
-            "[green]metron[/green] then [green]comicvine[/green]; per-source "
+            "[green]metron[/green], [green]comicvine[/green], then "
+            "[green]versedb[/green]; per-source "
             "[cyan]--id[/cyan] / [cyan]--series-id[/cyan] flags always run "
             "regardless."
         ),
@@ -572,7 +575,8 @@ def add_online_auth_group(parser: ArgumentParser) -> None:
         help=(
             "Per-source API token. Repeatable. Examples: "
             "[green]--auth metron:TOKEN[/green], "
-            "[green]--auth comicvine:TOKEN[/green]. "
+            "[green]--auth comicvine:TOKEN[/green], "
+            "[green]--auth versedb:TOKEN[/green]. "
             "[green]comicvine:url=URL[/green] overrides the ComicVine API "
             "endpoint. A token on the command line lands in shell history; "
             "use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__KEY[/cyan] "
@@ -640,8 +644,8 @@ def _add_online_tuning_group(parser: ArgumentParser) -> None:
         help=(
             "Per-comic API effort for fan-out sources: [green]minimal[/green], "
             "[green]balanced[/green] (default), [green]thorough[/green]. Trades "
-            "accuracy for fewer API calls on ComicVine; Metron doesn't fan out, so "
-            "it ignores this. Per-source overrides via YAML only."
+            "accuracy for fewer API calls on ComicVine; Metron and VerseDB don't "
+            "fan out, so they ignore this. Per-source overrides via YAML only."
         ),
     )
 

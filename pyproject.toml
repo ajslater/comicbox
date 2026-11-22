@@ -34,6 +34,7 @@ dependencies = [
   "simplejson~=4.0",
   "simyan~=4.2",
   "typing-extensions~=4.13; python_version < '3.12'",
+  "versedb~=1.0.0",
   "xmlschema~=4.0",
   "xmltodict~=1.0",
   "zipremove~=0.1",

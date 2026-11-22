@@ -275,3 +275,74 @@ def test_cli_probe_names_itself_in_the_user_agent(
     (sent,) = transport.sent
     assert "(cli; doctor)" in str(sent.headers["User-Agent"])
     assert "verified" in capsys.readouterr().out
+
+
+def test_versedb_probe_reports_its_hourly_budget(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One uncached request, through the real SDK, and the budget it left."""
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import VerseDBTransport
+
+    versedb = VerseDBTransport()
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    report = _report("versedb", argv=("--auth", "versedb:versedb-token-abcdef"))
+    row = _row(report, "versedb")
+    assert row.status is Status.OK
+    assert row.detail == "key from --auth · verified · hour 299/300 left"
+    assert versedb.paths == ["/api/v1/series"]
+    assert transport.sent == []
+
+
+def test_a_bad_versedb_token_is_misconfigured(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import Reply, VerseDBTransport
+
+    versedb = VerseDBTransport(
+        lambda _r: Reply({"message": "Unauthenticated."}, 401, {})
+    )
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    report = _report("versedb", argv=("--auth", "versedb:bad-token"))
+    row = _row(report, "versedb")
+    assert row.status is Status.MISCONFIGURED
+    assert row.fix == "check the credentials: --auth versedb:KEY"
+
+
+def test_a_spent_versedb_daily_cap_warns(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A wait longer than any retry is a rate limit to report, not an error."""
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import Reply, VerseDBTransport
+
+    versedb = VerseDBTransport(
+        lambda _r: Reply(
+            {"message": "Too Many Attempts."},
+            429,
+            {
+                "Retry-After": "18000",
+                "X-RateLimit-Limit": "300",
+                "X-RateLimit-Remaining": "0",
+            },
+        )
+    )
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    row = _row(_report("versedb", argv=("--auth", "versedb:t")), "versedb")
+    assert row.status is Status.WARN
+    assert "request limit is reached" in row.detail
+
+
+def test_a_bare_versedb_403_warns_of_something_in_front(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Not "check the credentials": the refusal never reached VerseDB's API."""
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import Reply, VerseDBTransport
+
+    versedb = VerseDBTransport(lambda _r: Reply({"message": "x"}, 403, {}))
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    row = _row(_report("versedb", argv=("--auth", "versedb:t")), "versedb")
+    assert row.status is Status.WARN
+    assert "something in front of versedb replied" in row.detail
