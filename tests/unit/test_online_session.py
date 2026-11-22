@@ -21,6 +21,8 @@ from comicbox.online_session import (
     OnlinePrompt,
     OnlineSession,
     PromptResponse,
+    SourceAttribution,
+    source_attribution,
 )
 from tests.util.online_matcher import make_candidate
 
@@ -30,6 +32,7 @@ if TYPE_CHECKING:
 VALID_METRON = OnlineCredentials(metron_key="k")
 VALID_COMICVINE = OnlineCredentials(comicvine_key="k")
 VALID_BOTH = OnlineCredentials(metron_key="k", comicvine_key="k")
+VALID_VERSEDB = OnlineCredentials(versedb_key="versedb-token")
 
 
 class _SkipHandler:
@@ -684,3 +687,107 @@ def test_ask_defers_a_confident_match(tmp_path, confident_metron) -> None:
     (deferred,) = session.deferred_prompts()
     assert deferred.match is MatchMode.ASK
     assert [c.issue_id for c in deferred.candidates] == [101]
+
+
+# --- VerseDB ------------------------------------------------------------------
+
+
+def test_versedb_is_a_known_source() -> None:
+    session = OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB)
+    assert session.rate_limit_status() == {"versedb": {}}
+
+
+def test_rejects_versedb_without_a_token() -> None:
+    with pytest.raises(OnlineConfigurationError, match="versedb requires versedb_key"):
+        OnlineSession(sources=("versedb",), credentials=VALID_METRON)
+
+
+def test_the_default_sources_do_not_need_a_versedb_token() -> None:
+    """Existing callers name no VerseDB token and must keep validating."""
+    OnlineSession(credentials=VALID_BOTH)
+
+
+def test_versedb_credentials_propagate_into_settings() -> None:
+    creds = OnlineCredentials(versedb_key="versedb-token", versedb_url="https://v")
+    cfg = OnlineSession(sources=("versedb",), credentials=creds)._build_config()
+    v = cfg.online.auth.sources["versedb"]
+    assert (v.key, v.url) == ("versedb-token", "https://v")
+    assert set(cfg.online.auth.sources) == {"versedb"}
+
+
+def test_versedb_rate_limit_status_reads_the_shared_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from comicbox.formats.versedb_api import online_source as versedb
+
+    window = {"hour": {"limit": 300, "remaining": 12, "reset_epoch": None}}
+    calls: list[tuple] = []
+
+    def status(token: str | None, base_url: str | None = None) -> dict:
+        calls.append((token, base_url))
+        return window
+
+    monkeypatch.setattr(versedb, "shared_client_rate_limit_status", status)
+    session = OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB)
+    assert session.rate_limit_status() == {"versedb": window}
+    assert calls == [("versedb-token", None)]
+
+
+def test_close_releases_versedb_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    from comicbox.formats.versedb_api import online_source as versedb
+
+    closed: list[bool] = []
+    monkeypatch.setattr(versedb, "close_shared_sessions", lambda: closed.append(True))
+    OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB).close()
+    assert closed == [True]
+
+
+def test_source_attribution_for_a_frontend() -> None:
+    """Codex looks the credit up by the name `OnlinePrompt.source` carries."""
+    credit = source_attribution("versedb")
+    assert credit == SourceAttribution(
+        text="Data from VerseDB", url="https://versedb.com"
+    )
+    assert source_attribution("metron") is None
+    assert source_attribution("comicvine") is None
+
+
+def test_a_pinned_versedb_id_tags_a_comic_end_to_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The whole stack on a recorded response: one request, the id and its link.
+
+    The real SDK parses the response, the transform maps it and the merge
+    lays it over the comic's own tags, with no ResourceWarning on close.
+    """
+    import shutil
+    import warnings
+
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import VerseDBTransport
+
+    transport = VerseDBTransport()
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", transport.transport)
+    comic = tmp_path / "comic.cbz"
+    shutil.copy(Path("tests/files/Captain Science #001.cbz"), comic)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
+        with OnlineSession(
+            sources=("versedb",),
+            ids={"versedb": 1215061},
+            credentials=VALID_VERSEDB,
+            prompts=Prompts.NEVER,
+        ) as session:
+            result = session.tag(comic)
+            budget = session.rate_limit_status()
+    assert (result.matched, result.error) == (True, None)
+    assert transport.paths == ["/api/v1/issues/1215061"]
+    tags = result.tags or {}
+    assert tags["identifiers"]["versedb"] == {"key": "1215061"}
+    assert "https://versedb.com/issue/1215061/absolute-batman-2024-24" in tags["urls"]
+    assert tags["series"]["name"] == "Absolute Batman"
+    assert budget == {
+        "versedb": {"hour": {"limit": 300, "remaining": 299, "reset_epoch": None}}
+    }
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
