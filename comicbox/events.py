@@ -226,9 +226,11 @@ SKIP_MATCHER_DECLINED: Final = "matcher_declined"
 
 #: ``Skipped.reason`` when the source never searched at all, because the
 #: day's API quota is down to the reserve that finishes comics which already
-#: matched. Distinct from a real miss on purpose: the comic was not looked
-#: at, so an embedding application should leave it queued for the next run
-#: rather than record "this source found nothing for it".
+#: matched, or because the source refuses requests for longer than comicbox
+#: waits (VerseDB's daily cap). Distinct from a real miss on purpose: the
+#: comic was not looked at, so an embedding application should leave it
+#: queued for the next run rather than record "this source found nothing
+#: for it".
 SKIP_QUOTA_RESERVED: Final = "quota_reserved"
 
 

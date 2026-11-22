@@ -6,6 +6,7 @@ import time
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+import httpx
 import pytest
 
 from comicbox.formats.base.online import outcome_stats
@@ -15,6 +16,7 @@ from comicbox.formats.versedb_api.client import (
     VerseDBAuthError,
     VerseDBClient,
     VerseDBNotFoundError,
+    VerseDBQuotaError,
     VerseDBRateLimitError,
     VerseDBResponseError,
     VerseDBServerError,
@@ -25,8 +27,6 @@ from tests.util.versedb_transport import Reply, VerseDBTransport, fixture
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from pathlib import Path
-
-    import httpx
 
 
 @pytest.fixture
@@ -281,3 +281,83 @@ def test_sdk_endpoints_still_take_the_keywords_comicbox_passes() -> None:
     available = endpoint_keywords()
     for name, used in USED_KEYWORDS.items():
         assert used <= available[name], (name, sorted(used - available[name]))
+
+
+def test_a_failing_cache_still_returns_the_fetched_payload(
+    make_client, tmp_path: Path
+) -> None:
+    """The 200 already paid for is returned; nothing is sent twice."""
+    cache = ResponseCache(tmp_path / "c.sqlite", timedelta(days=1))
+    client, transport = make_client(cache=cache)
+    # Every read and write now fails, as on a locked or full disk.
+    cache._conn.close()
+    assert client.issue(1215061)["data"]["id"] == 1215061
+    assert len(transport.requests) == 1
+
+
+def test_a_corrupt_cached_body_is_a_miss(make_client, tmp_path: Path) -> None:
+    cache = ResponseCache(tmp_path / "c.sqlite", timedelta(days=1))
+    client, transport = make_client(cache=cache)
+    client.issue(1)
+    for key in [row[0] for row in cache._conn.execute("SELECT key FROM responses")]:
+        cache.set(key, b"{not json")
+    assert client.issue(1)["data"]["id"] == 1
+    assert len(transport.requests) == 2
+
+
+def test_a_retry_after_past_the_ceiling_stops_asking(make_client) -> None:
+    """
+    A daily-cap 429 (hours of Retry-After) is not a wait worth retrying.
+
+    The retry layer would sleep its one-hour ceiling, be refused again, and
+    give up, and so would every comic after. Instead VerseDB stops being
+    asked, without sleeping, until the wait has passed.
+    """
+    reply = Reply(
+        {"message": "Too Many Attempts."}, status=429, headers={"Retry-After": "18000"}
+    )
+    client, transport = make_client(_always(reply))
+    with pytest.raises(VerseDBQuotaError, match="request limit is reached") as exc_info:
+        client.issue(1)
+    assert exc_info.value.resume_at > time.time() + 17000
+    with pytest.raises(VerseDBQuotaError):
+        client.issue(2)
+    assert len(transport.requests) == 1
+
+
+def test_a_retry_after_within_the_ceiling_is_still_a_rate_limit(make_client) -> None:
+    reply = Reply({"message": "x"}, status=429, headers={"Retry-After": "600"})
+    client, _ = make_client(_always(reply))
+    with pytest.raises(VerseDBRateLimitError):
+        client.issue(1)
+
+
+def test_request_counts_name_the_endpoint_not_the_issue(make_client) -> None:
+    """A batch of fetches is one summary line, not one per comic."""
+    outcome_stats.reset()
+    client, _ = make_client()
+    client.issue(1)
+    client.issue(2)
+    client.search_series("Absolute Batman", 10)
+    client.list_issues((139382,), "1")
+    assert outcome_stats.api_snapshot()["versedb"].requests == {
+        "issues": 2,
+        "series_list": 1,
+        "issues_list": 1,
+    }
+
+
+def test_a_send_with_no_response_counts_as_a_connection_failure() -> None:
+    outcome_stats.reset()
+
+    def refuse(request: httpx.Request) -> httpx.Response:
+        msg = "refused"
+        raise httpx.ConnectError(msg, request=request)
+
+    client = VerseDBClient("t", user_agent="t", transport=httpx.MockTransport(refuse))
+    try:
+        with pytest.raises(httpx.ConnectError):
+            client.issue(1)
+    finally:
+        client.close()
+    assert outcome_stats.api_snapshot()["versedb"].connection_failures == 1

@@ -107,6 +107,10 @@ _CURRENCY_TO_COUNTRY: Final = MappingProxyType(
 )
 
 _LOCATION_SPLIT_RE: Final = re.compile(r"\s*[;,]\s*")
+# VerseDB writes an issue that carries two numbers as "1 [10]".
+_DUAL_NUMBER_RE: Final = re.compile(
+    r"^(?P<number>[^\[]*?)\s*\[\s*(?P<alt>[^\]]*?)\s*\]\s*$"
+)
 
 
 def issue_url(issue_id: Any, slug: str | None) -> str | None:
@@ -182,10 +186,30 @@ def _build_date(issue: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _build_issue_block(issue: Mapping[str, Any]) -> dict[str, Any]:
-    if number := issue.get("issue_number"):
-        return {"name": str(number)}
-    return {}
+def split_issue_number(raw: Any) -> tuple[str, str | None]:
+    """
+    Split VerseDB's "1 [10]" into the issue's number and its other number.
+
+    Seen on G.I. Joe (Ziff-Davis, 1951), recorded 2026-11-21: its first five
+    issues read "1 [10]" to "5 [14]", and the numbers before the brackets
+    then run on, 6 to 51, through issues of their own numbered 10 to 14. So
+    the number before the bracket is the series' running number, and the
+    bracket is a second number the same issue carries, which comicbox keeps
+    as its alternative issue number, as Metron's ``alt_number`` is kept.
+    """
+    text = str(raw or "").strip()
+    if match := _DUAL_NUMBER_RE.match(text):
+        return match.group("number").strip(), match.group("alt").strip() or None
+    return text, None
+
+
+def _build_issue_blocks(issue: Mapping[str, Any]) -> tuple[dict, dict]:
+    """Return the ``issue`` and ``alternative_issue`` blocks."""
+    number, alt = split_issue_number(issue.get("issue_number"))
+    return (
+        {"name": number} if number else {},
+        {"name": alt} if alt else {},
+    )
 
 
 def _build_cover_image(issue: Mapping[str, Any]) -> str | None:
@@ -276,8 +300,10 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
     """
     series = issue.get("series") or {}
     manga, reading_direction = _build_manga(series)
+    issue_block, alternative_issue = _build_issue_blocks(issue)
     blocks: tuple[tuple[str, Any], ...] = (
-        ("issue", _build_issue_block(issue)),
+        ("issue", issue_block),
+        ("alternative_issue", alternative_issue),
         ("title", issue.get("name")),
         ("date", _build_date(issue)),
         ("cover_image", _build_cover_image(issue)),

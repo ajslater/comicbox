@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
+import gc
 import sqlite3
+import warnings
 from contextlib import closing
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import pytest
 
-from comicbox.formats.versedb_api.cache import ResponseCache
+from comicbox.formats.versedb_api.cache import ResponseCache, open_response_cache
 
 if TYPE_CHECKING:
     from pathlib import Path
+
 
 _CLOCK = "comicbox.formats.versedb_api.cache.time.time"
 
@@ -87,3 +90,57 @@ def test_close_twice(path: Path) -> None:
     cache = ResponseCache(path, timedelta(days=7))
     cache.close()
     cache.close()
+
+
+class _LockedConnection:
+    """Stands in for a connection another process holds: every query fails."""
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_args: object) -> None:
+        return None
+
+    def execute(self, *_args: object) -> None:
+        msg = "database is locked"
+        raise sqlite3.OperationalError(msg)
+
+    def close(self) -> None:
+        return None
+
+
+def test_a_locked_cache_reads_as_a_miss_and_skips_the_store(
+    path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A cache error never reaches the retry layer."""
+    cache = ResponseCache(path, timedelta(days=7))
+    real = cache._conn
+    monkeypatch.setattr(cache, "_conn", _LockedConnection())
+    try:
+        assert cache.get("k") is None
+        cache.set("k", b"body")  # no raise
+    finally:
+        real.close()
+
+
+def test_a_corrupt_file_is_rebuilt(path: Path) -> None:
+    path.write_bytes(b"this is not a sqlite database" * 100)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
+        cache = open_response_cache(path, timedelta(days=7))
+        assert cache is not None
+        try:
+            cache.set("k", b"body")
+            assert cache.get("k") == b"body"
+        finally:
+            cache.close()
+        gc.collect()
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]
+
+
+def test_an_unopenable_cache_runs_uncached_and_deletes_nothing(tmp_path: Path) -> None:
+    """A path sqlite can't open is not ours to delete: run without a cache."""
+    blocked = tmp_path / "versedb_cache.sqlite"
+    blocked.mkdir()
+    assert open_response_cache(blocked, timedelta(days=7)) is None
+    assert blocked.is_dir()

@@ -308,3 +308,27 @@ def test_a_bad_versedb_token_is_misconfigured(
     row = _row(report, "versedb")
     assert row.status is Status.MISCONFIGURED
     assert row.fix == "check the credentials: --auth versedb:KEY"
+
+
+def test_a_spent_versedb_daily_cap_warns(
+    transport: _Transport, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A wait longer than any retry is a rate limit to report, not an error."""
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import Reply, VerseDBTransport
+
+    versedb = VerseDBTransport(
+        lambda _r: Reply(
+            {"message": "Too Many Attempts."},
+            429,
+            {
+                "Retry-After": "18000",
+                "X-RateLimit-Limit": "300",
+                "X-RateLimit-Remaining": "0",
+            },
+        )
+    )
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", versedb.transport)
+    row = _row(_report("versedb", argv=("--auth", "versedb:t")), "versedb")
+    assert row.status is Status.WARN
+    assert "request limit is reached" in row.detail

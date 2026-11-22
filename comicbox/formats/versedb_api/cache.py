@@ -11,6 +11,12 @@ The mode policy (off, refresh's wipe-once, ttl) is the shared
 means keep forever, as both other sources treat it; ``cache.mode: off`` is
 the switch for not caching at all.
 
+The cache is an optimization, so it never fails a request. A read that
+errors is a miss and a write that errors is skipped, each warned once: the
+CLI and Codex can share the file, and "database is locked" must not throw
+away a response already paid for. `open_response_cache` rebuilds a file that
+is corrupt or not sqlite at all, and runs uncached when even that fails.
+
 Connection handling follows `CoverHashUrlCache`: one connection opened with
 ``check_same_thread=False``, every access under a lock, `vacuum_if_bloated`
 on open, and an explicit `close`.
@@ -21,13 +27,18 @@ from __future__ import annotations
 import sqlite3
 import threading
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
+
+from loguru import logger
 
 from comicbox.formats.base.online.vacuum import vacuum_if_bloated
+from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
     from datetime import timedelta
     from pathlib import Path
+
+_SOURCE: Final = "versedb"
 
 
 class ResponseCache:
@@ -39,6 +50,16 @@ class ResponseCache:
         self._ttl_s = ttl.total_seconds()
         self._lock = threading.Lock()
         self._conn = sqlite3.connect(self._path, check_same_thread=False)
+        try:
+            self._create()
+        except sqlite3.Error:
+            # Never leave the connection to the finalizer.
+            self._conn.close()
+            raise
+        # A separate connection: VACUUM cannot run inside a transaction.
+        vacuum_if_bloated(self._path)
+
+    def _create(self) -> None:
         with self._lock, self._conn:
             self._conn.execute(
                 "CREATE TABLE IF NOT EXISTS responses "
@@ -51,15 +72,21 @@ class ResponseCache:
                     "DELETE FROM responses WHERE stored_at < ?",
                     (time.time() - self._ttl_s,),
                 )
-        # A separate connection: VACUUM cannot run inside a transaction.
-        vacuum_if_bloated(self._path)
 
     def get(self, key: str) -> bytes | None:
-        """Return the stored body for ``key``, or None when absent or expired."""
-        with self._lock:
-            row = self._conn.execute(
-                "SELECT stored_at, body FROM responses WHERE key = ?", (key,)
-            ).fetchone()
+        """Return the stored body for ``key``, or None when absent, expired or unreadable."""
+        try:
+            with self._lock:
+                row = self._conn.execute(
+                    "SELECT stored_at, body FROM responses WHERE key = ?", (key,)
+                ).fetchone()
+        except sqlite3.Error as exc:
+            warn_once(
+                f"{_SOURCE}:cache-read",
+                f"online {_SOURCE}: response cache unreadable, asking VerseDB "
+                f"instead: {exc}",
+            )
+            return None
         if row is None:
             return None
         stored_at, body = row
@@ -68,15 +95,57 @@ class ResponseCache:
         return bytes(body)
 
     def set(self, key: str, body: bytes) -> None:
-        """Store ``body`` for ``key``, replacing what was there."""
-        with self._lock, self._conn:
-            self._conn.execute(
-                "INSERT OR REPLACE INTO responses (key, stored_at, body) "
-                "VALUES (?, ?, ?)",
-                (key, time.time(), body),
+        """Store ``body`` for ``key``, replacing what was there; skip on error."""
+        try:
+            with self._lock, self._conn:
+                self._conn.execute(
+                    "INSERT OR REPLACE INTO responses (key, stored_at, body) "
+                    "VALUES (?, ?, ?)",
+                    (key, time.time(), body),
+                )
+        except sqlite3.Error as exc:
+            warn_once(
+                f"{_SOURCE}:cache-write",
+                f"online {_SOURCE}: response not cached ({exc}); the next "
+                "identical request will be sent again",
             )
 
     def close(self) -> None:
         """Close the connection. Safe to call more than once."""
         with self._lock:
             self._conn.close()
+
+
+def _remove(path: Path) -> None:
+    for suffix in ("", "-wal", "-shm", "-journal"):
+        path.with_name(path.name + suffix).unlink(missing_ok=True)
+
+
+def open_response_cache(path: Path, ttl: timedelta) -> ResponseCache | None:
+    """
+    Open the response cache, or return None to run without one.
+
+    comicbox owns this file, so one that is corrupt or not sqlite at all is
+    deleted and rebuilt, as Metron's cache is. A file that is only busy
+    ("database is locked", another process holding it) is left alone and the
+    run goes uncached, rather than deleting what someone else has open.
+    """
+    try:
+        return ResponseCache(path, ttl)
+    except sqlite3.OperationalError as exc:
+        warn_once(
+            f"{_SOURCE}:cache-refused",
+            f"online {_SOURCE}: running without a response cache: {exc}",
+        )
+        return None
+    except sqlite3.DatabaseError:
+        logger.warning(f"online {_SOURCE}: rebuilding unreadable cache {path}")
+    _remove(path)
+    try:
+        return ResponseCache(path, ttl)
+    except sqlite3.Error as exc:
+        warn_once(
+            f"{_SOURCE}:cache-refused",
+            f"online {_SOURCE}: running without a response cache: {exc}",
+        )
+        return None

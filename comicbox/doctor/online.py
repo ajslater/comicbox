@@ -185,7 +185,7 @@ def _verify_status(source: OnlineSource, exc: Exception) -> Status:
     category = source.classify_retry_exception(exc)
     if category is RetryCategory.AUTH:
         return Status.MISCONFIGURED
-    if category is RetryCategory.RATE_LIMIT:
+    if category in (RetryCategory.RATE_LIMIT, RetryCategory.QUOTA):
         return Status.WARN
     return Status.ERROR
 

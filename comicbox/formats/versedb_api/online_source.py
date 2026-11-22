@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Final
 from loguru import logger
 
 from comicbox.config.online.settings import Effort
+from comicbox.events import SKIP_QUOTA_RESERVED
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import (
     Candidate,
@@ -40,16 +41,21 @@ from comicbox.formats.base.online.series_filter import (
 from comicbox.formats.base.online.sources.base import OnlineSource
 from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
-from comicbox.formats.versedb_api.cache import ResponseCache
+from comicbox.formats.versedb_api.cache import open_response_cache
 from comicbox.formats.versedb_api.client import (
     VerseDBAuthError,
     VerseDBClient,
     VerseDBNotFoundError,
+    VerseDBQuotaError,
     VerseDBRateLimitError,
     VerseDBResponseError,
     VerseDBServerError,
 )
-from comicbox.formats.versedb_api.transform import issue_url, original_format
+from comicbox.formats.versedb_api.transform import (
+    issue_url,
+    original_format,
+    split_issue_number,
+)
 from comicbox.version import user_agent
 
 if sys.version_info >= (3, 12):
@@ -130,7 +136,7 @@ def _number_matches(row: Mapping[str, Any], number: str | None) -> bool:
     """
     if number is None:
         return True
-    raw = str(row.get("issue_number") or "").split("[", 1)[0].strip()
+    raw, _alt = split_issue_number(row.get("issue_number"))
     return (strip_issue_leading_zeros(raw) or "").casefold() == number.casefold()
 
 
@@ -173,6 +179,7 @@ class VerseDBOnlineSource(OnlineSource):
         import httpx
 
         categories: tuple[tuple[type[BaseException], RetryCategory], ...] = (
+            (VerseDBQuotaError, RetryCategory.QUOTA),
             (VerseDBRateLimitError, RetryCategory.RATE_LIMIT),
             (VerseDBAuthError, RetryCategory.AUTH),
             (VerseDBNotFoundError, RetryCategory.NOT_FOUND),
@@ -222,7 +229,7 @@ class VerseDBOnlineSource(OnlineSource):
         cache = None
         if cached and (resolved := self._resolve_response_cache()) is not None:
             path, ttl = resolved
-            cache = ResponseCache(path, ttl)
+            cache = open_response_cache(path, ttl)
         return VerseDBClient(
             self._credentials.key or "",
             user_agent=user_agent(),
@@ -271,7 +278,19 @@ class VerseDBOnlineSource(OnlineSource):
            other names) is too far from the comic's series.
         4. One issue list across all the kept series, filtered client-side
            to the comic's exact number.
+
+        While VerseDB refuses requests for longer than any retry waits (its
+        daily cap), nothing is sent: the comic is reported skipped, so it is
+        tried again on a later run, and the run's other sources carry on.
         """
+        self.reset_search_skip_reason()
+        try:
+            return self._search(profile)
+        except VerseDBQuotaError:
+            self._note_search_skipped(SKIP_QUOTA_RESERVED)
+            return []
+
+    def _search(self, profile: ComicProfile) -> list[Candidate]:
         number = strip_issue_leading_zeros(profile.issue)
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
@@ -312,7 +331,11 @@ class VerseDBOnlineSource(OnlineSource):
         number = strip_issue_leading_zeros(issue_number)
         if not number:
             return None
-        candidates = self._issues_in_series({int(volume_id): ()}, number)
+        try:
+            candidates = self._issues_in_series({int(volume_id): ()}, number)
+        except VerseDBQuotaError:
+            # Quietly: the search this falls back to reports the skip.
+            return None
         # First-result-wins on variant collisions, as for the other sources.
         return candidates[0] if candidates else None
 

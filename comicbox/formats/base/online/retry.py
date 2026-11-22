@@ -41,6 +41,7 @@ class RetryCategory(Enum):
     AUTH = auto()  # never retried
     NOT_FOUND = auto()  # never retried
     INVALID = auto()  # never retried; malformed request, a bug on our side
+    QUOTA = auto()  # never retried; refused until longer than any wait we'd do
     TRANSIENT = auto()  # generic exponential schedule
 
 
@@ -166,6 +167,12 @@ _MAX_RATE_LIMIT_RETRIES: Final[int] = len(_RATE_LIMIT_SCHEDULE)
 # wait just burns the next attempt on the same 429.
 _MAX_TOTAL_WAIT_S: Final[float] = 3600.0
 
+#: The longest one call will wait out a rate limit. A source told to wait
+#: longer than this (a daily cap, say) gains nothing by retrying: the wait is
+#: cut to this, and the retry is refused again. It should stop asking and
+#: classify the refusal as `RetryCategory.QUOTA` instead.
+MAX_RATE_LIMIT_WAIT_S: Final[float] = min(_MAX_RETRY_AFTER_S, _MAX_TOTAL_WAIT_S)
+
 # Process-wide cancel signal for retry sleeps. Set it and every waiting
 # call wakes up and abandons its retry loop.
 #
@@ -265,6 +272,7 @@ def _is_retriable(exc: BaseException, category: RetryCategory | None) -> bool:
         RetryCategory.AUTH,
         RetryCategory.NOT_FOUND,
         RetryCategory.INVALID,
+        RetryCategory.QUOTA,
     ):
         return False
     if category is None:

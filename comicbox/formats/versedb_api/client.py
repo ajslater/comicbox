@@ -22,7 +22,9 @@ What this adds on top of the SDK:
   one marked ``no-store``.
 - A 429 cooldown: until the server's ``Retry-After`` has passed, every call
   fails at once without sending, so N workers don't each spend a request to
-  learn the same thing.
+  learn the same thing. A wait longer than the retry layer will ever do (a
+  daily cap) is a `VerseDBQuotaError`, never retried: VerseDB is not asked
+  again until it lapses, and the run's other sources carry on.
 - The hourly budget from ``X-RateLimit-*``, for the doctor and Codex.
 
 `versedb` is imported inside functions only: its endpoint modules load all
@@ -35,10 +37,12 @@ from __future__ import annotations
 import json
 import threading
 import time
+from datetime import datetime, timedelta
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Final, NoReturn
 
 from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online.retry import MAX_RATE_LIMIT_WAIT_S
 from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
@@ -96,6 +100,22 @@ class VerseDBRateLimitError(VerseDBError):
         self.retry_after = retry_after
 
 
+class VerseDBQuotaError(VerseDBError):
+    """
+    VerseDB refuses requests for longer than comicbox ever waits.
+
+    A 429 whose ``Retry-After`` is past `retry.MAX_RATE_LIMIT_WAIT_S`, most
+    likely the free tier's 4,000-a-day cap. Retrying would only sleep out the
+    ceiling and be refused again, so this is never retried, and the client
+    sends nothing more until ``resume_at`` (epoch seconds).
+    """
+
+    def __init__(self, message: str, resume_at: float) -> None:
+        """Keep when VerseDB said to come back."""
+        super().__init__(message)
+        self.resume_at = resume_at
+
+
 class VerseDBServerError(VerseDBError):
     """HTTP 5xx."""
 
@@ -146,6 +166,31 @@ def _storable(headers: Mapping[str, str]) -> bool:
     (2026-11-21) to cache as much as possible. Only ``no-store`` is refused.
     """
     return "no-store" not in (headers.get("cache-control") or "").lower()
+
+
+def _endpoint_name(path: str) -> str:
+    """
+    Name the endpoint a request path addresses, for the run's request counts.
+
+    ``/api/v1/issues`` is a list and ``/api/v1/issues/1234`` a detail fetch:
+    distinct names, but one per endpoint rather than one per issue. Named as
+    Metron's `endpoint_from_url` names them.
+    """
+    parts = [part for part in path.split("/") if part]
+    if parts[:2] == ["api", "v1"]:
+        parts = parts[2:]
+    if not parts:
+        return "other"
+    is_detail = len(parts) > 1 and parts[1].isdigit()
+    return parts[0] if is_detail else f"{parts[0]}_list"
+
+
+def _quota_message(wait_s: float) -> str:
+    resume = datetime.now().astimezone() + timedelta(seconds=wait_s)
+    return (
+        f"VerseDB's request limit is reached; comicbox won't ask it again until "
+        f"about {resume:%H:%M} ({wait_s / 3600:.1f}h)"
+    )
 
 
 def _cache_key(endpoint: str, args: Sequence[Any], params: Mapping[str, Any]) -> str:
@@ -262,16 +307,23 @@ class VerseDBClient:
     def _request(
         self, endpoint: str, *args: Any, use_cache: bool = True, **params: Any
     ) -> dict[str, Any]:
+        import httpx
+
         cache = self._cache if use_cache else None
         key = _cache_key(endpoint, args, params)
-        if cache is not None and (body := cache.get(key)) is not None:
-            return json.loads(body)
+        if cache is not None and (payload := _cached_payload(cache, key)) is not None:
+            return payload
         self._refuse_while_cooling_down()
         func = self._endpoints[endpoint]
         self._local.status = None
         self._local.headers = None
         try:
             response = func.sync_detailed(*args, client=self._sdk, **params)
+        except httpx.TransportError:
+            # No response at all: a timeout, a refused connection, or a
+            # firewall dropping the address, which nothing else here shows.
+            outcome_stats.record_connection_failure(SOURCE_NAME)
+            raise
         except (KeyError, TypeError, ValueError) as exc:
             self._raise_for_parse_failure(endpoint, exc)
         status = int(response.status_code)
@@ -305,6 +357,8 @@ class VerseDBClient:
         if status == _TOO_MANY_REQUESTS:
             retry_after = _retry_after(headers)
             self._start_cooldown(retry_after)
+            if retry_after is not None and retry_after > MAX_RATE_LIMIT_WAIT_S:
+                self._raise_quota(retry_after)
             reason = f"{prefix}: rate limited"
             raise VerseDBRateLimitError(reason, retry_after)
         if status >= _SERVER_ERROR:
@@ -321,9 +375,27 @@ class VerseDBClient:
     def _refuse_while_cooling_down(self) -> None:
         with self._lock:
             remaining = self._cooldown_until - time.monotonic()
+        if remaining > MAX_RATE_LIMIT_WAIT_S:
+            self._raise_quota(remaining)
         if remaining > 0:
             reason = f"VerseDB: rate limited; not sending for another {remaining:.0f}s"
             raise VerseDBRateLimitError(reason, remaining)
+
+    @staticmethod
+    def _raise_quota(wait_s: float) -> NoReturn:
+        """
+        Stop asking VerseDB until a wait longer than any retry has passed.
+
+        Said once, plainly; every later refusal carries the same words but
+        stays quiet, and the sources that still have budget carry on.
+        """
+        message = _quota_message(wait_s)
+        warn_once(
+            f"{SOURCE_NAME}:quota",
+            f"online {SOURCE_NAME}: {message}. Other online sources carry on; a "
+            "re-run after that tags what VerseDB skipped.",
+        )
+        raise VerseDBQuotaError(message, time.time() + wait_s)
 
     def _observe(self, response: httpx.Response) -> None:
         """
@@ -336,7 +408,9 @@ class VerseDBClient:
         headers = response.headers
         self._local.status = status
         self._local.headers = headers
-        outcome_stats.record_http_request(SOURCE_NAME, response.request.url.path)
+        outcome_stats.record_http_request(
+            SOURCE_NAME, _endpoint_name(response.request.url.path)
+        )
         if status == _TOO_MANY_REQUESTS:
             outcome_stats.record_rate_limit_rejection(SOURCE_NAME)
         limit = _header_int(headers, _HEADER_LIMIT)
@@ -365,6 +439,16 @@ class VerseDBClient:
             f"(status {status}); VerseDB's API sends them, so this one came "
             "from something in front of it.",
         )
+
+
+def _cached_payload(cache: ResponseCache, key: str) -> dict[str, Any] | None:
+    """Return a cached response, parsed; a body that won't parse is a miss."""
+    if (body := cache.get(key)) is None:
+        return None
+    try:
+        return json.loads(body)
+    except ValueError:
+        return None
 
 
 def endpoint_keywords() -> dict[str, frozenset[str]]:

@@ -207,3 +207,24 @@ def test_id_and_link_survive_a_written_file(fmt: MetadataFormats) -> None:
     assert md["identifiers"]["versedb"] == {"key": "1215061"}
     assert link in md["urls"]
     assert not [url for url in md["urls"] if "versedb" in url and url != link]
+
+
+@pytest.mark.parametrize(
+    ("raw", "issue", "alternative"),
+    [
+        ("1 [10]", {"name": "1"}, {"name": "10"}),
+        ("5[14]", {"name": "5"}, {"name": "14"}),
+        ("24", {"name": "24"}, None),
+        ("1/2", {"name": "1/2"}, None),
+    ],
+)
+def test_a_dual_number_keeps_its_other_number_apart(
+    raw: str, issue: dict, alternative: dict | None
+) -> None:
+    """G.I. Joe (1951) numbers its first issues "1 [10]" to "5 [14]"."""
+    data = _issue("issue_regular")
+    data["issue_number"] = raw
+    cb = _transform(data)
+    assert {k: v for k, v in cb["issue"].items() if k == "name"} == issue
+    alt = cb.get("alternative_issue")
+    assert ({"name": alt["name"]} if alt else None) == alternative

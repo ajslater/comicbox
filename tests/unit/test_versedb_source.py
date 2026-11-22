@@ -314,7 +314,7 @@ def test_is_configured_needs_a_token(tmp_path: Path) -> None:
 # -- classification -------------------------------------------------------
 
 
-def _subclasses(cls: type) -> set[type]:
+def _subclasses(cls: type[BaseException]) -> set[type[BaseException]]:
     found = set(cls.__subclasses__())
     for sub in list(found):
         found |= _subclasses(sub)
@@ -328,13 +328,15 @@ def test_every_adapter_exception_is_classified() -> None:
     ):
         if exc_class is client_module.VerseDBError:
             continue
-        exc = exc_class("x")
+        # Built bare: only the class is under test, not its arguments.
+        exc = exc_class.__new__(exc_class)
         assert VerseDBOnlineSource.classify_retry_exception(exc) is not None, exc_class
 
 
 @pytest.mark.parametrize(
     ("exc", "category"),
     [
+        (client_module.VerseDBQuotaError("x", 0.0), RetryCategory.QUOTA),
         (client_module.VerseDBRateLimitError("x", 1.0), RetryCategory.RATE_LIMIT),
         (client_module.VerseDBAuthError("x"), RetryCategory.AUTH),
         (client_module.VerseDBNotFoundError("x"), RetryCategory.NOT_FOUND),
@@ -437,3 +439,105 @@ def test_the_lookup_builds_versedb_from_its_factory(tmp_path: Path) -> None:
     from comicbox.box.online_lookup import _DEFAULT_SOURCE_FACTORIES
 
     assert _DEFAULT_SOURCE_FACTORIES["versedb"] is VerseDBOnlineSource
+
+
+# -- review fixes: cache failures, the daily cap, dual numbers -------------
+
+
+def test_a_cache_that_cannot_store_does_not_resend(
+    transport: VerseDBTransport, tmp_path: Path
+) -> None:
+    """A cache error used to escape into `with_retry`, which sent it again."""
+    source = _source(tmp_path)
+    cache = source._get_client()._cache
+    assert cache is not None
+    # Every write now fails, as on a full disk or a file another process locks.
+    cache._conn.close()
+    assert source.get(1)["id"] == 1
+    assert len(transport.requests) == 1
+
+
+def _daily_cap(monkeypatch: pytest.MonkeyPatch) -> VerseDBTransport:
+    mock = VerseDBTransport(
+        lambda _request: Reply(
+            {"message": "Too Many Attempts."},
+            status=429,
+            headers={"Retry-After": "18000"},
+        )
+    )
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", mock.transport)
+
+    def no_sleep(seconds: float) -> None:
+        msg = f"slept {seconds}s"
+        raise AssertionError(msg)
+
+    monkeypatch.setattr(
+        "comicbox.formats.base.online.retry.interruptible_sleep", no_sleep
+    )
+    return mock
+
+
+def test_the_daily_cap_is_never_slept_out(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    mock = _daily_cap(monkeypatch)
+    source = _source(tmp_path)
+    with pytest.raises(client_module.VerseDBQuotaError):
+        source.get(1)
+    assert len(mock.requests) == 1
+
+
+def test_the_daily_cap_skips_searches_so_other_sources_carry_on(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Reported as skipped, not as a miss, so a later run tries the comic again."""
+    from comicbox.events import SKIP_QUOTA_RESERVED
+
+    mock = _daily_cap(monkeypatch)
+    source = _source(tmp_path)
+    for _ in range(3):
+        assert source.search(_PROFILE) == []
+        assert source.search_skip_reason == SKIP_QUOTA_RESERVED
+    assert source.lookup_issue(_BATMAN, "1") is None
+    # One request learned the limit; nothing after it was sent.
+    assert len(mock.requests) == 1
+
+
+def test_a_fresh_search_clears_the_skip_reason(
+    transport: VerseDBTransport, tmp_path: Path
+) -> None:
+    source = _source(tmp_path)
+    source._note_search_skipped("x")
+    source.search(_PROFILE)
+    assert source.search_skip_reason is None
+
+
+def test_a_dual_numbered_issue_matches_after_a_round_trip(tmp_path: Path) -> None:
+    """
+    "1 [10]" is written as issue 1, read back, and matches its own row again.
+
+    Written raw it was stored as "1[10]" with a false suffix, and a later
+    VerseDB search for the same comic could not match it.
+    """
+    from comicbox.box import Comicbox
+    from comicbox.formats import MetadataFormats
+    from comicbox.formats.base.online.profile import (
+        accumulate_profile_fields,
+        strip_issue_leading_zeros,
+    )
+
+    row = next(
+        row for row in fixture("list_issues")["data"] if row["issue_number"] == "1 [10]"
+    )
+    issue = fixture("issue_regular")["data"]
+    issue["issue_number"] = row["issue_number"]
+    with Comicbox() as car:
+        car.add_metadata({"versedb_api": issue}, MetadataFormats.VERSEDB_API)
+        md = car.to_dict()["comicbox"]
+        written = car.to_string(MetadataFormats.COMIC_INFO)
+    assert (md["issue"]["name"], md["alternative_issue"]["name"]) == ("1", "10")
+    with Comicbox(metadata=written, fmt=MetadataFormats.COMIC_INFO) as car:
+        fields: dict[str, Any] = {}
+        accumulate_profile_fields(fields, car.to_dict())
+    profile = ComicProfile(**fields)
+    assert online_source._number_matches(row, strip_issue_leading_zeros(profile.issue))
