@@ -1,0 +1,543 @@
+{
+  "data": [
+    {
+      "id": 33974,
+      "slug": "reinstated-1-of-4",
+      "series_id": 54159,
+      "issue_number": "1",
+      "name": "Reinstated! 1 of 4",
+      "cover_date": "2001-09-01",
+      "release_date": "2001-10-03",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/reinstated-1-of-4-33974/reinstated-1-of-4-33974-1790662561-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/reinstated-1-of-4-33974/reinstated-1-of-4-33974-1790662561-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/reinstated-1-of-4-33974/reinstated-1-of-4-33974-1790662561-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/reinstated-1-of-4-33974/reinstated-1-of-4-33974-1790662561-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/reinstated-1-of-4-33974/reinstated-1-of-4-33974-1790662561-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 55684,
+      "slug": "the-zoo-part-one",
+      "series_id": 139382,
+      "issue_number": "1",
+      "name": "The Zoo, Part One",
+      "cover_date": "2024-12-01",
+      "release_date": "2024-10-09",
+      "foc_date": "2024-09-16",
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/the-zoo-part-one-55684/the-zoo-part-one-55684-1790103782-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/the-zoo-part-one-55684/the-zoo-part-one-55684-1790103782-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/the-zoo-part-one-55684/the-zoo-part-one-55684-1790103782-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/the-zoo-part-one-55684/the-zoo-part-one-55684-1790103782-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/the-zoo-part-one-55684/the-zoo-part-one-55684-1790103782-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": "12+",
+      "min_age": 12,
+      "is_nsfw": false,
+      "average_rating": 5,
+      "series": {
+        "id": 139382,
+        "name": "Absolute Batman",
+        "slug": "absolute-batman",
+        "start_year": 2024,
+        "end_year": null,
+        "volume_number": 1,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 27,
+        "cover_url": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp"
+        },
+        "publisher_name": "DC Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 499640,
+      "slug": "gi-joe-165850-1-10",
+      "series_id": 165850,
+      "issue_number": "1 [10]",
+      "name": null,
+      "cover_date": "1951-02-01",
+      "release_date": null,
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-165850-1-10-499640/gi-joe-165850-1-10-499640-1d1yxaj-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-165850-1-10-499640/gi-joe-165850-1-10-499640-1d1yxaj-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-165850-1-10-499640/gi-joe-165850-1-10-499640-1d1yxaj-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-165850-1-10-499640/gi-joe-165850-1-10-499640-1d1yxaj-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-165850-1-10-499640/gi-joe-165850-1-10-499640-1d1yxaj-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 165850,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-1951",
+        "start_year": 1951,
+        "end_year": null,
+        "volume_number": null,
+        "publication_type": null,
+        "format": "Standard",
+        "cached_issues_count": 51,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_lg.webp"
+        },
+        "publisher_name": "Ziff-Davis"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 224607,
+      "slug": "gi-joe-54159-10",
+      "series_id": 54159,
+      "issue_number": "10",
+      "name": "Malfunction! 1 of 4",
+      "cover_date": "2002-09-01",
+      "release_date": "2002-09-18",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-54159-10-224607/gi-joe-54159-10-224607-1i85p9v-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-54159-10-224607/gi-joe-54159-10-224607-1i85p9v-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-54159-10-224607/gi-joe-54159-10-224607-1i85p9v-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-54159-10-224607/gi-joe-54159-10-224607-1i85p9v-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-54159-10-224607/gi-joe-54159-10-224607-1i85p9v-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 224611,
+      "slug": "gi-joe-54159-14",
+      "series_id": 54159,
+      "issue_number": "14",
+      "name": "Homecoming 1 of 2",
+      "cover_date": "2003-01-01",
+      "release_date": "2003-02-12",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-54159-14-224611/gi-joe-54159-14-224611-2d1exi-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-54159-14-224611/gi-joe-54159-14-224611-2d1exi-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-54159-14-224611/gi-joe-54159-14-224611-2d1exi-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-54159-14-224611/gi-joe-54159-14-224611-2d1exi-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-54159-14-224611/gi-joe-54159-14-224611-2d1exi-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 224614,
+      "slug": "gi-joe-54159-17",
+      "series_id": 54159,
+      "issue_number": "17",
+      "name": "The Cabal Part 1",
+      "cover_date": "2003-04-01",
+      "release_date": "2003-04-30",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-54159-17-224614/gi-joe-54159-17-224614-198t3j6-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-54159-17-224614/gi-joe-54159-17-224614-198t3j6-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-54159-17-224614/gi-joe-54159-17-224614-198t3j6-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-54159-17-224614/gi-joe-54159-17-224614-198t3j6-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-54159-17-224614/gi-joe-54159-17-224614-198t3j6-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 636975,
+      "slug": "absolute-batman-17",
+      "series_id": 139382,
+      "issue_number": "17",
+      "name": "The Seventh Kingdom, Part 1",
+      "cover_date": "2026-04-01",
+      "release_date": "2026-02-18",
+      "foc_date": "2026-01-26",
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/the-seventh-kingdom-part-1-636975/the-seventh-kingdom-part-1-636975-1789862892-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/the-seventh-kingdom-part-1-636975/the-seventh-kingdom-part-1-636975-1789862892-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/the-seventh-kingdom-part-1-636975/the-seventh-kingdom-part-1-636975-1789862892-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/the-seventh-kingdom-part-1-636975/the-seventh-kingdom-part-1-636975-1789862892-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/the-seventh-kingdom-part-1-636975/the-seventh-kingdom-part-1-636975-1789862892-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": "15+",
+      "min_age": 15,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 139382,
+        "name": "Absolute Batman",
+        "slug": "absolute-batman",
+        "start_year": 2024,
+        "end_year": null,
+        "volume_number": 1,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 27,
+        "cover_url": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp"
+        },
+        "publisher_name": "DC Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 40292,
+      "slug": "closure-1-of-2",
+      "series_id": 54159,
+      "issue_number": "20",
+      "name": "Closure 1 of 2",
+      "cover_date": "2003-07-01",
+      "release_date": "2003-08-13",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/closure-1-of-2-40292/closure-1-of-2-40292-1790025356-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/closure-1-of-2-40292/closure-1-of-2-40292-1790025356-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/closure-1-of-2-40292/closure-1-of-2-40292-1790025356-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/closure-1-of-2-40292/closure-1-of-2-40292-1790025356-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/closure-1-of-2-40292/closure-1-of-2-40292-1790025356-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 40297,
+      "slug": "the-last-stand-1-of-4",
+      "series_id": 54159,
+      "issue_number": "22",
+      "name": "The Last Stand 1 of 4",
+      "cover_date": "2003-09-01",
+      "release_date": "2003-10-08",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/the-last-stand-1-of-4-40297/the-last-stand-1-of-4-40297-1790025357-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/the-last-stand-1-of-4-40297/the-last-stand-1-of-4-40297-1790025357-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/the-last-stand-1-of-4-40297/the-last-stand-1-of-4-40297-1790025357-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/the-last-stand-1-of-4-40297/the-last-stand-1-of-4-40297-1790025357-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/the-last-stand-1-of-4-40297/the-last-stand-1-of-4-40297-1790025357-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 224618,
+      "slug": "gi-joe-54159-42",
+      "series_id": 54159,
+      "issue_number": "42",
+      "name": "Dawn Of The Red Shadows (Part 1)",
+      "cover_date": "2005-05-01",
+      "release_date": "2004-05-01",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-54159-42-224618/gi-joe-54159-42-224618-1mou8do-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-54159-42-224618/gi-joe-54159-42-224618-1mou8do-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-54159-42-224618/gi-joe-54159-42-224618-1mou8do-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-54159-42-224618/gi-joe-54159-42-224618-1mou8do-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-54159-42-224618/gi-joe-54159-42-224618-1mou8do-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 224605,
+      "slug": "gi-joe-54159-6",
+      "series_id": 54159,
+      "issue_number": "6",
+      "name": "Reckonings, Part 1 of 4",
+      "cover_date": "2002-05-01",
+      "release_date": "2002-05-01",
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-54159-6-224605/gi-joe-54159-6-224605-tgqjcq-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-54159-6-224605/gi-joe-54159-6-224605-tgqjcq-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-54159-6-224605/gi-joe-54159-6-224605-tgqjcq-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-54159-6-224605/gi-joe-54159-6-224605-tgqjcq-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-54159-6-224605/gi-joe-54159-6-224605-tgqjcq-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 54159,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-2001",
+        "start_year": 2001,
+        "end_year": 2003,
+        "volume_number": null,
+        "publication_type": "regular_series",
+        "format": "Standard",
+        "cached_issues_count": 43,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-2001-54159/gi-joe-2001-54159-g5cc5j-cover_lg.webp"
+        },
+        "publisher_name": "Image Comics"
+      },
+      "name_i18n": {}
+    },
+    {
+      "id": 499641,
+      "slug": "gi-joe-165850-2-11",
+      "series_id": 165850,
+      "issue_number": "2 [11]",
+      "name": null,
+      "cover_date": "1951-04-01",
+      "release_date": null,
+      "foc_date": null,
+      "is_unreleased": false,
+      "cover_url": "https://media.versedb.com/uploads/issues/gi-joe-165850-2-11-499641/gi-joe-165850-2-11-499641-x41j48-cover_lg.webp",
+      "images": {
+        "thumb": "https://media.versedb.com/uploads/issues/gi-joe-165850-2-11-499641/gi-joe-165850-2-11-499641-x41j48-thumb.webp",
+        "cover_sm": "https://media.versedb.com/uploads/issues/gi-joe-165850-2-11-499641/gi-joe-165850-2-11-499641-x41j48-cover_sm.webp",
+        "cover_md": "https://media.versedb.com/uploads/issues/gi-joe-165850-2-11-499641/gi-joe-165850-2-11-499641-x41j48-cover_md.webp",
+        "cover_lg": "https://media.versedb.com/uploads/issues/gi-joe-165850-2-11-499641/gi-joe-165850-2-11-499641-x41j48-cover_lg.webp"
+      },
+      "is_reprint": false,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "average_rating": 0,
+      "series": {
+        "id": 165850,
+        "name": "G.I. Joe",
+        "slug": "gi-joe-1951",
+        "start_year": 1951,
+        "end_year": null,
+        "volume_number": null,
+        "publication_type": null,
+        "format": "Standard",
+        "cached_issues_count": 51,
+        "cover_url": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_lg.webp",
+        "images": {
+          "cover_sm": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/gi-joe-1951-165850/gi-joe-1951-165850-kci6ti-cover_lg.webp"
+        },
+        "publisher_name": "Ziff-Davis"
+      },
+      "name_i18n": {}
+    }
+  ],
+  "links": {
+    "first": "https://versedb.com/api/v1/issues?page=1",
+    "last": "https://versedb.com/api/v1/issues?page=1",
+    "prev": null,
+    "next": null
+  },
+  "meta": {
+    "current_page": 1,
+    "from": 1,
+    "last_page": 1,
+    "links": [
+      {
+        "url": null,
+        "label": "Previous",
+        "page": null,
+        "active": false
+      },
+      {
+        "url": "https://versedb.com/api/v1/issues?page=1",
+        "label": "1",
+        "page": 1,
+        "active": true
+      },
+      {
+        "url": null,
+        "label": "Next",
+        "page": null,
+        "active": false
+      }
+    ],
+    "path": "https://versedb.com/api/v1/issues",
+    "per_page": 100,
+    "to": 77,
+    "total": 77
+  }
+}

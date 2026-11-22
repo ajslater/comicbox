@@ -1,0 +1,173 @@
+{
+  "data": {
+    "id": 1222815,
+    "slug": "metal-hurlant-tpb-2025-2025-6",
+    "series_id": 243360,
+    "issue_number": "6",
+    "name": null,
+    "solicitation": null,
+    "release_date": "2026-11-24",
+    "foc_date": null,
+    "cover_date": "2026-12-01",
+    "is_unreleased": true,
+    "cover_url": "https://media.versedb.com/uploads/issues/metal-hurlant-tpb-2025-2025-6-1222815/metal-hurlant-tpb-2025-2025-6-1222815-6vwyun-cover_lg.webp",
+    "images": {
+      "thumb": "https://media.versedb.com/uploads/issues/metal-hurlant-tpb-2025-2025-6-1222815/metal-hurlant-tpb-2025-2025-6-1222815-6vwyun-thumb.webp",
+      "cover_sm": "https://media.versedb.com/uploads/issues/metal-hurlant-tpb-2025-2025-6-1222815/metal-hurlant-tpb-2025-2025-6-1222815-6vwyun-cover_sm.webp",
+      "cover_md": "https://media.versedb.com/uploads/issues/metal-hurlant-tpb-2025-2025-6-1222815/metal-hurlant-tpb-2025-2025-6-1222815-6vwyun-cover_md.webp",
+      "cover_lg": "https://media.versedb.com/uploads/issues/metal-hurlant-tpb-2025-2025-6-1222815/metal-hurlant-tpb-2025-2025-6-1222815-6vwyun-cover_lg.webp"
+    },
+    "is_reprint": false,
+    "content_rating_label": null,
+    "min_age": null,
+    "is_nsfw": false,
+    "page_count": 272,
+    "price": "29.99",
+    "currency_code": "USD",
+    "formatted_price": "USD $29.99",
+    "isbn": "9798893572032",
+    "upc": null,
+    "lunar_code": null,
+    "universal_code": null,
+    "diamond_code": null,
+    "ean": null,
+    "issn": null,
+    "is_anthology": false,
+    "is_tie_in": false,
+    "adapted_from": null,
+    "print_run": null,
+    "locations": null,
+    "sku": null,
+    "variant_count": 0,
+    "reads_count": 0,
+    "series": {
+      "id": 243360,
+      "name": "Metal Hurlant TPB (2025)",
+      "slug": "metal-hurlant-tpb-2025-2025",
+      "start_year": 2025,
+      "end_year": null,
+      "volume_number": 2,
+      "status": "Ongoing",
+      "publication_type": null,
+      "cached_issues_count": 4,
+      "medium": "comic",
+      "format": "TPB",
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "original_language": null,
+      "language": "en",
+      "genres": [],
+      "aliases": [],
+      "imprint": null,
+      "foreign_edition_of": [],
+      "foreign_editions": []
+    },
+    "publisher": {
+      "id": 176,
+      "name": "Humanoids",
+      "slug": "humanoids"
+    },
+    "awards": [],
+    "creators": [
+      {
+        "id": 7279,
+        "name": "Mark Waid",
+        "slug": "mark-waid",
+        "photo_url": "https://media.versedb.com/uploads/creators/mark-waid-7279/mark-waid-7279-pipqcy-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/mark-waid-7279/mark-waid-7279-pipqcy-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/mark-waid-7279/mark-waid-7279-pipqcy-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/mark-waid-7279/mark-waid-7279-pipqcy-full_lg.webp"
+        },
+        "role": "Writer",
+        "sort_order": null
+      },
+      {
+        "id": 7250,
+        "name": "Brian Michael Bendis",
+        "slug": "brian-michael-bendis",
+        "photo_url": "https://media.versedb.com/uploads/creators/brian-michael-bendis-7250/brian-michael-bendis-7250-1c1b382-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/brian-michael-bendis-7250/brian-michael-bendis-7250-1c1b382-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/brian-michael-bendis-7250/brian-michael-bendis-7250-1c1b382-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/brian-michael-bendis-7250/brian-michael-bendis-7250-1c1b382-full_lg.webp"
+        },
+        "role": "Writer",
+        "sort_order": null
+      },
+      {
+        "id": 41833,
+        "name": "Jacob Edgar",
+        "slug": "jacob-edgar",
+        "photo_url": null,
+        "images": null,
+        "role": "Artist",
+        "sort_order": null
+      },
+      {
+        "id": 13659,
+        "name": "Paul Gillon",
+        "slug": "paul-gillon",
+        "photo_url": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-full_lg.webp"
+        },
+        "role": "Writer",
+        "sort_order": null
+      },
+      {
+        "id": 13659,
+        "name": "Paul Gillon",
+        "slug": "paul-gillon",
+        "photo_url": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/paul-gillon-13659/paul-gillon-13659-12omyft-full_lg.webp"
+        },
+        "role": "Artist",
+        "sort_order": null
+      },
+      {
+        "id": 8582,
+        "name": "Jerry Frissen",
+        "slug": "jerry-frissen",
+        "photo_url": null,
+        "images": null,
+        "role": "Editor",
+        "sort_order": null
+      }
+    ],
+    "characters": [],
+    "teams": [],
+    "story_arcs": [],
+    "universes": [],
+    "comic_events": [],
+    "key_issue_reasons": [],
+    "availabilities": [
+      {
+        "id": null,
+        "provider": "amazon",
+        "provider_label": "Amazon",
+        "kind": "buy",
+        "store_name": null,
+        "custom_name": null,
+        "display_name": "Amazon",
+        "store_logo": "/images/brands/amazon.webp",
+        "url": "https://www.amazon.com/s?k=Metal+Hurlant+TPB+%282025%29+%236+Humanoids+2026&i=stripbooks&tag=versedb-20",
+        "external_id": null,
+        "price": null,
+        "formatted_price": null,
+        "currency": null,
+        "is_digital": null,
+        "is_affiliate": true,
+        "is_synthesized": true,
+        "verified_at": null
+      }
+    ],
+    "name_i18n": {}
+  }
+}

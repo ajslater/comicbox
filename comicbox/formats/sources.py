@@ -59,6 +59,8 @@ class MetadataSources(Enum):
     ARCHIVE_FILE = MetadataSource(
         "Archive File", _formats_for_source("ARCHIVE_FILE"), from_archive=True
     )
+    # Below Metron and Comic Vine, so either one overlays it on a conflict.
+    VERSEDB_API = MetadataSource("VerseDB API", _formats_for_source("VERSEDB_API"))
     METRON_API = MetadataSource("Metron API", _formats_for_source("METRON_API"))
     COMICVINE_API = MetadataSource(
         "ComicVine API", _formats_for_source("COMICVINE_API")

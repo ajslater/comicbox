@@ -1,0 +1,165 @@
+{
+  "data": {
+    "id": 1214514,
+    "slug": "medalist-2021-volume-14",
+    "series_id": 178875,
+    "issue_number": "14",
+    "name": "Volume 14",
+    "solicitation": "Inori, who vowed to win at the All Japan Junior Championships, was instead shaken by the injury of Iruka early on. Her goal was to catch up with her lifelong rival Hikaru, but after crashing out of her short program, she fails to even qualify for the free skate session.\n\nShe attempts to put on a brave face, but breaks down crying once Hikaru confronts her about it. Seeing Inori’s spirit nearly crushed, Hikaru goes on to give the performance of her life.\n\nRecalling why she entered skating in the first place, Inori attempts to regain her original passion, but her disappointment in herself makes every practice—and every day of life—seem packed with pressure. A frank discussion with Tsukasa gives her new insight, though, and soon they’re setting their sights on gold once more. Their next stop: China, and the final event of the Junior Grand Prix, open only to the top six performers in her class!",
+    "release_date": "2027-02-02",
+    "foc_date": null,
+    "cover_date": "2027-02-01",
+    "is_unreleased": true,
+    "cover_url": "https://media.versedb.com/uploads/issues/medalist-2021-volume-14-1214514/medalist-2021-volume-14-1214514-legrkf-cover_lg.webp",
+    "images": {
+      "thumb": "https://media.versedb.com/uploads/issues/medalist-2021-volume-14-1214514/medalist-2021-volume-14-1214514-legrkf-thumb.webp",
+      "cover_sm": "https://media.versedb.com/uploads/issues/medalist-2021-volume-14-1214514/medalist-2021-volume-14-1214514-legrkf-cover_sm.webp",
+      "cover_md": "https://media.versedb.com/uploads/issues/medalist-2021-volume-14-1214514/medalist-2021-volume-14-1214514-legrkf-cover_md.webp",
+      "cover_lg": "https://media.versedb.com/uploads/issues/medalist-2021-volume-14-1214514/medalist-2021-volume-14-1214514-legrkf-cover_lg.webp"
+    },
+    "is_reprint": false,
+    "content_rating_label": "15+",
+    "min_age": 15,
+    "is_nsfw": false,
+    "page_count": 176,
+    "price": "13.99",
+    "currency_code": "USD",
+    "formatted_price": "USD $13.99",
+    "isbn": "9798888779958",
+    "upc": null,
+    "lunar_code": null,
+    "universal_code": null,
+    "diamond_code": null,
+    "ean": null,
+    "issn": null,
+    "is_anthology": false,
+    "is_tie_in": false,
+    "adapted_from": null,
+    "print_run": null,
+    "locations": null,
+    "sku": null,
+    "variant_count": 0,
+    "reads_count": 0,
+    "title": {
+      "id": 149382,
+      "name": "Medalist",
+      "slug": "medalist"
+    },
+    "series": {
+      "id": 178875,
+      "name": "Medalist",
+      "slug": "medalist-2024",
+      "start_year": 2024,
+      "end_year": null,
+      "volume_number": null,
+      "status": "Ongoing",
+      "publication_type": null,
+      "cached_issues_count": 14,
+      "medium": "manga",
+      "format": null,
+      "content_rating_label": null,
+      "min_age": null,
+      "is_nsfw": false,
+      "original_language": "ja",
+      "language": "en",
+      "genres": [
+        {
+          "id": 8,
+          "name": "Drama",
+          "slug": null
+        },
+        {
+          "id": 15,
+          "name": "Sports",
+          "slug": null
+        }
+      ],
+      "aliases": [],
+      "imprint": null,
+      "foreign_edition_of": [
+        {
+          "id": 224731,
+          "name": "Medalist",
+          "slug": "medalist-2020",
+          "language": "ja"
+        }
+      ],
+      "foreign_editions": []
+    },
+    "publisher": {
+      "id": 57879,
+      "name": "Kodansha Comics USA",
+      "slug": "kodansha-comics-usa"
+    },
+    "awards": [],
+    "creators": [
+      {
+        "id": 79009,
+        "name": "Tsurumaikada",
+        "slug": "tsurumaikada",
+        "photo_url": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-full_lg.webp"
+        },
+        "role": "Artist",
+        "sort_order": null
+      },
+      {
+        "id": 79009,
+        "name": "Tsurumaikada",
+        "slug": "tsurumaikada",
+        "photo_url": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-full_lg.webp"
+        },
+        "role": "Cover Artist",
+        "sort_order": null
+      },
+      {
+        "id": 79009,
+        "name": "Tsurumaikada",
+        "slug": "tsurumaikada",
+        "photo_url": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/tsurumaikada-79009/tsurumaikada-79009-u3oere-full_lg.webp"
+        },
+        "role": "Writer",
+        "sort_order": null
+      }
+    ],
+    "characters": [],
+    "teams": [],
+    "story_arcs": [],
+    "universes": [],
+    "comic_events": [],
+    "key_issue_reasons": [],
+    "availabilities": [
+      {
+        "id": 36272,
+        "provider": "amazon",
+        "provider_label": "Amazon",
+        "kind": "buy",
+        "store_name": "Amazon",
+        "custom_name": null,
+        "display_name": "Amazon",
+        "store_logo": "/images/brands/amazon.webp",
+        "url": "https://www.amazon.com/dp/B0GZD74KMQ",
+        "external_id": "B0GZD74KMQ",
+        "price": null,
+        "formatted_price": null,
+        "currency": "USD",
+        "is_digital": false,
+        "is_affiliate": true,
+        "is_synthesized": false,
+        "verified_at": null
+      }
+    ],
+    "name_i18n": {}
+  }
+}
