@@ -151,7 +151,7 @@ def _build_volume(series: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-def _build_original_format(series: Mapping[str, Any]) -> str | None:
+def original_format(series: Mapping[str, Any]) -> str | None:
     """Prefer a collected physical format; else map the publication type."""
     return _PHYSICAL_FORMATS.get(series.get("format") or "") or _PUBLICATION_TYPES.get(
         series.get("publication_type") or ""
@@ -286,7 +286,7 @@ def _to_comicbox_dict(issue: Mapping[str, Any]) -> dict[str, Any]:
         ("age_rating", issue.get("content_rating_label")),
         ("community_rating", _build_community_rating(issue)),
         ("language", series.get("language")),
-        ("original_format", _build_original_format(series)),
+        ("original_format", original_format(series)),
         ("manga", manga),
         ("reading_direction", reading_direction),
         ("series", _build_series(series)),

@@ -77,7 +77,7 @@ comicbox:
       # source runs first; with first_wins True its match ends the
       # lookup (e.g. [comicvine, metron] tries Comic Vine first and
       # falls back to Metron). null = every configured source in the
-      # built-in order (metron, comicvine). Overridden by --online.
+      # built-in order (metron, comicvine, versedb). Overridden by --online.
       sources: null
       # When True (default), stop after the first online source that
       # contributes data. Set False to query every selected source and
@@ -95,6 +95,11 @@ comicbox:
       comicvine:
         key: null
         url: null
+      versedb:
+        # Personal access token from versedb.com/my/apps/custom/create.
+        # Free tier: 300 requests an hour, 4,000 a day; non-commercial use.
+        key: null
+        url: null
 
     cache:
       # Tri-state cache mode: on, off, refresh.
@@ -107,7 +112,8 @@ comicbox:
       # Auto-write threshold (0-1) — top match must clear this to auto-write.
       auto_threshold: 0.95
       # Per-comic API effort for fan-out sources (ComicVine): minimal,
-      # balanced, thorough. Metron doesn't fan out, so it ignores this.
+      # balanced, thorough. Metron and VerseDB don't fan out, so they
+      # ignore this.
       # null = unset, which resolves to balanced and lets a large
       # unattended run auto-engage minimal for ComicVine. Naming a value
       # here (or with --effort / COMICBOX_ONLINE__TUNING__EFFORT) pins
@@ -115,7 +121,8 @@ comicbox:
       effort: null
       # Retry budget for transient API failures.
       retry_budget: 5
-      # Per-source overrides — keyed by source name (metron, comicvine).
+      # Per-source overrides — keyed by source name (metron, comicvine,
+      # versedb).
       # Each entry may override auto_threshold, effort, min_confidence,
       # disambiguation_margin, or solo_threshold. See settings.py for
       # shape. rate_limit.* keys (per_minute, per_day, per_second,

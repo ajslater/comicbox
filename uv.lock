@@ -806,6 +806,7 @@ dependencies = [
     { name = "simplejson" },
     { name = "simyan" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "versedb" },
     { name = "xmlschema" },
     { name = "xmltodict" },
     { name = "zipremove" },
@@ -886,6 +887,7 @@ requires-dist = [
     { name = "simplejson", specifier = "~=4.0" },
     { name = "simyan", specifier = "~=4.2" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'", specifier = "~=4.13" },
+    { name = "versedb", specifier = "~=1.0.0" },
     { name = "xmlschema", specifier = "~=4.0" },
     { name = "xmltodict", specifier = "~=1.0" },
     { name = "zipremove", specifier = "~=0.1" },
@@ -4495,6 +4497,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/e3/05/b17359e1cefb4f909b5e40b1b90a496d987258916dbbf88e842c729f510e/urllib3-2.8.0.tar.gz", hash = "sha256:63bf2ead4c879426ebf22ef2a781eeb4aa3b4ae798a0435506f8687fd5bb9b63", size = 458972, upload-time = "2026-09-15T19:29:36.253Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl", hash = "sha256:0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3", size = 135717, upload-time = "2026-09-15T19:29:34.577Z" },
+]
+
+[[package]]
+name = "versedb"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/a8/4348867f7ba1ba5101bbbd7964c3bc17cf23174f516ec462e48b96c70b31/versedb-1.0.0.tar.gz", hash = "sha256:7bc994b4e59a5ab081bb28e9c29de295913413d57003141fd4a11014339a44f3", size = 395772, upload-time = "2026-11-09T03:22:16.174Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d7/9a/c921bb5f0620dd1a00e07d4961ff78dc401b87b5a4df765bcfe5c0a55877/versedb-1.0.0-py3-none-any.whl", hash = "sha256:78238183a161862365008b1db1033ca0cd70cd01ec4193a38800ea4ff64e66af", size = 1328824, upload-time = "2026-11-09T03:22:13.857Z" },
 ]
 
 [[package]]

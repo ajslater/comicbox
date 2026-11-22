@@ -141,8 +141,25 @@ def _comicvine_budget(online: OnlineSettings) -> list[str]:
     return [f"{pool} {budget}"]
 
 
+def _versedb_budget(_online: OnlineSettings) -> list[str]:
+    """
+    State VerseDB's free-tier caps; its live hourly budget comes from the probe.
+
+    No request is spent and no file is read: the budget VerseDB reports
+    lives only in the client that saw it.
+    """
+    from comicbox.formats.base.online.rate_limits import (
+        VERSEDB_DEFAULT_PER_DAY,
+        VERSEDB_DEFAULT_PER_HOUR,
+    )
+
+    return [
+        f"free tier: {VERSEDB_DEFAULT_PER_HOUR}/hour, {VERSEDB_DEFAULT_PER_DAY:,}/day"
+    ]
+
+
 _SOURCE_NOTES: Mapping[str, Callable[[OnlineSettings], list[str]]] = MappingProxyType(
-    {"comicvine": _comicvine_budget}
+    {"comicvine": _comicvine_budget, "versedb": _versedb_budget}
 )
 
 

@@ -64,6 +64,7 @@ _EXPECTED_FILE_ERRORS = (
 _ONLINE_SOURCE_MODULES = (
     "comicbox.formats.metron_api.online_source",
     "comicbox.formats.comicvine_api.online_source",
+    "comicbox.formats.versedb_api.online_source",
 )
 
 
