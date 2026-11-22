@@ -103,7 +103,8 @@ class OnlineLookupSettings:
     # Ordered source selection, run priority AND merge precedence: the
     # first listed source runs first; with ``first_wins`` its match ends
     # the lookup, and without it the first listed source wins every tag
-    # the sources disagree on. None = every configured source in
+    # the sources disagree on, except that each source keeps its own id
+    # (see ``_set_merged_metadata``). None = every configured source in
     # SOURCE_NAMES order. Durable via the ``online.lookup.sources``
     # config-file key; CLI --online and COMICBOX_ONLINE__LOOKUP__SOURCES
     # override it.

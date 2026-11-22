@@ -313,7 +313,9 @@ class OnlineSession:
     ``sources`` is ordered, and its order is both run priority and merge
     precedence: the first source runs first and, under ``first_wins``,
     its match ends the lookup; with ``first_wins`` off every source runs
-    and the first one wins every tag they disagree on.
+    and the first one wins every tag they disagree on, except that each
+    source keeps its own id: Comic Vine's id beats Metron's ``cv_id``
+    cross-reference to it.
 
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources

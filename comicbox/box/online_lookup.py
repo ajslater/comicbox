@@ -1294,10 +1294,10 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
 
         Runs once per box after both online sources have been queried.
         The check looks at the per-source normalized metadata (still
-        distinguishable here, before the box-level merge collapses the
-        two `comicbox.identifiers.comicvine.key` values into one). We
-        don't decide which is right — just surface the disagreement so
-        the user sees it before accepting.
+        distinguishable here, before the box-level merge keeps Comic
+        Vine's own `comicbox.identifiers.comicvine.key` over Metron's
+        cross-reference). Neither is known to be right, so surface the
+        disagreement for the user to check.
         """
         metron_md = self._first_normalized(MetadataSources.METRON_API)
         cv_md = self._first_normalized(MetadataSources.COMICVINE_API)

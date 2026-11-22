@@ -7,10 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 from comicbox.box.online_lookup import ONLINE_SOURCE_BY_NAME, ComicboxOnlineLookup
 from comicbox.config.settings import MergeMode
+from comicbox.enums.comicbox import IdSources
 from comicbox.formats.comicbox.schema import (
     COVER_DATE_KEY,
     DATE_KEY,
     DAY_KEY,
+    IDENTIFIERS_KEY,
     MONTH_KEY,
     PARTIAL_COVER_DATE_KEY,
     YEAR_KEY,
@@ -48,6 +50,12 @@ _PATCH_SOURCES = frozenset(
 
 _ONLINE_SOURCES = frozenset(ONLINE_SOURCE_BY_NAME.values())
 
+# Each online source's own key under `identifiers`. IdSources() fails at
+# import if a source name ever stops being an identifier key.
+_OWN_ID_KEY: MappingProxyType[MetadataSources, str] = MappingProxyType(
+    {source: IdSources(name).value for name, source in ONLINE_SOURCE_BY_NAME.items()}
+)
+
 
 def _rank_online_sources(run_order: Iterable[str]) -> tuple[MetadataSources, ...]:
     """
@@ -74,6 +82,24 @@ def _rank_online_sources(run_order: Iterable[str]) -> tuple[MetadataSources, ...
     return tuple(
         next(ranked) if src in _ONLINE_SOURCES else src for src in MetadataSources
     )
+
+
+def _cross_references(
+    source: MetadataSources, self_identified: frozenset[str]
+) -> frozenset[str]:
+    """Name the ids ``source`` gives for other online sources that gave their own."""
+    if (own := _OWN_ID_KEY.get(source)) is None:
+        return frozenset()
+    return self_identified - {own}
+
+
+def _without_ids(sub_md: Mapping[str, Any], keys: frozenset[str]) -> Mapping[str, Any]:
+    """Drop these keys from a source's identifiers, leaving the rest as given."""
+    identifiers = sub_md.get(IDENTIFIERS_KEY)
+    if not isinstance(identifiers, Mapping) or not keys & identifiers.keys():
+        return sub_md
+    kept = {key: value for key, value in identifiers.items() if key not in keys}
+    return {**sub_md, IDENTIFIERS_KEY: kept}
 
 
 _DATE_PART_KEYS = (YEAR_KEY, MONTH_KEY, DAY_KEY)
@@ -174,7 +200,11 @@ class ComicboxMerge(ComicboxOnlineLookup):
         return [md for md_list in format_dict.values() for md in md_list]
 
     def _merge_metadata_by_source(
-        self, source: MetadataSources, merged_sub_md: dict, merger: type[Merger]
+        self,
+        source: MetadataSources,
+        merged_sub_md: dict,
+        merger: type[Merger],
+        dropped_ids: frozenset[str],
     ) -> None:
         """Merge one source's metadatas into the accumulator, format order."""
         normalized_md_list = self.get_normalized_metadata(source)
@@ -184,7 +214,17 @@ class ComicboxMerge(ComicboxOnlineLookup):
             source, normalized_md_list
         ):
             if sub_md := normalized_md.get(ComicboxSchemaMixin.ROOT_TAG):
-                merge_source(merged_sub_md, sub_md, merger)
+                merge_source(merged_sub_md, _without_ids(sub_md, dropped_ids), merger)
+
+    def _self_identified_online_sources(self) -> frozenset[str]:
+        """Name the online sources whose own answer carries their own id."""
+        found: set[str] = set()
+        for source, own in _OWN_ID_KEY.items():
+            for loaded in self.get_normalized_metadata(source) or ():
+                sub_md = loaded.metadata.get(ComicboxSchemaMixin.ROOT_TAG) or {}
+                if own in (sub_md.get(IDENTIFIERS_KEY) or {}):
+                    found.add(own)
+        return frozenset(found)
 
     def _merger_for_source(self, source: MetadataSources) -> type[Merger]:
         """
@@ -210,9 +250,17 @@ class ComicboxMerge(ComicboxOnlineLookup):
         sources = self._config.read.merge_order or _rank_online_sources(
             self._online_run_order(self._config.online)
         )
+        # Whatever the order, an online source is the authority on its own
+        # id: Metron's cv_id, a cross-reference that can go stale, gives
+        # way to Comic Vine's own id when Comic Vine answered too, and
+        # still fills the gap when it did not. Patches are untouched.
+        self_identified = self._self_identified_online_sources()
         for source in sources:
             self._merge_metadata_by_source(
-                source, merged_sub_md, self._merger_for_source(source)
+                source,
+                merged_sub_md,
+                self._merger_for_source(source),
+                _cross_references(source, self_identified),
             )
         self._merged_metadata = MappingProxyType(
             {ComicboxSchemaMixin.ROOT_TAG: merged_sub_md}

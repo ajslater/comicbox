@@ -9,6 +9,10 @@ every single-valued tag they disagree on. Unset, the order is
 tags still combine from every source. Before, the merge took the
 ``MetadataSources`` enum order whatever the selection, and Comic Vine won
 every disagreement.
+
+One tag does not follow the order: each online source's own id. A source
+is the authority on its own ids, so Metron's ``cv_id`` cross-reference
+gives way to Comic Vine's own id whenever Comic Vine answered too.
 """
 
 from __future__ import annotations
@@ -285,19 +289,20 @@ _COMIC_VINE_ISSUE = MappingProxyType(
 
 
 @pytest.mark.parametrize(
-    ("online_sources", "cv_key"),
-    [(["all"], "999"), (["comicvine", "metron"], "1234")],
+    "online_sources",
+    [["all"], ["comicvine", "metron"]],
     ids=["default", "comicvine-first"],
 )
-def test_the_winning_source_wins_the_comic_vine_id(
-    monkeypatch: pytest.MonkeyPatch, online_sources: list[str], cv_key: str
+def test_comic_vine_keeps_its_own_id_whoever_wins(
+    monkeypatch: pytest.MonkeyPatch, online_sources: list[str]
 ) -> None:
     """
-    Metron's stored ``cv_id`` beats Comic Vine's own id when Metron wins.
+    Comic Vine's own id beats Metron's stored ``cv_id``, in either order.
 
-    The identifier is a tag like any other, with no per-field rule, and
-    the link follows the winning id. The cross-source check still warns,
-    since one of the two ids is wrong.
+    Metron winning wrote its cross-reference, and the next run refreshed
+    Comic Vine by that id without searching, so a stale one took over the
+    comic for good and the warning went quiet. The link follows the id
+    kept, and the cross-source check still warns.
     """
     _install(
         monkeypatch,
@@ -316,6 +321,33 @@ def test_the_winning_source_wins_the_comic_vine_id(
     )
     with Comicbox(config=args) as cb:
         md = cb.to_dict()["comicbox"]
-    assert md["identifiers"]["comicvine"] == {"key": cv_key}
-    assert f"https://comicvine.gamespot.com/c/4000-{cv_key}/" in md["urls"]
+    assert md["identifiers"]["comicvine"] == {"key": "1234"}
+    assert md["identifiers"]["metron"] == {"key": "42"}
+    assert "https://comicvine.gamespot.com/c/4000-1234/" in md["urls"]
+    assert "https://comicvine.gamespot.com/c/4000-999/" not in md["urls"]
     assert any("cross-source" in warning for warning in warnings)
+
+
+def _merged_ids(answers: Mapping[str, Mapping], patch: Mapping | None = None) -> dict:
+    """Merge online answers' identifiers, and a caller's patch over them."""
+    with Comicbox(metadata=patch) as cb:
+        for name, identifiers in answers.items():
+            cb.add_source(
+                ONLINE_SOURCE_BY_NAME[name],
+                {"comicbox": {"identifiers": identifiers}},
+                fmt=MetadataFormats.COMICBOX_JSON,
+            )
+        return dict(cb.to_dict()["comicbox"]["identifiers"])
+
+
+_METRON_IDS = MappingProxyType({"metron": {"key": "42"}, "comicvine": {"key": "999"}})
+
+
+def test_metrons_cross_reference_fills_the_gap_when_comic_vine_is_silent() -> None:
+    assert _merged_ids({"metron": _METRON_IDS})["comicvine"] == {"key": "999"}
+
+
+def test_a_patch_still_beats_comic_vines_own_id() -> None:
+    patch = {"comicbox": {"identifiers": {"comicvine": {"key": "555"}}}}
+    answers = {"metron": _METRON_IDS, "comicvine": {"comicvine": {"key": "1234"}}}
+    assert _merged_ids(answers, patch)["comicvine"] == {"key": "555"}
