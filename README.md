@@ -119,8 +119,9 @@ set of online, caching, and tuning options.
 #### VerseDB
 
 [VerseDB](https://versedb.com) is a community comics and manga database. Without
-a token comicbox never asks it, and it runs after Metron and ComicVine, whose
-tags win where they disagree.
+a token comicbox never asks it. It runs after Metron and ComicVine unless
+`--online` lists it earlier, and with `--all-sources` the first source listed
+wins where they disagree.
 
 - **Token:** create a free account, then a personal access token at
   [versedb.com/my/apps/custom/create](https://versedb.com/my/apps/custom/create).
