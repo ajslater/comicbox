@@ -1,7 +1,7 @@
-# MetronInfo 1.2
+# MetronInfo 1.3
 
 Generated from
-[MetronInfo-v1.2.xsd](https://github.com/ajslater/comicbox/blob/main/schemas/MetronInfo-v1.2.xsd).
+[MetronInfo-v1.3.xsd](https://github.com/ajslater/comicbox/blob/main/schemas/MetronInfo-v1.3.xsd).
 
 The root element is `MetronInfo`, of type [metroninfoType](#metroninfotype).
 
@@ -358,6 +358,7 @@ Restricts `xs:string` to:
 | `Metron`                |                                            |
 | `MyAnimeList`           |                                            |
 | `League of Comic Geeks` |                                            |
+| `VerseDB`               |                                            |
 
 ### languageCode
 

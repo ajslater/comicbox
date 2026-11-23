@@ -16,12 +16,16 @@
   read it back as the VerseDB id.
 - Prompts credit VerseDB ("Data from VerseDB", linked) under its candidates, as
   its terms ask.
+- MetronInfo v1.3 draft: VerseDB ids are written to `<IDS>` with
+  `source="VerseDB"`. Marvel ids, which the schema has always listed, are read
+  and written there too.
 
 ### ♻️ Changed
 
 - With `--all-sources`, the first source in `--online` order wins where online
   sources disagree: Metron, then Comic Vine, then VerseDB by default. Comic Vine
   used to win.
+- MetronInfo.xml is written as the v1.3 draft instead of v1.2.
 
 ### 🧑‍💻 Developer
 
