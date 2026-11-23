@@ -193,8 +193,9 @@ def test_id_and_link_survive_a_written_file(fmt: MetadataFormats) -> None:
     """
     Write the tags, read them back: the id and its real link both survive.
 
-    MetronInfo's ``<IDS>`` can't name VerseDB, so the id comes back out of
-    the link, which is why the link has to be the real one.
+    ComicInfo has no tag for the id, so there it comes back out of the link,
+    which is why the link has to be the real one. MetronInfo names VerseDB in
+    ``<IDS>`` since the v1.3 draft, and still keeps the link in ``<URLs>``.
     """
     link = "https://versedb.com/issue/1215061/absolute-batman-2024-24"
     with Comicbox() as car:
