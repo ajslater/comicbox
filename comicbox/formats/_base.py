@@ -47,6 +47,9 @@ class OnlineSourceCliInfo:
     credentials: str  # What credentials are required (free-form text).
     id_form: str  # Accepted `--id` forms.
     website: str
+    # The credit a source's terms require wherever its data is shown, linked
+    # to `website`. None for a source that asks for none.
+    attribution: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

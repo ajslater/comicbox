@@ -31,11 +31,11 @@ def test_read_keeps_subtags() -> None:
 
 
 def test_write_keeps_subtags_and_validates() -> None:
-    """The written file carries the full tags and passes the v1.2 XSD."""
+    """The written file carries the full tags and passes the v1.3 XSD."""
     with Comicbox() as car:
         car.add_metadata(_METRON_XML, MetadataFormats.METRON_INFO)
         written = car.to_string(MetadataFormats.METRON_INFO)
     assert 'lang="pt-BR"' in written
     assert 'lang="zh-Hant"' in written
-    assert "metroninfo/schemas/v1.2" in written
+    assert "metroninfo/schemas/v1.3" in written
     assert validate_source(written, MetadataFormats.METRON_INFO)

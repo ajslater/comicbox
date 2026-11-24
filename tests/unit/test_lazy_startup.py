@@ -53,6 +53,28 @@ def test_reading_a_comic_does_not_load_schema_validators() -> None:
     assert not packages & _VALIDATION_ONLY_PACKAGES
 
 
+@pytest.mark.parametrize(
+    "code",
+    [
+        "import comicbox.box",
+        "import comicbox.box.online_lookup",
+        "from comicbox.cli import main\nmain(('comicbox', '-v'))",
+    ],
+    ids=["box", "online_lookup", "run"],
+)
+def test_a_run_never_imports_the_versedb_sdk(code: str) -> None:
+    """
+    Loading the VerseDB SDK's endpoints costs about 0.8 s (1,011 models).
+
+    Only building a VerseDB client pays it, so neither an offline run nor
+    importing the online machinery may.
+    """
+    modules = _modules_loaded_by(code)
+    # The VerseDB format itself was loaded, so the check below means something.
+    assert "comicbox.formats.versedb_api" in modules
+    assert not {name for name in modules if name.split(".")[0] == "versedb"}
+
+
 def test_building_the_cli_parser_does_not_build_the_epilog() -> None:
     """The epilog's seven rich Tables are only ever printed by ``--help``."""
     modules = _modules_loaded_by(
@@ -75,6 +97,36 @@ def test_a_normal_run_does_not_load_the_doctor(code: str) -> None:
     assert not any(
         name.startswith("comicbox.doctor") for name in _modules_loaded_by(code)
     )
+
+
+@pytest.mark.parametrize(
+    "code",
+    [
+        "import comicbox.cli",
+        "import comicbox.box",
+        "from comicbox.cli import main\nmain(('comicbox', '-v'))",
+    ],
+    ids=["cli", "box", "run"],
+)
+def test_a_normal_run_does_not_load_reading_lists(code: str) -> None:
+    """Only ``comicbox readinglist`` pays for the reading-list imports."""
+    assert not any(
+        name.startswith("comicbox.readinglists") for name in _modules_loaded_by(code)
+    )
+
+
+# Reading lists are files and pure functions; only the online session,
+# which imports these inside its methods, talks to a network.
+_NETWORK_PACKAGES = frozenset({"httpx", "mokkari", "requests", "simyan"})
+
+
+def test_reading_lists_load_no_network_library() -> None:
+    packages = {
+        name.split(".")[0]
+        for name in _modules_loaded_by("import comicbox.readinglists")
+    }
+    assert "comicbox" in packages
+    assert not packages & _NETWORK_PACKAGES
 
 
 def test_help_still_renders_the_epilog() -> None:

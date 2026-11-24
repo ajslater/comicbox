@@ -1,5 +1,34 @@
 # 📰 News
 
+## v5.7.0
+
+### ✨ Added
+
+- Reading lists: `comicbox rl` prints, validates, converts, combines and
+  compares CBL, json-cbl and comicbox lists, fetches them from Metron, Comic
+  Vine, the DieselTech catalog and URLs, and tags matching comics with the
+  list's story arc.
+- VerseDB online source, used only with a token: `--auth versedb:TOKEN`.
+- MetronInfo reads and writes VerseDB and Marvel ids.
+
+### ♻️ Changed
+
+- With `--all-sources`, the first source in `--online` order wins disagreements,
+  not Comic Vine.
+- MetronInfo.xml is written as the v1.3 draft.
+- Metron cover searches are no longer cached.
+
+### 🐛 Fixed
+
+- Filename parsing reads `01 of 12` issue counts and an issue before a dashed
+  title.
+
+### 🧑‍💻 Developer
+
+- `comicbox.readinglists` API with `ReadingListSession` for fetching.
+- `OnlineCredentials.versedb_key` and `source_attribution()` for source credits.
+- Requires comicfn2dict 1.1.3, mokkari 5.2 and versedb 1.0.
+
 ## v5.6.2
 
 ### ✨ Added

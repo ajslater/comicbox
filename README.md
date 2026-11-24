@@ -22,12 +22,15 @@ as a standalone command line tool for organizing a comic library.
 - **Merges every source into one model** — combines metadata from each embedded
   format _and_ the filename into a single normalized view, then writes it back
   out to whichever formats you choose.
-- **Tags comics online** — looks up and matches comics against Metron and
-  ComicVine, then writes the result.
+- **Tags comics online** — looks up and matches comics against Metron, ComicVine
+  and VerseDB, then writes the result.
 - **Converts archives** — repacks CBR/CBT/CB7 (and comic PDFs) to CBZ, and
   translates metadata between formats.
 - **Extracts images** — pulls cover art or arbitrary page ranges out of any
   supported archive.
+- **Works with reading lists** — reads, converts and combines ComicRack CBL,
+  json-cbl and its own lists, fetches them from Metron, Comic Vine and the
+  DieselTech catalog, and tags your comics with a list's story arc.
 - **Is scriptable and embeddable** — a rich CLI, a Python API, and published
   [schemas](https://comicbox.readthedocs.io/schema/) for every format.
 
@@ -52,7 +55,7 @@ schema:
 | Format                                                                                     | Read | Write | Notes                                    |
 | ------------------------------------------------------------------------------------------ | :--: | :---: | ---------------------------------------- |
 | [ComicInfo.xml](https://anansi-project.github.io/docs/comicinfo/schemas/v2.1) (ComicRack)  |  ✅  |  ✅   | v2.1 (draft) schema                      |
-| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.2 schema                              |
+| [MetronInfo.xml](https://metron-project.github.io/docs/category/metroninfo)                |  ✅  |  ✅   | v1.3 (draft) schema                      |
 | [ComicBookInfo](https://code.google.com/archive/p/comicbookinfo/) (Comic Book Lover)       |  ✅  |  ✅   | archive comment JSON                     |
 | [CoMet](https://github.com/wdhongtw/comet-utils)                                           |  ✅  |  ✅   |                                          |
 | [PDF metadata](https://pymupdf.readthedocs.io/en/latest/tutorial.html#accessing-meta-data) |  ✅  |  ✅   | can embed ComicInfo.xml / MetronInfo.xml |
@@ -87,11 +90,12 @@ them so you never have to:
 
 ### 🌐 Online Tagging
 
-Comicbox can identify a comic and tag it from an online database. **Metron** and
-**ComicVine** are supported. It searches by the series, issue, and year it knows
-about, ranks candidates, breaks close calls with cover-image matching, and
-writes the best result. Metron is asked by the comic's cover first, and a cover
-that clearly matches one issue is written without the name search.
+Comicbox can identify a comic and tag it from an online database. **Metron**,
+**ComicVine** and **VerseDB** are supported. It searches by the series, issue,
+and year it knows about, ranks candidates, breaks close calls with cover-image
+matching, and writes the best result. Metron is asked by the comic's cover
+first, and a cover that clearly matches one issue is written without the name
+search.
 
 ```sh
 # Interactive: prompts only when the match isn't clear.
@@ -107,13 +111,40 @@ comicbox --online all --recurse --prompts never -j 4 ./comics/
 `--match` controls how confidently comicbox writes without asking (`ask` ·
 `careful` · `auto` · `eager`), and `--effort` (`minimal` · `balanced` ·
 `thorough`) trades matching accuracy for fewer API calls on fan-out sources like
-ComicVine — Metron doesn't fan out, so it ignores effort and always searches at
-full strength. Credentials come from `--auth`, `COMICBOX_*` environment
-variables, or the config file. Metron authenticates with an API token generated
-on your metron.cloud account page — pass it as `--auth metron:TOKEN` or
-`COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes its key the same way, as
-`--auth comicvine:KEY`. See `comicbox -h` for the full set of online, caching,
-and tuning options.
+ComicVine — Metron and VerseDB don't fan out, so they ignore effort and always
+search at full strength. Credentials come from `--auth`, `COMICBOX_*`
+environment variables, or the config file. Metron authenticates with an API
+token generated on your metron.cloud account page — pass it as
+`--auth metron:TOKEN` or `COMICBOX_ONLINE__AUTH__METRON__KEY`. ComicVine takes
+its key the same way, as `--auth comicvine:KEY`. See `comicbox -h` for the full
+set of online, caching, and tuning options.
+
+#### VerseDB
+
+[VerseDB](https://versedb.com) is a community comics and manga database. Without
+a token comicbox never asks it. It runs after Metron and ComicVine unless
+`--online` lists it earlier, and with `--all-sources` the first source listed
+wins where they disagree.
+
+- **Token:** create a free account, then a personal access token at
+  [versedb.com/my/apps/custom/create](https://versedb.com/my/apps/custom/create).
+  Pass it as `--auth versedb:TOKEN` or `COMICBOX_ONLINE__AUTH__VERSEDB__KEY`.
+- **Limits:** the free tier allows 300 requests an hour and 4,000 a day. A comic
+  costs about three, fewer when a run tags several issues of one series. Answers
+  are cached for `online.cache.ttl` (7 days by default), so tagging a comic
+  again within that spends none. When VerseDB says to slow down, comicbox waits
+  as long as it asks.
+- **Terms:** VerseDB's free API is for non-commercial use, and its terms ask for
+  a linked credit wherever its data is shown. Comicbox prints "Data from
+  VerseDB" with a link under VerseDB's candidates when it prompts, and writes
+  each issue's versedb.com link into the tags.
+
+```sh
+comicbox -o versedb "Absolute Batman #024 (2026).cbz"
+comicbox -I versedb:1215061 "comic.cbz"
+```
+
+Data from [VerseDB](https://versedb.com).
 
 ### 🖼️ Pages, Covers & Conversion
 
@@ -268,6 +299,31 @@ paths, e.g. `-D series,reprints.0.series`.
   `.<comic name>.comicbox.tmp` too. Where a comic's name is too long for that
   name, a hash of it stands in.
 
+### Reading Lists
+
+`comicbox readinglist`, or `comicbox rl`, reads, converts, combines and compares
+reading lists: ComicRack `.cbl`, json-cbl, and comicbox YAML and JSON. It
+fetches lists from Metron, Comic Vine story arcs, the DieselTech catalog and
+URLs, and tags the comics a list matches with its story arc.
+
+```sh
+comicbox rl print "Civil War.cbl"
+comicbox rl convert --to json-cbl "Civil War.cbl"
+comicbox rl combine -o civil-war.yaml cbro.cbl locg.cbl
+
+# Find a list online and fetch it.
+comicbox rl search metron civil war
+comicbox rl fetch metron:123 -o civil-war.yaml
+
+# See which of its issues a directory has, then tag them with its arc: a dry
+# run until --apply.
+comicbox rl match civil-war.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
+```
+
+See [Reading Lists](https://comicbox.readthedocs.io/reading-lists/) for the
+formats, the online sources, what combining and matching do, and the Python API.
+
 ## 🛠 API
 
 Comicbox is primarily a library. The
@@ -317,7 +373,7 @@ Every operational error these APIs raise derives from
 `comicbox.exceptions.ComicboxError` — `ArchiveError`, `ArchiveWriteError`,
 `DestinationOccupiedError`, `UnwritableFormatError`, `ComicNotFoundError`,
 `ConfigurationError`, `MetadataError`, `ExportError`, `WriteValidationError`,
-`OnlineConfigurationError`, `OnlineLookupAbortedError`, and
+`OnlineConfigurationError`, `OnlineLookupAbortedError`, `ReadingListError`, and
 `UnsupportedArchiveTypeError` — so consumers can `except ComicboxError` without
 swallowing unrelated programming errors.
 
@@ -329,7 +385,7 @@ optional config file, in that order of precedence.
 - **Defaults** live in
   [`config_default.yaml`](https://github.com/ajslater/comicbox/blob/main/comicbox/config_default.yaml),
   which also documents the nested config groups (`general`, `read`, `write`,
-  `print`, `convert`, `compute`, and `online`).
+  `print`, `convert`, `compute`, `online`, and `readinglists`).
 - **Config file** — point at one with `-c PATH`, or place it at
   `~/.config/comicbox/config.yaml`.
 - **Environment variables** are prefixed with `COMICBOX_`, and name their config
@@ -338,6 +394,7 @@ optional config file, in that order of precedence.
     ```sh
     COMICBOX_GENERAL__RECURSE=true
     COMICBOX_ONLINE__AUTH__METRON__KEY=your-token
+    COMICBOX_ONLINE__AUTH__VERSEDB__KEY=your-token
     COMICBOX_ONLINE__TUNING__AUTO_THRESHOLD=0.9
     ```
 
@@ -395,6 +452,7 @@ its own:
 
 - [News / changelog](NEWS.md)
 - [HTML docs](https://comicbox.readthedocs.io)
+- [Reading lists](https://comicbox.readthedocs.io/reading-lists/)
 - [Metadata schemas](https://comicbox.readthedocs.io/schema/)
 - [Tag translation table](https://comicbox.readthedocs.io/TAGS/)
 

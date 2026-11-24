@@ -82,6 +82,7 @@ from comicbox.formats.base.online.session_state import OnlineSessionState
 from comicbox.formats.comicvine_api.online_source import ComicVineOnlineSource
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.sources import MetadataSources
+from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -115,6 +116,15 @@ _DEFAULT_SOURCE_FACTORIES: MappingProxyType[str, Any] = MappingProxyType(
     {
         "metron": MetronOnlineSource,
         "comicvine": ComicVineOnlineSource,
+        "versedb": VerseDBOnlineSource,
+    }
+)
+
+# Lookup name → the MetadataSources member that source's answers go in.
+ONLINE_SOURCE_BY_NAME: MappingProxyType[str, MetadataSources] = MappingProxyType(
+    {
+        name: factory.metadata_source
+        for name, factory in _DEFAULT_SOURCE_FACTORIES.items()
     }
 )
 
@@ -448,6 +458,17 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
                 f"configured (missing credentials); skipping"
             )
 
+    def _online_run_order(self, online: OnlineSettings) -> tuple[str, ...]:
+        """
+        Name the online sources in run order, which is also merge precedence.
+
+        The selection's order when there is one, else every source in the
+        factory map's default order (``SOURCE_NAMES``). Under first-wins
+        the first source that contributes data ends the lookup; with every
+        source queried, the first one wins where their tags disagree.
+        """
+        return tuple(online.lookup.sources or self._ONLINE_SOURCE_FACTORIES)
+
     def _build_active_online_sources(
         self, online: OnlineSettings
     ) -> list[OnlineSource]:
@@ -460,10 +481,8 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         Metron the fallback. An empty/None selection runs every
         configured source in the factory map's default order.
         """
-        selected = online.lookup.sources
-        names = selected or tuple(self._ONLINE_SOURCE_FACTORIES)
         active: list[OnlineSource] = []
-        for name in names:
+        for name in self._online_run_order(online):
             factory = self._ONLINE_SOURCE_FACTORIES.get(name)
             if factory is None:
                 # Config-layer normalization warns and drops unknown names;
@@ -1275,10 +1294,10 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
 
         Runs once per box after both online sources have been queried.
         The check looks at the per-source normalized metadata (still
-        distinguishable here, before the box-level merge collapses the
-        two `comicbox.identifiers.comicvine.key` values into one). We
-        don't decide which is right — just surface the disagreement so
-        the user sees it before accepting.
+        distinguishable here, before the box-level merge keeps Comic
+        Vine's own `comicbox.identifiers.comicvine.key` over Metron's
+        cross-reference). Neither is known to be right, so surface the
+        disagreement for the user to check.
         """
         metron_md = self._first_normalized(MetadataSources.METRON_API)
         cv_md = self._first_normalized(MetadataSources.COMICVINE_API)

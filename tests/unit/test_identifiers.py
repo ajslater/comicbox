@@ -682,6 +682,16 @@ _ROUND_TRIP_ID_KEYS: MappingProxyType[IdSources, str] = MappingProxyType(
         IdSources.MYANIMELIST: "13",
         IdSources.PANELSYNDICATE: "theprivateeye",
         IdSources.UPC: "76194130593400111",
+        IdSources.VERSEDB: "1215061",
+    }
+)
+
+# Sources whose urls need a slug the key doesn't hold, so none is built.
+_URL_DERIVING_PARTS = MappingProxyType(
+    {
+        id_source: id_parts
+        for id_source, id_parts in IDENTIFIER_PARTS_MAP.items()
+        if id_parts.derives_urls
     }
 )
 
@@ -699,7 +709,7 @@ def test_every_url_parses_back_to_the_parts_it_was_built_from() -> None:
     parse_url_path has to read every one of them back. Where it could not,
     a url comicbox wrote itself came back as a different type, or as no id.
     """
-    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
+    for id_source, id_parts in _URL_DERIVING_PARTS.items():
         id_key = _ROUND_TRIP_ID_KEYS[id_source]
         for id_type in id_parts.id_type.map:
             url = id_parts.unparse_url(id_type, id_key)
@@ -710,7 +720,7 @@ def test_every_url_parses_back_to_the_parts_it_was_built_from() -> None:
 
 def test_every_url_yields_the_identifier_it_was_built_from() -> None:
     """The whole public path, url to identifier, round trips for every type."""
-    for id_source, id_parts in IDENTIFIER_PARTS_MAP.items():
+    for id_source, id_parts in _URL_DERIVING_PARTS.items():
         id_key = _ROUND_TRIP_ID_KEYS[id_source]
         for id_type in id_parts.id_type.map:
             url = get_identifier_url(id_source.value, id_type, id_key)
@@ -718,6 +728,48 @@ def test_every_url_yields_the_identifier_it_was_built_from() -> None:
             if id_type != "issue":
                 expected["id_type"] = id_type
             assert identifier_from_url(url) == (id_source.value, expected), url
+
+
+def test_versedb_derives_no_url() -> None:
+    """
+    No versedb.com url is built from a key alone.
+
+    Every VerseDB page needs its exact slug (/issue/{id}/s and /issue/{id}
+    are 404), so a derived url would be a broken link in every file.
+    """
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.VERSEDB]
+    for id_type in id_parts.id_type.map:
+        assert id_parts.unparse_url(id_type, "1215061") == "", id_type
+        assert get_identifier_url(IdSources.VERSEDB.value, id_type, "1215061") == ""
+
+
+def test_versedb_urls_read_back_as_ids() -> None:
+    """A real versedb.com url, slug and all, yields the id it names."""
+    cases = (
+        ("issue/1215061/absolute-batman-2024-24", "issue", "1215061"),
+        ("series/139382/absolute-batman", "series", "139382"),
+        ("creator/240/marie-javins", "creator", "240"),
+        ("character/182881/batman-earth-alpha", "character", "182881"),
+        ("teams/12411/young-justice", "team", "12411"),
+        ("story-arc/119/rise-of-the-midnight-sons", "arc", "119"),
+        ("publisher/1/marvel-comics", "publisher", "1"),
+    )
+    for path, id_type, id_key in cases:
+        url = f"https://versedb.com/{path}"
+        assert IDENTIFIER_PARTS_MAP[IdSources.VERSEDB].parse_url_path(url) == (
+            id_type,
+            id_key,
+        ), url
+        expected = {"key": id_key}
+        if id_type != "issue":
+            expected["id_type"] = id_type
+        assert identifier_from_url(url) == (IdSources.VERSEDB.value, expected), url
+
+
+def test_versedb_non_id_pages_are_no_match() -> None:
+    """Listing pages and the front page mint no id."""
+    for url in ("https://versedb.com/", "https://versedb.com/teams"):
+        assert identifier_from_url(url) == ("", {}), url
 
 
 #####################################

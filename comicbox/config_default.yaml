@@ -30,7 +30,9 @@ comicbox:
       - pdf
       - yaml
     except: []
-    # Merge precedence (null = MetadataSources enum order).
+    # Merge precedence, later wins (null = MetadataSources enum order,
+    # with the online sources ranked by online.lookup.sources). Set, it
+    # is the whole order and online.lookup.sources does not change it.
     merge_order: null
 
   write:
@@ -73,15 +75,18 @@ comicbox:
       # Force a fresh search even if the comic has a stored upstream id,
       # skipping the stored-id refresh and series-cache fast paths.
       rematch: False
-      # Ordered source selection and run priority. The first listed
-      # source runs first; with first_wins True its match ends the
-      # lookup (e.g. [comicvine, metron] tries Comic Vine first and
-      # falls back to Metron). null = every configured source in the
-      # built-in order (metron, comicvine). Overridden by --online.
+      # Ordered source selection, run priority and merge precedence. The
+      # first listed source runs first; with first_wins True its match
+      # ends the lookup (e.g. [comicvine, metron] tries Comic Vine first
+      # and falls back to Metron), and with it False the first listed
+      # source wins every tag the sources disagree on. null = every
+      # configured source in the built-in order (metron, comicvine,
+      # versedb). Overridden by --online.
       sources: null
       # When True (default), stop after the first online source that
       # contributes data. Set False to query every selected source and
-      # merge their metadata (CLI: --all-sources).
+      # merge their metadata, the first source in order winning where
+      # they disagree (CLI: --all-sources).
       first_wins: True
 
     auth:
@@ -93,6 +98,11 @@ comicbox:
         key: null
         url: null
       comicvine:
+        key: null
+        url: null
+      versedb:
+        # Personal access token from versedb.com/my/apps/custom/create.
+        # Free tier: 300 requests an hour, 4,000 a day; non-commercial use.
         key: null
         url: null
 
@@ -107,7 +117,8 @@ comicbox:
       # Auto-write threshold (0-1) — top match must clear this to auto-write.
       auto_threshold: 0.95
       # Per-comic API effort for fan-out sources (ComicVine): minimal,
-      # balanced, thorough. Metron doesn't fan out, so it ignores this.
+      # balanced, thorough. Metron and VerseDB don't fan out, so they
+      # ignore this.
       # null = unset, which resolves to balanced and lets a large
       # unattended run auto-engage minimal for ComicVine. Naming a value
       # here (or with --effort / COMICBOX_ONLINE__TUNING__EFFORT) pins
@@ -115,7 +126,8 @@ comicbox:
       effort: null
       # Retry budget for transient API failures.
       retry_budget: 5
-      # Per-source overrides — keyed by source name (metron, comicvine).
+      # Per-source overrides — keyed by source name (metron, comicvine,
+      # versedb).
       # Each entry may override auto_threshold, effort, min_confidence,
       # disambiguation_margin, or solo_threshold. See settings.py for
       # shape. rate_limit.* keys (per_minute, per_day, per_second,
@@ -123,6 +135,16 @@ comicbox:
       # reads Metron's actual per-user limits from response headers, and
       # simyan manages ComicVine's internally.
       per_source: {}
+
+  readinglists:
+    # The GitHub repository and ref holding DieselTech's CBL reading lists,
+    # which `comicbox rl search catalog` and `fetch catalog:PATH` read.
+    catalog_repo: DieselTech/CBL-ReadingLists
+    catalog_ref: main
+    # How long the catalog index is reused before it is revalidated.
+    catalog_ttl: 4h
+    # The largest reading list a fetch downloads, in bytes (16 MiB).
+    max_download_bytes: 16777216
 
   # Targets (CLI positional args).
   paths: null

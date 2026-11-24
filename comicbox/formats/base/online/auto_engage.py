@@ -59,7 +59,8 @@ if TYPE_CHECKING:
 # FAN-OUT sources — the ones where `minimal` actually reduces per-comic API
 # calls. Metron is excluded: its single-call search (PR #143) costs the
 # same at any effort, so auto-engaging `minimal` for it would be a
-# misleading no-op.
+# misleading no-op. VerseDB is excluded for the same reason: one issue-list
+# call covers every candidate series.
 #
 # Rationale:
 # - ComicVine: at ~10 calls/comic under `balanced` (post-Watchmen fixes),

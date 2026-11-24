@@ -226,9 +226,11 @@ SKIP_MATCHER_DECLINED: Final = "matcher_declined"
 
 #: ``Skipped.reason`` when the source never searched at all, because the
 #: day's API quota is down to the reserve that finishes comics which already
-#: matched. Distinct from a real miss on purpose: the comic was not looked
-#: at, so an embedding application should leave it queued for the next run
-#: rather than record "this source found nothing for it".
+#: matched, or because the source refuses requests for longer than comicbox
+#: waits (VerseDB's daily cap). Distinct from a real miss on purpose: the
+#: comic was not looked at, so an embedding application should leave it
+#: queued for the next run rather than record "this source found nothing
+#: for it".
 SKIP_QUOTA_RESERVED: Final = "quota_reserved"
 
 
@@ -273,6 +275,43 @@ class FileFinished(Event):
 
     outcome: str = ""
     kind: Literal["file_finished"] = "file_finished"
+
+
+# ---------------------------------------------------------------------------
+# Reading-list fetches
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchStarted(Event):
+    """A reading-list fetch began. ``source`` is where from, ``key`` what."""
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_started"] = "reading_list_fetch_started"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchProgress(Event):
+    """
+    Part of a reading list arrived.
+
+    ``index`` counts the entries fetched so far and ``total`` is how many
+    the source said there are, when it said.
+    """
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_progress"] = "reading_list_fetch_progress"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchFinished(Event):
+    """A reading-list fetch ended, whether it fetched anything or not."""
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_finished"] = "reading_list_fetch_finished"
 
 
 # Convenience union for online events.

@@ -15,6 +15,7 @@ import sqlite3
 import sys
 import threading
 from collections import OrderedDict
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import timedelta
 from functools import partial
@@ -40,10 +41,6 @@ from comicbox.formats.base.online.sources.base import (
     claim_cache_refresh,
 )
 from comicbox.formats.base.online.warn_once import warn_once
-from comicbox.formats.metron_api.cover_search import (
-    MAX_COVER_HASH_DISTANCE,
-    issues_by_cover_hash,
-)
 from comicbox.formats.sources import MetadataSources
 from comicbox.identifiers import DEFAULT_ID_TYPE
 from comicbox.identifiers.identifiers import get_identifier_url
@@ -55,15 +52,16 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping, Sequence
+    from collections.abc import Collection, Generator, Mapping, Sequence
     from pathlib import Path
 
+    from mokkari.cache import Cache, CacheKind
     from mokkari.rate_limit import RateLimitStatus, RateLimitWindow
+    from mokkari.schemas.issue import CoverMatch
     from mokkari.session import Session
     from mokkari.sqlite_cache import SqliteCache
 
     from comicbox.formats.base.online.profile import ComicProfile
-    from comicbox.formats.metron_api.cover_search import CoverMatch
 
 # Sessions are shared across the API token that built them (see
 # `_get_session`) — not `db_path` like the old pyrate_limiter override
@@ -139,10 +137,10 @@ _MAX_PROMPT_SERIES_LOOKUPS: Final[int] = 6
 _prefetch_cache: OrderedDict[int, dict[str, Any]] = OrderedDict()
 _prefetch_lock = threading.Lock()
 
-# Cover search (`cover_search`), narrowed the way metron-tagger narrows it
-# (metron-tagger#294). It asks for the widest distance Metron allows;
-# acceptance is decided by the caller at a tighter limit, so the extra
-# width only adds candidates to rank.
+# Cover search (mokkari's `issues_by_cover_hash`), narrowed the way
+# metron-tagger narrows it (metron-tagger#294). It asks for the widest
+# distance Metron allows; acceptance is decided by the caller at a tighter
+# limit, so the extra width only adds candidates to rank.
 # Filename years are often the release year, which can differ from the
 # cover year, so the cover-date range is a year either side.
 _COVER_YEAR_TOLERANCE: Final = 1
@@ -467,6 +465,53 @@ def _classify_api_error(exc: BaseException) -> RetryCategory:
     return RetryCategory.TRANSIENT
 
 
+class _RefreshingCache:
+    """
+    A mokkari ``Cache`` that misses every read and stores in another cache.
+
+    A Session on it fetches every response from Metron and leaves each one
+    in the shared cache, replacing the stale copy there. mokkari has no
+    per-call way to skip its cache; its public ``Cache`` protocol is the
+    seam. It is tagged, as the shared ``SqliteCache`` is, so each entry
+    keeps the tags later writes invalidate it by.
+    """
+
+    def __init__(self, cache: Cache) -> None:
+        """Store in ``cache``; never read from it."""
+        self._cache = cache
+
+    @property
+    def ttl_policy(self) -> Any:
+        """The shared cache's lifetimes, which decide what it keeps."""
+        return getattr(self._cache, "ttl_policy", None)
+
+    def get(self, key: str) -> Any | None:  # noqa: ARG002
+        """Miss, so the response is fetched from Metron."""
+        return None
+
+    def store(
+        self,
+        key: str,
+        value: Any,
+        *,
+        resource: str,
+        kind: CacheKind,
+        tags: Collection[str] = (),
+    ) -> None:
+        """Store the fresh response in the shared cache."""
+        if hasattr(self._cache, "invalidate_tags"):
+            store: Any = self._cache.store
+            store(key, value, resource=resource, kind=kind, tags=tags)
+        else:
+            self._cache.store(key, value, resource=resource, kind=kind)
+
+    def invalidate_tags(self, resource: str, tags: Collection[str]) -> object:
+        """Pass a write's invalidation on to the shared cache."""
+        if invalidate := getattr(self._cache, "invalidate_tags", None):
+            return invalidate(resource, tags)
+        return None
+
+
 def _open_cache(cache_path: Path, ttl: timedelta) -> SqliteCache | None:
     """
     Open the response cache, or return None to run without one.
@@ -601,6 +646,44 @@ class MetronOnlineSource(OnlineSource):
             self._warn_ignored_rate_limit_overrides()
             self._client = self._get_or_build_shared_session()
         return self._client
+
+    def session(self) -> Session:
+        """
+        Return the shared mokkari Session for this source's API token.
+
+        Reading lists call Metron through it, so their requests queue at
+        the same rate gate and fill the same response cache as tagging.
+        """
+        return self._get_session()
+
+    @contextmanager
+    def refreshing_session(self) -> Generator[Session]:
+        """
+        Get a Session that fetches from Metron past the response cache.
+
+        For a caller that knows the cached copy is stale, such as a list
+        found changed since it was cached. It queues at this token's rate
+        gate and stores what it fetches in the shared cache, replacing the
+        stale entries, so the next cached read is fresh too. Closed on exit.
+        Without a cache the shared Session already fetches everything.
+        """
+        from comicbox.formats.metron_api.paced_session import build_paced_session
+
+        shared = self.session()
+        cache, gate = shared.cache, self._gate()
+        if cache is None or gate is None:
+            yield shared
+            return
+        session = build_paced_session(
+            gate,
+            api_token=self._credential_key(),
+            cache=_RefreshingCache(cache),
+            user_agent=user_agent(),
+        )
+        try:
+            yield session
+        finally:
+            session.close()
 
     def _session_config_signature(self) -> tuple:
         """Return the per-instance settings a built Session bakes in."""
@@ -751,9 +834,6 @@ class MetronOnlineSource(OnlineSource):
         session = self._get_session()
         self._record_api_call("issue")
         issue = session.issue(issue_id)
-        if issue is None:
-            msg = f"metron: issue {issue_id} not found"
-            raise LookupError(msg)
         dump: dict[str, Any] = issue.model_dump(mode="json")
         if isinstance(series_dump := dump.get("series"), dict):
             self._enrich_from_series(session, series_dump, issue.series.id)
@@ -1414,6 +1494,8 @@ class MetronOnlineSource(OnlineSource):
         search off for the rest of the process. The one search that found
         out has already paid for the pages.
         """
+        from mokkari.utils import MAX_COVER_HASH_DISTANCE
+
         kept = [
             match
             for match in matches
@@ -1434,10 +1516,10 @@ class MetronOnlineSource(OnlineSource):
         self, session: Session, cover_hash: str, params: dict[str, Any]
     ) -> list[CoverMatch]:
         """Per-call retry wrapper around `issues_by_cover_hash`, one `issues_list`."""
+        from mokkari.utils import MAX_COVER_HASH_DISTANCE
+
         self._record_api_call("issues_list")
-        return issues_by_cover_hash(
-            session, cover_hash, MAX_COVER_HASH_DISTANCE, params
-        )
+        return session.issues_by_cover_hash(cover_hash, MAX_COVER_HASH_DISTANCE, params)
 
     @with_retry()
     def _issues_list_with_retry(

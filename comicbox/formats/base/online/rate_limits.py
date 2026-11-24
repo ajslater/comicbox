@@ -30,6 +30,12 @@ Sources:
   https://metron.cloud/ — see also mokkari/session.py
 - ComicVine: 1 req/sec, 200 req/hr per IP
   https://comicvine.gamespot.com/api/documentation — see simyan/comicvine.py
+- VerseDB: free tier 300 req/hr and 4,000 req/day per account (PRO: 1,000/hr
+  and 20,000/day). Every response carries `X-RateLimit-Limit` and
+  `X-RateLimit-Remaining` for the hourly window; a 429 carries
+  `Retry-After`. The `versedb` SDK paces nothing, and comicbox doesn't
+  either: a 429's `Retry-After` drives the retry layer.
+  https://versedb.com/developers
 """
 
 from __future__ import annotations
@@ -51,3 +57,8 @@ METRON_DEFAULT_PER_MINUTE: Final[int] = 20
 # it to report a remaining budget.
 COMICVINE_DEFAULT_PER_SECOND: Final[int] = 1
 COMICVINE_DEFAULT_PER_HOUR: Final[int] = 200
+# VerseDB's free tier. The hourly cap prices runs in `online_estimate`; the
+# estimator models no daily cap for any source, so the daily one is stated
+# in the doctor's note and the README only.
+VERSEDB_DEFAULT_PER_HOUR: Final[int] = 300
+VERSEDB_DEFAULT_PER_DAY: Final[int] = 4000

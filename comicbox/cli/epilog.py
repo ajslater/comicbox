@@ -12,6 +12,7 @@ from rich.text import Text
 from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.formats import DEPRECATED_FORMAT_KEYS, KEEP_KEYWORD
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
+from comicbox.formats.base.online import SOURCE_NAMES
 
 _TABLE_ARGS = MappingProxyType(
     {
@@ -116,11 +117,19 @@ _MATCH_MODE_ROWS = (
 )
 
 # (name, required credentials, accepted --id forms, website) — derived
-# from each online format's REGISTRATION.cli_info.
+# from each online format's REGISTRATION.cli_info, listed in the default run
+# order rather than the masking order the registrations are kept in.
 _ONLINE_SOURCES_INFO = tuple(
-    (info.short_name, info.credentials, info.id_form, info.website)
-    for registration in FORMAT_REGISTRATIONS.values()
-    if (info := registration.cli_info) is not None
+    sorted(
+        (
+            (info.short_name, info.credentials, info.id_form, info.website)
+            for registration in FORMAT_REGISTRATIONS.values()
+            if (info := registration.cli_info) is not None
+        ),
+        key=lambda row: (
+            SOURCE_NAMES.index(row[0]) if row[0] in SOURCE_NAMES else len(SOURCE_NAMES)
+        ),
+    )
 )
 _MATCH_MODE_INTRO = Styled(
     """
@@ -240,6 +249,25 @@ A comic file named [green]doctor[/green] has to be given as [green]./doctor[/gre
     style="argparse.text",
 )
 
+_READING_LIST_MODE = Styled(
+    """
+[bold]Reading lists[/bold]
+
+  [cyan]comicbox readinglist[/cyan] ACTION ...   or   [cyan]comicbox rl[/cyan] ACTION ...
+
+Reads, converts, combines and compares reading lists: ComicRack .cbl,
+json-cbl, and comicbox YAML and JSON. Fetches them from Metron, Comic Vine
+story arcs, the DieselTech catalog and URLs, and tags the comics a list
+matches with its story arc.
+
+Actions: [cyan]print[/cyan], [cyan]validate[/cyan], [cyan]convert[/cyan], [cyan]combine[/cyan], [cyan]compare[/cyan], [cyan]from-arcs[/cyan],
+[cyan]search[/cyan], [cyan]fetch[/cyan], [cyan]match[/cyan] and [cyan]write-arcs[/cyan]. [cyan]comicbox rl --help[/cyan] lists them.
+
+A comic file named [green]readinglist[/green] or [green]rl[/green] has to be given as [green]./readinglist[/green] or [green]./rl[/green].
+""",
+    style="argparse.text",
+)
+
 _FORMAT_TABLE_TITLE = """Format keys for [cyan]--read[/cyan], [cyan]--read-except[/cyan], [cyan]--write[/cyan], and [cyan]--export[/cyan]\n
 Formats shown in order of precedence. [dim]Dimmed[/dim] formats are not intended for distribution and are provided as convenience to developers."""
 
@@ -280,6 +308,7 @@ def build_epilog() -> Group:
         _get_match_mode_table(),
         _get_help_format_table(),
         _DOCTOR_MODE,
+        _READING_LIST_MODE,
     ]
     # Without pdffile installed there is no --pdf-pages option to document.
     if PAGE_FORMAT_VALUES:

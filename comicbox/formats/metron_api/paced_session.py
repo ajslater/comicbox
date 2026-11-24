@@ -59,11 +59,21 @@ on any private seam. If mokkari renames `_http`,
 the suite fails loudly, which is the same fail-loud posture the old
 override had over a far smaller reach. A public accessor is upstream
 ask U7.
+
+Since mokkari 5.2.0 the observer also tells apart two sends `release`
+cannot: it is passed None both for a send that produced no response and
+for a response without `X-RateLimit-*` headers. The hook runs only on a
+response, so it marks the send answered, and `GateRateLimiter.release`
+counts a connection failure only for a send it never marked.
 """
 
 from __future__ import annotations
 
+import threading
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlsplit
 
@@ -73,7 +83,7 @@ from loguru import logger
 # Imported by name on purpose: these are mokkari's own header constants,
 # so an upstream rename breaks the import rather than quietly parsing
 # nothing and leaving the gate in its UNKNOWN state forever.
-from mokkari.session import (
+from mokkari.rate_limit import (
     HEADER_BURST_LIMIT,
     HEADER_BURST_REMAINING,
     HEADER_BURST_RESET,
@@ -82,10 +92,13 @@ from mokkari.session import (
     HEADER_SUSTAINED_RESET,
 )
 
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats.base.online import outcome_stats
 from comicbox.formats.base.online.warn_once import warn_once
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     import requests
     from mokkari.rate_limit import RateLimitStatus
     from mokkari.session import Session
@@ -135,30 +148,114 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
+# Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
+# mokkari fetches every page of a list inside that one blocking call, and it
+# is synchronous, so its rate-limiter and response hooks run on the calling
+# thread and see these. Unset by default: tagging neither cancels inside a
+# call nor counts pages, and behaves exactly as it did without them.
+
+
+@dataclass(frozen=True, slots=True)
+class _FetchHooks:
+    """The hooks one fetch set, and the thread they belong to."""
+
+    thread: int
+    abort: Callable[[], bool] | None
+    on_page: Callable[[requests.Response], None] | None
+
+    def here(self) -> bool:
+        """Whether this is the thread that set them."""
+        # A thread can inherit a context: a free-threaded build's threads
+        # do, as does one run with Context.run. The hooks are not its own.
+        return threading.get_ident() == self.thread
+
+
+_fetch_hooks: ContextVar[_FetchHooks | None] = ContextVar(
+    "comicbox_metron_fetch_hooks", default=None
+)
+
+
+@contextmanager
+def fetch_hooks(
+    *,
+    abort: Callable[[], bool] | None = None,
+    on_page: Callable[[requests.Response], None] | None = None,
+) -> Generator[None]:
+    """
+    Watch the mokkari calls this thread makes inside the block.
+
+    ``abort`` is asked before each send, and while the send waits at the
+    gate: when it returns true, the call raises
+    ``OnlineLookupAbortedError``. ``on_page`` sees every raw response,
+    after the gate has; it must not raise, and a raise is logged and
+    dropped like any other observer failure. Other threads never see
+    them, even one that inherits this context.
+    """
+    token = _fetch_hooks.set(_FetchHooks(threading.get_ident(), abort, on_page))
+    try:
+        yield
+    finally:
+        _fetch_hooks.reset(token)
+
+
+def _here() -> _FetchHooks | None:
+    """Get the hooks this thread set, if any."""
+    hooks = _fetch_hooks.get()
+    return hooks if hooks is not None and hooks.here() else None
+
+
+def _abort_hook() -> Callable[[], bool] | None:
+    """Get the abort hook this thread set, if any."""
+    hooks = _here()
+    return hooks.abort if hooks is not None else None
+
+
+def _abort_if_asked() -> None:
+    if (abort := _abort_hook()) is not None and abort():
+        reason = "Metron fetch cancelled."
+        raise OnlineLookupAbortedError(reason)
+
+
+class _SendState(threading.local):
+    """Per-thread record of the send in flight between acquire and release."""
+
+    answered = False
+
+
 class GateRateLimiter:
     """
     Adapts a `RateGate` to mokkari's `RateLimiter` protocol.
 
     mokkari dispatches `acquire` immediately before every HTTP send and
     `release` after it returns, from the one frame every public method
-    funnels through. The protocol is not `runtime_checkable`; mokkari
-    duck-types it and turns a missing method into `RateLimiterError`.
+    funnels through, on the sending thread. The protocol is not
+    `runtime_checkable`; mokkari duck-types it and turns a missing method
+    into `RateLimiterError`.
 
     Only `acquire` can stop a run. Since mokkari 4.9.0 an exception from
     `on_rate_limited` or `release` is logged and ignored, so neither may
     raise to abort; both must do their bookkeeping and return.
+
+    One Session, and so one limiter, serves the whole ``-j N`` pool, so
+    whether the send in flight was answered is kept per thread.
     """
 
     def __init__(self, gate: RateGate) -> None:
         """Pace one Session through ``gate``."""
         self._gate = gate
+        self._send = _SendState()
+
+    @property
+    def gate(self) -> RateGate:
+        """The gate this limiter paces through."""
+        return self._gate
 
     def acquire(self, status: RateLimitStatus) -> None:  # noqa: ARG002
         """
         Block at the gate until a slot is free, recording the wait.
 
         ``status`` is deliberately unused. It is mokkari's own merged
-        view -- `_parse_rate_limit_window` preserves the previous window
+        view -- `RateLimitStatus.merge_headers` keeps the previous window
         when a response carries none -- so it cannot tell a header-less
         response from the one before it, and folding it in after the
         response observer already did would pad the log a second time.
@@ -171,9 +268,25 @@ class GateRateLimiter:
         it. mokkari calls `_acquire_rate_limit_slot` BEFORE its
         try/finally, so a raise here is never paired with a `release`.
         """
+        _abort_if_asked()
         started = time.monotonic()
-        self._gate.acquire()
+        # The gate asks the hook while it waits, so a cancel does not sit
+        # out a wait that can last a minute.
+        admitted = self._gate.acquire(abort=_abort_hook())
+        self._send.answered = False
         outcome_stats.record_gate_wait("metron", time.monotonic() - started)
+        try:
+            # A cancel that came as the slot freed is honoured before the send.
+            _abort_if_asked()
+        except OnlineLookupAbortedError:
+            # Nothing was sent: give the slot back, uncounted. mokkari never
+            # releases a slot whose acquire raised.
+            self._gate.withdraw(admitted)
+            raise
+
+    def mark_answered(self) -> None:
+        """Record that the send in flight on this thread got a response."""
+        self._send.answered = True
 
     def on_rate_limited(self, retry_after: float) -> None:
         """
@@ -187,28 +300,33 @@ class GateRateLimiter:
         outcome_stats.record_rate_limit_rejection("metron")
         self._gate.cooldown(retry_after if retry_after > 0 else None)
 
-    def release(self, status: RateLimitStatus | None) -> None:
+    def release(self, status: RateLimitStatus | None) -> None:  # noqa: ARG002
         """
         Release the slot `acquire` took.
 
-        A None ``status`` means the send never produced a response:
-        mokkari re-raises `requests` ConnectionError and ReadTimeout as
-        `ApiError` from the same frame. Counting those separately matters
-        because a firewall-level ban (Metron's fail2ban jail drops the
-        IP) looks like nothing else from in here -- no status, no
-        headers, just timeouts.
+        A send the response observer never marked answered produced no
+        response: mokkari re-raises `requests` ConnectionError and
+        ReadTimeout as `ApiError` from the same frame. Counting those
+        separately matters because a firewall-level ban (Metron's
+        fail2ban jail drops the IP) looks like nothing else from in here
+        -- no status, no headers, just timeouts.
+
+        ``status`` is deliberately unused. Since mokkari 5.2.0 it is None
+        for a response that carried no `X-RateLimit-*` headers too, so it
+        cannot tell a proxy or bot-check page from a send that never
+        answered. The observer can, because it only runs on a response.
 
         The gate's log entry stays either way: a send that never answered
         may well have arrived and been counted by the server.
         """
-        if status is None:
+        if not self._send.answered:
             outcome_stats.record_connection_failure("metron")
         self._gate.release()
 
 
-def install_response_observer(session: Session, gate: RateGate) -> None:
+def install_response_observer(session: Session, limiter: GateRateLimiter) -> None:
     """
-    Feed every raw response's rate-limit headers to ``gate`` and the stats.
+    Feed every raw response's rate-limit headers to the gate and the stats.
 
     The hook fires inside `Session._http.request(...)`, so it runs
     BEFORE mokkari's `_update_rate_limit_status`, `_report_rate_limited`
@@ -216,17 +334,22 @@ def install_response_observer(session: Session, gate: RateGate) -> None:
     observe, then cool down, then release. Observing before the release
     matters -- the gate's in-flight count still includes this request, so
     its tighten-only math discounts only the OTHER sends the server may
-    not have counted yet.
+    not have counted yet. It also marks the send answered, so ``limiter``'s
+    `release` does not count it as a connection failure.
     """
 
     def _observe_response(response: requests.Response, **_kwargs: Any) -> None:
         # A `requests` response hook runs inside `_http.request`, outside
         # mokkari's `except (ConnectionError, ReadTimeout)`. An exception
-        # escaping here would surface as some other error entirely and
-        # `release(None)` would then miscount it as a connection failure,
-        # so nothing in this hook may raise.
+        # escaping here would surface as some other error entirely, so
+        # nothing in this hook may raise. Marking the send answered comes
+        # first, so even a failed observation is not miscounted as a
+        # connection failure.
         try:
-            _feed_gate(gate, response)
+            limiter.mark_answered()
+            _feed_gate(limiter.gate, response)
+            if (hooks := _here()) is not None and hooks.on_page is not None:
+                hooks.on_page(response)
         except Exception as exc:  # pragma: no cover - defensive
             logger.debug(f"metron: rate-limit observation failed: {exc!r}")
 
@@ -243,8 +366,9 @@ def build_paced_session(gate: RateGate, **session_kwargs: Any) -> Session:
     and ``rate_limiter``; the token is the only credential mokkari 5.0
     takes.
     """
-    session = mokkari.api(rate_limiter=GateRateLimiter(gate), **session_kwargs)
-    install_response_observer(session, gate)
+    limiter = GateRateLimiter(gate)
+    session = mokkari.api(rate_limiter=limiter, **session_kwargs)
+    install_response_observer(session, limiter)
     return session
 
 

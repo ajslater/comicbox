@@ -61,7 +61,7 @@ def _user_config(tmp_path: Path, text: str) -> Path:
 
 def test_unconfigured_sources_are_off() -> None:
     rows = _rows()
-    for name in ("metron", "comicvine"):
+    for name in ("metron", "comicvine", "versedb"):
         (row,) = _source(rows, name)
         assert row.status is Status.OFF
         assert not row.status.is_failure
@@ -122,6 +122,14 @@ def test_comicvine_budget_comes_from_the_bucket_file(
     (row,) = _source(_rows("--auth", f"comicvine:{_CV_KEY}"), "comicvine")
     assert row.detail == (
         "key from --auth · 200/200 left this hour in every pool" + _UNVERIFIED
+    )
+
+
+def test_versedb_states_its_free_tier() -> None:
+    """No request and no file: the caps are the documented free tier."""
+    (row,) = _source(_rows("--auth", "versedb:versedb-token-abcdef"), "versedb")
+    assert row.detail == (
+        "key from --auth · free tier: 300/hour, 4,000/day" + _UNVERIFIED
     )
 
 

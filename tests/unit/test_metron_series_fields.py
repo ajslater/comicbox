@@ -75,7 +75,7 @@ def test_read() -> None:
 
 
 def test_write_validates() -> None:
-    """All three are written back and pass the v1.2 XSD."""
+    """All three are written back and pass the v1.3 XSD."""
     written = _write(_METRON_XML, MetadataFormats.METRON_INFO)
     assert "<EndYear>1975</EndYear>" in written
     assert "<Status>Completed</Status>" in written

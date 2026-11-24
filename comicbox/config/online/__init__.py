@@ -42,7 +42,7 @@ from comicbox.config.online.settings import (
     resolve_rate_limit,
     resolve_solo_threshold,
 )
-from comicbox.config.online.template import ONLINE_TEMPLATE
+from comicbox.config.online.template import ONLINE_TEMPLATE, TTL_TEMPLATE
 
 __all__ = (
     "ALL_SOURCES",
@@ -50,6 +50,7 @@ __all__ = (
     "DEFAULT_DISAMBIGUATION_MARGIN",
     "DEFAULT_MIN_CONFIDENCE",
     "ONLINE_TEMPLATE",
+    "TTL_TEMPLATE",
     "CacheMode",
     "Effort",
     "MatchMode",

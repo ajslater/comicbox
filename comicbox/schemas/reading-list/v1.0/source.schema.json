@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/reading-list/v1.0/source.schema.json",
+  "title": "Comicbox Reading List Source",
+  "description": "One place a list came from. A source with a key and no revision is a pointer: the list is known to exist there and was not fetched from it.",
+  "type": "object",
+  "properties": {
+    "kind": {
+      "description": "metron-list, metron-arc, comicvine-arc, json-cbl, catalog, url, file or tags.",
+      "type": "string"
+    },
+    "key": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    },
+    "revision": {
+      "type": "string"
+    },
+    "curator": {
+      "type": "string"
+    },
+    "curator_url": {
+      "type": "string"
+    }
+  }
+}

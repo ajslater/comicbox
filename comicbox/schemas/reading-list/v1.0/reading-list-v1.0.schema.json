@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ajslater/comicbox/blob/main/schemas/reading-list/v1.0/reading-list-v1.0.schema.json",
+  "title": "Comicbox Reading List",
+  "type": "object",
+  "version": "1.0",
+  "properties": {
+    "schema": {
+      "const": "https://github.com/ajslater/comicbox/blob/main/schemas/reading-list/v1.0/reading-list-v1.0.schema.json"
+    },
+    "reading_list": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "list_type": {
+          "description": "A free string, lowercased: event, story, characters, teams, master, creator, or another.",
+          "type": "string"
+        },
+        "ordered": {
+          "description": "False when the order of the entries is not authoritative.",
+          "type": "boolean"
+        },
+        "start_year": {
+          "type": "integer"
+        },
+        "end_year": {
+          "type": "integer"
+        },
+        "private": {
+          "description": "The source marked the list private to its owner.",
+          "type": "boolean"
+        },
+        "sources": {
+          "description": "One item per place this list came from, in rank order.",
+          "type": "array",
+          "items": {
+            "$ref": "source.schema.json"
+          }
+        },
+        "previous": {
+          "description": "The list before this one in a reading order.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        },
+        "next": {
+          "description": "The list after this one in a reading order.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "key": {
+              "type": "string"
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        },
+        "entries": {
+          "description": "Array order is reading order. An issue may repeat.",
+          "type": "array",
+          "items": {
+            "$ref": "entry.schema.json"
+          }
+        }
+      }
+    }
+  }
+}

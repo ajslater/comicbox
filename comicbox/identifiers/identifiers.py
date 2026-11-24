@@ -91,6 +91,10 @@ class IdentifierParts:
     url_path_regex: str
     url_path_template: str
     https: bool = True
+    # False for a database whose pages need a slug the key does not hold,
+    # so no url built from the key alone would resolve. Its urls are still
+    # read into ids; the real url is kept where the source wrote it.
+    derives_urls: bool = True
 
     def __post_init__(self) -> None:
         """Initialize url_regex & template prefix."""
@@ -124,6 +128,8 @@ class IdentifierParts:
     def unparse_url(self, id_type: str, id_key: str) -> str:
         """Create url from identifier parts."""
         url = ""
+        if not self.derives_urls:
+            return url
         if ":" in id_key:
             # A prefix normalize_key didn't recognize; no source uses colons
             # in its path segments, so emit no url rather than a broken one.
@@ -268,6 +274,28 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             url_path_regex=r"(?P<id_type>comics)/(?P<id_key>\w+)",
             url_path_template="{id_type}/{id_key}",
             https=False,  # :o
+        ),
+        IdSources.VERSEDB: IdentifierParts(
+            # Every versedb.com page needs its exact slug: /issue/{id} and
+            # /issue/{id}/s are both 404 (checked 2026-11-21), and slugs
+            # can't be derived from names. So the ids are read out of the
+            # real urls the VerseDB transform writes, and none is built.
+            domain="versedb.com",
+            id_type=IdentifierTypes(
+                arc="story-arc",
+                character="character",
+                creator="creator",
+                issue="issue",
+                publisher="publisher",
+                series="series",
+                team="teams",
+            ),
+            url_path_regex=(
+                r"(?P<id_type>story-arc|character|creator|issue|publisher|series|teams)"
+                rf"/(?P<id_key>\d+){_SLUG_REXP}"
+            ),
+            url_path_template="{id_type}/{id_key}",
+            derives_urls=False,
         ),
         IdSources.UPC: IdentifierParts(
             domain="barcodelookup.com",

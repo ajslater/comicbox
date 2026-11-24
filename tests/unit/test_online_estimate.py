@@ -10,6 +10,7 @@ from comicbox.online_estimate import (
     COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT,
     METRON_REQUESTS_PER_COMIC,
     SOURCE_RATE_PER_MINUTE,
+    VERSEDB_REQUESTS_PER_COMIC,
     RunEstimate,
     estimate_run,
     metron_requests_for_batch,
@@ -27,6 +28,16 @@ def test_rates_track_documented_limits() -> None:
     # Metron's per-minute cap; Comic Vine's 200/hour cap spread over the minute.
     assert SOURCE_RATE_PER_MINUTE["metron"] == 20
     assert SOURCE_RATE_PER_MINUTE["comicvine"] == 3
+    # VerseDB's free tier: 300/hour spread over the minute.
+    assert SOURCE_RATE_PER_MINUTE["versedb"] == 5
+
+
+def test_versedb_is_a_flat_three_requests_a_comic() -> None:
+    """Series search, one issue list for every series, the fetch; effort can't move it."""
+    for effort in (MINIMAL, BALANCED, THOROUGH):
+        assert requests_per_comic("versedb", effort) == VERSEDB_REQUESTS_PER_COMIC == 3
+    est = estimate_run(10, ("versedb",))
+    assert est == RunEstimate(requests=30, seconds=360.0)
 
 
 def test_zero_comics_is_empty() -> None:

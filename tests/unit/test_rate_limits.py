@@ -24,6 +24,8 @@ from comicbox.formats.base.online.rate_limits import (
     COMICVINE_DEFAULT_PER_HOUR,
     COMICVINE_DEFAULT_PER_SECOND,
     METRON_DEFAULT_PER_MINUTE,
+    VERSEDB_DEFAULT_PER_DAY,
+    VERSEDB_DEFAULT_PER_HOUR,
 )
 from comicbox.formats.metron_api import online_source as metron_online_source
 from comicbox.formats.metron_api.online_source import (
@@ -55,6 +57,10 @@ def test_documented_defaults_match_upstream() -> None:
     # no importable constant; pin the documented numbers it ships with.
     assert COMICVINE_DEFAULT_PER_SECOND == 1
     assert COMICVINE_DEFAULT_PER_HOUR == 200
+    # The versedb SDK paces nothing, so there is nothing to cross-check:
+    # VerseDB's documented free tier (https://versedb.com/developers).
+    assert VERSEDB_DEFAULT_PER_HOUR == 300
+    assert VERSEDB_DEFAULT_PER_DAY == 4000
 
 
 # ------------------------------------------------- shared mokkari session

@@ -73,7 +73,10 @@ _DEFAULTS = ComicboxSettings(
 _FIELD_ALIASES = {"read.except": "except_formats"}
 
 # Paths whose YAML text needs decoding before comparison.
-_VALUE_DECODERS = {"online.cache.ttl": parse_ttl}
+_VALUE_DECODERS = {
+    "online.cache.ttl": parse_ttl,
+    "readinglists.catalog_ttl": parse_ttl,
+}
 
 # YAML keys whose dataclass default deliberately differs. Keep the
 # reason; drop the entry when the divergence goes away.
@@ -87,7 +90,7 @@ _KNOWN_DIVERGENCES = {
     ),
     "online.auth": (
         "Structural, not a value difference: the YAML nests one block "
-        "per source (metron:, comicvine:), the dataclass holds a single "
+        "per source (metron:, comicvine:, versedb:), the dataclass holds a single "
         "OnlineAuthSettings.sources mapping keyed by source name. "
         "test_no_credentials_are_defaulted_in_yaml covers the leaves."
     ),
@@ -250,6 +253,13 @@ def test_no_credentials_are_defaulted_in_yaml() -> None:
             )
 
 
+def test_the_yaml_has_an_auth_block_for_every_source() -> None:
+    """The walk skips online.auth, so a source missing from it would go unseen."""
+    from comicbox.formats.base.online import SOURCE_NAMES
+
+    assert set(_load_yaml_defaults()["online"]["auth"]) == set(SOURCE_NAMES)
+
+
 def test_divergence_exceptions_are_not_stale() -> None:
     """
     Every declared exception must still describe a real divergence.
@@ -291,3 +301,18 @@ def test_no_yaml_key_exceptions_are_not_stale() -> None:
             f"{path}: now has a config_default.yaml key. Delete its "
             f"_NO_YAML_KEY entry so its default gets compared."
         )
+
+
+def test_an_unparsable_catalog_lifetime_keeps_its_own_default() -> None:
+    """The catalog never inherits the online cache's seven days by accident."""
+    from datetime import timedelta
+
+    from comicbox.config.settings import ReadingListsSettings
+
+    default = ReadingListsSettings().catalog_ttl
+    assert default == timedelta(hours=4)
+    assert (
+        parse_ttl("soon", default=default, label="readinglists.catalog_ttl") == default
+    )
+    assert parse_ttl(None, default=default) == default
+    assert parse_ttl("soon") == timedelta(days=7)
