@@ -52,6 +52,8 @@
   sources disagree: Metron, then Comic Vine, then VerseDB by default. Comic Vine
   used to win.
 - MetronInfo.xml is written as the v1.3 draft instead of v1.2.
+- Metron cover searches are no longer cached: tagging a comic again asks Metron
+  about its cover again unless it already has a Metron id.
 
 ### 🐛 Fixed
 
@@ -67,18 +69,8 @@
   hourly budget in `rate_limit_status()`, and exports `source_attribution()` so
   a frontend can show the credit a source's terms require. The default sources
   are still Metron and Comic Vine.
-- Requires versedb 1.0.
-
-## v5.6.3
-
-### ♻️ Changed
-
-- Metron cover searches are no longer cached: tagging a comic again asks Metron
-  about its cover again unless it already has a Metron id.
-
-### 🧑‍💻 Developer
-
 - Requires mokkari 5.2.
+- Requires versedb 1.0.
 
 ## v5.6.2
 
