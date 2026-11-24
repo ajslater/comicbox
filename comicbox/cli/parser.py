@@ -564,8 +564,12 @@ def _add_online_lookup_group(parser: ArgumentParser) -> None:
     )
 
 
-def add_online_auth_group(parser: ArgumentParser) -> None:
-    """Add ``--auth``; the reading-list CLI shares it."""
+def add_online_auth_group(
+    parser: ArgumentParser,
+    sources: Sequence[str] = ("metron", "comicvine", "versedb"),
+) -> None:
+    """Add ``--auth``, its examples naming ``sources``; the reading-list CLI shares it."""
+    examples = ", ".join(f"[green]--auth {source}:TOKEN[/green]" for source in sources)
     group = parser.add_argument_group("online: auth")
     group.add_argument(
         "-a",
@@ -575,10 +579,7 @@ def add_online_auth_group(parser: ArgumentParser) -> None:
         metavar="SRC:TOKEN",
         dest="auth",
         help=(
-            "Per-source API token. Repeatable. Examples: "
-            "[green]--auth metron:TOKEN[/green], "
-            "[green]--auth comicvine:TOKEN[/green], "
-            "[green]--auth versedb:TOKEN[/green]. "
+            f"Per-source API token. Repeatable. Examples: {examples}. "
             "[green]comicvine:url=URL[/green] overrides the ComicVine API "
             "endpoint. A token on the command line lands in shell history; "
             "use the [cyan]COMICBOX_ONLINE__AUTH__<SOURCE>__KEY[/cyan] "
