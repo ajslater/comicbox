@@ -277,6 +277,43 @@ class FileFinished(Event):
     kind: Literal["file_finished"] = "file_finished"
 
 
+# ---------------------------------------------------------------------------
+# Reading-list fetches
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchStarted(Event):
+    """A reading-list fetch began. ``source`` is where from, ``key`` what."""
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_started"] = "reading_list_fetch_started"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchProgress(Event):
+    """
+    Part of a reading list arrived.
+
+    ``index`` counts the entries fetched so far and ``total`` is how many
+    the source said there are, when it said.
+    """
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_progress"] = "reading_list_fetch_progress"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ReadingListFetchFinished(Event):
+    """A reading-list fetch ended, whether it fetched anything or not."""
+
+    source: str = ""
+    key: str = ""
+    kind: Literal["reading_list_fetch_finished"] = "reading_list_fetch_finished"
+
+
 # Convenience union for online events.
 OnlineEvent: TypeAlias = (
     BatchStarted
