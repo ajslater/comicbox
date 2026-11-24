@@ -4,73 +4,46 @@
 
 ### ✨ Added
 
-- Reading lists: `comicbox readinglist` (or `rl`) and the
-  `comicbox.readinglists` API read, validate and write ComicRack CBL, json-cbl
-  and comicbox YAML or JSON lists, combine and compare lists of one event, and
-  build lists from story arc tags. They never write over an existing file
-  without `--overwrite`.
-- `ReadingListSession` fetches reading lists from URLs, with a download size cap
-  set by the new `readinglists` config group.
-- `ReadingListSession` searches and fetches Metron reading lists and story arcs
-  with your Metron API token, sharing tagging's rate limit and response cache.
-  Long lists report progress page by page and can be cancelled between pages.
-- `ReadingListSession` fetches Comic Vine story arcs with your Comic Vine API
-  key, sharing tagging's hourly budgets and response cache. Each issue comes
-  with its series, start year, number and dates, so the list matches your comics
-  and combines with Metron's list of the arc. A spent budget fails the fetch at
-  once, saying when it frees.
-- `ReadingListSession` indexes, searches and fetches the DieselTech CBL catalog
-  on GitHub, with each list's curator read from its name or folder. The index is
-  cached for `readinglists.catalog_ttl` (4 hours) and the repository and ref are
-  configurable, so a fork works. A renamed list is still found by its sha.
-- `comicbox rl search metron|catalog QUERY` and
-  `comicbox rl fetch metron:ID | metron-arc:ID | comicvine-arc:ID | catalog:PATH | URL`,
-  with progress on stderr; Ctrl-C cancels a fetch. `fetch -o` never writes over
-  a file without `--overwrite`.
-- `comicbox rl match FILE DIR` shows which of a list's issues a directory of
-  comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
-  the list as a story arc: a dry run unless given `--apply`.
-- VerseDB is a third online source: `--online versedb`, `--id versedb:NNN` and
-  `--series-id versedb:NNN`, with a personal access token from versedb.com in
-  `--auth versedb:TOKEN` or `COMICBOX_ONLINE__AUTH__VERSEDB__KEY`. It runs only
-  with a token, and last unless `--online` lists it earlier.
-- A comic costs VerseDB about three requests. Answers are cached, and when
-  VerseDB says to slow down comicbox waits as long as it asks.
-  `comicbox doctor --online versedb` checks the token and shows the hour's
-  budget.
-- Tags carry each issue's versedb.com link, and ComicInfo and MetronInfo files
-  read it back as the VerseDB id.
-- Prompts credit VerseDB ("Data from VerseDB", linked) under its candidates, as
-  its terms ask.
-- MetronInfo v1.3 draft: VerseDB ids are written to `<IDS>` with
-  `source="VerseDB"`. Marvel ids, which the schema has always listed, are read
-  and written there too.
+- Reading lists: `comicbox readinglist` (or `rl`) prints, validates, converts,
+  combines and compares ComicRack CBL, json-cbl and comicbox YAML or JSON lists,
+  and builds lists from story arc tags.
+- `comicbox rl search` and `rl fetch` get lists from Metron reading lists and
+  story arcs, Comic Vine story arcs, the DieselTech CBL catalog and URLs.
+- `comicbox rl match` shows which of a list's issues a directory holds, and
+  `rl write-arcs` tags them with the list's story arc, as a dry run unless given
+  `--apply`.
+- VerseDB online source: `--online versedb`, `--id versedb:NNN` and
+  `--series-id versedb:NNN`, with a personal access token in
+  `--auth versedb:TOKEN`. It runs only with a token, after Metron and Comic Vine
+  unless `--online` lists it earlier. `comicbox doctor --online versedb` checks
+  the token.
+- Tags carry each issue's versedb.com link, read back as its VerseDB id, and
+  prompts credit VerseDB as its terms ask.
+- MetronInfo reads and writes VerseDB and Marvel ids in its `IDS`.
 
 ### ♻️ Changed
 
-- With `--all-sources`, the first source in `--online` order wins where online
-  sources disagree: Metron, then Comic Vine, then VerseDB by default. Comic Vine
-  used to win.
-- MetronInfo.xml is written as the v1.3 draft instead of v1.2.
-- Metron cover searches are no longer cached: tagging a comic again asks Metron
-  about its cover again unless it already has a Metron id.
+- With `--all-sources`, the first source in `--online` order wins where sources
+  disagree: Metron, Comic Vine, then VerseDB by default. Comic Vine used to win.
+- MetronInfo.xml is written as the v1.3 draft.
+- Metron cover searches are no longer cached, so re-tagging a comic without a
+  Metron id searches its cover again.
 
 ### 🐛 Fixed
 
-- `comicbox rl` exits quietly when its output is closed, as by `| head -1`,
-  where it failed and stopped `write-arcs --apply` part way.
-- `write-arcs --delete-orig` removes every other name of a converted original,
-  hard links included.
-- Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
+- Filename parsing reads an issue count such as `01 of 12`, and an issue number
+  before a dashed title, as in `Starling 054 - The Long Night`.
 
 ### 🧑‍💻 Developer
 
-- `OnlineSession` takes `versedb_key` and `versedb_url`, reports VerseDB's
-  hourly budget in `rate_limit_status()`, and exports `source_attribution()` so
-  a frontend can show the credit a source's terms require. The default sources
-  are still Metron and Comic Vine.
-- Requires mokkari 5.2.
-- Requires versedb 1.0.
+- `comicbox.readinglists` loads, writes, combines, compares and matches reading
+  lists, and its `ReadingListSession` fetches them with progress events and
+  `cancel()`.
+- `OnlineCredentials` takes `versedb_key` and `versedb_url`,
+  `OnlineSession.rate_limit_status()` reports VerseDB's hourly budget, and
+  `source_attribution()` gives the credit a source's terms require.
+  `OnlineSession`'s default sources are still Metron and Comic Vine.
+- Requires comicfn2dict 1.1.3, mokkari 5.2 and versedb 1.0.
 
 ## v5.6.2
 

@@ -205,7 +205,8 @@ def _add_online_options(parser: ArgumentParser) -> None:
         dest="general.config",
         help="A config file to read beside the usual ones.",
     )
-    add_online_auth_group(parser)
+    # Reading lists come from Metron and Comic Vine; VerseDB has none.
+    add_online_auth_group(parser, ("metron", "comicvine"))
     add_online_cache_group(parser)
 
 

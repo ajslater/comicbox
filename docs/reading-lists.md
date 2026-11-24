@@ -202,11 +202,12 @@ with the list. Any host is fetched, your own network's included.
 ### Settings
 
 ```yaml
-readinglists:
-    catalog_repo: DieselTech/CBL-ReadingLists # A fork or mirror works too.
-    catalog_ref: main # A branch, tag or commit.
-    catalog_ttl: 4h # How long the catalog index is kept.
-    max_download_bytes: 16777216 # The largest list or index fetched.
+comicbox:
+    readinglists:
+        catalog_repo: DieselTech/CBL-ReadingLists # A fork or mirror works too.
+        catalog_ref: main # A branch, tag or commit.
+        catalog_ttl: 4h # How long the catalog index is kept.
+        max_download_bytes: 16777216 # The largest list or index fetched.
 ```
 
 ### Whose lists these are
