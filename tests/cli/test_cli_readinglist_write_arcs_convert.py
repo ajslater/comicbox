@@ -8,6 +8,7 @@ else. Every write goes through the real ``bulk_write``.
 
 from __future__ import annotations
 
+import os
 import shutil
 import zipfile
 from typing import TYPE_CHECKING
@@ -280,6 +281,7 @@ def test_the_summary_counts_comics_that_lose_a_tag_file(
     assert "3 comics would lose a tag file." in err
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="root writes any file")
 def test_a_read_only_comic_fails_and_the_rest_are_written(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:

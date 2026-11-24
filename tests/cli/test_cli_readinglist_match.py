@@ -8,11 +8,15 @@ modules.
 
 from __future__ import annotations
 
+import multiprocessing
 import os
+from concurrent.futures import ProcessPoolExecutor
+from functools import partial
 from typing import TYPE_CHECKING
 
 import pytest
 
+from comicbox.readinglists import library as library_module
 from tests.util.comics import digests, make_comic
 from tests.util.readinglist_cli import (
     flat,
@@ -286,6 +290,23 @@ def test_a_linked_directory_is_not_searched(
     assert "cw1.cbz" not in out
 
 
+@pytest.fixture
+def spawned_workers(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Start the reader's workers afresh, so their stderr is this test's.
+
+    Linux's default forkserver forks them from a server an earlier test
+    started, and they write to that test's stderr, which capfd never sees.
+    """
+    spawn = multiprocessing.get_context("spawn")
+    monkeypatch.setattr(
+        library_module,
+        "ProcessPoolExecutor",
+        partial(ProcessPoolExecutor, mp_context=spawn),
+    )
+
+
+@pytest.mark.usefixtures("spawned_workers")
 def test_a_corrupt_comic_is_one_line_and_the_rest_are_read(
     capfd: pytest.CaptureFixture[str], reading_list: Path, library: Path
 ) -> None:
@@ -317,6 +338,7 @@ def test_match_marks_a_comic_with_an_unreadable_tag_file(
     assert f"{unreadable.name} (unreadable ComicInfo.xml)" in flat(out)
 
 
+@pytest.mark.usefixtures("spawned_workers")
 def test_worker_warnings_honour_quiet(
     capfd: pytest.CaptureFixture[str], batman_list: Path, unreadable: Path
 ) -> None:
