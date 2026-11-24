@@ -4,45 +4,29 @@
 
 ### ✨ Added
 
-- Reading lists: `comicbox readinglist` (or `rl`) prints, validates, converts,
-  combines and compares ComicRack CBL, json-cbl and comicbox YAML or JSON lists,
-  and builds lists from story arc tags.
-- `comicbox rl search` and `rl fetch` get lists from Metron reading lists and
-  story arcs, Comic Vine story arcs, the DieselTech CBL catalog and URLs.
-- `comicbox rl match` shows which of a list's issues a directory holds, and
-  `rl write-arcs` tags them with the list's story arc, as a dry run unless given
-  `--apply`.
-- VerseDB online source: `--online versedb`, `--id versedb:NNN` and
-  `--series-id versedb:NNN`, with a personal access token in
-  `--auth versedb:TOKEN`. It runs only with a token, after Metron and Comic Vine
-  unless `--online` lists it earlier. `comicbox doctor --online versedb` checks
-  the token.
-- Tags carry each issue's versedb.com link, read back as its VerseDB id, and
-  prompts credit VerseDB as its terms ask.
-- MetronInfo reads and writes VerseDB and Marvel ids in its `IDS`.
+- Reading lists: `comicbox rl` prints, validates, converts, combines and
+  compares CBL, json-cbl and comicbox lists, fetches them from Metron, Comic
+  Vine, the DieselTech catalog and URLs, and tags matching comics with the
+  list's story arc.
+- VerseDB online source, used only with a token: `--auth versedb:TOKEN`.
+- MetronInfo reads and writes VerseDB and Marvel ids.
 
 ### ♻️ Changed
 
-- With `--all-sources`, the first source in `--online` order wins where sources
-  disagree: Metron, Comic Vine, then VerseDB by default. Comic Vine used to win.
+- With `--all-sources`, the first source in `--online` order wins disagreements,
+  not Comic Vine.
 - MetronInfo.xml is written as the v1.3 draft.
-- Metron cover searches are no longer cached, so re-tagging a comic without a
-  Metron id searches its cover again.
+- Metron cover searches are no longer cached.
 
 ### 🐛 Fixed
 
-- Filename parsing reads an issue count such as `01 of 12`, and an issue number
-  before a dashed title, as in `Starling 054 - The Long Night`.
+- Filename parsing reads `01 of 12` issue counts and an issue before a dashed
+  title.
 
 ### 🧑‍💻 Developer
 
-- `comicbox.readinglists` loads, writes, combines, compares and matches reading
-  lists, and its `ReadingListSession` fetches them with progress events and
-  `cancel()`.
-- `OnlineCredentials` takes `versedb_key` and `versedb_url`,
-  `OnlineSession.rate_limit_status()` reports VerseDB's hourly budget, and
-  `source_attribution()` gives the credit a source's terms require.
-  `OnlineSession`'s default sources are still Metron and Comic Vine.
+- `comicbox.readinglists` API with `ReadingListSession` for fetching.
+- `OnlineCredentials.versedb_key` and `source_attribution()` for source credits.
 - Requires comicfn2dict 1.1.3, mokkari 5.2 and versedb 1.0.
 
 ## v5.6.2
