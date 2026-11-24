@@ -13,7 +13,7 @@ nav = [
     "schema/index.md",
     "schema/comicfn2dict.schema.md",
     "schema/ComicInfo-v2.1-Draft.xsd.md",
-    "schema/MetronInfo-v1.2.xsd.md",
+    "schema/MetronInfo-v1.3.xsd.md",
     "schema/comic-book-info-v1.0.schema.md",
     "schema/CoMet-v1.1.xsd.md",
     { "Comicbox 3.0" = [

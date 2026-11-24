@@ -30,6 +30,28 @@
 - `comicbox rl match FILE DIR` shows which of a list's issues a directory of
   comics has, and `comicbox rl write-arcs FILE DIR -w FORMATS` tags them with
   the list as a story arc: a dry run unless given `--apply`.
+- VerseDB is a third online source: `--online versedb`, `--id versedb:NNN` and
+  `--series-id versedb:NNN`, with a personal access token from versedb.com in
+  `--auth versedb:TOKEN` or `COMICBOX_ONLINE__AUTH__VERSEDB__KEY`. It runs only
+  with a token, and last unless `--online` lists it earlier.
+- A comic costs VerseDB about three requests. Answers are cached, and when
+  VerseDB says to slow down comicbox waits as long as it asks.
+  `comicbox doctor --online versedb` checks the token and shows the hour's
+  budget.
+- Tags carry each issue's versedb.com link, and ComicInfo and MetronInfo files
+  read it back as the VerseDB id.
+- Prompts credit VerseDB ("Data from VerseDB", linked) under its candidates, as
+  its terms ask.
+- MetronInfo v1.3 draft: VerseDB ids are written to `<IDS>` with
+  `source="VerseDB"`. Marvel ids, which the schema has always listed, are read
+  and written there too.
+
+### ♻️ Changed
+
+- With `--all-sources`, the first source in `--online` order wins where online
+  sources disagree: Metron, then Comic Vine, then VerseDB by default. Comic Vine
+  used to win.
+- MetronInfo.xml is written as the v1.3 draft instead of v1.2.
 
 ### 🐛 Fixed
 
@@ -38,6 +60,25 @@
 - `write-arcs --delete-orig` removes every other name of a converted original,
   hard links included.
 - Cancelling a Metron reading-list fetch no longer waits out a rate-limit pause.
+
+### 🧑‍💻 Developer
+
+- `OnlineSession` takes `versedb_key` and `versedb_url`, reports VerseDB's
+  hourly budget in `rate_limit_status()`, and exports `source_attribution()` so
+  a frontend can show the credit a source's terms require. The default sources
+  are still Metron and Comic Vine.
+- Requires versedb 1.0.
+
+## v5.6.3
+
+### ♻️ Changed
+
+- Metron cover searches are no longer cached: tagging a comic again asks Metron
+  about its cover again unless it already has a Metron id.
+
+### 🧑‍💻 Developer
+
+- Requires mokkari 5.2.
 
 ## v5.6.2
 

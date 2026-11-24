@@ -22,6 +22,7 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
 # OnlineConfigurationError keeps its historical comicbox.online_session
@@ -41,6 +42,15 @@ from comicbox.config.online.settings import (
 )
 from comicbox.events import FileError, PromptDeferred, PromptResolvedFromCache
 from comicbox.exceptions import OnlineConfigurationError, OnlineLookupAbortedError
+from comicbox.formats.base.online import SOURCE_NAMES
+
+# Re-exported so a frontend can show the credit a source's terms require
+# (VerseDB's "Data from VerseDB"), looked up by `OnlinePrompt.source` or
+# `Candidate.source`.
+from comicbox.formats.base.online.attribution import (
+    SourceAttribution,
+    source_attribution,
+)
 from comicbox.formats.base.online.series_cache import filename_series_fingerprint
 from comicbox.formats.base.online.session_state import OnlineSessionState
 
@@ -84,17 +94,29 @@ __all__ = (
     "PromptResponse",
     "Prompts",
     "RunEstimate",
+    "SourceAttribution",
     "SourceName",
     "estimate_run",
+    "source_attribution",
 )
 
 
 # --- public types -----------------------------------------------------------
 
 
-SourceName: TypeAlias = Literal["metron", "comicvine"]
+SourceName: TypeAlias = Literal["metron", "comicvine", "versedb"]
 
-_KNOWN_SOURCES: frozenset[str] = frozenset({"metron", "comicvine"})
+_KNOWN_SOURCES: frozenset[str] = frozenset(SOURCE_NAMES)
+
+# What each source's credential check asks for, named as the
+# `OnlineCredentials` field a caller fills in.
+_REQUIRED_CREDENTIAL: Mapping[str, str] = MappingProxyType(
+    {
+        "metron": "metron_key (API token)",
+        "comicvine": "comicvine_key",
+        "versedb": "versedb_key (API token)",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +127,16 @@ class OnlineCredentials:
     metron_url: str | None = None
     comicvine_key: str | None = None
     comicvine_url: str | None = None
+    versedb_key: str | None = None
+    versedb_url: str | None = None
+
+    def key_for(self, source: str) -> str | None:
+        """Return the key, or token, for ``source``."""
+        return getattr(self, f"{source}_key", None)
+
+    def url_for(self, source: str) -> str | None:
+        """Return the API url override for ``source``."""
+        return getattr(self, f"{source}_url", None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,6 +310,13 @@ class OnlineSession:
     every box the session spawns, so a change made at a prompt needs no
     mirroring back: the box and the session read the same owner.
 
+    ``sources`` is ordered, and its order is both run priority and merge
+    precedence: the first source runs first and, under ``first_wins``,
+    its match ends the lookup; with ``first_wins`` off every source runs
+    and the first one wins every tag they disagree on, except that each
+    source keeps its own id: Comic Vine's id beats Metron's ``cv_id``
+    cross-reference to it.
+
     ``ids`` pins an issue id per source for a single-comic session: a
     pinned source fetches that id directly while the unpinned sources
     search, so one run can mix id retrieval and search and merge both.
@@ -294,6 +333,8 @@ class OnlineSession:
     def __init__(  # noqa: PLR0913
         self,
         *,
+        # VerseDB is opt-in: naming it needs a `versedb_key`, so adding it
+        # here would fail every existing caller's credential check.
         sources: Iterable[str] = ("metron", "comicvine"),
         ids: Mapping[str, int] | None = None,
         credentials: OnlineCredentials | None = None,
@@ -316,8 +357,8 @@ class OnlineSession:
         # pool. Set before any source builds its client, since clients
         # bake the header in at construction.
         set_user_agent_context("lib", client=client_name)
-        # Order is run priority: the first source runs first and, under
-        # first_wins, its match ends the lookup for that comic.
+        # Order is run priority and merge precedence; see the class
+        # docstring.
         self._sources = tuple(dict.fromkeys(sources))
         self._validate_sources(self._sources)
         # Pinned per-source issue ids. A source with an id fetches it
@@ -428,7 +469,7 @@ class OnlineSession:
 
     def close(self) -> None:
         """
-        Release the pooled connections and cache handles both sources hold.
+        Release the pooled connections and cache handles every source holds.
 
         Optional, and not a cancel: the session stays usable afterwards,
         at the cost of reopening what it needs on its next request. The
@@ -449,9 +490,13 @@ class OnlineSession:
         from comicbox.formats.metron_api.online_source import (
             close_shared_sessions as close_metron,
         )
+        from comicbox.formats.versedb_api.online_source import (
+            close_shared_sessions as close_versedb,
+        )
 
         close_metron()
         close_comicvine()
+        close_versedb()
 
     def __enter__(self) -> Self:
         """Enter the context manager, returning this session."""
@@ -571,8 +616,8 @@ class OnlineSession:
 
         Every entry maps a window name to a JSON-safe
         ``limit`` / ``remaining`` / ``reset_epoch`` triple, so one
-        renderer handles both sources; only the window names differ,
-        because the two services meter differently.
+        renderer handles every source; only the window names differ,
+        because the services meter differently.
 
         Metron carries the live per-account state mokkari>=4 tracks from
         ``X-RateLimit-*`` response headers::
@@ -594,10 +639,18 @@ class OnlineSession:
         before this session issues a request. ``reset_epoch`` is when the
         window's oldest request ages out and frees the next slot.
 
+        VerseDB meters per account per hour, and reports the window its
+        shared client last saw in ``X-RateLimit-*``. It sends no reset
+        time, so ``reset_epoch`` is None; the 4,000-a-day cap of its free
+        tier has no header at all::
+
+            {"hour": {"limit": 300, "remaining": 287, "reset_epoch": None}}
+
         A source reports ``{}`` until it has data: for Metron that means
         no request has gone out yet in this process (no shared session,
         or no header seen); for Comic Vine, that no bucket file exists
-        yet or it could not be read.
+        yet or it could not be read; for VerseDB, that no shared client
+        has had a response yet.
         """
         statuses: dict[str, dict[str, Any]] = {name: {} for name in self._sources}
         if "metron" in statuses:
@@ -615,6 +668,12 @@ class OnlineSession:
 
             statuses["comicvine"] = shared_client_rate_limit_status(
                 self._settings.online
+            )
+        if "versedb" in statuses:
+            from comicbox.formats.versedb_api import online_source as versedb
+
+            statuses["versedb"] = versedb.shared_client_rate_limit_status(
+                self._credentials.versedb_key, self._credentials.versedb_url
             )
         return statuses
 
@@ -897,18 +956,12 @@ class OnlineSession:
 
     def _build_auth_sources(self) -> dict[str, OnlineSourceCredentials]:
         creds = self._credentials
-        result: dict[str, OnlineSourceCredentials] = {}
-        if "metron" in self._sources:
-            result["metron"] = OnlineSourceCredentials(
-                key=creds.metron_key,
-                url=creds.metron_url,
+        return {
+            source: OnlineSourceCredentials(
+                key=creds.key_for(source), url=creds.url_for(source)
             )
-        if "comicvine" in self._sources:
-            result["comicvine"] = OnlineSourceCredentials(
-                key=creds.comicvine_key,
-                url=creds.comicvine_url,
-            )
-        return result
+            for source in self._sources
+        }
 
     # -- validation ---------------------------------------------------------
 
@@ -938,11 +991,11 @@ class OnlineSession:
     def _validate_credentials(
         sources: tuple[str, ...], creds: OnlineCredentials
     ) -> None:
-        missing: list[str] = []
-        if "metron" in sources and not creds.metron_key:
-            missing.append("metron requires metron_key (API token)")
-        if "comicvine" in sources and not creds.comicvine_key:
-            missing.append("comicvine requires comicvine_key")
+        missing = [
+            f"{source} requires {_REQUIRED_CREDENTIAL[source]}"
+            for source in sources
+            if not creds.key_for(source)
+        ]
         if missing:
             msg = "Missing credentials for enabled online source(s):\n  " + "\n  ".join(
                 missing

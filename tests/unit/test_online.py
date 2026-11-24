@@ -109,7 +109,7 @@ def test_resolve_credentials_metron_token_follows_the_chain() -> None:
 
 def test_resolve_credentials_returns_all_sources() -> None:
     creds = resolve_credentials(config_creds={})
-    assert set(creds.keys()) == {"metron", "comicvine"}
+    assert set(creds.keys()) == {"metron", "comicvine", "versedb"}
     assert creds["metron"].key is None
     assert creds["comicvine"].key is None
 

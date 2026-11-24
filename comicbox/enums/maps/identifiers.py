@@ -24,6 +24,7 @@ ID_SOURCE_NAME_MAP: frozenbidict[IdSources, str] = frozenbidict(
         IdSources.MARVEL: "Marvel",
         IdSources.METRON: "Metron",
         IdSources.MYANIMELIST: "MyAnimeList",
+        IdSources.VERSEDB: "VerseDB",
         # GITNs
         IdSources.ASIN: "Amazon",
         IdSources.GTIN: "GTIN",
@@ -76,6 +77,7 @@ _ID_SOURCE_ALIASES: MappingProxyType[IdSources, frozenset[str]] = MappingProxyTy
         IdSources.MYANIMELIST: frozenset({"myanimelist.net"}),
         IdSources.PANELSYNDICATE: frozenset({"panelsyndicate.com"}),
         IdSources.UPC: frozenset({"barcodelookup.com", "go-upc.com"}),
+        IdSources.VERSEDB: frozenset({"versedb.com"}),
     }
 )
 

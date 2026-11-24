@@ -19,6 +19,10 @@ import pytest
 
 from comicbox.config import get_config
 from comicbox.formats.base.online import prompt
+from comicbox.formats.base.online.attribution import (
+    SourceAttribution,
+    source_attribution,
+)
 from comicbox.formats.base.online.profile import (
     ComicProfile,
 )
@@ -168,6 +172,28 @@ def test_build_lines_includes_the_action_menu() -> None:
         "  o. Session options ...",
         "  q. Abort entire run",
     ]
+
+
+def test_build_lines_credits_a_source_that_asks_for_it() -> None:
+    """VerseDB's terms want a linked credit by its data, even when terse."""
+    credit = source_attribution("versedb")
+    assert credit == SourceAttribution("Data from VerseDB", "https://versedb.com")
+    for terse in (False, True):
+        lines = prompt._build_lines(
+            ComicProfile(), [make_candidate()], None, terse=terse, attribution=credit
+        )
+        assert "  Data from VerseDB: https://versedb.com" in lines
+        # Under the candidates, above the menu.
+        assert lines.index("  Data from VerseDB: https://versedb.com") < lines.index(
+            "  s. Skip this file"
+        )
+
+
+def test_sources_that_ask_for_no_credit_get_none() -> None:
+    for name in ("metron", "comicvine", "nonesuch"):
+        assert source_attribution(name) is None
+    lines = prompt._build_lines(ComicProfile(), [make_candidate()], None, terse=True)
+    assert not [line for line in lines if "Data from" in line]
 
 
 def test_build_lines_terse_drops_aux_lines() -> None:

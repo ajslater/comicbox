@@ -38,7 +38,7 @@ class PdfDateTimeField(DateTimeField):
     @override
     def _serialize(
         self,
-        value: datetime,
+        value: Any,
         *args: Any,
         **kwargs: Any,
     ) -> str | float | datetime | None:

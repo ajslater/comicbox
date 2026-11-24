@@ -12,6 +12,7 @@ from rich.text import Text
 from comicbox._pdf import PAGE_FORMAT_VALUES
 from comicbox.config.formats import DEPRECATED_FORMAT_KEYS, KEEP_KEYWORD
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
+from comicbox.formats.base.online import SOURCE_NAMES
 
 _TABLE_ARGS = MappingProxyType(
     {
@@ -116,11 +117,19 @@ _MATCH_MODE_ROWS = (
 )
 
 # (name, required credentials, accepted --id forms, website) — derived
-# from each online format's REGISTRATION.cli_info.
+# from each online format's REGISTRATION.cli_info, listed in the default run
+# order rather than the masking order the registrations are kept in.
 _ONLINE_SOURCES_INFO = tuple(
-    (info.short_name, info.credentials, info.id_form, info.website)
-    for registration in FORMAT_REGISTRATIONS.values()
-    if (info := registration.cli_info) is not None
+    sorted(
+        (
+            (info.short_name, info.credentials, info.id_form, info.website)
+            for registration in FORMAT_REGISTRATIONS.values()
+            if (info := registration.cli_info) is not None
+        ),
+        key=lambda row: (
+            SOURCE_NAMES.index(row[0]) if row[0] in SOURCE_NAMES else len(SOURCE_NAMES)
+        ),
+    )
 )
 _MATCH_MODE_INTRO = Styled(
     """

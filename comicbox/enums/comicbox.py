@@ -50,6 +50,7 @@ class IdSources(Enum):
     # Comic DBs
     METRON = "metron"
     COMICVINE = "comicvine"
+    VERSEDB = "versedb"
     GCD = "grandcomicsdatabase"
     LCG = "leagueofcomicgeeks"
     MARVEL = "marvel"

@@ -92,6 +92,6 @@ class IssueField(StringField):
         return number, suffix
 
     @override
-    def _deserialize(self, value: str, *args: Any, **kwargs: Any) -> str:
+    def _deserialize(self, value: Any, *args: Any, **kwargs: Any) -> str:
         value = super()._deserialize(value, *args, **kwargs)
         return self.parse_issue(value)

@@ -1,0 +1,329 @@
+{
+  "data": {
+    "id": 1215061,
+    "slug": "absolute-batman-2024-24",
+    "series_id": 139382,
+    "issue_number": "24",
+    "name": null,
+    "solicitation": "WITHOUT THE BADGE...WITHOUT HER FATHER...ABSOLUTE BAT ENTERS THE SCENE. In the battle of self, of Batman versus Batman, there can be only one. Everyone Bruce has ever known, ever cared about, or ever loved will face their ultimate inner demons.",
+    "release_date": "2026-09-23",
+    "foc_date": "2026-08-31",
+    "cover_date": "2026-11-01",
+    "is_unreleased": false,
+    "cover_url": "https://media.versedb.com/uploads/issues/issue-1215061/issue-1215061-1791234273-cover_lg.webp",
+    "images": {
+      "thumb": "https://media.versedb.com/uploads/issues/issue-1215061/issue-1215061-1791234273-thumb.webp",
+      "cover_sm": "https://media.versedb.com/uploads/issues/issue-1215061/issue-1215061-1791234273-cover_sm.webp",
+      "cover_md": "https://media.versedb.com/uploads/issues/issue-1215061/issue-1215061-1791234273-cover_md.webp",
+      "cover_lg": "https://media.versedb.com/uploads/issues/issue-1215061/issue-1215061-1791234273-cover_lg.webp"
+    },
+    "is_reprint": false,
+    "content_rating_label": "15+",
+    "min_age": 15,
+    "is_nsfw": false,
+    "page_count": 32,
+    "price": "4.99",
+    "currency_code": "USD",
+    "formatted_price": "USD $4.99",
+    "isbn": null,
+    "upc": "76194138584602411",
+    "lunar_code": "0726DC0067",
+    "universal_code": null,
+    "diamond_code": null,
+    "ean": null,
+    "issn": null,
+    "is_anthology": false,
+    "is_tie_in": false,
+    "adapted_from": null,
+    "print_run": null,
+    "locations": null,
+    "sku": null,
+    "variant_count": 160,
+    "reads_count": 6,
+    "title": {
+      "id": 147627,
+      "name": "Absolute Batman",
+      "slug": "absolute-batman"
+    },
+    "series": {
+      "id": 139382,
+      "name": "Absolute Batman",
+      "slug": "absolute-batman",
+      "start_year": 2024,
+      "end_year": null,
+      "volume_number": 1,
+      "status": "Ongoing",
+      "publication_type": "regular_series",
+      "cached_issues_count": 27,
+      "medium": "comic",
+      "format": "Standard",
+      "content_rating_label": "15+",
+      "min_age": 15,
+      "is_nsfw": false,
+      "original_language": "en",
+      "language": "en",
+      "genres": [
+        {
+          "id": 1,
+          "name": "Superhero",
+          "slug": null
+        }
+      ],
+      "aliases": [],
+      "imprint": {
+        "id": 15,
+        "name": "Absolute Universe"
+      },
+      "foreign_edition_of": [],
+      "foreign_editions": [
+        {
+          "id": 157141,
+          "name": "Absolute Batman",
+          "slug": "absolute-batman-2025",
+          "language": "fr"
+        },
+        {
+          "id": 243748,
+          "name": "Absolute Batman",
+          "slug": "absolute-batman-2026",
+          "language": "ja"
+        },
+        {
+          "id": 243772,
+          "name": "Absolute Batman",
+          "slug": "absolute-batman-2025",
+          "language": "de"
+        },
+        {
+          "id": 243774,
+          "name": "Absolute Batman",
+          "slug": "absolute-batman-2025",
+          "language": "it"
+        },
+        {
+          "id": 243983,
+          "name": "Absolute Batman (Cartonato)",
+          "slug": "absolute-batman-cartonato-2026",
+          "language": "it"
+        },
+        {
+          "id": 243984,
+          "name": "Absolute Batman (TPB)",
+          "slug": "absolute-batman-tpb-2026",
+          "language": "ja"
+        },
+        {
+          "id": 243985,
+          "name": "Absolute Batman (Deluxe Edition)",
+          "slug": "absolute-batman-deluxe-edition-2026",
+          "language": "de"
+        }
+      ]
+    },
+    "publisher": {
+      "id": 2,
+      "name": "DC Comics",
+      "slug": "dc-comics"
+    },
+    "imprint": {
+      "id": 15,
+      "name": "Absolute Universe"
+    },
+    "awards": [],
+    "creators": [
+      {
+        "id": 5396,
+        "name": "Nick Dragotta",
+        "slug": "nick-dragotta",
+        "photo_url": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-full_lg.webp"
+        },
+        "role": "Cover Artist",
+        "sort_order": null
+      },
+      {
+        "id": 9534,
+        "name": "Frank Martin Jr.",
+        "slug": "frank-martin-jr",
+        "photo_url": "https://media.versedb.com/uploads/creators/frank-martin-jr-9534/frank-martin-jr-9534-fb35el-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/frank-martin-jr-9534/frank-martin-jr-9534-fb35el-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/frank-martin-jr-9534/frank-martin-jr-9534-fb35el-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/frank-martin-jr-9534/frank-martin-jr-9534-fb35el-full_lg.webp"
+        },
+        "role": "Colorist",
+        "sort_order": null
+      },
+      {
+        "id": 34897,
+        "name": "Tom Napolitano",
+        "slug": "tom-napolitano",
+        "photo_url": "https://media.versedb.com/uploads/creators/tom-napolitano-34897/tom-napolitano-34897-1ucpel9-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/tom-napolitano-34897/tom-napolitano-34897-1ucpel9-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/tom-napolitano-34897/tom-napolitano-34897-1ucpel9-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/tom-napolitano-34897/tom-napolitano-34897-1ucpel9-full_lg.webp"
+        },
+        "role": "Letterer",
+        "sort_order": null
+      },
+      {
+        "id": 5396,
+        "name": "Nick Dragotta",
+        "slug": "nick-dragotta",
+        "photo_url": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/nick-dragotta-5396/nick-dragotta-5396-1lgxukj-full_lg.webp"
+        },
+        "role": "Artist",
+        "sort_order": null
+      },
+      {
+        "id": 5388,
+        "name": "Scott Snyder",
+        "slug": "scott-snyder",
+        "photo_url": "https://media.versedb.com/uploads/creators/scott-snyder-5388/scott-snyder-5388-1oh3h03-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/scott-snyder-5388/scott-snyder-5388-1oh3h03-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/scott-snyder-5388/scott-snyder-5388-1oh3h03-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/scott-snyder-5388/scott-snyder-5388-1oh3h03-full_lg.webp"
+        },
+        "role": "Writer",
+        "sort_order": null
+      },
+      {
+        "id": 240,
+        "name": "Marie Javins",
+        "slug": "marie-javins",
+        "photo_url": "https://media.versedb.com/uploads/creators/marie-javins-240/marie-javins-240-15yoofi-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/creators/marie-javins-240/marie-javins-240-15yoofi-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/creators/marie-javins-240/marie-javins-240-15yoofi-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/creators/marie-javins-240/marie-javins-240-15yoofi-full_lg.webp"
+        },
+        "role": "Editor in Chief",
+        "sort_order": null
+      }
+    ],
+    "characters": [
+      {
+        "id": 184284,
+        "name": "Barbara Gordon (Earth Alpha)",
+        "slug": "barbara-gordon-earth-alpha",
+        "real_name": "Barbara Gordon",
+        "image_url": "https://media.versedb.com/uploads/characters/barbara-gordon-earth-alpha-184284/barbara-gordon-earth-alpha-184284-66mbuz-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/characters/barbara-gordon-earth-alpha-184284/barbara-gordon-earth-alpha-184284-66mbuz-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/barbara-gordon-earth-alpha-184284/barbara-gordon-earth-alpha-184284-66mbuz-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/barbara-gordon-earth-alpha-184284/barbara-gordon-earth-alpha-184284-66mbuz-full_lg.webp"
+        },
+        "sort_order": null
+      },
+      {
+        "id": 183157,
+        "name": "Alfred Pennyworth (Earth Alpha)",
+        "slug": "alfred-pennyworth-earth-alpha",
+        "real_name": null,
+        "image_url": "https://media.versedb.com/uploads/characters/alfred-pennyworth-earth-alpha-183157/alfred-pennyworth-earth-alpha-183157-1egi43f-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/characters/alfred-pennyworth-earth-alpha-183157/alfred-pennyworth-earth-alpha-183157-1egi43f-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/alfred-pennyworth-earth-alpha-183157/alfred-pennyworth-earth-alpha-183157-1egi43f-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/alfred-pennyworth-earth-alpha-183157/alfred-pennyworth-earth-alpha-183157-1egi43f-full_lg.webp"
+        },
+        "sort_order": null
+      },
+      {
+        "id": 183159,
+        "name": "Joker (Earth Alpha)",
+        "slug": "joker-earth-alpha",
+        "real_name": "Jack Grimm",
+        "image_url": "https://media.versedb.com/uploads/characters/joker-earth-alpha-183159/joker-earth-alpha-183159-2rusya-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/characters/joker-earth-alpha-183159/joker-earth-alpha-183159-2rusya-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/joker-earth-alpha-183159/joker-earth-alpha-183159-2rusya-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/joker-earth-alpha-183159/joker-earth-alpha-183159-2rusya-full_lg.webp"
+        },
+        "sort_order": null
+      },
+      {
+        "id": 183177,
+        "name": "Scarecrow (Earth Alpha)",
+        "slug": "scarecrow-earth-alpha",
+        "real_name": null,
+        "image_url": "https://media.versedb.com/uploads/characters/scarecrow-earth-alpha-183177/scarecrow-earth-alpha-183177-xvc7za-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/characters/scarecrow-earth-alpha-183177/scarecrow-earth-alpha-183177-xvc7za-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/scarecrow-earth-alpha-183177/scarecrow-earth-alpha-183177-xvc7za-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/scarecrow-earth-alpha-183177/scarecrow-earth-alpha-183177-xvc7za-full_lg.webp"
+        },
+        "sort_order": null
+      },
+      {
+        "id": 184309,
+        "name": "Martha Wayne (Earth Alpha)",
+        "slug": "martha-wayne-earth-alpha",
+        "real_name": null,
+        "image_url": null,
+        "images": null,
+        "sort_order": null
+      },
+      {
+        "id": 182881,
+        "name": "Batman (Earth Alpha)",
+        "slug": "batman-earth-alpha",
+        "real_name": null,
+        "image_url": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-profile_md.webp",
+        "images": {
+          "tile_sm": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-full_lg.webp"
+        },
+        "sort_order": null
+      }
+    ],
+    "teams": [],
+    "story_arcs": [],
+    "universes": [
+      {
+        "id": 43,
+        "name": "Absolute Universe (Earth-Alpha)"
+      }
+    ],
+    "comic_events": [],
+    "key_issue_reasons": [
+      {
+        "id": 241725,
+        "name": "Origin of Absolute Batman",
+        "category": "story",
+        "notes": null
+      }
+    ],
+    "availabilities": [
+      {
+        "id": 27372,
+        "provider": "amazon",
+        "provider_label": "Amazon",
+        "kind": "buy",
+        "store_name": "Amazon",
+        "custom_name": null,
+        "display_name": "Amazon",
+        "store_logo": "/images/brands/amazon.webp",
+        "url": "https://us.amazon.com/Absolute-Batman-2024-Scott-Snyder-ebook/dp/B0HH1MBQCJ",
+        "external_id": "B0HH1MBQCJ",
+        "price": null,
+        "formatted_price": null,
+        "currency": "USD",
+        "is_digital": true,
+        "is_affiliate": true,
+        "is_synthesized": false,
+        "verified_at": "2026-11-17T23:57:40+00:00"
+      }
+    ],
+    "name_i18n": {}
+  }
+}

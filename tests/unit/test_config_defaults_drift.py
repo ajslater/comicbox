@@ -90,7 +90,7 @@ _KNOWN_DIVERGENCES = {
     ),
     "online.auth": (
         "Structural, not a value difference: the YAML nests one block "
-        "per source (metron:, comicvine:), the dataclass holds a single "
+        "per source (metron:, comicvine:, versedb:), the dataclass holds a single "
         "OnlineAuthSettings.sources mapping keyed by source name. "
         "test_no_credentials_are_defaulted_in_yaml covers the leaves."
     ),
@@ -251,6 +251,13 @@ def test_no_credentials_are_defaulted_in_yaml() -> None:
                 f"online.auth.{source}.{key} ships a non-null default "
                 f"({value!r}). Credentials must never have one."
             )
+
+
+def test_the_yaml_has_an_auth_block_for_every_source() -> None:
+    """The walk skips online.auth, so a source missing from it would go unseen."""
+    from comicbox.formats.base.online import SOURCE_NAMES
+
+    assert set(_load_yaml_defaults()["online"]["auth"]) == set(SOURCE_NAMES)
 
 
 def test_divergence_exceptions_are_not_stale() -> None:

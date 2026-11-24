@@ -30,6 +30,7 @@ from comicbox.formats.metron_api import REGISTRATION as _METRON_API_REGISTRATION
 from comicbox.formats.metron_info import REGISTRATION as _METRON_INFO_REGISTRATION
 from comicbox.formats.pdf import PDF_REGISTRATION as _PDF_REGISTRATION
 from comicbox.formats.pdf import PDF_XML_REGISTRATION as _PDF_XML_REGISTRATION
+from comicbox.formats.versedb_api import REGISTRATION as _VERSEDB_API_REGISTRATION
 
 
 class MetadataFormats(Enum):
@@ -44,6 +45,7 @@ class MetadataFormats(Enum):
     COMIC_BOOK_INFO = _COMIC_BOOK_INFO_REGISTRATION.format
     COMIC_INFO = _COMIC_INFO_REGISTRATION.format
     METRON_INFO = _METRON_INFO_REGISTRATION.format
+    VERSEDB_API = _VERSEDB_API_REGISTRATION.format
     METRON_API = _METRON_API_REGISTRATION.format
     COMICVINE_API = _COMICVINE_API_REGISTRATION.format
     COMICBOX_YAML = _COMICBOX_YAML_REGISTRATION.format
@@ -63,6 +65,7 @@ FORMAT_REGISTRATIONS: MappingProxyType[MetadataFormats, FormatRegistration] = (
             MetadataFormats.COMIC_BOOK_INFO: _COMIC_BOOK_INFO_REGISTRATION,
             MetadataFormats.COMIC_INFO: _COMIC_INFO_REGISTRATION,
             MetadataFormats.METRON_INFO: _METRON_INFO_REGISTRATION,
+            MetadataFormats.VERSEDB_API: _VERSEDB_API_REGISTRATION,
             MetadataFormats.METRON_API: _METRON_API_REGISTRATION,
             MetadataFormats.COMICVINE_API: _COMICVINE_API_REGISTRATION,
             MetadataFormats.COMICBOX_YAML: _COMICBOX_YAML_REGISTRATION,

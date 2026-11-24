@@ -79,8 +79,10 @@ class ReadSettings:
 
     formats: "frozenset[MetadataFormats]" = field(default_factory=frozenset)
     except_formats: frozenset[str] | None = None  # YAML key: "except"
-    # Merge precedence (None = ``MetadataSources`` enum order). Expert
-    # knob; YAML-only.
+    # Merge precedence, later wins. None = ``MetadataSources`` enum order
+    # with the online sources ranked by ``online.lookup.sources``, the
+    # first listed winning. Set, it is the whole order and the source
+    # selection does not change it. Expert knob; YAML-only.
     merge_order: "tuple[MetadataSources, ...] | None" = None
 
 

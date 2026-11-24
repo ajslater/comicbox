@@ -181,10 +181,10 @@ WRITE_METADATA = create_write_metadata(READ_METADATA, notes=METRON_NOTES)
 READ_METRON_DICT = MappingProxyType(
     {
         MetronInfoSchema.ROOT_TAG: {
-            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2",
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.3",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.3 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.3/MetronInfo.xsd",
             "AgeRating": "Teen Plus",
             "AlternativeNumber": "2",
             "Arcs": {
@@ -291,7 +291,7 @@ SIMPLE_READ_METRON_DICT = MappingProxyType(
         MetronInfoSchema.ROOT_TAG: {
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.3",
             "AgeRating": "Teen Plus",
             "AlternativeNumber": "2",
             "Arcs": {
@@ -485,10 +485,10 @@ URL_PRIMARY_READ_METADATA = MappingProxyType(
 URL_PRIMARY_READ_METRON_DICT = MappingProxyType(
     {
         MetronInfoSchema.ROOT_TAG: {
-            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2",
+            "@xmlns:metroninfo": "https://metron-project.github.io/docs/metroninfo/schemas/v1.3",
             "@xmlns:xsd": "http://www.w3.org/2001/XMLSchema",
             "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance",
-            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.2 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/schema/v1.2/MetronInfo.xsd",
+            "@xsi:schemaLocation": "https://metron-project.github.io/docs/metroninfo/schemas/v1.3 https://raw.githubusercontent.com/Metron-Project/metroninfo/refs/heads/master/drafts/v1.3/MetronInfo.xsd",
             "URLs": {
                 "URL": [
                     {"#text": "https://barcodelookup.com/12345"},

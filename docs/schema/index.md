@@ -38,13 +38,13 @@ values.
 | Archive       | comicinfo.xml |
 | Import/Export | comicinfo.xml |
 
-## MetronInfo Schema v1.2
+## MetronInfo Schema v1.3 Draft
 
 The
 [MetronInfo Schema](https://metron-project.github.io/docs/category/metroninfo)
 is a new XML schema for comic book metadata, which hopes to improve some of the
 deficiencies that exist with the ComicInfo.xml schema
-([field reference](MetronInfo-v1.2.xsd.md)).
+([field reference](MetronInfo-v1.3.xsd.md)).
 
 | Location      | Name           |
 | ------------- | -------------- |
@@ -103,7 +103,7 @@ MetronInfo, ComicInfo LanguageISO and CoMet language are written with the full
 tag. ComicBookInfo stores a language name, so it gets the primary language's
 name: `pt-BR` is written as `Portuguese`.
 
-MetronInfo.xml written by comicbox declares the v1.2 schema. A file with a
+MetronInfo.xml written by comicbox declares the v1.3 draft schema. A file with a
 region or script subtag in a language is not valid v1.1.
 
 ### Metron Series EndYear, Status and Summary
@@ -118,6 +118,13 @@ It also adds two rules: EndYear can't precede StartYear, and an Ongoing series
 has no EndYear. Metadata merged from several sources can break either, so
 comicbox leaves EndYear out of the MetronInfo.xml it writes, with a warning that
 says why, and keeps the end year in comicbox.json and comicbox.yaml.
+
+### Metron ID Sources
+
+The v1.3 draft adds VerseDB to the sources an ID may name, so comicbox writes a
+VerseDB id to IDS as `<ID source="VerseDB">`, beside its link in URLs. A file
+with a VerseDB id is not valid v1.2. Marvel ids, which the schema has listed
+since v1.0, are read and written there too.
 
 ### ComicBookInfo Schema v1.0 (Comic Book Lover)
 

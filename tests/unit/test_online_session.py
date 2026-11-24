@@ -4,43 +4,26 @@ from __future__ import annotations
 
 from dataclasses import replace
 from pathlib import Path
-from types import MappingProxyType
-from typing import TYPE_CHECKING
 
 import pytest
 
-from comicbox.box import Comicbox
-from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.config import get_config
 from comicbox.config.online.settings import Effort, MatchMode, Prompts
-from comicbox.formats import MetadataFormats
-from comicbox.formats.sources import MetadataSources
 from comicbox.online_session import (
     OnlineConfigurationError,
     OnlineCredentials,
     OnlinePrompt,
     OnlineSession,
     PromptResponse,
+    SourceAttribution,
+    source_attribution,
 )
-from tests.util.online_matcher import make_candidate
-
-if TYPE_CHECKING:
-    from comicbox.formats.base.online.profile import Candidate
+from tests.util.online_session import SkipHandler
 
 VALID_METRON = OnlineCredentials(metron_key="k")
 VALID_COMICVINE = OnlineCredentials(comicvine_key="k")
 VALID_BOTH = OnlineCredentials(metron_key="k", comicvine_key="k")
-
-
-class _SkipHandler:
-    """Answers every prompt with skip and keeps what it was asked."""
-
-    def __init__(self) -> None:
-        self.prompts: list[OnlinePrompt] = []
-
-    def request(self, prompt: OnlinePrompt) -> PromptResponse:
-        self.prompts.append(prompt)
-        return PromptResponse(action="skip")
+VALID_VERSEDB = OnlineCredentials(versedb_key="versedb-token")
 
 
 # --- validation ---------------------------------------------------------------
@@ -101,7 +84,7 @@ def test_accepts_ask_match_with_a_prompt_handler() -> None:
         sources={"metron"},
         credentials=VALID_METRON,
         match=MatchMode.ASK,
-        prompt_handler=_SkipHandler(),
+        prompt_handler=SkipHandler(),
     )
     assert session.match is MatchMode.ASK
 
@@ -192,7 +175,7 @@ def test_set_match_ask_needs_a_prompt_resolver() -> None:
 
 def test_set_match_ask_accepted_with_a_prompt_handler() -> None:
     session = OnlineSession(
-        sources={"metron"}, credentials=VALID_METRON, prompt_handler=_SkipHandler()
+        sources={"metron"}, credentials=VALID_METRON, prompt_handler=SkipHandler()
     )
     session.set_match(MatchMode.ASK)
     assert _live_lookup(session).match is MatchMode.ASK
@@ -361,71 +344,6 @@ def test_retry_sleep_wait_passes_when_not_cancelled() -> None:
     session._retry_sleep_wait(0.001)  # waits out the delay, no exception
 
 
-# --- session-level prompt actions ----------------------------------------------
-#
-# The box applies these to the OnlineSessionState the session shares with
-# it, so these go through the box's real `_apply_session_action` rather
-# than a session-side mirror of it.
-
-
-def _apply_via_box(
-    session: OnlineSession, action: str, payload: int | str | None
-) -> bool:
-    """Run one selector action through the box that the session would spawn."""
-    cb = Comicbox(config=session._settings)
-    cb.set_online_session_state(session._state)
-    return cb._apply_session_action("metron", action, payload)
-
-
-def test_set_policy_via_handler_persists_across_files() -> None:
-    """A handler's set_policy must outlive the in-flight file."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_policy", "eager") is True
-    assert session.match is MatchMode.EAGER
-
-
-def test_set_prompts_via_handler_persists_across_files() -> None:
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_prompts", "never") is True
-    assert session.prompts is Prompts.NEVER
-
-
-def test_set_prompts_via_handler_is_reversible() -> None:
-    """The action names its new value, so it goes back the way it came."""
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID_METRON, prompts=Prompts.NEVER
-    )
-    assert _apply_via_box(session, "set_prompts", "ask") is True
-    assert session.prompts is Prompts.ASK
-
-
-def test_set_policy_ask_persists() -> None:
-    """ASK sticks when a selector asks for it, even where set_match would refuse."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_policy", "ask") is True
-    assert session.match is MatchMode.ASK
-    with pytest.raises(OnlineConfigurationError):
-        session.set_match(MatchMode.ASK)
-
-
-def test_malformed_set_policy_declines_and_leaves_match() -> None:
-    """Bad payloads are declined, loudly, and don't move the session."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_policy", "bogus") is False
-    assert session.match is MatchMode.AUTO
-    assert _apply_via_box(session, "set_policy", 7) is False
-    assert session.match is MatchMode.AUTO
-
-
-def test_malformed_set_prompts_declines_and_leaves_prompts() -> None:
-    """set_prompts validates its payload the same way set_policy does."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    assert _apply_via_box(session, "set_prompts", "bogus") is False
-    assert session.prompts is Prompts.ASK
-    assert _apply_via_box(session, "set_prompts", None) is False
-    assert session.prompts is Prompts.ASK
-
-
 # --- prompt-handler bridging --------------------------------------------------
 
 
@@ -461,98 +379,6 @@ def test_batched_prompt_handler_protocol_recognized() -> None:
     OnlineSession(sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler)
 
 
-# --- matched contract ----------------------------------------------------------
-
-
-class _FakeBox:
-    """Stand-in for Comicbox recording the wiring _run_one performs."""
-
-    last: _FakeBox | None = None
-
-    def __init__(self, path, config=None) -> None:
-        self.selector = None
-        self.session_state = None
-        self.cluster_size = None
-        self.won = type(self).next_won
-        type(self).last = self
-
-    next_won = False
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-    def set_online_selector(self, selector) -> None:
-        self.selector = selector
-
-    def set_event_handler(self, handler) -> None:
-        pass
-
-    def set_series_cache(self, cache) -> None:
-        pass
-
-    def set_series_cluster_size(self, size) -> None:
-        self.cluster_size = size
-
-    def set_retry_sleep(self, sleep) -> None:
-        pass
-
-    def set_online_session_state(self, state) -> None:
-        self.session_state = state
-
-    def run_online_lookup(self) -> bool:
-        return self.won
-
-    def to_dict(self) -> dict:
-        return {"comicbox": {"series": "Existing Series"}}
-
-
-@pytest.fixture
-def fake_box(monkeypatch):
-    import comicbox.online_session as mod
-
-    monkeypatch.setattr(mod, "Comicbox", _FakeBox)
-    _FakeBox.last = None
-    _FakeBox.next_won = False
-    return _FakeBox
-
-
-def test_box_shares_the_session_state(tmp_path, fake_box) -> None:
-    """The box gets the session's own state object, not a copy of it."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    session.tag(tmp_path / "f.cbz")
-    assert fake_box.last.session_state is session._state
-
-
-def test_unmatched_lookup_yields_matched_false(tmp_path, fake_box) -> None:
-    """A lookup that applied nothing still carries tags but matched=False."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    result = session.tag(tmp_path / "f.cbz")
-    assert result.error is None
-    assert result.tags  # merged existing metadata is still returned
-    assert result.matched is False
-
-
-def test_matched_lookup_yields_matched_true(tmp_path, fake_box) -> None:
-    fake_box.next_won = True
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    result = session.tag(tmp_path / "f.cbz")
-    assert result.matched is True
-
-
-def test_preloaded_resolution_installs_selector(tmp_path, fake_box) -> None:
-    """A preload-only replay session (no handler, defer off) bridges the selector."""
-    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
-    session.tag(tmp_path / "f.cbz")
-    assert fake_box.last is not None
-    assert fake_box.last.selector is None  # nothing to consult — not installed
-    session.preload_resolution("metron|x|2026||(1,)", action="manual", payload="m:1")
-    session.tag(tmp_path / "f.cbz")
-    assert fake_box.last.selector is not None  # cache non-empty — installed
-
-
 # --- rate-limit status stub ---------------------------------------------------
 
 
@@ -563,124 +389,105 @@ def test_rate_limit_status_stub_returns_known_sources() -> None:
     assert set(status) == {"metron"}
 
 
-# --- ASK through the matcher ---------------------------------------------------
-#
-# A real box and matcher over a fake Metron whose one candidate is a sure
-# thing. AUTO writes it unasked; ASK makes it the handler's call.
-
-_PROFILE_METADATA = MappingProxyType(
-    {
-        "comicbox": {
-            "series": {"name": "Foo Comics"},
-            "issue": {"name": "5"},
-            "date": {"year": 2020},
-            "publisher": {"name": "Quality Comics"},
-            "page_count": 24,
-        }
-    }
-)
+# --- VerseDB ------------------------------------------------------------------
 
 
-class _ConfidentMetron:
-    """Fake source whose single candidate matches the profile exactly."""
-
-    name = "metron"
-    metadata_source = MetadataSources.METRON_API
-    metadata_format = MetadataFormats.METRON_API
-
-    def __init__(self, credentials, settings) -> None:
-        self.get_calls: list[int] = []
-
-    def is_configured(self) -> bool:
-        return True
-
-    def get(self, issue_id: int) -> dict:
-        self.get_calls.append(issue_id)
-        return {
-            "id": issue_id,
-            "number": "5",
-            "cover_date": "2020-04-01",
-            "modified": "2020-04-02T12:00:00Z",
-            "publisher": {"id": 1, "name": "Quality Comics"},
-            "series": {"id": 1, "name": "Foo Comics", "year_began": 2020, "volume": 1},
-        }
-
-    def search(self, profile) -> list[Candidate]:
-        return [make_candidate(issue_id=101)]
-
-    def enrich_prompt_candidates(self, candidates) -> tuple[Candidate, ...]:
-        return tuple(candidates)
+def test_versedb_is_a_known_source() -> None:
+    session = OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB)
+    assert session.rate_limit_status() == {"versedb": {}}
 
 
-@pytest.fixture
-def confident_metron(monkeypatch) -> list[_ConfidentMetron]:
-    instances: list[_ConfidentMetron] = []
-
-    def factory(creds, settings):
-        src = _ConfidentMetron(creds, settings)
-        instances.append(src)
-        return src
-
-    monkeypatch.setattr(
-        ComicboxOnlineLookup,
-        "_ONLINE_SOURCE_FACTORIES",
-        MappingProxyType({"metron": factory}),
-    )
-
-    # The session opens a box on its file; hand the box the profile as
-    # supplied metadata instead, so no archive is needed.
-    def pathless_box(path, config):
-        general = replace(config.general, metadata=_PROFILE_METADATA)
-        return Comicbox(config=replace(config, general=general))
-
-    monkeypatch.setattr("comicbox.online_session.Comicbox", pathless_box)
-    return instances
+def test_rejects_versedb_without_a_token() -> None:
+    with pytest.raises(OnlineConfigurationError, match="versedb requires versedb_key"):
+        OnlineSession(sources=("versedb",), credentials=VALID_METRON)
 
 
-def test_auto_writes_a_confident_match_unasked(tmp_path, confident_metron) -> None:
-    handler = _SkipHandler()
-    session = OnlineSession(
-        sources={"metron"}, credentials=VALID_METRON, prompt_handler=handler
-    )
-    result = session.tag(tmp_path / "f.cbz")
-    assert result.error is None
-    assert result.matched is True
-    assert confident_metron[0].get_calls == [101]
-    assert handler.prompts == []
+def test_the_default_sources_do_not_need_a_versedb_token() -> None:
+    """Existing callers name no VerseDB token and must keep validating."""
+    OnlineSession(credentials=VALID_BOTH)
 
 
-def test_ask_prompts_a_confident_match_through_the_handler(
-    tmp_path, confident_metron
+def test_versedb_credentials_propagate_into_settings() -> None:
+    creds = OnlineCredentials(versedb_key="versedb-token", versedb_url="https://v")
+    cfg = OnlineSession(sources=("versedb",), credentials=creds)._build_config()
+    v = cfg.online.auth.sources["versedb"]
+    assert (v.key, v.url) == ("versedb-token", "https://v")
+    assert set(cfg.online.auth.sources) == {"versedb"}
+
+
+def test_versedb_rate_limit_status_reads_the_shared_client(
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Under ASK the sure thing is the handler's call, not the matcher's."""
-    handler = _SkipHandler()
-    session = OnlineSession(
-        sources={"metron"},
-        credentials=VALID_METRON,
-        match=MatchMode.ASK,
-        prompt_handler=handler,
-    )
-    result = session.tag(tmp_path / "f.cbz")
-    assert result.error is None
-    assert result.matched is False
-    assert confident_metron[0].get_calls == []
-    (prompt,) = handler.prompts
-    assert prompt.match is MatchMode.ASK
-    assert [c.issue_id for c in prompt.candidates] == [101]
+    from comicbox.formats.versedb_api import online_source as versedb
+
+    window = {"hour": {"limit": 300, "remaining": 12, "reset_epoch": None}}
+    calls: list[tuple] = []
+
+    def status(token: str | None, base_url: str | None = None) -> dict:
+        calls.append((token, base_url))
+        return window
+
+    monkeypatch.setattr(versedb, "shared_client_rate_limit_status", status)
+    session = OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB)
+    assert session.rate_limit_status() == {"versedb": window}
+    assert calls == [("versedb-token", None)]
 
 
-def test_ask_defers_a_confident_match(tmp_path, confident_metron) -> None:
-    """With deferred prompts, ASK queues the sure thing for review instead."""
-    session = OnlineSession(
-        sources={"metron"},
-        credentials=VALID_METRON,
-        match=MatchMode.ASK,
-        defer_prompts=True,
+def test_close_releases_versedb_too(monkeypatch: pytest.MonkeyPatch) -> None:
+    from comicbox.formats.versedb_api import online_source as versedb
+
+    closed: list[bool] = []
+    monkeypatch.setattr(versedb, "close_shared_sessions", lambda: closed.append(True))
+    OnlineSession(sources=("versedb",), credentials=VALID_VERSEDB).close()
+    assert closed == [True]
+
+
+def test_source_attribution_for_a_frontend() -> None:
+    """Codex looks the credit up by the name `OnlinePrompt.source` carries."""
+    credit = source_attribution("versedb")
+    assert credit == SourceAttribution(
+        text="Data from VerseDB", url="https://versedb.com"
     )
-    result = session.tag(tmp_path / "f.cbz")
-    assert result.error is None
-    assert result.matched is False
-    assert confident_metron[0].get_calls == []
-    (deferred,) = session.deferred_prompts()
-    assert deferred.match is MatchMode.ASK
-    assert [c.issue_id for c in deferred.candidates] == [101]
+    assert source_attribution("metron") is None
+    assert source_attribution("comicvine") is None
+
+
+def test_a_pinned_versedb_id_tags_a_comic_end_to_end(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    The whole stack on a recorded response: one request, the id and its link.
+
+    The real SDK parses the response, the transform maps it and the merge
+    lays it over the comic's own tags, with no ResourceWarning on close.
+    """
+    import shutil
+    import warnings
+
+    from comicbox.formats.versedb_api.online_source import VerseDBOnlineSource
+    from tests.util.versedb_transport import VerseDBTransport
+
+    transport = VerseDBTransport()
+    monkeypatch.setattr(VerseDBOnlineSource, "http_transport", transport.transport)
+    comic = tmp_path / "comic.cbz"
+    shutil.copy(Path("tests/files/Captain Science #001.cbz"), comic)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always", ResourceWarning)
+        with OnlineSession(
+            sources=("versedb",),
+            ids={"versedb": 1215061},
+            credentials=VALID_VERSEDB,
+            prompts=Prompts.NEVER,
+        ) as session:
+            result = session.tag(comic)
+            budget = session.rate_limit_status()
+    assert (result.matched, result.error) == (True, None)
+    assert transport.paths == ["/api/v1/issues/1215061"]
+    tags = result.tags or {}
+    assert tags["identifiers"]["versedb"] == {"key": "1215061"}
+    assert "https://versedb.com/issue/1215061/absolute-batman-2024-24" in tags["urls"]
+    assert tags["series"]["name"] == "Absolute Batman"
+    assert budget == {
+        "versedb": {"hour": {"limit": 300, "remaining": 299, "reset_epoch": None}}
+    }
+    assert not [w for w in caught if issubclass(w.category, ResourceWarning)]

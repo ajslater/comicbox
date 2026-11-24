@@ -285,6 +285,7 @@
             <xs:enumeration value="Metron" />
             <xs:enumeration value="MyAnimeList" />
             <xs:enumeration value="League of Comic Geeks" />
+            <xs:enumeration value="VerseDB" />
         </xs:restriction>
     </xs:simpleType>
 
