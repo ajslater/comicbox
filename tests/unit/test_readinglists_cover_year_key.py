@@ -89,7 +89,7 @@ def _list(*entries: dict[str, Any]) -> dict[str, Any]:
             _entry(start_year=2016, year=2016, comicvine="9"),
             (
                 ("id", "comicvine", "9"),
-                ("name", "batman", 2016, Decimal(1), ""),
+                ("name", "batman", "year", 2016, Decimal(1), ""),
                 ("name-year", "batman", 2016, Decimal(1), ""),
             ),
         ),

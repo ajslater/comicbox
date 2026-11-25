@@ -15,7 +15,9 @@ with a start year, volume or cover year, cannot be matched, so it is never
 joined with another, not even with itself in a copy of its list: combining
 such a list with itself gives that entry twice. A join on the series, issue
 and cover year alone, the weakest key, is reported with the name joins, and
-never brings together rows whose series years differ.
+never brings together rows whose series years differ. Nor does a join on
+the series, volume number and issue: X-Men (1963) and X-Men (1991) volume 1
+stay apart.
 """
 
 from collections import Counter, defaultdict

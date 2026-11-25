@@ -351,3 +351,47 @@ def test_worker_warnings_honour_quiet(
     # Once: looking for unreadable tag files must not warn of them again.
     assert loud.count("Unable to load") == 1
     assert "Unable to load" not in quiet
+
+
+def test_a_missing_entry_shows_the_comics_it_refused(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """Another volume of one cover year, and one name off by its cover year."""
+    reading_list = tmp_path / "batman.yaml"
+    reading_list.write_text(
+        """reading_list:
+  name: Batman
+  entries:
+    - series: {name: Batman, start_year: 2016}
+      issue: {name: '1'}
+      date: {cover_date: 2016-06-01}
+    - series: {name: Batman, start_year: 2011}
+      issue: {name: '2'}
+      date: {cover_date: 2011-12-01}
+"""
+    )
+    comics = tmp_path / "comics"
+    make_comic(
+        comics / "b2011-1.cbz",
+        series="Batman",
+        number="1",
+        start_year=2011,
+        cover_date="2016-06-01",
+    )
+    make_comic(
+        comics / "b2011-2.cbz",
+        series="Batman",
+        number="2",
+        start_year=2011,
+        cover_date="2015-01-01",
+    )
+
+    code, out, err = rl_run(capsys, "match", str(reading_list), str(comics))
+
+    assert code == 0
+    rows = [" ".join(line.split()) for line in out.splitlines()]
+    first = rows.index("1 Batman 2016 1 missing")
+    assert rows[first + 1] == "b2011-1.cbz (other-volume) refused"
+    second = rows.index("2 Batman 2011 2 missing")
+    assert rows[second + 1] == "b2011-2.cbz (cover-year) refused"
+    assert "0 of 2 entries found in 2 comics; 2 missing." in err
