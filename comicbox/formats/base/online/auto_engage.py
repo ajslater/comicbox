@@ -63,7 +63,7 @@ if TYPE_CHECKING:
 # call covers every candidate series.
 #
 # Rationale:
-# - ComicVine: at ~10 calls/comic under `balanced` (post-Watchmen fixes),
+# - ComicVine: at ~10 calls/comic under `balanced` (post-Wardens fixes),
 #   200/hr → ~20 comics/hr. Threshold 50 ≈ 2.5 hours of waiting; a
 #   tolerable upper bound on attended use.
 _UNATTENDED_THRESHOLDS: Final[MappingProxyType[str, int]] = MappingProxyType(

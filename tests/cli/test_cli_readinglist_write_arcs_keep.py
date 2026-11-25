@@ -36,7 +36,7 @@ def test_each_comic_names_the_tag_files_w_removes(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=(MI,),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
@@ -46,24 +46,28 @@ def test_each_comic_names_the_tag_files_w_removes(
         capsys, "-w", "cix", str(reading_list), str(path.parent), apply=True
     )
 
-    assert "cw1.cbz would add 'Civil War' #1; would remove MetronInfo.xml" in flat(dry)
+    assert "cw1.cbz would add 'Crimson Tide' #1; would remove MetronInfo.xml" in flat(
+        dry
+    )
     assert "1 comic would lose a tag file." in dry_err
     assert dry_err.endswith("Add keep to -w to keep them: -w cix,keep.")
     assert code == 0
-    assert "cw1.cbz added 'Civil War' #1; removed MetronInfo.xml" in flat(out)
+    assert "cw1.cbz added 'Crimson Tide' #1; removed MetronInfo.xml" in flat(out)
     assert "1 comic lost a tag file." in err
     assert "Add keep" not in err
     assert tag_files(path) == ["ComicInfo.xml"]
 
 
 def _one_comic_per_format(comics: Path) -> list[Path]:
-    """Make Civil War #1, #2 and #7 in comicbox.json, MetronInfo, and both XMLs."""
+    """Make Crimson Tide #1, #2 and #7 in comicbox.json, MetronInfo, and both XMLs."""
     return [
-        make_comic(comics / "cw1.cbz", series="Civil War", number="1", start_year=2006),
+        make_comic(
+            comics / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006
+        ),
         make_comic(
             comics / "cw2.cbz",
             formats=(MI,),
-            series="Civil War",
+            series="Crimson Tide",
             number="2",
             start_year=2006,
             arcs={"Other": 3},
@@ -71,7 +75,7 @@ def _one_comic_per_format(comics: Path) -> list[Path]:
         make_comic(
             comics / "cw7.cbz",
             formats=(CIX, MI),
-            series="Civil War",
+            series="Crimson Tide",
             number="7",
             start_year=2006,
             volume=2006,
@@ -80,12 +84,12 @@ def _one_comic_per_format(comics: Path) -> list[Path]:
 
 
 def _what_the_write_leaves(path: Path) -> tuple[set[str], dict[str, Any]]:
-    """Get a comic's tag files and tags, but ComicInfo.xml and the Civil War arc."""
+    """Get a comic's tag files and tags, but ComicInfo.xml and the Crimson Tide arc."""
     tags = read_tags(path)
     others = {
         name: arc
         for name, arc in (tags.pop("arcs", None) or {}).items()
-        if name != "Civil War"
+        if name != "Crimson Tide"
     }
     files = set(tag_files(path)) - {"ComicInfo.xml"}
     return files, ({**tags, "arcs": others} if others else tags)
@@ -112,7 +116,7 @@ def test_the_suggested_w_loses_nothing(
     for path in paths:
         # ComicInfo and the arc are added, and nothing the comic had is gone.
         assert "ComicInfo.xml" in tag_files(path)
-        assert "Civil War" in read_tags(path)["arcs"]
+        assert "Crimson Tide" in read_tags(path)["arcs"]
         assert _what_the_write_leaves(path) == before[path]
 
 
@@ -123,7 +127,7 @@ def test_keep_keeps_a_format_w_cannot_name(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=(JSON, "COMIC_BOOK_INFO"),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
@@ -139,9 +143,9 @@ def test_keep_keeps_a_format_w_cannot_name(
     assert "remove" not in out
     with zipfile.ZipFile(path) as archive:
         assert json.loads(archive.comment)["ComicBookInfo/1.0"]["series"] == (
-            "Civil War"
+            "Crimson Tide"
         )
-    assert read_tags(path)["arcs"] == {"Civil War": {"number": 1}}
+    assert read_tags(path)["arcs"] == {"Crimson Tide": {"number": 1}}
 
 
 def test_w_keep_writes_each_comic_in_its_own_formats(
@@ -151,14 +155,14 @@ def test_w_keep_writes_each_comic_in_its_own_formats(
     metron = make_comic(
         comics / "cw1.cbz",
         formats=(MI,),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
     both = make_comic(
         comics / "cw2.cbz",
         formats=(CIX, MI),
-        series="Civil War",
+        series="Crimson Tide",
         number="2",
         start_year=2006,
         volume=2006,
@@ -174,8 +178,8 @@ def test_w_keep_writes_each_comic_in_its_own_formats(
     assert "remove" not in out
     assert tag_files(metron) == ["MetronInfo.xml"]
     assert tag_files(both) == ["ComicInfo.xml", "MetronInfo.xml"]
-    assert read_tags(metron)["arcs"] == {"Civil War": {"number": 1}}
-    assert read_tags(both)["arcs"] == {"Civil War": {"number": 2}}
+    assert read_tags(metron)["arcs"] == {"Crimson Tide": {"number": 1}}
+    assert read_tags(both)["arcs"] == {"Crimson Tide": {"number": 2}}
 
 
 def test_w_keep_does_not_write_a_comic_with_no_format_that_holds_the_arc(
@@ -184,7 +188,7 @@ def test_w_keep_does_not_write_a_comic_with_no_format_that_holds_the_arc(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=("COMIC_BOOK_INFO",),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         volume=2006,
     )

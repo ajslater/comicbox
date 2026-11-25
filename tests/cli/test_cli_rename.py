@@ -74,7 +74,7 @@ def test_cli_action_rename_colon() -> None:
         (
             "comicbox",
             "-m",
-            "series: 'Batman: Year One'",
+            "series: 'Bladehawk: Year One'",
             "--rename",
             str(TMP_PATH),
         )
@@ -84,6 +84,6 @@ def test_cli_action_rename_colon() -> None:
     assert len(list_dir) == 1
     name = list_dir[0].name
     assert ":" not in name
-    assert name.startswith("Batman Year One ")
+    assert name.startswith("Bladehawk Year One ")
     assert name.endswith(".cbz")
     _cleanup()

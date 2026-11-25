@@ -66,19 +66,19 @@
       "average_rating": 5,
       "series": {
         "id": 139382,
-        "name": "Absolute Batman",
-        "slug": "absolute-batman",
+        "name": "Absolute Bladehawk",
+        "slug": "absolute-bladehawk",
         "start_year": 2024,
         "end_year": null,
         "volume_number": 1,
         "publication_type": "regular_series",
         "format": "Standard",
         "cached_issues_count": 27,
-        "cover_url": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp",
+        "cover_url": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_lg.webp",
         "images": {
-          "cover_sm": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_sm.webp",
-          "cover_md": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_md.webp",
-          "cover_lg": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp"
+          "cover_sm": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_lg.webp"
         },
         "publisher_name": "DC Comics"
       },
@@ -254,7 +254,7 @@
     },
     {
       "id": 636975,
-      "slug": "absolute-batman-17",
+      "slug": "absolute-bladehawk-17",
       "series_id": 139382,
       "issue_number": "17",
       "name": "The Seventh Kingdom, Part 1",
@@ -276,19 +276,19 @@
       "average_rating": 0,
       "series": {
         "id": 139382,
-        "name": "Absolute Batman",
-        "slug": "absolute-batman",
+        "name": "Absolute Bladehawk",
+        "slug": "absolute-bladehawk",
         "start_year": 2024,
         "end_year": null,
         "volume_number": 1,
         "publication_type": "regular_series",
         "format": "Standard",
         "cached_issues_count": 27,
-        "cover_url": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp",
+        "cover_url": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_lg.webp",
         "images": {
-          "cover_sm": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_sm.webp",
-          "cover_md": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_md.webp",
-          "cover_lg": "https://media.versedb.com/uploads/series/absolute-batman-139382/absolute-batman-139382-btbmiw-cover_lg.webp"
+          "cover_sm": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_sm.webp",
+          "cover_md": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_md.webp",
+          "cover_lg": "https://media.versedb.com/uploads/series/absolute-bladehawk-139382/absolute-bladehawk-139382-btbmiw-cover_lg.webp"
         },
         "publisher_name": "DC Comics"
       },

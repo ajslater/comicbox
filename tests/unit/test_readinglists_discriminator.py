@@ -147,9 +147,9 @@ def test_the_cover_year_key_counts_repeats_for_each_discriminator(
     *, bare_first: bool
 ) -> None:
     """A row the guard refuses no longer uses up the occurrence another needs."""
-    one = _entry(series="Avengers", start_year=2011)
-    other = _entry(series="Avengers", start_year=2016)
-    bare = _entry(series="Avengers")
+    one = _entry(series="Ardent", start_year=2011)
+    other = _entry(series="Ardent", start_year=2016)
+    bare = _entry(series="Ardent")
     second = (bare, other) if bare_first else (other, bare)
 
     groups = _groups(_list(one), _list(*second))
@@ -161,8 +161,8 @@ def test_the_cover_year_key_counts_repeats_for_each_discriminator(
 
 def test_from_arcs_keeps_two_volumes_with_one_cover_year_apart() -> None:
     comics = [
-        {**_entry(series="Avengers", start_year=2011), "arcs": {"Standoff": {}}},
-        {**_entry(series="Avengers", start_year=2016), "arcs": {"Standoff": {}}},
+        {**_entry(series="Ardent", start_year=2011), "arcs": {"Standoff": {}}},
+        {**_entry(series="Ardent", start_year=2016), "arcs": {"Standoff": {}}},
         {**_VOL1, "arcs": {"Standoff": {}}},
         {**_VOL2, "arcs": {"Standoff": {}}},
         # A copy of one is still one entry.
@@ -236,32 +236,32 @@ def test_the_volumes_an_entry_fits_are_named(
 
 # ------------------------------------------------------- R3-H: two kinds
 
-_XMEN_COVER = date(1991, 10, 1)
-_XMEN_V2 = _entry(series="X-Men", start_year=1991, volume=2, cover=_XMEN_COVER)
-_XMEN_V1 = _entry(series="X-Men", volume=1, cover=_XMEN_COVER)
-_XMEN_BARE = _entry(series="X-Men", cover=_XMEN_COVER)
+_ZMEN_COVER = date(1991, 10, 1)
+_ZMEN_V2 = _entry(series="Z-Men", start_year=1991, volume=2, cover=_ZMEN_COVER)
+_ZMEN_V1 = _entry(series="Z-Men", volume=1, cover=_ZMEN_COVER)
+_ZMEN_BARE = _entry(series="Z-Men", cover=_ZMEN_COVER)
 
 
 def test_a_row_with_both_discriminators_is_told_apart_by_its_volume() -> None:
-    """X-Men (1991) volume 2 #1 and X-Men volume 1 #1, both 1991, joined."""
-    assert _groups(_list(_XMEN_V2), _list(_XMEN_V1)) == [{(0, 0)}, {(1, 0)}]
-    assert compare(_list(_XMEN_V2), _list(_XMEN_V1)).verdict is Verdict.UNRELATED
+    """Z-Men (1991) volume 2 #1 and Z-Men volume 1 #1, both 1991, joined."""
+    assert _groups(_list(_ZMEN_V2), _list(_ZMEN_V1)) == [{(0, 0)}, {(1, 0)}]
+    assert compare(_list(_ZMEN_V2), _list(_ZMEN_V1)).verdict is Verdict.UNRELATED
 
 
 def test_a_row_with_both_still_joins_a_row_of_its_volume() -> None:
-    same = _entry(series="X-Men", volume=2, cover=_XMEN_COVER)
-    assert _groups(_list(_XMEN_V2), _list(same)) == [{(0, 0), (1, 0)}]
+    same = _entry(series="Z-Men", volume=2, cover=_ZMEN_COVER)
+    assert _groups(_list(_ZMEN_V2), _list(same)) == [{(0, 0), (1, 0)}]
 
 
 def test_a_cover_year_match_of_another_volume_number_is_refused() -> None:
-    comics = {Path("v2.cbz"): _XMEN_V2}
-    assert match_comics(_list(_XMEN_V1), comics).found == ()
+    comics = {Path("v2.cbz"): _ZMEN_V2}
+    assert match_comics(_list(_ZMEN_V1), comics).found == ()
 
 
 def test_an_entry_that_fits_a_row_with_both_and_another_volume_is_ambiguous() -> None:
-    comics = {Path("v1.cbz"): _XMEN_V1, Path("v2.cbz"): _XMEN_V2}
+    comics = {Path("v1.cbz"): _ZMEN_V1, Path("v2.cbz"): _ZMEN_V2}
 
-    (found,) = match_comics(_list(_XMEN_BARE), comics).found
+    (found,) = match_comics(_list(_ZMEN_BARE), comics).found
 
     assert all(comic.ambiguous for comic in found.comics)
     assert found.volumes == (1, 2)
@@ -270,13 +270,13 @@ def test_an_entry_that_fits_a_row_with_both_and_another_volume_is_ambiguous() ->
 def test_beside_a_strong_match_a_cover_year_one_agrees_in_the_kind_they_share() -> None:
     metron = {"identifiers": {"metron": {"key": "7"}}}
     comics = {
-        Path("strong.cbz"): {**_XMEN_V2, **metron},
-        Path("vol1.cbz"): _XMEN_V1,
-        Path("vol2.cbz"): _entry(series="X-Men", volume=2, cover=_XMEN_COVER),
-        Path("y1991.cbz"): _entry(series="X-Men", start_year=1991, cover=_XMEN_COVER),
+        Path("strong.cbz"): {**_ZMEN_V2, **metron},
+        Path("vol1.cbz"): _ZMEN_V1,
+        Path("vol2.cbz"): _entry(series="Z-Men", volume=2, cover=_ZMEN_COVER),
+        Path("y1991.cbz"): _entry(series="Z-Men", start_year=1991, cover=_ZMEN_COVER),
     }
 
-    (found,) = match_comics(_list({**_XMEN_BARE, **metron}), comics).found
+    (found,) = match_comics(_list({**_ZMEN_BARE, **metron}), comics).found
 
     assert found.paths == (Path("strong.cbz"), Path("vol2.cbz"), Path("y1991.cbz"))
     assert not found.ambiguous
@@ -285,16 +285,16 @@ def test_beside_a_strong_match_a_cover_year_one_agrees_in_the_kind_they_share() 
 # ---------------------------------- R3-H: a row that fits two conflicting rows
 
 _AV_COVER = date(2016, 1, 1)
-_AV2011 = _entry(series="Avengers", start_year=2011, cover=_AV_COVER)
-_AV2016 = _entry(series="Avengers", start_year=2016, cover=_AV_COVER)
-_AV_BARE = _entry(series="Avengers", cover=_AV_COVER)
+_AV2011 = _entry(series="Ardent", start_year=2011, cover=_AV_COVER)
+_AV2016 = _entry(series="Ardent", start_year=2016, cover=_AV_COVER)
+_AV_BARE = _entry(series="Ardent", cover=_AV_COVER)
 
 
 @pytest.mark.parametrize("rows", list(itertools.permutations((_AV2011, _AV2016))))
 def test_a_row_that_fits_two_rows_of_an_input_that_conflict_joins_neither(
     rows: tuple[dict[str, Any], ...],
 ) -> None:
-    """A=[Avengers (2011) #1, Avengers (2016) #1], B=[Avengers #1]: B joined the first."""
+    """A=[Ardent (2011) #1, Ardent (2016) #1], B=[Ardent #1]: B joined the first."""
     assert _groups(_list(*rows), _list(_AV_BARE)) == [{(0, 0)}, {(0, 1)}, {(1, 0)}]
     assert _groups(_list(_AV_BARE), _list(*rows)) == [{(0, 0)}, {(1, 0)}, {(1, 1)}]
 
@@ -365,8 +365,8 @@ def test_bare_rows_join_each_other_and_their_volumes_stay_apart() -> None:
 
 def test_one_start_year_with_two_volume_numbers_joins_by_the_name_key() -> None:
     """Design 3's name key, unchanged; the docs say so."""
-    one = _entry(series="X-Men", start_year=1991, volume=1, cover=_XMEN_COVER)
-    other = _entry(series="X-Men", start_year=1991, volume=2, cover=_XMEN_COVER)
+    one = _entry(series="Z-Men", start_year=1991, volume=1, cover=_ZMEN_COVER)
+    other = _entry(series="Z-Men", start_year=1991, volume=2, cover=_ZMEN_COVER)
     assert _entries(_list(one), _list(other)) == 1
 
 

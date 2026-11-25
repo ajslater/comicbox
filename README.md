@@ -140,7 +140,7 @@ wins where they disagree.
   each issue's versedb.com link into the tags.
 
 ```sh
-comicbox -o versedb "Absolute Batman #024 (2026).cbz"
+comicbox -o versedb "Absolute Bladehawk #024 (2026).cbz"
 comicbox -I versedb:1215061 "comic.cbz"
 ```
 
@@ -307,18 +307,18 @@ fetches lists from Metron, Comic Vine story arcs, the DieselTech catalog and
 URLs, and tags the comics a list matches with its story arc.
 
 ```sh
-comicbox rl print "Civil War.cbl"
-comicbox rl convert --to json-cbl "Civil War.cbl"
-comicbox rl combine -o civil-war.yaml cbro.cbl locg.cbl
+comicbox rl print "Crimson Tide.cbl"
+comicbox rl convert --to json-cbl "Crimson Tide.cbl"
+comicbox rl combine -o crimson-tide.yaml cbro.cbl locg.cbl
 
 # Find a list online and fetch it.
-comicbox rl search metron civil war
-comicbox rl fetch metron:123 -o civil-war.yaml
+comicbox rl search metron crimson tide
+comicbox rl fetch metron:123 -o crimson-tide.yaml
 
 # See which of its issues a directory has, then tag them with its arc: a dry
 # run until --apply.
-comicbox rl match civil-war.yaml ~/Comics/Marvel
-comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
+comicbox rl match crimson-tide.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix,keep crimson-tide.yaml ~/Comics/Marvel
 ```
 
 See [Reading Lists](https://comicbox.readthedocs.io/reading-lists/) for the

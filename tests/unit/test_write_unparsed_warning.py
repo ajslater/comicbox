@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _BROKEN = "<{root}><Series>A & B</Series></{root}>"
-_TAGS: dict[str, Any] = {"series": "Civil War", "number": "1"}
+_TAGS: dict[str, Any] = {"series": "Crimson Tide", "number": "1"}
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_a_write_names_the_unparsed_file_it_replaces(
 
     assert warning.startswith(f"Replacing ComicInfo.xml in {path}: it could not")
     with zipfile.ZipFile(path) as archive:
-        assert "<Series>Civil War</Series>" in archive.read("ComicInfo.xml").decode()
+        assert "<Series>Crimson Tide</Series>" in archive.read("ComicInfo.xml").decode()
 
 
 def test_a_write_names_the_unparsed_file_it_removes(

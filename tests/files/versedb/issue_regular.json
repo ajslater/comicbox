@@ -1,11 +1,11 @@
 {
   "data": {
     "id": 1215061,
-    "slug": "absolute-batman-2024-24",
+    "slug": "absolute-bladehawk-2024-24",
     "series_id": 139382,
     "issue_number": "24",
     "name": null,
-    "solicitation": "WITHOUT THE BADGE...WITHOUT HER FATHER...ABSOLUTE BAT ENTERS THE SCENE. In the battle of self, of Batman versus Batman, there can be only one. Everyone Bruce has ever known, ever cared about, or ever loved will face their ultimate inner demons.",
+    "solicitation": "WITHOUT THE BADGE...WITHOUT HER FATHER...ABSOLUTE BAT ENTERS THE SCENE. In the battle of self, of Bladehawk versus Bladehawk, there can be only one. Everyone Bruce has ever known, ever cared about, or ever loved will face their ultimate inner demons.",
     "release_date": "2026-09-23",
     "foc_date": "2026-08-31",
     "cover_date": "2026-11-01",
@@ -42,13 +42,13 @@
     "reads_count": 6,
     "title": {
       "id": 147627,
-      "name": "Absolute Batman",
-      "slug": "absolute-batman"
+      "name": "Absolute Bladehawk",
+      "slug": "absolute-bladehawk"
     },
     "series": {
       "id": 139382,
-      "name": "Absolute Batman",
-      "slug": "absolute-batman",
+      "name": "Absolute Bladehawk",
+      "slug": "absolute-bladehawk",
       "start_year": 2024,
       "end_year": null,
       "volume_number": 1,
@@ -78,44 +78,44 @@
       "foreign_editions": [
         {
           "id": 157141,
-          "name": "Absolute Batman",
-          "slug": "absolute-batman-2025",
+          "name": "Absolute Bladehawk",
+          "slug": "absolute-bladehawk-2025",
           "language": "fr"
         },
         {
           "id": 243748,
-          "name": "Absolute Batman",
-          "slug": "absolute-batman-2026",
+          "name": "Absolute Bladehawk",
+          "slug": "absolute-bladehawk-2026",
           "language": "ja"
         },
         {
           "id": 243772,
-          "name": "Absolute Batman",
-          "slug": "absolute-batman-2025",
+          "name": "Absolute Bladehawk",
+          "slug": "absolute-bladehawk-2025",
           "language": "de"
         },
         {
           "id": 243774,
-          "name": "Absolute Batman",
-          "slug": "absolute-batman-2025",
+          "name": "Absolute Bladehawk",
+          "slug": "absolute-bladehawk-2025",
           "language": "it"
         },
         {
           "id": 243983,
-          "name": "Absolute Batman (Cartonato)",
-          "slug": "absolute-batman-cartonato-2026",
+          "name": "Absolute Bladehawk (Cartonato)",
+          "slug": "absolute-bladehawk-cartonato-2026",
           "language": "it"
         },
         {
           "id": 243984,
-          "name": "Absolute Batman (TPB)",
-          "slug": "absolute-batman-tpb-2026",
+          "name": "Absolute Bladehawk (TPB)",
+          "slug": "absolute-bladehawk-tpb-2026",
           "language": "ja"
         },
         {
           "id": 243985,
-          "name": "Absolute Batman (Deluxe Edition)",
-          "slug": "absolute-batman-deluxe-edition-2026",
+          "name": "Absolute Bladehawk (Deluxe Edition)",
+          "slug": "absolute-bladehawk-deluxe-edition-2026",
           "language": "de"
         }
       ]
@@ -274,14 +274,14 @@
       },
       {
         "id": 182881,
-        "name": "Batman (Earth Alpha)",
-        "slug": "batman-earth-alpha",
+        "name": "Bladehawk (Earth Alpha)",
+        "slug": "bladehawk-earth-alpha",
         "real_name": null,
-        "image_url": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-profile_md.webp",
+        "image_url": "https://media.versedb.com/uploads/characters/bladehawk-earth-alpha-182881/bladehawk-earth-alpha-182881-1nmdt4v-profile_md.webp",
         "images": {
-          "tile_sm": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-tile_sm.webp",
-          "profile_md": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-profile_md.webp",
-          "full_lg": "https://media.versedb.com/uploads/characters/batman-earth-alpha-182881/batman-earth-alpha-182881-1nmdt4v-full_lg.webp"
+          "tile_sm": "https://media.versedb.com/uploads/characters/bladehawk-earth-alpha-182881/bladehawk-earth-alpha-182881-1nmdt4v-tile_sm.webp",
+          "profile_md": "https://media.versedb.com/uploads/characters/bladehawk-earth-alpha-182881/bladehawk-earth-alpha-182881-1nmdt4v-profile_md.webp",
+          "full_lg": "https://media.versedb.com/uploads/characters/bladehawk-earth-alpha-182881/bladehawk-earth-alpha-182881-1nmdt4v-full_lg.webp"
         },
         "sort_order": null
       }
@@ -298,7 +298,7 @@
     "key_issue_reasons": [
       {
         "id": 241725,
-        "name": "Origin of Absolute Batman",
+        "name": "Origin of Absolute Bladehawk",
         "category": "story",
         "notes": null
       }
@@ -313,7 +313,7 @@
         "custom_name": null,
         "display_name": "Amazon",
         "store_logo": "/images/brands/amazon.webp",
-        "url": "https://us.amazon.com/Absolute-Batman-2024-Scott-Snyder-ebook/dp/B0HH1MBQCJ",
+        "url": "https://us.amazon.com/Absolute-Bladehawk-2024-Scott-Snyder-ebook/dp/B0HH1MBQCJ",
         "external_id": "B0HH1MBQCJ",
         "price": null,
         "formatted_price": null,

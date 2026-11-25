@@ -32,11 +32,11 @@ def test_common_shape() -> None:
     assert result.fmt is ReadingListFormats.CBL
     assert result.warnings == ()
     reading_list = result.reading_list
-    assert reading_list["name"] == "[Marvel] Civil War (Hand Written)"
+    assert reading_list["name"] == "[Marvel] Crimson Tide (Hand Written)"
     assert reading_list["sources"] == [{"kind": "file"}]
     assert reading_list[ENTRIES_KEY][1] == {
         "series": {
-            "name": "The Amazing Spider-Man",
+            "name": "The Amazing Snail-Man",
             "start_year": 1963,
             "identifiers": {"comicvine": {"key": "2127"}},
         },
@@ -75,13 +75,13 @@ def test_native_comicrack_export() -> None:
     assert result.warnings == ()
     assert result.reading_list[ENTRIES_KEY] == [
         {
-            "series": {"name": "Civil War"},
+            "series": {"name": "Crimson Tide"},
             "volume": {"number": 1},
             "issue": {"name": "1"},
             "date": {"year": 2006},
         },
         {
-            "series": {"name": "Amazing Spider-Man"},
+            "series": {"name": "Amazing Snail-Man"},
             "volume": {"number": 2},
             "issue": {"name": "532"},
             "date": {"year": 2006},
@@ -179,7 +179,7 @@ def test_write_counts_the_books_it_writes() -> None:
 
 
 def test_lost_fields_name_what_a_round_trip_drops() -> None:
-    reading_list = load(READING_LISTS_DIR / "civil-war.yaml").reading_list
+    reading_list = load(READING_LISTS_DIR / "crimson-tide.yaml").reading_list
     lost = lost_fields(reading_list, "cbl")
     assert lost == (
         "description",
@@ -206,7 +206,7 @@ def test_lost_fields_name_what_a_round_trip_drops() -> None:
     for entry in round_tripped[ENTRIES_KEY]:
         assert "entry_type" not in entry
         assert set(entry["date"]) == {"year"}
-    # Amazing Spider-Man's volume 2 was written over by its start year.
+    # Amazing Snail-Man's volume 2 was written over by its start year.
     assert round_tripped[ENTRIES_KEY][1]["volume"] == {"number": 1999}
 
 

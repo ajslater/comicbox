@@ -44,17 +44,17 @@ from comicbox.readinglists.schema import (
 
 NATIVE_FORMATS = (ReadingListFormats.YAML, ReadingListFormats.JSON)
 _CW1 = {
-    "series": {"name": "Civil War", "start_year": 2006},
+    "series": {"name": "Crimson Tide", "start_year": 2006},
     "issue": {"name": "1"},
 }
 _ASM = {
-    "series": {"name": "Amazing Spider-Man", "start_year": 1999},
+    "series": {"name": "Amazing Snail-Man", "start_year": 1999},
     "issue": {"name": "532"},
 }
 
 
 def _reading_list(**header: Any) -> dict[str, Any]:
-    return {"name": "Civil War", ENTRIES_KEY: [_CW1, _ASM, _CW1], **header}
+    return {"name": "Crimson Tide", ENTRIES_KEY: [_CW1, _ASM, _CW1], **header}
 
 
 @pytest.mark.parametrize(
@@ -93,7 +93,7 @@ def test_dump_keeps_order_and_repeats(fmt: ReadingListFormats) -> None:
     reading_list = _reading_list(sources=sources)
     result = loads(dumps(reading_list, fmt)).reading_list
     names = [entry["series"]["name"] for entry in result[ENTRIES_KEY]]
-    assert names == ["Civil War", "Amazing Spider-Man", "Civil War"]
+    assert names == ["Crimson Tide", "Amazing Snail-Man", "Crimson Tide"]
     assert result["sources"] == sources
 
 

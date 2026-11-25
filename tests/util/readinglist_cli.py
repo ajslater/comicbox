@@ -24,30 +24,32 @@ CIX = "COMIC_INFO"
 MI = "METRON_INFO"
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
-CIVIL_WAR = READING_LISTS_DIR / "civil-war.yaml"
+CRIMSON_TIDE = READING_LISTS_DIR / "crimson-tide.yaml"
 COMMON_CBL = READING_LISTS_DIR / "cbl" / "common.cbl"
 TWO_DATABASES_CBL = READING_LISTS_DIR / "cbl" / "two-databases.cbl"
 SMART_LIST = READING_LISTS_DIR / "cbl" / "smart-list.cbl"
 FULL_JSON_CBL = READING_LISTS_DIR / "json-cbl" / "full.json"
 
-CIVIL_WAR_LIST = """reading_list:
-  name: Civil War
+CRIMSON_TIDE_LIST = """reading_list:
+  name: Crimson Tide
   entries:
-    - series: {name: Civil War, start_year: 2006}
+    - series: {name: Crimson Tide, start_year: 2006}
       issue: {name: '1'}
-    - series: {name: Civil War, start_year: 2006}
+    - series: {name: Crimson Tide, start_year: 2006}
       issue: {name: '2'}
-    - series: {name: Amazing Spider-Man, start_year: 1963}
+    - series: {name: Amazing Snail-Man, start_year: 1963}
       issue: {name: '532'}
-    - series: {name: Civil War, start_year: 2006}
+    - series: {name: Crimson Tide, start_year: 2006}
       issue: {name: '7'}
 """
 
 
-def write_list(path: Path, name: str = "Civil War", body: str = CIVIL_WAR_LIST) -> Path:
+def write_list(
+    path: Path, name: str = "Crimson Tide", body: str = CRIMSON_TIDE_LIST
+) -> Path:
     """Write a reading list, named *name*, to *path*."""
     path.write_text(
-        body.replace("name: Civil War\n  entries", f"name: {name}\n  entries")
+        body.replace("name: Crimson Tide\n  entries", f"name: {name}\n  entries")
     )
     return path
 

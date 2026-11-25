@@ -2,8 +2,8 @@
 Pre-call series-name fuzzy filter for online sources.
 
 Each source's volume/series discovery step returns up to N hits for a
-free-text series query. CV's full-text search will return "Lois Lane: A
-Celebration" and "Lois Lane and Friends" alongside the canonical "Lois
+free-text series query. CV's full-text search will return "Lila Lane: A
+Celebration" and "Lila Lane and Friends" alongside the canonical "Lois
 Lane (2019)" — and the matcher's `s_series` signal would score the
 non-matches near zero anyway. Issuing the per-volume `list_issues` API
 call for those non-matches is wasted budget under CV's 200/hr cap.
@@ -15,16 +15,16 @@ passes the filter scores predictably under `s_series` downstream.
 
 **Why `fuzz.ratio` and not `fuzz.WRatio`** (which `s_series` uses):
 WRatio applies a partial-match boost that lifts any substring overlap
-to 90+, including "Lois Lane" vs "Adventures of Lois Lane and Friends"
+to 90+, including "Lila Lane" vs "Adventures of Lila Lane and Friends"
 (both score 90). That's fine for *scoring* — the matcher's downstream
 signals can still rank candidates — but useless for *filtering*, where
 we need to drop substring-overlapping-but-different volumes before
 issuing an API call for them. Plain `ratio` (Levenshtein) gives:
 
-    Lois Lane vs Lois Lane (1986)              → 78
-    Lois Lane vs Watchmen (1986)               → variant year tail OK
-    Lois Lane vs Watchmen Annotated            → 62
-    Lois Lane vs Adventures of Lois Lane ...   → 41
+    Lila Lane vs Lila Lane (1986)              → 78
+    Lila Lane vs Wardens (1986)               → variant year tail OK
+    Lila Lane vs Wardens Annotated            → 62
+    Lila Lane vs Adventures of Lila Lane ...   → 41
 
 A natural threshold around 0.70 separates "same series, possibly with a
 year/volume suffix" (keep) from "different series that happens to share
@@ -53,8 +53,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
 # CV (and to a lesser extent Metron) annotate volume names with the
-# series's publication year in parens: "Lois Lane (1986)", "Conan (2004)",
-# "Watchmen (1986-1990)". For pre-filter purposes that's structural
+# series's publication year in parens: "Lila Lane (1986)", "Conan (2004)",
+# "Wardens (1986-1990)". For pre-filter purposes that's structural
 # noise — the profile only carries the bare series name. Without
 # stripping, "Conan" vs "Conan (2004)" scores 67% under plain ratio,
 # which is below the 0.7 threshold and would drop the right answer.

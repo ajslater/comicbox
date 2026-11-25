@@ -182,7 +182,7 @@ class _Facts:
         Tell whether a match of the two sides on ``key`` is refused.
 
         Beyond ``contradicts``, a match on the volume key is refused for two
-        years: X-Men (1963) and X-Men (1991) may both be volume 1.
+        years: Z-Men (1963) and Z-Men (1991) may both be volume 1.
         """
         return self.contradicts(other) or _volume_of_another_year(self, other, key)
 
@@ -267,8 +267,8 @@ class _Index:
         Find the comics that share a strict key with an entry, at position -1.
 
         Strong matches share an id or a name key, and are always found; a
-        match on the volume key is refused for another year, as X-Men (1963)
-        is for an X-Men (1991) entry when both are volume 1. A
+        match on the volume key is refused for another year, as Z-Men (1963)
+        is for an Z-Men (1991) entry when both are volume 1. A
         cover-year match shares only the cover-year key, and is judged by
         ``_cover_year_matches``. None when nothing is found.
         """

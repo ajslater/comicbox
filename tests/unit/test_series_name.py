@@ -48,8 +48,8 @@ def test_ascii_names_normalize_exactly_as_before() -> None:
         for _ in range(5000)
     ]
     names += [
-        "X-Men (Vol. 2)",
-        "Batman Volume 3",
+        "Z-Men (Vol. 2)",
+        "Bladehawk Volume 3",
         "G.I. Joe",
         "  The   Thing  ",
         "vol2",

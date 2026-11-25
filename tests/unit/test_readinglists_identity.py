@@ -39,7 +39,7 @@ def test_parse_issue_suffixes(text: str, expected: ParsedIssue) -> None:
 
 def _entry(**fields: Any) -> dict[str, Any]:
     return {
-        "series": {"name": "Civil War", "start_year": 2006},
+        "series": {"name": "Crimson Tide", "start_year": 2006},
         "issue": {"name": "1"},
         **fields,
     }
@@ -65,14 +65,14 @@ def test_ids_come_in_rank_order() -> None:
         ("id", "metron", "31562"),
         ("id", "comicvine", "105747"),
         ("id", "grandcomicsdatabase", "7"),
-        ("name", "civil war", "year", 2006, Decimal(1), ""),
+        ("name", "crimson tide", "year", 2006, Decimal(1), ""),
     )
 
 
 def test_ids_of_other_types_are_ignored() -> None:
     entry = _entry(
         series={
-            "name": "Civil War",
+            "name": "Crimson Tide",
             "start_year": 2006,
             "identifiers": {"comicvine": {"key": "18023"}},
         },
@@ -124,9 +124,9 @@ def test_suffix_is_case_folded() -> None:
 @pytest.mark.parametrize(
     "entry",
     [
-        {"series": {"name": "Civil War"}, "issue": {"name": "1"}},
+        {"series": {"name": "Crimson Tide"}, "issue": {"name": "1"}},
         {"series": {"name": "!!!", "start_year": 2006}, "issue": {"name": "1"}},
-        {"series": {"name": "Civil War", "start_year": 2006}},
+        {"series": {"name": "Crimson Tide", "start_year": 2006}},
         {"issue": {"name": "1"}, "volume": {"number": 2006}},
     ],
     ids=["no-year-or-volume", "empty-name", "no-issue", "no-series"],
@@ -139,12 +139,12 @@ def test_no_name_key(entry: dict[str, Any]) -> None:
 def test_start_year_and_year_volume_share_a_name_key() -> None:
     """Metron gives a start year; ComicTagger puts the year in the volume."""
     metron_style = {
-        "series": {"name": "Civil War", "start_year": 2006},
+        "series": {"name": "Crimson Tide", "start_year": 2006},
         "volume": {"number": 1},
         "issue": {"name": "1"},
     }
     comictagger_style = {
-        "series": {"name": "Civil War"},
+        "series": {"name": "Crimson Tide"},
         "volume": {"number": 2006},
         "issue": {"name": "1"},
     }
@@ -158,11 +158,11 @@ def test_volume_number_alone_does_not_meet_a_start_year() -> None:
     The pair below may well be the same issue, but only ids can say so.
     """
     metron_style = {
-        "series": {"name": "Civil War", "start_year": 2006},
+        "series": {"name": "Crimson Tide", "start_year": 2006},
         "issue": {"name": "1"},
     }
     volume_only = {
-        "series": {"name": "Civil War"},
+        "series": {"name": "Crimson Tide"},
         "volume": {"number": 1},
         "issue": {"name": "1"},
     }
@@ -179,8 +179,8 @@ def test_volume_number_alone_does_not_meet_a_start_year() -> None:
         ("Ελληνικά", "ελληνικα"),
         ("Crème Brûlée", "creme brulee"),
         ("Æon Flux", "æon flux"),
-        ("Batman Vol. 2", "batman"),
-        ("The Amazing Spider-Man (Volume 3)", "the amazing spider man"),
+        ("Bladehawk Vol. 2", "bladehawk"),
+        ("The Amazing Snail-Man (Volume 3)", "the amazing snail man"),
     ],
 )
 def test_normalize_series_reads_every_script(name: str, normalized: str) -> None:

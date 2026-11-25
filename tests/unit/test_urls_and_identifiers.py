@@ -55,7 +55,7 @@ comicbox:
     metron:
       key: "123495"
   urls:
-    - https://metron.cloud/issue/batman-2016-0/
+    - https://metron.cloud/issue/bladehawk-2016-0/
 """)
     assert sub_md["identifiers"]["metron"]["key"] == "123495"
 
@@ -251,7 +251,7 @@ def test_a_url_slug_after_the_id_is_not_the_id() -> None:
     sub_md = _load_yaml("""
 comicbox:
   urls:
-    - https://leagueofcomicgeeks.com/comics/series/178012/batman
+    - https://leagueofcomicgeeks.com/comics/series/178012/bladehawk
 """)
     assert sub_md["identifiers"]["leagueofcomicgeeks"] == {
         "key": "178012",

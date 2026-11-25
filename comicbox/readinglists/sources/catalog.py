@@ -81,7 +81,7 @@ _CURATOR_MARKS: Final = MappingProxyType(
         "marvel guides": "mg",
         "official": "official",
         "uxro": "uxro",
-        "ultimate x-men reading order": "uxro",
+        "ultimate z-men reading order": "uxro",
         "kcv": "kcv",
         "web-kcv": "kcv",
         "community": "community",

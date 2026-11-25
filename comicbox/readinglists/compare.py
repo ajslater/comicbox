@@ -18,14 +18,14 @@ from comicbox.readinglists.serialize import load_model
 # b in a); order is order_agreement; the verdict is what these thresholds
 # give.
 #
-#   Civil War     CBRO 132 vs LoCG 116      (0.83, 0.95)  0.45  variant
-#   House of M    CBRO 64 vs LoCG 51        (0.77, 0.96)  0.37  variant
-#   Civil War     CBRO 132 vs Official 98   (0.71, 0.96)  0.49  subset
-#   Civil War     LoCG 116 vs Official 98   (0.84, 0.99)  0.98  same
+#   Crimson Tide     CBRO 132 vs LoCG 116      (0.83, 0.95)  0.45  variant
+#   House of Q    CBRO 64 vs LoCG 51        (0.77, 0.96)  0.37  variant
+#   Crimson Tide     CBRO 132 vs Official 98   (0.71, 0.96)  0.49  subset
+#   Crimson Tide     LoCG 116 vs Official 98   (0.84, 0.99)  0.98  same
 #   Infinity G.   CBRO 51 vs LoCG 58        (0.92, 0.81)  1.00  same
-#   Secret Wars   CBRO 230 vs LoCG 229      (1.00, 1.00)  1.00  same
-#   Civil War II  CBRO 153 vs LoCG 152      (0.99, 1.00)  1.00  same
-#   Secret Wars   CBRO 230 vs CBH 60        (0.17, 0.67)  0.47  unrelated
+#   Sealed Wars   CBRO 230 vs LoCG 229      (1.00, 1.00)  1.00  same
+#   Crimson Tide II  CBRO 153 vs LoCG 152      (0.99, 1.00)  1.00  same
+#   Sealed Wars   CBRO 230 vs CBH 60        (0.17, 0.67)  0.47  unrelated
 #   different events                        (0.00, 0.00)        unrelated
 #   a list against its first half          (0.50, 1.00)  1.00  subset
 #

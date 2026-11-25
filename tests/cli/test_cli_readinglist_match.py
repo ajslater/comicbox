@@ -38,9 +38,9 @@ def test_match_shows_what_is_had_and_missing(
 
     assert code == 0
     rows = [" ".join(line.split()) for line in out.splitlines()]
-    assert "1 Civil War 2006 1 cw1.cbz name" in rows
-    assert "2 Civil War 2006 2 missing" in rows
-    assert "3 Amazing Spider-Man 1963 532 asm532.cbz variant" in rows
+    assert "1 Crimson Tide 2006 1 cw1.cbz name" in rows
+    assert "2 Crimson Tide 2006 2 missing" in rows
+    assert "3 Amazing Snail-Man 1963 532 asm532.cbz variant" in rows
     assert "2 of 4 entries found in 3 comics; 2 missing." in err
 
 
@@ -48,13 +48,13 @@ def test_each_comic_of_an_entry_is_a_row(
     capsys: pytest.CaptureFixture[str], reading_list: Path, library: Path
 ) -> None:
     make_comic(
-        library / "copy" / "cw1.cbz", series="Civil War", number="1", start_year=2006
+        library / "copy" / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006
     )
 
     _, out, _ = rl_run(capsys, "match", str(reading_list), str(library))
 
     rows = [" ".join(line.split()) for line in out.splitlines()]
-    first = rows.index("1 Civil War 2006 1 copy/cw1.cbz name")
+    first = rows.index("1 Crimson Tide 2006 1 copy/cw1.cbz name")
     assert rows[first + 1] == "cw1.cbz name"
 
 
@@ -62,40 +62,43 @@ def test_a_cover_year_match_is_its_own_kind(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """No id, start year or volume on either side: series, issue and year."""
-    listed = tmp_path / "batman.yaml"
+    listed = tmp_path / "bladehawk.yaml"
     listed.write_text(
-        "reading_list:\n  name: Batman\n  entries:\n"
-        "    - series: {name: Batman}\n      issue: {name: '1'}\n"
+        "reading_list:\n  name: Bladehawk\n  entries:\n"
+        "    - series: {name: Bladehawk}\n      issue: {name: '1'}\n"
         "      date: {year: 2016}\n"
-        "    - series: {name: Batman}\n      issue: {name: '2'}\n"
+        "    - series: {name: Bladehawk}\n      issue: {name: '2'}\n"
     )
     comics = tmp_path / "comics"
     make_comic(
-        comics / "batman.cbz", series="Batman", number="1", cover_date="2016-08-01"
+        comics / "bladehawk.cbz",
+        series="Bladehawk",
+        number="1",
+        cover_date="2016-08-01",
     )
 
     code, out, err = rl_run(capsys, "match", str(listed), str(comics))
 
     assert code == 0
     rows = [" ".join(line.split()) for line in out.splitlines()]
-    assert "1 Batman 1 batman.cbz name-year" in rows
+    assert "1 Bladehawk 1 bladehawk.cbz name-year" in rows
     # Only the entry with no year is counted as having no key.
     assert "1 entry has no key and matches nothing" in err
 
 
-_AVENGERS = (
-    "reading_list:\n  name: Avengers Firsts\n  entries:\n"
-    "    - series: {name: Avengers}\n      issue: {name: '1'}\n"
+_ARDENT = (
+    "reading_list:\n  name: Ardent Firsts\n  entries:\n"
+    "    - series: {name: Ardent}\n      issue: {name: '1'}\n"
     "      date: {year: 2016}\n"
 )
 
 
 def _volumes(directory: Path, *start_years: int | None) -> list[Path]:
-    """Make Avengers #1 dated 2016 in each volume given; None has no start year."""
+    """Make Ardent #1 dated 2016 in each volume given; None has no start year."""
     return [
         make_comic(
-            directory / f"{index}-avengers-{start_year}.cbz",
-            series="Avengers",
+            directory / f"{index}-ardent-{start_year}.cbz",
+            series="Ardent",
             number="1",
             start_year=start_year,
             cover_date="2016-08-01",
@@ -107,8 +110,8 @@ def _volumes(directory: Path, *start_years: int | None) -> list[Path]:
 def test_an_entry_that_fits_two_volumes_is_listed_and_never_tagged(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    listed = tmp_path / "avengers.yaml"
-    listed.write_text(_AVENGERS)
+    listed = tmp_path / "ardent.yaml"
+    listed.write_text(_ARDENT)
     comics = tmp_path / "comics"
     paths = _volumes(comics, 2011, 2016)
     before = digests(comics)
@@ -134,13 +137,13 @@ def test_a_cover_year_match_of_another_volume_is_not_a_match(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """Beside the id's 2016 comic, the 2011 comic is neither listed nor tagged."""
-    listed = tmp_path / "avengers.yaml"
-    listed.write_text(_AVENGERS + "      identifiers: {comicvine: {key: '7'}}\n")
+    listed = tmp_path / "ardent.yaml"
+    listed.write_text(_ARDENT + "      identifiers: {comicvine: {key: '7'}}\n")
     comics = tmp_path / "comics"
     v2011 = _volumes(comics, 2011)[0]
     v2016 = make_comic(
-        comics / "id-avengers-2016.cbz",
-        series="Avengers",
+        comics / "id-ardent-2016.cbz",
+        series="Ardent",
         number="1",
         start_year=2016,
         cover_date="2016-08-01",
@@ -153,7 +156,7 @@ def test_a_cover_year_match_of_another_volume_is_not_a_match(
 
     assert v2011.name not in matched
     assert code == 0
-    assert f"{v2016} added 'Avengers Firsts' #1" in flat(out)
+    assert f"{v2016} added 'Ardent Firsts' #1" in flat(out)
     assert v2011.name not in out
     assert v2011.read_bytes() == untouched
 
@@ -161,13 +164,13 @@ def test_a_cover_year_match_of_another_volume_is_not_a_match(
 def test_a_volume_number_entry_tags_its_comic_and_not_two_other_volumes(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    listed = tmp_path / "avengers.yaml"
-    listed.write_text(_AVENGERS.replace("issue:", "volume: {number: 2}\n      issue:"))
+    listed = tmp_path / "ardent.yaml"
+    listed.write_text(_ARDENT.replace("issue:", "volume: {number: 2}\n      issue:"))
     comics = tmp_path / "comics"
     others = _volumes(comics, 2011, 2016)
     vol2 = make_comic(
-        comics / "vol2-avengers.cbz",
-        series="Avengers",
+        comics / "vol2-ardent.cbz",
+        series="Ardent",
         number="1",
         volume=2,
         cover_date="2016-08-01",
@@ -183,7 +186,7 @@ def test_a_volume_number_entry_tags_its_comic_and_not_two_other_volumes(
     assert "ambiguous" not in matched
     assert all(path.name not in matched for path in others)
     assert code == 0
-    assert f"{vol2} added 'Avengers Firsts' #1" in flat(out)
+    assert f"{vol2} added 'Ardent Firsts' #1" in flat(out)
     assert {path: path.read_bytes() for path in others} == untouched
 
 
@@ -203,8 +206,8 @@ def test_comics_of_one_volume_are_tagged(
     start_years: tuple[int | None, ...],
     tagged: tuple[int, ...],
 ) -> None:
-    listed = tmp_path / "avengers.yaml"
-    listed.write_text(_AVENGERS)
+    listed = tmp_path / "ardent.yaml"
+    listed.write_text(_ARDENT)
     comics = tmp_path / "comics"
     paths = _volumes(comics, *start_years)
 
@@ -220,8 +223,8 @@ def test_comics_of_one_volume_are_tagged(
 def test_match_output_that_is_not_a_terminal_is_not_wrapped(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:
-    deep = tmp_path / "comics" / ("a-long-directory-name-" * 4) / "civil-war"
-    make_comic(deep / "cw1.cbz", series="Civil War", number="1", start_year=2006)
+    deep = tmp_path / "comics" / ("a-long-directory-name-" * 4) / "crimson-tide"
+    make_comic(deep / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006)
 
     _, out, _ = rl_run(capsys, "match", str(reading_list), str(tmp_path / "comics"))
 
@@ -248,7 +251,7 @@ def test_a_directory_that_cannot_be_read_is_a_warning(
     capsys: pytest.CaptureFixture[str], reading_list: Path, library: Path
 ) -> None:
     locked = library / "locked"
-    make_comic(locked / "cw2.cbz", series="Civil War", number="2", start_year=2006)
+    make_comic(locked / "cw2.cbz", series="Crimson Tide", number="2", start_year=2006)
     locked.chmod(0)
     try:
         code, out, err = rl_run(capsys, "match", str(reading_list), str(library))
@@ -280,7 +283,9 @@ def test_a_linked_directory_is_not_searched(
     capsys: pytest.CaptureFixture[str], reading_list: Path, tmp_path: Path
 ) -> None:
     elsewhere = tmp_path / "elsewhere"
-    make_comic(elsewhere / "cw1.cbz", series="Civil War", number="1", start_year=2006)
+    make_comic(
+        elsewhere / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006
+    )
     comics = tmp_path / "comics"
     comics.mkdir()
     (comics / "linked").symlink_to(elsewhere, target_is_directory=True)
@@ -332,20 +337,20 @@ def test_match_needs_a_directory(
 
 
 def test_match_marks_a_comic_with_an_unreadable_tag_file(
-    capsys: pytest.CaptureFixture[str], batman_list: Path, unreadable: Path
+    capsys: pytest.CaptureFixture[str], bladehawk_list: Path, unreadable: Path
 ) -> None:
-    _, out, _ = rl_run(capsys, "match", str(batman_list), str(unreadable.parent))
+    _, out, _ = rl_run(capsys, "match", str(bladehawk_list), str(unreadable.parent))
     assert f"{unreadable.name} (unreadable ComicInfo.xml)" in flat(out)
 
 
 @pytest.mark.usefixtures("spawned_workers")
 def test_worker_warnings_honour_quiet(
-    capfd: pytest.CaptureFixture[str], batman_list: Path, unreadable: Path
+    capfd: pytest.CaptureFixture[str], bladehawk_list: Path, unreadable: Path
 ) -> None:
     directory = str(unreadable.parent)
-    rl_main("match", str(batman_list), directory)
+    rl_main("match", str(bladehawk_list), directory)
     loud = capfd.readouterr().err
-    rl_main("-QQ", "match", str(batman_list), directory)
+    rl_main("-QQ", "match", str(bladehawk_list), directory)
     quiet = capfd.readouterr().err
 
     # Once: looking for unreadable tag files must not warn of them again.
@@ -357,15 +362,15 @@ def test_a_missing_entry_shows_the_comics_it_refused(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """Another volume of one cover year, and one name off by its cover year."""
-    reading_list = tmp_path / "batman.yaml"
+    reading_list = tmp_path / "bladehawk.yaml"
     reading_list.write_text(
         """reading_list:
-  name: Batman
+  name: Bladehawk
   entries:
-    - series: {name: Batman, start_year: 2016}
+    - series: {name: Bladehawk, start_year: 2016}
       issue: {name: '1'}
       date: {cover_date: 2016-06-01}
-    - series: {name: Batman, start_year: 2011}
+    - series: {name: Bladehawk, start_year: 2011}
       issue: {name: '2'}
       date: {cover_date: 2011-12-01}
 """
@@ -373,14 +378,14 @@ def test_a_missing_entry_shows_the_comics_it_refused(
     comics = tmp_path / "comics"
     make_comic(
         comics / "b2011-1.cbz",
-        series="Batman",
+        series="Bladehawk",
         number="1",
         start_year=2011,
         cover_date="2016-06-01",
     )
     make_comic(
         comics / "b2011-2.cbz",
-        series="Batman",
+        series="Bladehawk",
         number="2",
         start_year=2011,
         cover_date="2015-01-01",
@@ -390,8 +395,8 @@ def test_a_missing_entry_shows_the_comics_it_refused(
 
     assert code == 0
     rows = [" ".join(line.split()) for line in out.splitlines()]
-    first = rows.index("1 Batman 2016 1 missing")
+    first = rows.index("1 Bladehawk 2016 1 missing")
     assert rows[first + 1] == "b2011-1.cbz (other-volume) refused"
-    second = rows.index("2 Batman 2011 2 missing")
+    second = rows.index("2 Bladehawk 2011 2 missing")
     assert rows[second + 1] == "b2011-2.cbz (cover-year) refused"
     assert "0 of 2 entries found in 2 comics; 2 missing." in err

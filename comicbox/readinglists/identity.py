@@ -156,7 +156,7 @@ class Discriminators:
 
     ``year`` is the year-like one: the start year or, failing that, a volume
     number of 1900 or more, as a CBL's ``Volume="2006"`` is. ``volume`` is a
-    volume number under 1900. X-Men (1991) volume 2 has both.
+    volume number under 1900. Z-Men (1991) volume 2 has both.
     """
 
     year: int | None = None
@@ -257,8 +257,8 @@ def _name_year_key(entry: Mapping[str, Any]) -> EntryKey | None:
     return (NAME_YEAR_KEY_KIND, name, year, *issue)
 
 
-# A trailing year or volume in parentheses: "Batman (2016)", "X (Vol. 2)",
-# "X (v2)", "X (Volume 2)". Not "Transformers (UK)": that names another
+# A trailing year or volume in parentheses: "Bladehawk (2016)", "X (Vol. 2)",
+# "X (v2)", "X (Volume 2)". Not "Trundlebots (UK)": that names another
 # series. No leading whitespace run, which would make a run of spaces
 # quadratic; the name is stripped after.
 _TRAILING_YEAR_OR_VOLUME_RE = re.compile(
@@ -288,10 +288,10 @@ def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
     List the series names to try for an entry, normalized, in order.
 
     The name as given; the name without a trailing year or volume in
-    parentheses (``Batman (2016)``, ``X (Vol. 2)``), when it has one; the
+    parentheses (``Bladehawk (2016)``, ``X (Vol. 2)``), when it has one; the
     name without a leading article; and the name without a reprint suffix
-    such as TPB or Omnibus. A year or volume is never added: ``Iron Man``
-    is not the series ``Iron Man 2020``. For matching a list against
+    such as TPB or Omnibus. A year or volume is never added: ``Ivory Knight``
+    is not the series ``Ivory Knight 2020``. For matching a list against
     comics only: ``entry_keys`` stays strict, so ``combine`` never joins on
     a variant.
     """
@@ -338,7 +338,7 @@ def entry_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
     number, suffix)`` by a volume number under 1900, then the weakest,
     ``("name-year", series, cover year, number, suffix)``. Two entries are
     the same issue when they share a key and their discriminators do not
-    conflict (``Discriminators.conflicts``): X-Men (1963) and X-Men (1991)
+    conflict (``Discriminators.conflicts``): Z-Men (1963) and Z-Men (1991)
     may both be volume 1. An entry with none, no id and no series and issue
     with a start year, volume or cover year, matches nothing.
     """

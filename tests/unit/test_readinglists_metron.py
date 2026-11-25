@@ -202,8 +202,8 @@ def test_a_list_maps_to_the_model(session: ReadingListSession) -> None:
     routes = _three_pages()
     routes["/reading_list/1/"] = Reply(
         reading_list_detail(
-            previous={"id": 9, "name": "House of M"},
-            next={"id": 11, "name": "World War Hulk"},
+            previous={"id": 9, "name": "House of Q"},
+            next={"id": 11, "name": "World War Hurler"},
         )
     )
     _serve(session, routes)
@@ -216,7 +216,7 @@ def test_a_list_maps_to_the_model(session: ReadingListSession) -> None:
     reading_list = dict(result.reading_list)
     entries = reading_list.pop("entries")
     assert reading_list == {
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "description": "The Superhuman Registration Act divides them.",
         "list_type": "event",
         "ordered": True,
@@ -227,15 +227,15 @@ def test_a_list_maps_to_the_model(session: ReadingListSession) -> None:
                 "url": "https://metron.cloud/reading-lists/1/",
                 "revision": "2024-05-01T12:00:00-04:00",
                 "curator": "cbro",
-                "curator_url": "https://www.comicbookreadingorders.com/marvel/events/civil-war/",
+                "curator_url": "https://www.comicbookreadingorders.com/marvel/events/crimson-tide/",
             }
         ],
-        "previous": {"name": "House of M", "kind": "metron-list", "key": "9"},
-        "next": {"name": "World War Hulk", "kind": "metron-list", "key": "11"},
+        "previous": {"name": "House of Q", "kind": "metron-list", "key": "9"},
+        "next": {"name": "World War Hurler", "kind": "metron-list", "key": "11"},
     }
     assert entries[0] == {
         "series": {
-            "name": "Civil War",
+            "name": "Crimson Tide",
             "start_year": 2006,
             "identifiers": {"metron": {"key": "7"}},
         },
@@ -333,7 +333,7 @@ def test_an_arc_is_an_unordered_story_list(session: ReadingListSession) -> None:
     assert result is not None
     assert _paths(adapter) == ["/arc/5/", "/arc/5/issue_list/"]
     reading_list = result.reading_list
-    assert reading_list["name"] == "Civil War"
+    assert reading_list["name"] == "Crimson Tide"
     assert reading_list["description"] == "Hero against hero."
     assert reading_list["list_type"] == "story"
     assert reading_list["ordered"] is False
@@ -341,7 +341,7 @@ def test_an_arc_is_an_unordered_story_list(session: ReadingListSession) -> None:
         {
             "kind": "metron-arc",
             "key": "5",
-            "url": "https://metron.cloud/arc/civil-war-5/",
+            "url": "https://metron.cloud/arc/crimson-tide-5/",
             "revision": "2024-05-01T12:00:00-04:00",
         },
         {"kind": "comicvine-arc", "key": "40000"},
@@ -396,7 +396,7 @@ def test_search_sends_mokkari_filter_names(session: ReadingListSession) -> None:
     install(_shared_source(session).session(), answer)
 
     found = session.search_metron(
-        name="civil war",
+        name="crimson tide",
         curator="cbro",
         username="curator",
         modified_since=datetime(2024, 1, 1, tzinfo=UTC),
@@ -405,7 +405,7 @@ def test_search_sends_mokkari_filter_names(session: ReadingListSession) -> None:
     (url,) = seen
     assert urlsplit(url).path == "/api/reading_list/"
     assert parse_qs(urlsplit(url).query) == {
-        "name": ["civil war"],
+        "name": ["crimson tide"],
         "attribution_source": ["CBRO"],
         "username": ["curator"],
         "modified_gt": ["2024-01-01T00:00:00+00:00"],
@@ -413,7 +413,7 @@ def test_search_sends_mokkari_filter_names(session: ReadingListSession) -> None:
     assert [summary.id for summary in found] == [1, 2]
     assert found[0] == MetronListSummary(
         id=1,
-        name="Civil War",
+        name="Crimson Tide",
         list_type="Event",
         private=False,
         curator="cbro",

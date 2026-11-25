@@ -10,10 +10,10 @@ from comicbox.readinglists.compare import CONTAINS, ORDER_AGREEMENT
 
 def _list(*numbers: int, **header: Any) -> dict[str, Any]:
     return {
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "entries": [
             {
-                "series": {"name": "Civil War", "start_year": 2006},
+                "series": {"name": "Crimson Tide", "start_year": 2006},
                 "issue": {"name": str(number)},
             }
             for number in numbers

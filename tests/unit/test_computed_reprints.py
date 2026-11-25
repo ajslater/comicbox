@@ -158,7 +158,7 @@ def test_two_reprints_sharing_a_name_do_not_share_its_parsed_values() -> None:
 
 def test_the_name_parse_is_memoized() -> None:
     """Reprint names repeat; the grammar and the glom spec do not rerun for them."""
-    name = "Uncanny X-Men v3 #003 (1992) The Reprint"
+    name = "Uncanny Z-Men v3 #003 (1992) The Reprint"
     _parse_reprint_name(name)
     before = _parse_reprint_name.cache_info().hits
     _parse_reprint_name(name)

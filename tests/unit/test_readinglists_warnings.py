@@ -44,8 +44,8 @@ def _yaml(body: str) -> tuple[str, ...]:
         ("  ordered: maybe\n", "ordered: 'maybe' dropped"),
         ("  start_year: abc\n", "start_year: 'abc' dropped"),
         (
-            "  entries:\n    - series: Batman\n      issue: {name: '1'}\n",
-            "entries #1.series: 'Batman' read as {'name': 'Batman'}",
+            "  entries:\n    - series: Bladehawk\n      issue: {name: '1'}\n",
+            "entries #1.series: 'Bladehawk' read as {'name': 'Bladehawk'}",
         ),
         (
             "  entries:\n    - series: {name: A}\n      volume: 2006\n",
@@ -94,7 +94,7 @@ def test_equal_meanings_are_not_changes() -> None:
 
 # Every fixture but the ones written to warn or to fail.
 _CLEAN_FIXTURES = (
-    READING_LISTS_DIR / "civil-war.yaml",
+    READING_LISTS_DIR / "crimson-tide.yaml",
     *(
         path
         for path in sorted((READING_LISTS_DIR / "cbl").glob("*.cbl"))
@@ -237,7 +237,7 @@ def test_a_partial_yaml_store_date_is_dropped() -> None:
 def _book(volume: str, year: str) -> str:
     return (
         "<ReadingList><Name>A</Name><Books>"
-        f"<Book Series='Batman' Number='1' Volume='{volume}' Year='{year}' />"
+        f"<Book Series='Bladehawk' Number='1' Volume='{volume}' Year='{year}' />"
         "</Books><Matchers /></ReadingList>"
     )
 
@@ -245,10 +245,10 @@ def _book(volume: str, year: str) -> str:
 def test_minus_one_is_comicrack_for_unknown() -> None:
     result = loads(_book("-1", "-1"))
     (entry,) = result.reading_list[ENTRIES_KEY]
-    assert entry == {"series": {"name": "Batman"}, "issue": {"name": "1"}}
+    assert entry == {"series": {"name": "Bladehawk"}, "issue": {"name": "1"}}
     assert result.warnings == ()
-    # Without a volume there is no name key, so Batman (1940) #1 and
-    # Batman (2011) #1 written with Volume="-1" are never one issue.
+    # Without a volume there is no name key, so Bladehawk (1940) #1 and
+    # Bladehawk (2011) #1 written with Volume="-1" are never one issue.
     assert entry_keys(entry) == ()
 
 

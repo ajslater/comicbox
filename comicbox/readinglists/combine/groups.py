@@ -14,7 +14,7 @@ id joining B and C put all three together. Links are applied strongest
 first, ids in ``ranked_id_sources`` order, then names with a start year,
 then names with a volume number, then names with a cover year, and within
 one strength by input rank and row. A volume-number link is refused when the
-joined group would hold two years: X-Men (1963) and X-Men (1991) may both be
+joined group would hold two years: Z-Men (1963) and Z-Men (1991) may both be
 volume 1. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart

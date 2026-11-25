@@ -80,9 +80,9 @@ def test_a_long_run_of_spaces_in_a_series_name_is_linear() -> None:
 @pytest.mark.parametrize(
     ("name", "normalized"),
     [
-        ("Batman Vol. 2", "batman"),
-        ("X-Men (Volume 3)", "x men"),
-        ("Saga vol 1", "saga"),
+        ("Bladehawk Vol. 2", "bladehawk"),
+        ("Z-Men (Volume 3)", "z men"),
+        ("Sonnet vol 1", "sonnet"),
         ("Revolution 2", "revolution 2"),
     ],
 )
@@ -139,7 +139,7 @@ def test_comicbox_never_writes_an_alias() -> None:
     so one date for a cover and a store date is the real case.
     """
     day = date(2006, 7, 1)
-    series = {"name": "Civil War", "start_year": 2006}
+    series = {"name": "Crimson Tide", "start_year": 2006}
     ids = {"metron": {"key": "1"}}
     reading_list = {
         "name": "Shared",

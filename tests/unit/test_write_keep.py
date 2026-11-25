@@ -39,7 +39,7 @@ _ALL = (_CIX, _MI, "COMET", JSON, "COMICBOX_YAML", "COMIC_BOOK_INFO")
 _PATCH = {"summary": "Kept"}
 # What every write adds, keep or not: the patch, and comicbox's stamp.
 _WRITE_ADDS = ("summary", "notes", "tagger", "updated_at")
-_TAGS: dict[str, Any] = {"series": "Civil War", "number": "1", "volume": 2006}
+_TAGS: dict[str, Any] = {"series": "Crimson Tide", "number": "1", "volume": 2006}
 
 
 def _tag_files(path: Path) -> tuple[list[str], bytes]:

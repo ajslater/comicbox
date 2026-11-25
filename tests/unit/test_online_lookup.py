@@ -499,10 +499,10 @@ def test_accumulate_profile_fields_embedded_beats_filename() -> None:
 
     fields: dict = {}
     # Filename parse first (earlier source) ...
-    accumulate_profile_fields(fields, _md(series={"name": "Spider-Man"}))
+    accumulate_profile_fields(fields, _md(series={"name": "Snail-Man"}))
     # ... then the embedded ComicInfo.xml (later, higher-precedence source).
-    accumulate_profile_fields(fields, _md(series={"name": "The Amazing Spider-Man"}))
-    assert fields["series"] == "The Amazing Spider-Man"
+    accumulate_profile_fields(fields, _md(series={"name": "The Amazing Snail-Man"}))
+    assert fields["series"] == "The Amazing Snail-Man"
 
 
 def test_accumulate_profile_fields_keeps_earlier_when_later_absent() -> None:
@@ -510,9 +510,9 @@ def test_accumulate_profile_fields_keeps_earlier_when_later_absent() -> None:
     from comicbox.formats.base.online.profile import accumulate_profile_fields
 
     fields: dict = {}
-    accumulate_profile_fields(fields, _md(series={"name": "Spider-Man"}))
+    accumulate_profile_fields(fields, _md(series={"name": "Snail-Man"}))
     accumulate_profile_fields(fields, _md(publisher={"name": "Marvel"}))
-    assert fields["series"] == "Spider-Man"
+    assert fields["series"] == "Snail-Man"
     assert fields["publisher"] == "Marvel"
 
 

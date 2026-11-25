@@ -80,7 +80,7 @@ class SimpleNamedNestedField(Union):
     """
     A nested schema that also reads a plain name or number.
 
-    ``series: Civil War`` is read as ``series: {name: Civil War}``, and
+    ``series: Crimson Tide`` is read as ``series: {name: Crimson Tide}``, and
     ``volume: 2006`` as ``volume: {number: 2006}``.
     """
 

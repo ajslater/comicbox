@@ -31,7 +31,7 @@ _COVER = date(2011, 11, 1)
 
 def _entry(
     *,
-    series: str = "Batman",
+    series: str = "Bladehawk",
     start_year: int | None = None,
     volume: int | None = None,
     cover: date | None = _COVER,
@@ -50,7 +50,7 @@ def _entry(
 
 
 def _list(*entries: dict[str, Any]) -> dict[str, Any]:
-    return {"name": "Batman", "ordered": True, ENTRIES_KEY: list(entries)}
+    return {"name": "Bladehawk", "ordered": True, ENTRIES_KEY: list(entries)}
 
 
 def _name_keys(entry: dict[str, Any]) -> list[tuple[Any, ...]]:
@@ -69,8 +69,8 @@ def _groups(*inputs: dict[str, Any]) -> list[set[tuple[int, int]]]:
 
 _V2 = _entry(volume=2, cover=None)
 _2011_V2 = _entry(start_year=2011, volume=2)
-_XMEN_1963 = _entry(series="X-Men", start_year=1963, volume=1, cover=None)
-_XMEN_1991 = _entry(series="X-Men", start_year=1991, volume=1, cover=None)
+_ZMEN_1963 = _entry(series="Z-Men", start_year=1963, volume=1, cover=None)
+_ZMEN_1991 = _entry(series="Z-Men", start_year=1991, volume=1, cover=None)
 
 
 # ------------------------------------------------------------------ the keys
@@ -78,8 +78,8 @@ _XMEN_1991 = _entry(series="X-Men", start_year=1991, volume=1, cover=None)
 
 def test_an_entry_has_a_year_key_then_a_volume_key() -> None:
     assert _name_keys(_2011_V2) == [
-        ("name", "batman", "year", 2011, Decimal(1), ""),
-        ("name", "batman", "volume", 2, Decimal(1), ""),
+        ("name", "bladehawk", "year", 2011, Decimal(1), ""),
+        ("name", "bladehawk", "volume", 2, Decimal(1), ""),
     ]
 
 
@@ -92,10 +92,10 @@ def test_a_year_like_volume_is_a_year_key() -> None:
 
 
 def test_variant_keys_keep_both_kinds_for_each_name() -> None:
-    entry = _entry(series="The Batman (2011)", start_year=2011, volume=2)
+    entry = _entry(series="The Bladehawk (2011)", start_year=2011, volume=2)
     assert variant_keys(entry) == tuple(
         ("name", name, kind, value, Decimal(1), "")
-        for name in ("the batman 2011", "the batman", "batman 2011")
+        for name in ("the bladehawk 2011", "the bladehawk", "bladehawk 2011")
         for kind, value in (("year", 2011), ("volume", 2))
     )
 
@@ -113,12 +113,12 @@ def test_a_volume_only_entry_finds_a_comic_with_a_start_year() -> None:
 
 
 def test_a_volume_key_match_of_another_year_is_refused() -> None:
-    comics = {Path("1963.cbz"): _XMEN_1963, Path("1991.cbz"): _XMEN_1991}
+    comics = {Path("1963.cbz"): _ZMEN_1963, Path("1991.cbz"): _ZMEN_1991}
 
-    (found,) = match_comics(_list(_XMEN_1991), comics).found
+    (found,) = match_comics(_list(_ZMEN_1991), comics).found
 
     assert found.paths == (Path("1991.cbz"),)
-    assert match_comics(_list(_XMEN_1991), {Path("a.cbz"): _XMEN_1963}).missing == (0,)
+    assert match_comics(_list(_ZMEN_1991), {Path("a.cbz"): _ZMEN_1963}).missing == (0,)
 
 
 def test_a_year_like_volume_and_a_start_year_still_meet() -> None:
@@ -127,8 +127,8 @@ def test_a_year_like_volume_and_a_start_year_still_meet() -> None:
 
 
 def test_a_variant_on_the_volume_key_of_another_year_is_refused() -> None:
-    entry = _entry(series="X-Men (Vol. 1)", start_year=1991, volume=1, cover=None)
-    assert match_comics(_list(entry), {Path("a.cbz"): _XMEN_1963}).missing == (0,)
+    entry = _entry(series="Z-Men (Vol. 1)", start_year=1991, volume=1, cover=None)
+    assert match_comics(_list(entry), {Path("a.cbz"): _ZMEN_1963}).missing == (0,)
 
 
 # ------------------------------------------------------- combine and compare
@@ -139,17 +139,17 @@ def test_a_volume_only_row_joins_the_row_with_a_start_year() -> None:
 
 
 def test_two_volumes_of_one_name_stay_apart() -> None:
-    assert _groups(_list(_XMEN_1963), _list(_XMEN_1991)) == [{(0, 0)}, {(1, 0)}]
+    assert _groups(_list(_ZMEN_1963), _list(_ZMEN_1991)) == [{(0, 0)}, {(1, 0)}]
 
 
 def test_a_volume_only_row_does_not_carry_two_years_into_one_group() -> None:
-    bare_v1 = _entry(series="X-Men", volume=1, cover=None)
-    groups = _groups(_list(bare_v1), _list(_XMEN_1963), _list(_XMEN_1991))
+    bare_v1 = _entry(series="Z-Men", volume=1, cover=None)
+    groups = _groups(_list(bare_v1), _list(_ZMEN_1963), _list(_ZMEN_1991))
     assert groups == [{(0, 0), (1, 0)}, {(2, 0)}]
 
 
 def test_compare_keeps_two_volumes_apart() -> None:
-    assert compare(_list(_XMEN_1963), _list(_XMEN_1991)).verdict is Verdict.UNRELATED
+    assert compare(_list(_ZMEN_1963), _list(_ZMEN_1991)).verdict is Verdict.UNRELATED
     assert compare(_list(_V2), _list(_2011_V2)).verdict is Verdict.SAME
 
 

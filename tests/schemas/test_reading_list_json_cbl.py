@@ -36,7 +36,7 @@ def _validate(text: str) -> None:
 
 def _entry(**fields: Any) -> dict[str, Any]:
     return {
-        "series": {"name": "Civil War", "start_year": 2006},
+        "series": {"name": "Crimson Tide", "start_year": 2006},
         "issue": {"name": "1"},
         "date": {"cover_date": date(2006, 7, 1)},
         **fields,
@@ -49,7 +49,7 @@ _SOURCE = {"kind": "json-cbl", "key": "4f1c0d5e-8b3a-4e2f-9d6c-7a1b2c3d4e5f"}
 
 def _list(*entries: dict[str, Any], **header: Any) -> dict[str, Any]:
     return {
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "sources": [_SOURCE],
         ENTRIES_KEY: list(entries or [_entry()]),
         **header,
@@ -74,7 +74,7 @@ def test_fixtures_follow_the_spec(path: Path) -> None:
         MINIMAL_PATH,
         READING_LISTS_DIR / "cbl" / "common.cbl",
         READING_LISTS_DIR / "cbl" / "comicrack-native.cbl",
-        READING_LISTS_DIR / "civil-war.yaml",
+        READING_LISTS_DIR / "crimson-tide.yaml",
     ],
     ids=lambda path: path.name,
 )
@@ -100,21 +100,21 @@ def test_full_document() -> None:
                 "kind": "json-cbl",
                 "key": "1b4e28ba-2fa1-41d2-883f-0016d3cca427",
                 "curator": "cbro",
-                "curator_url": "https://example.org/civil-war",
+                "curator_url": "https://example.org/crimson-tide",
             },
             {
                 "kind": "metron-list",
                 "key": "123",
-                "url": "https://metron.cloud/reading-list/civil-war/",
+                "url": "https://metron.cloud/reading-list/crimson-tide/",
             },
         ],
         "previous": {
-            "name": "Road to Civil War",
+            "name": "Road to Crimson Tide",
             "kind": "json-cbl",
             "key": "6fa459ea-ee8a-3ca4-894e-db77e160355e",
         },
         "next": {
-            "name": "Civil War: The Initiative",
+            "name": "Crimson Tide: The Initiative",
             "kind": "json-cbl",
             "key": "16fd2706-8baf-433b-82eb-8c7fada847da",
         },
@@ -135,7 +135,7 @@ def test_full_document_entries() -> None:
         "grandcomicsdatabase": {"key": "311000"},
     }
     assert entries[1]["series"] == {
-        "name": "The Amazing Spider-Man",
+        "name": "The Amazing Snail-Man",
         "start_year": 1999,
         "identifiers": {
             "comicvine": {"key": "6643"},
@@ -154,7 +154,7 @@ def test_minimal_document() -> None:
         ],
         ENTRIES_KEY: [
             {
-                "series": {"name": "Civil War", "start_year": 2006},
+                "series": {"name": "Crimson Tide", "start_year": 2006},
                 "issue": {"name": "1"},
                 "date": {"cover_date": date(2006, 7, 1)},
             }
@@ -231,7 +231,7 @@ def test_a_cbl_list_written_as_json_cbl() -> None:
     """A year-only date gets -01-01; an entry with no year is not written."""
     reading_list = load(READING_LISTS_DIR / "cbl" / "common.cbl").reading_list
     reading_list[ENTRIES_KEY].append(
-        {"series": {"name": "Civil War", "start_year": 2006}, "issue": {"name": "3"}}
+        {"series": {"name": "Crimson Tide", "start_year": 2006}, "issue": {"name": "3"}}
     )
     issues = _written(reading_list)["issueList"]
     assert [issue["issueCoverDate"] for issue in issues] == ["2006-01-01"] * 3
@@ -252,9 +252,9 @@ def test_a_month_makes_a_better_guess() -> None:
 
 
 def test_a_volume_that_is_a_year_is_the_start_year() -> None:
-    entry = _entry(series={"name": "Civil War"}, volume={"number": 2006})
+    entry = _entry(series={"name": "Crimson Tide"}, volume={"number": 2006})
     assert _written(_list(entry))["issueList"][0]["seriesStartYear"] == 2006
-    entry = _entry(series={"name": "Civil War"}, volume={"number": 1})
+    entry = _entry(series={"name": "Crimson Tide"}, volume={"number": 1})
     reading_list = _list(entry)
     assert _written(reading_list)["issueList"] == []
     assert lost_fields(reading_list, "json-cbl") == ("entries #1",)
@@ -263,7 +263,7 @@ def test_a_volume_that_is_a_year_is_the_start_year() -> None:
 def test_an_id_without_its_series_id_is_left_out() -> None:
     entry = _entry(
         series={
-            "name": "Civil War",
+            "name": "Crimson Tide",
             "start_year": 2006,
             "identifiers": {"metron": {"key": "1046"}},
         },
@@ -278,7 +278,7 @@ def test_an_id_without_its_series_id_is_left_out() -> None:
 
 def test_a_relationship_without_a_uuid_is_left_out() -> None:
     reading_list = _list(
-        previous={"name": "Road to Civil War"},
+        previous={"name": "Road to Crimson Tide"},
         next={"name": "The Initiative", "kind": "json-cbl", "key": "abc"},
     )
     assert _written(reading_list)["listDetails"]["relationships"] == [

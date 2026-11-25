@@ -132,14 +132,14 @@ Series key is "everything before the issue marker", so:
 
 | Filename                    | Series key         |
 | --------------------------- | ------------------ |
-| `Watchmen (1986) #002.cbz`  | `Watchmen (1986)`  |
+| `Wardens (1986) #002.cbz`   | `Wardens (1986)`   |
 | `Conan (2004) #005.cbz`     | `Conan (2004)`     |
-| `Lois Lane (2019) #001.cbz` | `Lois Lane (2019)` |
-| `Akira (1984) #001.cbz`     | `Akira (1984)`\*   |
+| `Lila Lane (2019) #001.cbz` | `Lila Lane (2019)` |
+| `Akemi (1984) #001.cbz`     | `Akemi (1984)`\*   |
 
-\* `Akira (1984)` and `Akira (1990)` are treated as separate series because the
-year-in-parens often distinguishes volumes (`Lois Lane (1986)` vs
-`Lois Lane (2019)`). For Akira specifically the same logical run got split
+\* `Akemi (1984)` and `Akemi (1990)` are treated as separate series because the
+year-in-parens often distinguishes volumes (`Lila Lane (1986)` vs
+`Lila Lane (2019)`). For Akemi specifically the same logical run got split
 across years, but the harness errs conservative — group further with `--filter`
 if you want.
 
@@ -156,10 +156,10 @@ if you want.
 
 The rationale: every issue from a given series exercises the same matcher code
 path (same volume-search, same per-volume issue-list filter). If `fast` mode
-flips the Watchmen series's verdict, ALL six Watchmen fixtures will flip
-together — running them all just confirms what one already showed at \~10x the
-wall-clock cost. Threshold tuning is the exception because each fixture is an
-independent score sample and the distribution shape matters.
+flips the Wardens series's verdict, ALL six Wardens fixtures will flip together
+— running them all just confirms what one already showed at \~10x the wall-clock
+cost. Threshold tuning is the exception because each fixture is an independent
+score sample and the distribution shape matters.
 
 ### `--filter REGEX`
 
@@ -167,7 +167,7 @@ Run only fixtures whose filename matches a regex:
 
 ```sh
 # Verify the smoking-gun cases after a scoring fix:
-uv run python -m tests.calibration.run --filter 'Lois Lane|Watchmen \(1987\)'
+uv run python -m tests.calibration.run --filter 'Lila Lane|Wardens \(1987\)'
 
 # Just the AfterShock indie titles:
 uv run python -m tests.calibration.run --filter 'Wrong Earth|Penultiman|Snow Angels'
@@ -236,7 +236,7 @@ runs. Two display points:
 Example:
 
 ```log
-  [12/343] comicvine: Watchmen (1986) #005.cbz ... OK  score=0.99
+  [12/343] comicvine: Wardens (1986) #005.cbz ... OK  score=0.99
   [overall 12/343 fixtures, 14.7m elapsed, ETA 6.7h]
 ```
 

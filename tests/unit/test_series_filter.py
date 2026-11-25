@@ -36,55 +36,55 @@ def test_threshold_for_known_budgets_exhaustive_table() -> None:
 def test_threshold_zero_keeps_everything() -> None:
     """`BALANCED` (Phase A) is a no-op — every volume passes."""
     # Even an obviously-wrong volume name passes when threshold is 0.
-    assert should_keep_volume_name("Lois Lane", "Watchmen", threshold=0.0)
+    assert should_keep_volume_name("Lila Lane", "Wardens", threshold=0.0)
 
 
 def test_missing_profile_series_keeps_volume() -> None:
     """No comparison anchor → never drop on missing data."""
-    assert should_keep_volume_name(None, "Watchmen", threshold=0.7)
-    assert should_keep_volume_name("", "Watchmen", threshold=0.7)
+    assert should_keep_volume_name(None, "Wardens", threshold=0.7)
+    assert should_keep_volume_name("", "Wardens", threshold=0.7)
 
 
 def test_missing_volume_name_keeps_volume() -> None:
     """Can't compare a missing name → keep."""
-    assert should_keep_volume_name("Watchmen", None, threshold=0.7)
-    assert should_keep_volume_name("Watchmen", "", threshold=0.7)
+    assert should_keep_volume_name("Wardens", None, threshold=0.7)
+    assert should_keep_volume_name("Wardens", "", threshold=0.7)
 
 
 def test_exact_match_kept() -> None:
     """Identical names pass any threshold."""
-    assert should_keep_volume_name("Watchmen", "Watchmen", threshold=0.7)
-    assert should_keep_volume_name("Watchmen", "Watchmen", threshold=0.99)
+    assert should_keep_volume_name("Wardens", "Wardens", threshold=0.7)
+    assert should_keep_volume_name("Wardens", "Wardens", threshold=0.99)
 
 
 def test_punctuation_variants_kept() -> None:
     """Normalization handles punctuation: GI Joe vs G.I. Joe."""
     # `normalize_series` strips non-alphanumeric so both reduce to "g i joe".
     assert should_keep_volume_name("GI Joe", "G.I. Joe", threshold=0.7)
-    assert should_keep_volume_name("X-Men", "X Men", threshold=0.7)
+    assert should_keep_volume_name("Z-Men", "Z Men", threshold=0.7)
 
 
 def test_volume_suffix_variants_kept() -> None:
     """The `(Vol. 2)` suffix is stripped by normalization."""
-    assert should_keep_volume_name("Spider-Man", "Spider-Man (Vol. 2)", threshold=0.7)
+    assert should_keep_volume_name("Snail-Man", "Snail-Man (Vol. 2)", threshold=0.7)
 
 
 def test_celebration_style_volumes_dropped_at_fast_threshold() -> None:
     """
-    Drop the motivating "Lois Lane: A Celebration"-style volumes.
+    Drop the motivating "Lila Lane: A Celebration"-style volumes.
 
     The matcher's `s_series` already scores these near zero — this filter
     just skips the API call to confirm. Under `FAST` they're filtered out
     before the per-volume list_issues call.
     """
     assert not should_keep_volume_name(
-        "Lois Lane",
-        "Lois Lane: A Celebration of 75 Years",
+        "Lila Lane",
+        "Lila Lane: A Celebration of 75 Years",
         threshold=0.7,
     )
     assert not should_keep_volume_name(
-        "Lois Lane",
-        "Adventures of Lois Lane and Friends",
+        "Lila Lane",
+        "Adventures of Lila Lane and Friends",
         threshold=0.7,
     )
 
@@ -98,17 +98,17 @@ def test_year_in_parens_kept() -> None:
     year/year-range parentheticals so short series names like "Conan
     (2004)" still match "Conan" at the 0.7 threshold.
     """
-    assert should_keep_volume_name("Watchmen", "Watchmen (1986)", threshold=0.7)
-    assert should_keep_volume_name("Lois Lane", "Lois Lane (1986)", threshold=0.7)
-    assert should_keep_volume_name("Lois Lane", "Lois Lane (2019)", threshold=0.7)
+    assert should_keep_volume_name("Wardens", "Wardens (1986)", threshold=0.7)
+    assert should_keep_volume_name("Lila Lane", "Lila Lane (1986)", threshold=0.7)
+    assert should_keep_volume_name("Lila Lane", "Lila Lane (2019)", threshold=0.7)
     assert should_keep_volume_name("Conan", "Conan (2004)", threshold=0.7)
     # Year-range form, hyphen and en-dash both:
-    assert should_keep_volume_name("Watchmen", "Watchmen (1986-1990)", threshold=0.7)
+    assert should_keep_volume_name("Wardens", "Wardens (1986-1990)", threshold=0.7)
     # En-dash (U+2013) variant. Built via chr() so the source doesn't
     # carry a literal ambiguous character (RUF001).
     en_dash = chr(0x2013)
-    en_dash_year_range = f"Watchmen (1986{en_dash}1990)"
-    assert should_keep_volume_name("Watchmen", en_dash_year_range, threshold=0.7)
+    en_dash_year_range = f"Wardens (1986{en_dash}1990)"
+    assert should_keep_volume_name("Wardens", en_dash_year_range, threshold=0.7)
 
 
 def test_non_year_parens_preserved_and_filtered() -> None:
@@ -117,27 +117,25 @@ def test_non_year_parens_preserved_and_filtered() -> None:
 
     Annotation labels in parens are NOT stripped — they legitimately
     distinguish different volumes from the bare-named original, so the
-    ratio should drop them below the threshold. "Watchmen (2008 Reprint)"
-    stays as "Watchmen (2008 Reprint)" after year-paren stripping (the
+    ratio should drop them below the threshold. "Wardens (2008 Reprint)"
+    stays as "Wardens (2008 Reprint)" after year-paren stripping (the
     content has more than just a year), so the Levenshtein ratio against
-    bare "Watchmen" is dominated by the suffix and falls below 0.7.
+    bare "Wardens" is dominated by the suffix and falls below 0.7.
     """
     assert not should_keep_volume_name(
-        "Watchmen", "Watchmen (2008 Reprint)", threshold=0.7
+        "Wardens", "Wardens (2008 Reprint)", threshold=0.7
     )
-    assert not should_keep_volume_name(
-        "Watchmen", "Watchmen (Annotated)", threshold=0.7
-    )
+    assert not should_keep_volume_name("Wardens", "Wardens (Annotated)", threshold=0.7)
 
 
 @pytest.mark.parametrize(
     ("profile_series", "volume_name"),
     [
-        # All these are known CV "Lois Lane" variants that should fail tight
+        # All these are known CV "Lila Lane" variants that should fail tight
         # filter — none would score well in s_series anyway.
-        ("Lois Lane", "Adventures of Superman: Lois Lane"),
-        ("Lois Lane", "Tales of Lois Lane and Jimmy Olsen"),
-        ("Lois Lane", "Showcase Presents: Superman Family"),
+        ("Lila Lane", "Adventures of Sunbolt: Lila Lane"),
+        ("Lila Lane", "Tales of Lila Lane and Timmy Olden"),
+        ("Lila Lane", "Showcase Presents: Sunbolt Family"),
     ],
 )
 def test_dissimilar_dropped_at_fast(profile_series: str, volume_name: str) -> None:
@@ -185,10 +183,10 @@ def test_empty_and_blank_alt_names_are_inert() -> None:
     """No aliases, or only junk ones, behave exactly as before."""
     for alt_names in ((), ("", "   ")):
         assert not should_keep_volume_name(
-            "Lois Lane", "Watchmen", threshold=0.7, alt_names=alt_names
+            "Lila Lane", "Wardens", threshold=0.7, alt_names=alt_names
         )
         assert should_keep_volume_name(
-            "Lois Lane", "Lois Lane", threshold=0.7, alt_names=alt_names
+            "Lila Lane", "Lila Lane", threshold=0.7, alt_names=alt_names
         )
 
 

@@ -41,7 +41,7 @@ def test_merge_preserves_other_fixtures_when_retrying_subset(
     tmp_path: Path,
 ) -> None:
     """
-    The smoking gun: retrying just Watchmen shouldn't wipe Conan's miss.
+    The smoking gun: retrying just Wardens shouldn't wipe Conan's miss.
 
     This is the bug we shipped: each --retry-misses overwrote the partial
     with just its subset, so successful retries silently destroyed the
@@ -53,7 +53,7 @@ def test_merge_preserves_other_fixtures_when_retrying_subset(
     # Existing partial: three misses across three different families.
     existing = [
         _Outcome(
-            fixture=_make_fixture(Path("/Watchmen.cbz"), comicvine=1),
+            fixture=_make_fixture(Path("/Wardens.cbz"), comicvine=1),
             source_name="comicvine",
             top_score=0.89,
             top_issue_id=2,
@@ -69,7 +69,7 @@ def test_merge_preserves_other_fixtures_when_retrying_subset(
             n_candidates=0,
         ),
         _Outcome(
-            fixture=_make_fixture(Path("/LoisLane.cbz"), comicvine=20),
+            fixture=_make_fixture(Path("/LilaLane.cbz"), comicvine=20),
             source_name="comicvine",
             top_score=0.78,
             top_issue_id=21,
@@ -79,10 +79,10 @@ def test_merge_preserves_other_fixtures_when_retrying_subset(
     ]
     _serialize_outcomes(existing, path)
 
-    # Retry just Watchmen — it now passes.
+    # Retry just Wardens — it now passes.
     new = [
         _Outcome(
-            fixture=_make_fixture(Path("/Watchmen.cbz"), comicvine=1),
+            fixture=_make_fixture(Path("/Wardens.cbz"), comicvine=1),
             source_name="comicvine",
             top_score=0.95,
             top_issue_id=1,
@@ -95,12 +95,12 @@ def test_merge_preserves_other_fixtures_when_retrying_subset(
     merged = json.loads(path.read_text())
     by_file = {entry["file"]: entry for entry in merged}
     # All three fixtures are still present.
-    assert set(by_file) == {"/Watchmen.cbz", "/Conan.cbz", "/LoisLane.cbz"}
-    # Watchmen got updated to correct.
-    assert by_file["/Watchmen.cbz"]["outcome"] == "correct"
+    assert set(by_file) == {"/Wardens.cbz", "/Conan.cbz", "/LilaLane.cbz"}
+    # Wardens got updated to correct.
+    assert by_file["/Wardens.cbz"]["outcome"] == "correct"
     # The other two are preserved with their original miss outcomes.
     assert by_file["/Conan.cbz"]["outcome"] == "no_candidates"
-    assert by_file["/LoisLane.cbz"]["outcome"] == "wrong"
+    assert by_file["/LilaLane.cbz"]["outcome"] == "wrong"
 
 
 def test_merge_keys_by_file_and_source(tmp_path: Path) -> None:

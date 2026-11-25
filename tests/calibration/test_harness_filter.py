@@ -30,12 +30,12 @@ _write_outcomes = write_outcomes
 @pytest.mark.parametrize(
     ("filename", "expected"),
     [
-        pytest.param("Watchmen (1986) #002.cbz", "Watchmen (1986)", id="year-paren"),
+        pytest.param("Wardens (1986) #002.cbz", "Wardens (1986)", id="year-paren"),
         pytest.param("Conan (2004) #005.cbz", "Conan (2004)", id="year-paren-2"),
-        pytest.param("Lois Lane (2019) #001.cbz", "Lois Lane (2019)", id="multi-word"),
-        pytest.param("Akira (1984) #001.cbz", "Akira (1984)", id="single-word"),
+        pytest.param("Lila Lane (2019) #001.cbz", "Lila Lane (2019)", id="multi-word"),
+        pytest.param("Akemi (1984) #001.cbz", "Akemi (1984)", id="single-word"),
         pytest.param(
-            "X-Men Hellfire Gala #001.cbz", "X-Men Hellfire Gala", id="no-paren"
+            "Z-Men Hellfire Gala #001.cbz", "Z-Men Hellfire Gala", id="no-paren"
         ),
         # Edge: leading whitespace, multiple spaces
         pytest.param("Foo Bar   #042.cbz", "Foo Bar", id="extra-whitespace"),
@@ -53,25 +53,25 @@ def test_dedupe_one_per_series_keeps_first(tmp_path: Path) -> None:
     from tests.calibration.run import _dedupe_one_per_series
 
     fixtures = [
-        _Fixture(tmp_path / "Watchmen (1986) #001.cbz", {}, "full"),
-        _Fixture(tmp_path / "Watchmen (1986) #002.cbz", {}, "full"),
-        _Fixture(tmp_path / "Watchmen (1986) #003.cbz", {}, "full"),
-        _Fixture(tmp_path / "Lois Lane (2019) #001.cbz", {}, "full"),
-        _Fixture(tmp_path / "Lois Lane (2019) #002.cbz", {}, "full"),
+        _Fixture(tmp_path / "Wardens (1986) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Wardens (1986) #002.cbz", {}, "full"),
+        _Fixture(tmp_path / "Wardens (1986) #003.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lila Lane (2019) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lila Lane (2019) #002.cbz", {}, "full"),
     ]
     deduped = _dedupe_one_per_series(fixtures)
     assert len(deduped) == 2
-    assert deduped[0].file_path.name == "Watchmen (1986) #001.cbz"
-    assert deduped[1].file_path.name == "Lois Lane (2019) #001.cbz"
+    assert deduped[0].file_path.name == "Wardens (1986) #001.cbz"
+    assert deduped[1].file_path.name == "Lila Lane (2019) #001.cbz"
 
 
 def test_dedupe_one_per_series_distinguishes_volumes(tmp_path: Path) -> None:
-    """Lois Lane (1986) and Lois Lane (2019) are separate series — keep both."""
+    """Lila Lane (1986) and Lila Lane (2019) are separate series — keep both."""
     from tests.calibration.run import _dedupe_one_per_series
 
     fixtures = [
-        _Fixture(tmp_path / "Lois Lane (1986) #001.cbz", {}, "full"),
-        _Fixture(tmp_path / "Lois Lane (2019) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lila Lane (1986) #001.cbz", {}, "full"),
+        _Fixture(tmp_path / "Lila Lane (2019) #001.cbz", {}, "full"),
     ]
     deduped = _dedupe_one_per_series(fixtures)
     assert len(deduped) == 2

@@ -141,7 +141,7 @@ def test_filename_dumps_sanitizes_path_separators() -> None:
 @pytest.mark.parametrize(
     ("series", "expected"),
     [
-        ("Batman: Year One", "Batman Year One #001 (1950).cbz"),
+        ("Bladehawk: Year One", "Bladehawk Year One #001 (1950).cbz"),
         ("Re:Zero", "Re-Zero #001 (1950).cbz"),
         ("Foo\\Bar", "Foo_Bar #001 (1950).cbz"),
         ('What If? "*<Foo>|"', "What If Foo #001 (1950).cbz"),
@@ -210,7 +210,7 @@ def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
         FilenameSchema.ROOT_TAG: {
             "ext": "cbz",
             "issue": "005",
-            "series": "Star Wars: Doctor Aphra",
+            "series": "Star Drifters: Doctor Aphra",
             "year": 2017,
         }
     }
@@ -218,13 +218,13 @@ def test_filename_sanitized_colon_reads_back_as_one_series() -> None:
     fn = schema.dumps(obj)
 
     assert glom(schema.loads(fn), f"{FilenameSchema.ROOT_TAG}.series") == (
-        "Star Wars Doctor Aphra"
+        "Star Drifters Doctor Aphra"
     )
 
 
 def test_filename_publisher_is_read_and_not_written(tmp_path: Path) -> None:
     """A publisher comicfn2dict knows reads out of the name; none is written back."""
-    path = tmp_path / "Batman #001 (2020) (DC).cbz"
+    path = tmp_path / "Bladehawk #001 (2020) (DC).cbz"
     shutil.copy(EMPTY_CBZ_SOURCE_PATH, path)
 
     with Comicbox(path, config=READ_CONFIG) as car:
@@ -232,4 +232,4 @@ def test_filename_publisher_is_read_and_not_written(tmp_path: Path) -> None:
         predicted = car.predict_filename()
 
     assert md[ComicboxSchemaMixin.ROOT_TAG]["publisher"] == {"name": "DC"}
-    assert predicted == "Batman #001 (2020).cbz"
+    assert predicted == "Bladehawk #001 (2020).cbz"

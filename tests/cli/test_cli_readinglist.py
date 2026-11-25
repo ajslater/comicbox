@@ -22,8 +22,8 @@ from comicbox.readinglists import ReadingListFormats, load
 from comicbox.readinglists import cli as readinglist_cli
 from tests.const import CIX_CBZ_SOURCE_PATH
 from tests.util.readinglist_cli import (
-    CIVIL_WAR,
     COMMON_CBL,
+    CRIMSON_TIDE,
     FULL_JSON_CBL,
     SMART_LIST,
     TWO_DATABASES_CBL,
@@ -39,10 +39,10 @@ pytestmark = pytest.mark.usefixtures("restore_cli_state")
 
 @pytest.mark.parametrize("command", ["readinglist", "rl"])
 def test_print(capsys: pytest.CaptureFixture[str], command: str) -> None:
-    code, out, _ = cli_run(capsys, command, "print", str(CIVIL_WAR), str(COMMON_CBL))
+    code, out, _ = cli_run(capsys, command, "print", str(CRIMSON_TIDE), str(COMMON_CBL))
     assert code == 0
-    assert "Civil War" in out
-    assert "[Marvel] Civil War (Hand Written)" in out
+    assert "Crimson Tide" in out
+    assert "[Marvel] Crimson Tide (Hand Written)" in out
     assert "comicvine:105747" in out
 
 
@@ -52,11 +52,11 @@ def test_print_reports_a_bad_file_and_carries_on(
     code, out, err = cli_run(capsys, "rl", "print", str(SMART_LIST), str(COMMON_CBL))
     assert code == 1
     assert "smart list" in err
-    assert "[Marvel] Civil War (Hand Written)" in out
+    assert "[Marvel] Crimson Tide (Hand Written)" in out
 
 
 def test_validate(capsys: pytest.CaptureFixture[str]) -> None:
-    paths = (CIVIL_WAR, FULL_JSON_CBL, COMMON_CBL)
+    paths = (CRIMSON_TIDE, FULL_JSON_CBL, COMMON_CBL)
     code, out, _ = cli_run(capsys, "rl", "validate", *map(str, paths))
     assert code == 0
     assert out.count("✓") == 3
@@ -105,7 +105,7 @@ def test_combine(capsys: pytest.CaptureFixture[str]) -> None:
         capsys, "rl", "combine", str(TWO_DATABASES_CBL), str(COMMON_CBL)
     )
     assert code == 0
-    assert out.startswith("reading_list: name: Civil War")
+    assert out.startswith("reading_list: name: Crimson Tide")
     assert f"{TWO_DATABASES_CBL}: 2 entries added" in err
     assert f"{COMMON_CBL}: 1 entry added" in err
 
@@ -257,9 +257,9 @@ def test_compare_an_unordered_list(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     unordered = tmp_path / "tags.yaml"
-    text = CIVIL_WAR.read_text().replace("ordered: true", "ordered: false")
+    text = CRIMSON_TIDE.read_text().replace("ordered: true", "ordered: false")
     unordered.write_text(text)
-    code, out, _ = cli_run(capsys, "rl", "compare", str(CIVIL_WAR), str(unordered))
+    code, out, _ = cli_run(capsys, "rl", "compare", str(CRIMSON_TIDE), str(unordered))
     assert code == 0
     assert "Verdict same" in out
     assert "Order agreement n/a" in out
@@ -270,7 +270,7 @@ def test_validate_prints_what_a_read_drops(
 ) -> None:
     typo = tmp_path / "typo.yaml"
     misspelled = "descripton"  # codespell:ignore
-    typo.write_text(CIVIL_WAR.read_text().replace("description:", f"{misspelled}:"))
+    typo.write_text(CRIMSON_TIDE.read_text().replace("description:", f"{misspelled}:"))
     code, out, _ = cli_run(capsys, "rl", "validate", str(typo))
     assert code == 0
     assert f"warning: {misspelled}: 'The superhuman registration act" in out

@@ -91,8 +91,9 @@
   attachment is named like a page number, or like a page it converts to
   (`1.jpeg`), is refused, where its CBZ had the page twice and lost the
   attachment.
-- A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
-  YAML, JSON or a library patch is read, where it was dropped without a word.
+- A plain `series: Crimson Tide`, `volume: 2006`, publisher or imprint in
+  comicbox YAML, JSON or a library patch is read, where it was dropped without a
+  word.
 - `write_metadata` and `bulk_write` write nothing for a patch that does not
   load, and return the error, where they rewrote the comic and reported success.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a

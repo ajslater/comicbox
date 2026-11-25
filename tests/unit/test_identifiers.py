@@ -41,7 +41,7 @@ comicbox:
     metron:
       key: "123495"
   urls:
-    - https://metron.cloud/issue/batman-2016-0/
+    - https://metron.cloud/issue/bladehawk-2016-0/
 """
 
 
@@ -208,8 +208,8 @@ def test_create_identifier_type_prefixed_keys_bug_report_sources() -> None:
 def test_get_identifier_url_metron_and_comicvine() -> None:
     """The major sources produce their documented url shapes."""
     assert (
-        get_identifier_url("metron", "issue", "flash-2021-1")
-        == "https://metron.cloud/issue/flash-2021-1"
+        get_identifier_url("metron", "issue", "fizz-2021-1")
+        == "https://metron.cloud/issue/fizz-2021-1"
     )
     assert (
         get_identifier_url("comicvine", "issue", "12345")
@@ -280,9 +280,9 @@ def test_metron_url_path_strips_trailing_slash() -> None:
         "issue",
         "123495",
     )
-    assert parts.parse_url_path("https://metron.cloud/issue/batman-2016-0/") == (
+    assert parts.parse_url_path("https://metron.cloud/issue/bladehawk-2016-0/") == (
         "issue",
-        "batman-2016-0",
+        "bladehawk-2016-0",
     )
 
 
@@ -625,12 +625,12 @@ def test_parse_url_path_stops_the_id_at_the_path_segment() -> None:
     cases = (
         (
             IdSources.LCG,
-            "https://leagueofcomicgeeks.com/comic/1234/batman-1",
+            "https://leagueofcomicgeeks.com/comic/1234/bladehawk-1",
             ("issue", "1234"),
         ),
         (
             IdSources.LCG,
-            "https://leagueofcomicgeeks.com/comics/series/178012/batman",
+            "https://leagueofcomicgeeks.com/comics/series/178012/bladehawk",
             ("series", "178012"),
         ),
         (
@@ -678,7 +678,7 @@ _ROUND_TRIP_ID_KEYS: MappingProxyType[IdSources, str] = MappingProxyType(
         IdSources.MANGADEX: "f9c33607-9180-4ba6-b85c-e4b5faee7192",
         IdSources.MANGAUPDATES: "wn3q3v5",
         IdSources.MARVEL: "12345",
-        IdSources.METRON: "batman-2016-0",
+        IdSources.METRON: "bladehawk-2016-0",
         IdSources.MYANIMELIST: "13",
         IdSources.PANELSYNDICATE: "theprivateeye",
         IdSources.UPC: "76194130593400111",
@@ -746,10 +746,10 @@ def test_versedb_derives_no_url() -> None:
 def test_versedb_urls_read_back_as_ids() -> None:
     """A real versedb.com url, slug and all, yields the id it names."""
     cases = (
-        ("issue/1215061/absolute-batman-2024-24", "issue", "1215061"),
-        ("series/139382/absolute-batman", "series", "139382"),
+        ("issue/1215061/absolute-bladehawk-2024-24", "issue", "1215061"),
+        ("series/139382/absolute-bladehawk", "series", "139382"),
         ("creator/240/marie-javins", "creator", "240"),
-        ("character/182881/batman-earth-alpha", "character", "182881"),
+        ("character/182881/bladehawk-earth-alpha", "character", "182881"),
         ("teams/12411/young-justice", "team", "12411"),
         ("story-arc/119/rise-of-the-midnight-sons", "arc", "119"),
         ("publisher/1/marvel-comics", "publisher", "1"),
@@ -885,7 +885,7 @@ def test_every_urn_written_is_found_whole_in_prose() -> None:
     """
     keys = (
         "145269",
-        "batman-2016-0",
+        "bladehawk-2016-0",
         "978-0-306-40615-7",
         "100%",
         "a:b",

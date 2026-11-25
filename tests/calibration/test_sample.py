@@ -73,7 +73,7 @@ def test_coerce_int_unparseable() -> None:
         pytest.param(1939, "pre-1980", id="golden-age"),
         pytest.param(1979, "pre-1980", id="late-bronze"),
         pytest.param(1980, "1980s", id="1980-boundary"),
-        pytest.param(1986, "1980s", id="watchmen"),
+        pytest.param(1986, "1980s", id="wardens"),
         pytest.param(1989, "1980s", id="late-80s"),
         pytest.param(1990, "1990s", id="1990-boundary"),
         pytest.param(2009, "2000s", id="late-2000s"),
@@ -93,22 +93,22 @@ def test_decade_bucket(year: int | None, expected: str) -> None:
 
 def test_dedupe_by_series_keeps_alphabetically_first() -> None:
     comics = [
-        _make(name="Watchmen #003", series="Watchmen"),
-        _make(name="Watchmen #001", series="Watchmen"),
-        _make(name="Watchmen #002", series="Watchmen"),
+        _make(name="Wardens #003", series="Wardens"),
+        _make(name="Wardens #001", series="Wardens"),
+        _make(name="Wardens #002", series="Wardens"),
     ]
     deduped = _dedupe_by_series(comics)
     assert len(deduped) == 1
-    assert deduped[0].file_path.name == "Watchmen #001.cbz"
+    assert deduped[0].file_path.name == "Wardens #001.cbz"
 
 
 def test_dedupe_by_series_keeps_distinct_series() -> None:
     comics = [
-        _make(name="Watchmen #001", series="Watchmen"),
-        _make(name="Lois Lane #001", series="Lois Lane"),
+        _make(name="Wardens #001", series="Wardens"),
+        _make(name="Lila Lane #001", series="Lila Lane"),
     ]
     deduped = _dedupe_by_series(comics)
-    assert {c.series for c in deduped} == {"Watchmen", "Lois Lane"}
+    assert {c.series for c in deduped} == {"Wardens", "Lila Lane"}
 
 
 def test_dedupe_by_series_empty_input() -> None:

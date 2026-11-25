@@ -301,19 +301,19 @@ def test_a_cancelled_session_asks_nothing(
         ("Marvel/Events/LoCG Community/Example (Marvel)(LoCG).cbl", "locg"),
         ("Marvel/Master Reading Order/CMRO/Core/Example Part 01.cbl", "cmro"),
         ("Marvel/Events/CBRO - With Events/Example.cbl", "cbro"),
-        ("Marvel/Teams/X-Men/CBH X-Men Reading Order/Example.cbl", "cbh"),
+        ("Marvel/Teams/Z-Men/CBH Z-Men Reading Order/Example.cbl", "cbh"),
         ("DC/Events/CBH/Example (CBH).cbl", "cbh"),
         ("Marvel/Events/Example (Comic Book Herald).cbl", "cbh"),
         ("Marvel/Events/CBT/Example (CBT).cbl", "cbt"),
         ("Vertigo/Characters/Example (HTLC).cbl", "htlc"),
         ("Marvel/Events/Official/Example (Official).cbl", "official"),
-        ("Marvel/Teams/X-Men/Example Era One (UXRO).cbl", "uxro"),
+        ("Marvel/Teams/Z-Men/Example Era One (UXRO).cbl", "uxro"),
         ("Image/Master Reading Order/Example (WEB-KCV).cbl", "kcv"),
         ("Marvel/Events/Community/Example (Community-Contributed).cbl", "community"),
         # The file's own mark wins over its folder's.
         ("Marvel/Events/CBRO/Example (MG).cbl", "mg"),
         # Era and edition labels are not curators.
-        ("DC/Characters/Superman/Example (Post-Crisis).cbl", None),
+        ("DC/Characters/Sunbolt/Example (Post-Crisis).cbl", None),
         ("DC/Events/Example (New 52).cbl", None),
         ("Archie Comics/Example/Example (Archie)(someone).cbl", None),
         ("Other/Example.cbl", None),
@@ -347,7 +347,7 @@ def test_a_fetched_list_names_the_catalog_as_its_source(
 ) -> None:
     result = session.fetch_catalog(_EVENT)
 
-    assert result.reading_list["name"] == "Civil War"
+    assert result.reading_list["name"] == "Crimson Tide"
     assert result.reading_list["sources"] == [
         {
             "kind": "catalog",
@@ -444,7 +444,7 @@ def test_the_size_cap_on_the_index(github: _GitHub) -> None:
 
 def test_the_revision_is_the_sha_of_what_arrived(github: _GitHub) -> None:
     """A branch that moved after the index was taken serves newer bytes."""
-    newer = _CBL.replace(b"Civil War</Name>", b"Civil War (Revised)</Name>")
+    newer = _CBL.replace(b"Crimson Tide</Name>", b"Crimson Tide (Revised)</Name>")
     github.raw[_EVENT] = newer
     with _session(github) as session:
         result = session.fetch_catalog(_EVENT)
@@ -497,7 +497,7 @@ def test_a_query_of_no_words_finds_nothing(
 
 
 def test_search_keeps_volume_words() -> None:
-    volume = "DC/Characters/Batman/Batman Vol 2 (CBRO).cbl"
+    volume = "DC/Characters/Bladehawk/Bladehawk Vol 2 (CBRO).cbl"
     with _session(_GitHub(volume, _PLAIN)) as session:
         assert [entry.path for entry in session.search_catalog("vol 2")] == [volume]
 

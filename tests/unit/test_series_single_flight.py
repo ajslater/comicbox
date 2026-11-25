@@ -14,8 +14,8 @@ import threading
 
 from comicbox.formats.base.online.series_cache import SeriesCache
 
-KEY = ("metron", "spider-man||2018|marvel")
-OTHER = ("metron", "batman||2011|dc")
+KEY = ("metron", "snail-man||2018|marvel")
+OTHER = ("metron", "bladehawk||2011|dc")
 
 
 def test_one_caller_leads_and_the_rest_do_not() -> None:

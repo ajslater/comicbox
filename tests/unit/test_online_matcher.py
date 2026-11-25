@@ -91,8 +91,8 @@ class TestSeriesSignal:
 
     def test_punctuation_normalized(self) -> None:
         score = s_series(
-            make_profile(series="X-Men"),
-            make_candidate(series="X Men"),
+            make_profile(series="Z-Men"),
+            make_candidate(series="Z Men"),
         )
         assert score >= 0.8
 
@@ -296,7 +296,7 @@ def test_phase_k_cv_basicissue_perfect_match_scores_one() -> None:
     Thumbnail-library CV BasicIssue match scores 1.0 when both sides lack publisher / pages.
 
     The structural cap on CV BasicIssue candidates pre-Phase-K was
-    md=0.91 (s_publisher=0.5 + s_pages=0.6 priors). The "Wolverine #20
+    md=0.91 (s_publisher=0.5 + s_pages=0.6 priors). The "Weaselfang #20
     (2026)" prompt-UX issue was caused exactly by this cap when a
     thumbnail-only profile met a CV BasicIssue (both sides missing
     publisher + pages).

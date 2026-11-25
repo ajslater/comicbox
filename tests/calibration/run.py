@@ -98,7 +98,7 @@ class _CandidateSummary:
     cover_score: float | None  # None when this candidate didn't get hashed
     # Volume/series name as the source returned it. Useful for "which
     # reprint did this come from" forensics when ids alone are opaque:
-    # CV issue id 476696 means nothing visually, but "Watchmen Annotated"
+    # CV issue id 476696 means nothing visually, but "Wardens Annotated"
     # tells you immediately what you're looking at.
     series: str = ""
     summary_year: int | None = (
@@ -256,7 +256,7 @@ def _merge_outcomes_to_partial(path: Path, new_outcomes: list[_Outcome]) -> None
     first filtered run after a clean slate has nothing to merge into.
 
     Without this, each `--retry-misses` overwrites the whole partial
-    with just the subset it ran: passing 1 fixture into Watchmen-only
+    with just the subset it ran: passing 1 fixture into Wardens-only
     retry deletes the other 14 fixtures' last-known states, and the
     next `--retry-misses` sees an empty miss set even though those
     fixtures are still actually broken.
@@ -312,12 +312,12 @@ def _filter_to_misses(fixtures: list[_Fixture], miss_files: set[str]) -> list[_F
 
 # "Series key" for --one-per-series: the part of the filename before the
 # issue-number marker. Keeps the year-in-parens because that often
-# distinguishes volumes ("Lois Lane (1986)" vs "Lois Lane (2019)").
+# distinguishes volumes ("Lila Lane (1986)" vs "Lila Lane (2019)").
 # Examples:
-#   "Watchmen (1986) #002.cbz"  → "Watchmen (1986)"
+#   "Wardens (1986) #002.cbz"  → "Wardens (1986)"
 #   "Conan (2004) #005.cbz"     → "Conan (2004)"
-#   "Lois Lane (2019) #001.cbz" → "Lois Lane (2019)"
-#   "Akira (1984) #001.cbz"     → "Akira (1984)"  # same logical series
+#   "Lila Lane (2019) #001.cbz" → "Lila Lane (2019)"
+#   "Akemi (1984) #001.cbz"     → "Akemi (1984)"  # same logical series
 #                                                 # but treated as distinct
 #                                                 # — conservative; user can
 #                                                 # group further via --filter.
@@ -770,7 +770,7 @@ def _format_candidate_line(rank: int, c: _CandidateSummary, expected: object) ->
     # which reprint or variant volume a candidate came from — and let
     # us tell same-volume variants ("vol=123") apart from name
     # collisions ("vol=123" vs "vol=987"). CV issue id 476696 means
-    # nothing visually, but "[Watchmen, 1987, vol=10455]" tells you
+    # nothing visually, but "[Wardens, 1987, vol=10455]" tells you
     # the volume at a glance.
     series_parts: list[str] = []
     if c.series:
@@ -1232,7 +1232,7 @@ def _save_outcomes(
         return
     if outcomes:
         # Filtered runs MERGE into a sibling file so iterating a subset
-        # (e.g. `--retry-misses --filter Watchmen`) doesn't destroy the
+        # (e.g. `--retry-misses --filter Wardens`) doesn't destroy the
         # other fixtures' last-known states.
         side = fixtures_path.with_suffix(".outcomes.partial.json")
         existed = side.exists()
@@ -1341,7 +1341,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         metavar="REGEX",
         help=(
             "Run only fixtures whose file basename matches this regex. "
-            "E.g. --filter 'Lois Lane|Watchmen' for a focused smoke run."
+            "E.g. --filter 'Lila Lane|Wardens' for a focused smoke run."
         ),
     )
     parser.add_argument(
@@ -1350,7 +1350,7 @@ def _build_argparser() -> argparse.ArgumentParser:
         help=(
             "Dedupe fixtures by series, keeping only the first issue per "
             "series prefix (everything before the # issue marker). Six "
-            "Watchmen issues, twenty Conan issues, etc. all probe the same "
+            "Wardens issues, twenty Conan issues, etc. all probe the same "
             "series-discovery code path — one representative is enough for "
             "calibration. Pairs well with --retry-misses for cheap "
             "fix-verification iterations."

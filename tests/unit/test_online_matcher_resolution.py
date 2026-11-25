@@ -263,7 +263,7 @@ def test_rank_breaks_ties_by_lower_volume_id() -> None:
     """
     When two candidates score identically, the lower volume_id wins.
 
-    Replicates the Watchmen (1987) #5 case: two CV issue records with
+    Replicates the Wardens (1987) #5 case: two CV issue records with
     bit-identical metadata land at the same blended score; the canonical
     volume (vol=3622) must beat the duplicate (vol=79545) regardless of
     the order the source returned them.
@@ -343,7 +343,7 @@ def test_apply_tied_metadata_tiebreak_reorders_near_tied_same_md() -> None:
     """
     Reorder near-tied same-md candidates: canonical volume wins.
 
-    Watchmen #009 shape: same md (0.91), small cover-hash difference
+    Wardens #009 shape: same md (0.91), small cover-hash difference
     moves blended scores by 0.01. Without this pass the dupe-volume
     candidate (higher cover hash but higher vol_id) wins; with it, the
     canonical volume wins.
@@ -473,7 +473,7 @@ def test_apply_tied_metadata_tiebreak_cover_diff_within_margin_is_noise() -> Non
     """
     Phase G: cover diff within the 0.03 noise margin is still noise.
 
-    Watchmen #009 dupe shape: same md (0.91), cover-hash difference of
+    Wardens #009 dupe shape: same md (0.91), cover-hash difference of
     ~0.025 (within 2 Hamming bits). The Phase G threshold (0.03) treats
     this as noise — tiebreak fires, canonical (lower vol_id) wins. This
     locks in the Phase G boundary: tightening to 0.02 would make this
@@ -918,7 +918,7 @@ def _ambiguous_pair(cover_a: str, cover_b: str) -> list[Candidate]:
             source="comicvine",
             issue_id=1,
             summary=CandidateSummary(
-                series="Watchmen",
+                series="Wardens",
                 issue="1",
                 year=1986,
                 publisher="DC",
@@ -932,7 +932,7 @@ def _ambiguous_pair(cover_a: str, cover_b: str) -> list[Candidate]:
             source="comicvine",
             issue_id=2,
             summary=CandidateSummary(
-                series="Watchmen",
+                series="Wardens",
                 issue="1",
                 year=1986,
                 publisher="DC",
@@ -952,7 +952,7 @@ def test_batch_fetcher_resolves_the_whole_top_k_in_one_call() -> None:
     That single call is what lets the downloads overlap; serially they
     cost one round-trip per candidate for one comic.
     """
-    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    profile = ComicProfile(series="Wardens", issue="1", issue_int=1, year=1986)
     candidates = _ambiguous_pair("http://a", "http://b")
     batches: list[list[str]] = []
 
@@ -972,7 +972,7 @@ def test_batch_fetcher_resolves_the_whole_top_k_in_one_call() -> None:
 
 def test_batch_and_serial_fetchers_rank_identically() -> None:
     """Concurrency changes when bytes arrive, never the ordering."""
-    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    profile = ComicProfile(series="Wardens", issue="1", issue_int=1, year=1986)
     hashes = {"http://a": "f" * 16, "http://b": "0" * 16}
 
     serial = OnlineMatcher().rank(
@@ -995,7 +995,7 @@ def test_batch_and_serial_fetchers_rank_identically() -> None:
 
 def test_batch_fetcher_failure_degrades_to_no_cover_signal() -> None:
     """A broken batch leaves metadata ranking intact rather than raising."""
-    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    profile = ComicProfile(series="Wardens", issue="1", issue_int=1, year=1986)
 
     def exploding_fetcher(urls):
         msg = "network down"
@@ -1016,7 +1016,7 @@ def test_batch_fetcher_failure_degrades_to_no_cover_signal() -> None:
 
 def test_batch_fetcher_skips_candidates_with_precomputed_hashes() -> None:
     """Metron's precomputed hash costs no download."""
-    profile = ComicProfile(series="Watchmen", issue="1", issue_int=1, year=1986)
+    profile = ComicProfile(series="Wardens", issue="1", issue_int=1, year=1986)
     candidates = _ambiguous_pair("http://a", "http://b")
     candidates[0] = replace(candidates[0], precomputed_cover_hash="0" * 16)
     requested: list[str] = []

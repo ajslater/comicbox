@@ -58,7 +58,7 @@ def test_regular_issue_invents_nothing() -> None:
 def test_regular_issue_series_and_volume() -> None:
     cb = _transform(_issue("issue_regular"))
     assert cb["series"] == {
-        "name": "Absolute Batman",
+        "name": "Absolute Bladehawk",
         "start_year": 2024,
         "status": SeriesStatusEnum.ONGOING,
         "identifiers": {"versedb": {"key": "139382"}},
@@ -77,7 +77,9 @@ def test_identifiers_and_the_real_link() -> None:
         "versedb": {"key": "1215061"},
         "upc": {"key": "76194138584602411"},
     }
-    assert cb["urls"] == ["https://versedb.com/issue/1215061/absolute-batman-2024-24"]
+    assert cb["urls"] == [
+        "https://versedb.com/issue/1215061/absolute-bladehawk-2024-24"
+    ]
 
 
 def test_credits_carry_versedb_ids_and_roles() -> None:
@@ -197,7 +199,7 @@ def test_id_and_link_survive_a_written_file(fmt: MetadataFormats) -> None:
     which is why the link has to be the real one. MetronInfo names VerseDB in
     ``<IDS>`` since the v1.3 draft, and still keeps the link in ``<URLs>``.
     """
-    link = "https://versedb.com/issue/1215061/absolute-batman-2024-24"
+    link = "https://versedb.com/issue/1215061/absolute-bladehawk-2024-24"
     with Comicbox() as car:
         car.add_metadata(
             {"versedb_api": _issue("issue_regular")}, MetadataFormats.VERSEDB_API

@@ -27,13 +27,13 @@ def _from_cb(sub_md: dict[str, Any]) -> dict:
 
 def test_alternate_series_reads_as_an_arc() -> None:
     """The crossover the old tags name becomes an arc."""
-    sub_md = _to_cb({"AlternateSeries": "Civil War", "AlternateNumber": "3"})
-    assert sub_md["arcs"]["Civil War"] == {"number": 3}
+    sub_md = _to_cb({"AlternateSeries": "Crimson Tide", "AlternateNumber": "3"})
+    assert sub_md["arcs"]["Crimson Tide"] == {"number": 3}
 
 
 def test_alternate_series_is_not_a_reprint() -> None:
     """It is a reading order position, not another edition of the book."""
-    sub_md = _to_cb({"AlternateSeries": "Civil War", "AlternateNumber": "3"})
+    sub_md = _to_cb({"AlternateSeries": "Crimson Tide", "AlternateNumber": "3"})
     assert not sub_md.get("reprints")
 
 
@@ -41,16 +41,16 @@ def test_alternates_join_the_story_arcs() -> None:
     """Both tag pairs feed the one arcs field."""
     sub_md = _to_cb(
         {
-            "StoryArc": "House of M,Decimation",
+            "StoryArc": "House of Q,Decimation",
             "StoryArcNumber": "1,2",
-            "AlternateSeries": "Civil War",
+            "AlternateSeries": "Crimson Tide",
             "AlternateNumber": "3",
         }
     )
     assert sub_md["arcs"] == {
-        "House of M": {"number": 1},
+        "House of Q": {"number": 1},
         "Decimation": {"number": 2},
-        "Civil War": {"number": 3},
+        "Crimson Tide": {"number": 3},
     }
 
 
@@ -58,31 +58,31 @@ def test_story_arc_wins_a_name_collision() -> None:
     """The modern tag is authoritative when both name the same arc."""
     sub_md = _to_cb(
         {
-            "StoryArc": "Civil War",
+            "StoryArc": "Crimson Tide",
             "StoryArcNumber": "1",
-            "AlternateSeries": "Civil War",
+            "AlternateSeries": "Crimson Tide",
             "AlternateNumber": "3",
         }
     )
-    assert sub_md["arcs"] == {"Civil War": {"number": 1}}
+    assert sub_md["arcs"] == {"Crimson Tide": {"number": 1}}
 
 
 def test_alternate_series_without_a_number() -> None:
     """An arc with no position is still an arc."""
-    sub_md = _to_cb({"AlternateSeries": "Civil War"})
-    assert sub_md["arcs"] == {"Civil War": {}}
+    sub_md = _to_cb({"AlternateSeries": "Crimson Tide"})
+    assert sub_md["arcs"] == {"Crimson Tide": {}}
 
 
 def test_non_numeric_alternate_number_is_dropped() -> None:
     """A position that isn't a number says nothing about order."""
-    sub_md = _to_cb({"AlternateSeries": "Civil War", "AlternateNumber": "one"})
-    assert sub_md["arcs"] == {"Civil War": {}}
+    sub_md = _to_cb({"AlternateSeries": "Crimson Tide", "AlternateNumber": "one"})
+    assert sub_md["arcs"] == {"Crimson Tide": {}}
 
 
 def test_arcs_write_only_to_story_arc() -> None:
     """Comicbox writes the tags that exist for arcs today."""
-    comicinfo = _from_cb({"arcs": {"Civil War": {"number": 3}}})
-    assert comicinfo["StoryArc"] == ["Civil War"]
+    comicinfo = _from_cb({"arcs": {"Crimson Tide": {"number": 3}}})
+    assert comicinfo["StoryArc"] == ["Crimson Tide"]
     assert comicinfo["StoryArcNumber"] == [3]
     assert not comicinfo.get("AlternateSeries")
     assert not comicinfo.get("AlternateNumber")

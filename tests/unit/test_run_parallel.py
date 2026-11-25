@@ -408,7 +408,7 @@ def test_runner_owns_one_series_cache_for_the_batch() -> None:
 
 def test_batch_collaborators_are_wired_into_each_box(tmp_path: Path) -> None:
     """Every file of an online batch shares the runner's cache and policy."""
-    runner, paths = _online_runner(tmp_path, ["Spider-Man #001 (2018).cbz"])
+    runner, paths = _online_runner(tmp_path, ["Snail-Man #001 (2018).cbz"])
     seen: list[Any] = []
     states: list[Any] = []
     cluster_sizes: list[int] = []
@@ -453,19 +453,19 @@ def test_online_batch_is_clustered_by_series(tmp_path: Path) -> None:
     sorts by path, which mixes series whenever they share a directory.
     """
     names = [
-        "Spider-Man #001 (2018).cbz",
-        "Batman #001 (2011).cbz",
-        "Spider-Man #014 (2019).cbz",
-        "Batman #027 (2013).cbz",
+        "Snail-Man #001 (2018).cbz",
+        "Bladehawk #001 (2011).cbz",
+        "Snail-Man #014 (2019).cbz",
+        "Bladehawk #027 (2013).cbz",
     ]
     runner, paths = _online_runner(tmp_path, names)
     ordered = [
         Path(p).name for p in runner._order_for_series_batching(list(map(Path, paths)))
     ]
-    spider = [i for i, n in enumerate(ordered) if n.startswith("Spider")]
-    batman = [i for i, n in enumerate(ordered) if n.startswith("Batman")]
+    spider = [i for i, n in enumerate(ordered) if n.startswith("Snail")]
+    bladehawk = [i for i, n in enumerate(ordered) if n.startswith("Bladehawk")]
     assert spider == [spider[0], spider[0] + 1]
-    assert batman == [batman[0], batman[0] + 1]
+    assert bladehawk == [bladehawk[0], bladehawk[0] + 1]
 
 
 def test_parallel_online_batch_leads_with_one_file_per_series(
@@ -481,11 +481,11 @@ def test_parallel_online_batch_leads_with_one_file_per_series(
     resolve; the followers then find the cache warm.
     """
     names = [
-        "Spider-Man #001 (2018).cbz",
-        "Spider-Man #014 (2019).cbz",
-        "Spider-Man #027 (2019).cbz",
-        "Batman #001 (2011).cbz",
-        "Batman #027 (2013).cbz",
+        "Snail-Man #001 (2018).cbz",
+        "Snail-Man #014 (2019).cbz",
+        "Snail-Man #027 (2019).cbz",
+        "Bladehawk #001 (2011).cbz",
+        "Bladehawk #027 (2013).cbz",
     ]
     runner, paths = _online_runner(tmp_path, names)
     ordered = [
@@ -493,13 +493,13 @@ def test_parallel_online_batch_leads_with_one_file_per_series(
         for p in runner._order_for_series_batching(list(map(Path, paths)), jobs=2)
     ]
     leaders = {name.split(" #")[0] for name in ordered[:2]}
-    assert leaders == {"Spider-Man", "Batman"}
+    assert leaders == {"Snail-Man", "Bladehawk"}
     # Every file still runs exactly once, and the followers stay clustered.
     assert sorted(ordered) == sorted(names)
     assert [n.split(" #")[0] for n in ordered[2:]] == [
-        "Batman",
-        "Spider-Man",
-        "Spider-Man",
+        "Bladehawk",
+        "Snail-Man",
+        "Snail-Man",
     ]
 
 
@@ -512,20 +512,20 @@ def test_parallel_series_ordering_is_deterministic(tmp_path: Path) -> None:
     order, exactly as it did before leaders were hoisted out of it.
     """
     names = [
-        "Batman #027 (2013).cbz",
-        "Spider-Man #014 (2019).cbz",
-        "Batman #001 (2011).cbz",
-        "Spider-Man #001 (2018).cbz",
+        "Bladehawk #027 (2013).cbz",
+        "Snail-Man #014 (2019).cbz",
+        "Bladehawk #001 (2011).cbz",
+        "Snail-Man #001 (2018).cbz",
     ]
     runner, paths = _online_runner(tmp_path, names)
     first = runner._order_for_series_batching(list(map(Path, paths)), jobs=4)
     second = runner._order_for_series_batching(list(map(Path, paths)), jobs=4)
     assert first == second
     assert [p.name.split(" #")[0] for p in first] == [
-        "Batman",
-        "Spider-Man",
-        "Batman",
-        "Spider-Man",
+        "Bladehawk",
+        "Snail-Man",
+        "Bladehawk",
+        "Snail-Man",
     ]
 
 
