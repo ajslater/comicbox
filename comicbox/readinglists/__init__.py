@@ -37,6 +37,7 @@ from comicbox.readinglists.identity import (
     name_variants,
     parse_issue,
 )
+from comicbox.readinglists.match import Refused, RefusedReason
 from comicbox.readinglists.registry import (
     ReadingListFormats,
     detect_format,
@@ -129,6 +130,8 @@ __all__ = (
     "ReadingListFormats",
     "ReadingListResult",
     "ReadingListSession",
+    "Refused",
+    "RefusedReason",
     "SharedId",
     "SmartListError",
     "SourceKind",

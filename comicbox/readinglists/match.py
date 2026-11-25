@@ -7,11 +7,13 @@ passes. First every entry takes each comic it shares a strict key with
 issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
 among the comics no entry took strictly. Either way a comic is refused when
 it carries an id from a database the entry has a different id from, or a
-cover year more than a year off the entry's. A comic that shares only the
+cover year more than a year off the entry's, and a match on the volume key is
+refused for another year. A comic that shares only the
 cover-year key is refused for another series year than the entry's or its
 strong matches', and is ambiguous beside cover-year matches of another
 volume: listed, never tagged. An entry with no key matches
-nothing. The matching is pure; reading the directory is separate.
+nothing. A missing entry reports the comics refused that a person may want to
+see (``Refused``). The matching is pure; reading the directory is separate.
 """
 
 from collections import defaultdict
@@ -28,7 +30,9 @@ from comicbox.readinglists.arcs import entry_from_comic
 from comicbox.readinglists.combine.fields import is_ordered
 from comicbox.readinglists.identity import (
     ID_KEY_KIND,
+    NAME_KEY_KIND,
     NAME_YEAR_KEY_KIND,
+    VOLUME_DISCRIMINATOR,
     Discriminators,
     EntryKey,
     any_conflict,
@@ -95,12 +99,37 @@ class Found:
         return tuple(comic.path for comic in self.comics)
 
 
+class RefusedReason(StrEnum):
+    """Why a comic that looked like a missing entry was refused."""
+
+    # It shares the entry's series, issue and cover year, of another volume.
+    OTHER_VOLUME = "other-volume"
+    # It shares a name key, and its cover year is more than a year off.
+    COVER_YEAR = "cover-year"
+
+
+@dataclass(frozen=True, slots=True)
+class Refused:
+    """A comic refused for missing entry ``position`` (from 0), and why."""
+
+    position: int
+    path: Path
+    reason: RefusedReason
+
+
 @dataclass(frozen=True, slots=True)
 class MatchResult:
-    """What a directory has of a list, and what it is missing, by position."""
+    """
+    What a directory has of a list, and what it is missing, by position.
+
+    ``refused`` holds, for missing entries only, the comics refused for
+    another volume or cover year that no entry found, by position, then
+    path.
+    """
 
     found: tuple[Found, ...]
     missing: tuple[int, ...]
+    refused: tuple[Refused, ...] = ()
 
 
 def _year(entry: Mapping[str, Any]) -> int | None:
@@ -130,16 +159,41 @@ class _Facts:
         """Tell whether the two sides are of two volumes."""
         return self.discriminators.conflicts(other.discriminators)
 
-    def contradicts(self, other: "_Facts") -> bool:
-        """Tell whether two sides cannot be one issue, whatever their keys."""
-        for source, key in self.ids.items():
-            if other.ids.get(source, key) != key:
-                return True
+    def ids_differ(self, other: "_Facts") -> bool:
+        """Tell whether the sides have different ids from one database."""
+        return any(
+            other.ids.get(source, key) != key for source, key in self.ids.items()
+        )
+
+    def years_apart(self, other: "_Facts") -> bool:
+        """Tell whether the sides' cover years are more than a year apart."""
         return (
             self.year is not None
             and other.year is not None
             and abs(self.year - other.year) > _COVER_YEAR_SLACK
         )
+
+    def contradicts(self, other: "_Facts") -> bool:
+        """Tell whether two sides cannot be one issue, whatever their keys."""
+        return self.ids_differ(other) or self.years_apart(other)
+
+    def refuses(self, other: "_Facts", key: EntryKey) -> bool:
+        """
+        Tell whether a match of the two sides on ``key`` is refused.
+
+        Beyond ``contradicts``, a match on the volume key is refused for two
+        years: X-Men (1963) and X-Men (1991) may both be volume 1.
+        """
+        return self.contradicts(other) or _volume_of_another_year(self, other, key)
+
+
+def _volume_of_another_year(one: _Facts, other: _Facts, key: EntryKey) -> bool:
+    """Tell whether a volume-key match is of two volumes, told by their years."""
+    return (
+        key[0] == NAME_KEY_KIND
+        and key[2] == VOLUME_DISCRIMINATOR
+        and one.other_volume(other)
+    )
 
 
 def _differing(values: Collection[Discriminators]) -> tuple[int, ...]:
@@ -169,6 +223,24 @@ def _cover_year_found(paths: Collection[Path], *, ambiguous: bool) -> list[Found
     return [FoundComic(path, FoundBy.NAME_YEAR, ambiguous=ambiguous) for path in paths]
 
 
+def _refused_reason(
+    entry: _Facts, comic: _Facts, key: EntryKey
+) -> RefusedReason | None:
+    """Say why a comic sharing ``key`` was refused, if a person may want it."""
+    if entry.ids_differ(comic):
+        return None
+    if key[0] == NAME_YEAR_KEY_KIND:
+        if not entry.years_apart(comic) and entry.other_volume(comic):
+            return RefusedReason.OTHER_VOLUME
+    elif (
+        key[0] == NAME_KEY_KIND
+        and entry.years_apart(comic)
+        and not _volume_of_another_year(entry, comic, key)
+    ):
+        return RefusedReason.COVER_YEAR
+    return None
+
+
 class _Index:
     """The comics, by every key that can find them."""
 
@@ -194,7 +266,9 @@ class _Index:
         """
         Find the comics that share a strict key with an entry, at position -1.
 
-        Strong matches share an id or a name key, and are always found. A
+        Strong matches share an id or a name key, and are always found; a
+        match on the volume key is refused for another year, as X-Men (1963)
+        is for an X-Men (1991) entry when both are volume 1. A
         cover-year match shares only the cover-year key, and is judged by
         ``_cover_year_matches``. None when nothing is found.
         """
@@ -207,7 +281,7 @@ class _Index:
                 continue
             by = FoundBy.ID if key[0] == ID_KEY_KIND else FoundBy.NAME
             for path in self.strict.get(key, ()):
-                if path not in strong and not facts.contradicts(self.facts[path]):
+                if path not in strong and not facts.refuses(self.facts[path], key):
                     strong[path] = by
         cover, unsure, volumes = self._cover_year_matches(keys, facts, strong)
         comics = [
@@ -294,7 +368,7 @@ class _Index:
             paths = [
                 path
                 for path in self.variants.get(key, ())
-                if path not in taken and not facts.contradicts(self.facts[path])
+                if path not in taken and not facts.refuses(self.facts[path], key)
             ]
             if paths:
                 return tuple(
@@ -316,6 +390,24 @@ class _Index:
         }
         return [path for path in paths if self.series[path] in same_year] or paths
 
+    def refused(self, entry: Mapping[str, Any], position: int) -> list[Refused]:
+        """
+        List the comics refused for a missing entry that a person may want.
+
+        One sharing the cover-year key refused only as another volume, and
+        one sharing a name key refused only for its cover year. Not one of
+        the same number in another volume and year: every missing issue of a
+        long-running title would have those.
+        """
+        keys = entry_keys(entry)
+        facts = _Facts.of(entry, keys)
+        reasons: dict[Path, RefusedReason] = {}
+        for key in keys:
+            for path in self.strict.get(key, ()):
+                if reason := _refused_reason(facts, self.facts[path], key):
+                    reasons.setdefault(path, reason)
+        return [Refused(position, path, reasons[path]) for path in sorted(reasons)]
+
 
 def match_comics(
     reading_list: Mapping[str, Any], comics: Mapping[Path, Mapping[str, Any]]
@@ -329,7 +421,9 @@ def match_comics(
     of one issue in several files is found in all, and an issue the list
     holds twice is found in the same comics both times. A cover-year match
     is refused beside strong matches of another volume, and is ambiguous
-    beside cover-year matches of another volume; see ``_Index``.
+    beside cover-year matches of another volume; see ``_Index``. Each
+    missing entry reports the comics ``_Index.refused`` finds for it that
+    no entry found.
     """
     index = _Index(comics)
     entries = tuple(reading_list.get(ENTRIES_KEY) or ())
@@ -344,7 +438,24 @@ def match_comics(
             found.append(Found(position, variants))
         else:
             missing.append(position)
-    return MatchResult(tuple(found), tuple(missing))
+    refused = _refusals(index, entries, missing, found)
+    return MatchResult(tuple(found), tuple(missing), refused)
+
+
+def _refusals(
+    index: _Index,
+    entries: Sequence[Mapping[str, Any]],
+    missing: Sequence[int],
+    found: Sequence[Found],
+) -> tuple[Refused, ...]:
+    """List the missing entries' refused comics that no entry found."""
+    claimed = frozenset(path for one in found for path in one.paths)
+    return tuple(
+        refusal
+        for position in missing
+        for refusal in index.refused(entries[position], position)
+        if refusal.path not in claimed
+    )
 
 
 # Arcs.

@@ -280,7 +280,10 @@ list and a report. It is pure: no files, no network.
   The same rows with the first two in one list give three.
 - It does not tell volumes apart within the name key. Rows with one series,
   start year and issue number are one entry by name, whatever their volume
-  numbers: X-Men (1991) volume 1 #1 and X-Men (1991) volume 2 #1 join.
+  numbers: X-Men (1991) volume 1 #1 and X-Men (1991) volume 2 #1 join. Rows with
+  one series, volume number and issue join by name too, as Batman volume 2 #1
+  and Batman (2011) volume 2 #1 do, but not when their years differ: X-Men
+  (1963) volume 1 #1 and X-Men (1991) volume 1 #1 stay apart.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -324,8 +327,10 @@ comic to a list.
 among them, in two passes:
 
 1. Every comic that shares a key with an entry: an issue id from the same
-   database, the series name, start year or volume, and issue number, or the
-   series name, cover year and issue number. Every copy of an issue is found.
+   database, the series name, start year and issue number, the series name,
+   volume number and issue number, or the series name, cover year and issue
+   number. Every copy of an issue is found. A comic sharing only the volume
+   number is refused for another start year.
 2. For each entry the first pass did not find, variants of its series name,
    among the comics no entry found in the first pass: the name without a
    trailing year or volume in parentheses (`Batman (2016)`, `X-Men (Vol. 2)`),

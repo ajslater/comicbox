@@ -1,5 +1,17 @@
 # 📰 News
 
+## v5.7.1
+
+### 🐛 Fixed
+
+- Reading lists match an entry with only a volume number to comics that also
+  have a start year, and keep same-numbered volumes of different years apart.
+
+### 🧑‍💻 Developer
+
+- `MatchResult.refused` lists the comics a missing entry refused as another
+  volume or for its cover year.
+
 ## v5.7.0
 
 ### ✨ Added

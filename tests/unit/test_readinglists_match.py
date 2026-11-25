@@ -74,7 +74,7 @@ def test_entry_keys_stay_strict() -> None:
     """Variants are for matching comics only: combine never joins on them."""
     entry = _entry("The Amazing Spider-Man", "1", start_year=1963)
     assert entry_keys(entry) == (
-        ("name", "the amazing spider man", 1963, Decimal(1), ""),
+        ("name", "the amazing spider man", "year", 1963, Decimal(1), ""),
     )
 
 

@@ -11,9 +11,11 @@ two volumes are not repeats of one issue.
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
 id joining B and C put all three together. Links are applied strongest
-first, ids in ``ranked_id_sources`` order, then names with a start year or
-volume, then names with a cover year, and within one strength by input
-rank and row. A link that would put two rows of one input in one group is
+first, ids in ``ranked_id_sources`` order, then names with a start year,
+then names with a volume number, then names with a cover year, and within
+one strength by input rank and row. A volume-number link is refused when the
+joined group would hold two years: X-Men (1963) and X-Men (1991) may both be
+volume 1. A link that would put two rows of one input in one group is
 refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
 afterwards.
@@ -30,7 +32,7 @@ links holds two rows whose signatures conflict.
 """
 
 from collections import Counter
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -39,6 +41,7 @@ from comicbox.identifiers import ID_SOURCE_VALUES
 from comicbox.readinglists.identity import (
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
+    VOLUME_DISCRIMINATOR,
     Discriminators,
     EntryKey,
     any_conflict,
@@ -49,6 +52,7 @@ from comicbox.readinglists.identity import (
 Node = tuple[int, int]
 QualifiedKey = tuple[EntryKey, int]
 _Link = tuple[tuple[int, int], Node, Node]
+_Guard = Callable[[Iterable[Discriminators]], bool]
 
 # A barcode differing between two rows of one issue is a variant cover, a
 # printing or an edition, not a bad mapping.
@@ -62,9 +66,22 @@ _BARCODE_SOURCES = frozenset(
 )
 _ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
 _NAME_STRENGTH = (1, 0)
+_VOLUME_STRENGTH = (1, 1)
 _EXACT_STRENGTH = (2, 0)
 _LOOSE_STRENGTH = (2, 1)
-_COVER_YEAR_STRENGTHS = frozenset({_EXACT_STRENGTH, _LOOSE_STRENGTH})
+
+
+def _years_conflict(values: Iterable[Discriminators]) -> bool:
+    """Tell whether some rows have two years."""
+    return len({value.year for value in values if value.year is not None}) > 1
+
+
+# What would make a link of each strength refused; ids are never refused.
+_GUARDS: Mapping[tuple[int, int], _Guard] = {
+    _VOLUME_STRENGTH: _years_conflict,
+    _EXACT_STRENGTH: any_conflict,
+    _LOOSE_STRENGTH: any_conflict,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,19 +138,20 @@ class _Groups:
             node, self._parent[node] = self._parent[node], root
         return root
 
-    def link(self, one: Node, other: Node, *, guarded: bool = False) -> None:
+    def link(self, one: Node, other: Node, guard: _Guard | None = None) -> None:
         """
         Join two nodes' groups, unless both hold a row of one input.
 
-        With ``guarded``, as for a cover-year link, also unless the joined
-        group would hold two rows that conflict.
+        With a ``guard``, also unless it says the joined group's rows
+        conflict: any of them for a cover-year link, two years for a
+        volume-number link.
         """
         roots = sorted((self.find(one), self.find(other)))
         root, child = roots
         if root == child or self._inputs[root] & self._inputs[child]:
             return
         values = self._discriminators[root] | self._discriminators[child]
-        if guarded and any_conflict(values):
+        if guard is not None and guard(values):
             return
         self._parent[child] = root
         self._inputs[root] |= self._inputs.pop(child)
@@ -168,10 +186,14 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
 
 
 def _strength(key: EntryKey) -> tuple[int, int]:
-    """Rank an id or name key: ids, better ranked databases first, then names."""
+    """
+    Rank an id or name key.
+
+    Ids, better ranked databases first, then names by year, then by volume.
+    """
     if key[0] == ID_KEY_KIND:
         return (0, _ID_SOURCE_RANKS.get(key[1], len(_ID_SOURCE_RANKS)))
-    return _NAME_STRENGTH
+    return _VOLUME_STRENGTH if key[2] == VOLUME_DISCRIMINATOR else _NAME_STRENGTH
 
 
 class _CoverYear:
@@ -271,7 +293,7 @@ class _Grouper:
                 holders.setdefault(qkey, []).append(node)
         groups = _Groups({node: self._discriminators[node] for node in nodes})
         for strength, one, other in _links(holders, self._discriminators):
-            groups.link(one, other, guarded=strength in _COVER_YEAR_STRENGTHS)
+            groups.link(one, other, _GUARDS.get(strength))
         return groups.groups()
 
     def _record_disagreements(self, group: int, members: Sequence[Node]) -> None:

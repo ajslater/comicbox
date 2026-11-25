@@ -65,7 +65,7 @@ def test_ids_come_in_rank_order() -> None:
         ("id", "metron", "31562"),
         ("id", "comicvine", "105747"),
         ("id", "grandcomicsdatabase", "7"),
-        ("name", "civil war", 2006, Decimal(1), ""),
+        ("name", "civil war", "year", 2006, Decimal(1), ""),
     )
 
 
@@ -148,7 +148,7 @@ def test_start_year_and_year_volume_share_a_name_key() -> None:
         "volume": {"number": 2006},
         "issue": {"name": "1"},
     }
-    assert _name_keys(metron_style) == _name_keys(comictagger_style)
+    assert set(_name_keys(metron_style)) & set(_name_keys(comictagger_style))
 
 
 def test_volume_number_alone_does_not_meet_a_start_year() -> None:
