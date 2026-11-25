@@ -63,7 +63,7 @@ else:
 
 if TYPE_CHECKING:
     from comicbox.readinglists.formats.metron_api import MetronListSummary
-    from comicbox.readinglists.match import Found, FoundComic, MatchResult
+    from comicbox.readinglists.match import Found, FoundComic, MatchResult, Refused
     from comicbox.readinglists.sources.catalog import CatalogEntry
     from comicbox.readinglists.tagging import ArcWrite
 
@@ -361,21 +361,37 @@ def print_matches(
     Tabulate a list's entries with the comics that are them, or missing.
 
     Each comic is a row of its own, with how it matched and its note. A
-    cover-year match of one of several volumes is marked ambiguous.
+    cover-year match of one of several volumes is marked ambiguous. Under a
+    missing entry, each comic refused for it as another volume or for its
+    cover year is a row marked ``refused``.
     """
     notes = notes or {}
     found = {match.position: match for match in result.found}
+    refused: dict[int, list[Refused]] = {}
+    for refusal in result.refused:
+        refused.setdefault(refusal.position, []).append(refusal)
     table = _results_table(("#", "Series", "Year/Vol", "Issue", "Comic", "By"))
     for position, entry in enumerate(reading_list.get(ENTRIES_KEY) or ()):
         cells = _entry_cells(position + 1, entry)[:4]
         if (match := found.get(position)) is None:
             table.add_row(*cells, _text("missing", _WARN), _text(""))
+            for refusal in refused.get(position, ()):
+                shown = _refused_cell(refusal, directory, notes.get(refusal.path))
+                table.add_row(*[_text("")] * len(cells), shown, _text("refused", _DIM))
             continue
         for comic in match.comics:
             shown = _comic_cell(comic, directory, notes.get(comic.path), match)
             table.add_row(*cells, shown, _text(comic.by.value, _DIM))
             cells = [_text("")] * len(cells)
     out.print(table)
+
+
+def _refused_cell(refusal: "Refused", directory: Path, note: str | None) -> Text:
+    """Show a refused comic's path, its note, and why it was refused."""
+    shown = Text(printable(_shown_path(refusal.path, directory)), style=_DIM)
+    for text in (*([note] if note else []), refusal.reason.value):
+        shown.append(f" ({printable(text)})", style=_WARN)
+    return shown
 
 
 def _comic_cell(

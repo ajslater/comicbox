@@ -2,6 +2,11 @@
 
 ## v5.7.1
 
+### ✨ Added
+
+- `comicbox rl match` lists the comics refused for a missing entry as another
+  volume or for their cover year.
+
 ### 🐛 Fixed
 
 - Reading lists match an entry with only a volume number to comics that also
