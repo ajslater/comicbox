@@ -129,15 +129,6 @@ def _id_keys(entry: Mapping[str, Any]) -> Iterator[EntryKey]:
             yield (ID_KEY_KIND, source, key)
 
 
-def _discriminator(entry: Mapping[str, Any]) -> int | None:
-    """Get the series start year or, failing that, the volume number."""
-    series = entry.get(SERIES_KEY) or {}
-    if (start_year := series.get(SERIES_START_YEAR_KEY)) is not None:
-        return start_year
-    volume = entry.get(VOLUME_KEY) or {}
-    return volume.get(NUMBER_KEY)
-
-
 def _series_issue(
     entry: Mapping[str, Any],
 ) -> tuple[str, tuple[Decimal | None, str]] | None:
@@ -148,21 +139,6 @@ def _series_issue(
     if (issue := _issue_parts(entry)) is None:
         return None
     return name, issue
-
-
-def _name_key(entry: Mapping[str, Any]) -> EntryKey | None:
-    """
-    Build the key of the series, year or volume, number and suffix.
-
-    None without a series name, an issue, or a start year or volume: a name
-    and number alone match every volume of a long-running title.
-    """
-    if (named := _series_issue(entry)) is None:
-        return None
-    if (discriminator := _discriminator(entry)) is None:
-        return None
-    name, issue = named
-    return (NAME_KEY_KIND, name, discriminator, *issue)
 
 
 # A volume number this big is a year, as a CBL's Volume="2006" is.
@@ -180,7 +156,7 @@ class Discriminators:
 
     ``year`` is the year-like one: the start year or, failing that, a volume
     number of 1900 or more, as a CBL's ``Volume="2006"`` is. ``volume`` is a
-    volume number under 1900. X-Men (1991) volume 2 has both.
+    volume number under 1900. Z-Men (1991) volume 2 has both.
     """
 
     year: int | None = None
@@ -215,6 +191,34 @@ def discriminators(entry: Mapping[str, Any]) -> Discriminators:
     if number is not None and number < YEAR_LIKE_VOLUME:
         return Discriminators(start_year, number)
     return Discriminators(number if start_year is None else start_year)
+
+
+# Which discriminator a name key holds; volume 2 is not year 2.
+YEAR_DISCRIMINATOR = "year"
+VOLUME_DISCRIMINATOR = "volume"
+
+
+def _name_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
+    """
+    Build a key of the series, discriminator, number and suffix per kind.
+
+    The year key, by the start year or a year-like volume, comes before the
+    volume key, by a volume number under 1900. None without a series name,
+    an issue, and a discriminator: a name and number alone match every volume
+    of a long-running title.
+    """
+    if (named := _series_issue(entry)) is None:
+        return ()
+    name, issue = named
+    value = discriminators(entry)
+    return tuple(
+        (NAME_KEY_KIND, name, kind, discriminator, *issue)
+        for kind, discriminator in (
+            (YEAR_DISCRIMINATOR, value.year),
+            (VOLUME_DISCRIMINATOR, value.volume),
+        )
+        if discriminator is not None
+    )
 
 
 def any_conflict(values: Iterable[Discriminators]) -> bool:
@@ -253,8 +257,8 @@ def _name_year_key(entry: Mapping[str, Any]) -> EntryKey | None:
     return (NAME_YEAR_KEY_KIND, name, year, *issue)
 
 
-# A trailing year or volume in parentheses: "Batman (2016)", "X (Vol. 2)",
-# "X (v2)", "X (Volume 2)". Not "Transformers (UK)": that names another
+# A trailing year or volume in parentheses: "Bladehawk (2016)", "X (Vol. 2)",
+# "X (v2)", "X (Volume 2)". Not "Trundlebots (UK)": that names another
 # series. No leading whitespace run, which would make a run of spaces
 # quadratic; the name is stripped after.
 _TRAILING_YEAR_OR_VOLUME_RE = re.compile(
@@ -284,10 +288,10 @@ def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
     List the series names to try for an entry, normalized, in order.
 
     The name as given; the name without a trailing year or volume in
-    parentheses (``Batman (2016)``, ``X (Vol. 2)``), when it has one; the
+    parentheses (``Bladehawk (2016)``, ``X (Vol. 2)``), when it has one; the
     name without a leading article; and the name without a reprint suffix
-    such as TPB or Omnibus. A year or volume is never added: ``Iron Man``
-    is not the series ``Iron Man 2020``. For matching a list against
+    such as TPB or Omnibus. A year or volume is never added: ``Ivory Knight``
+    is not the series ``Ivory Knight 2020``. For matching a list against
     comics only: ``entry_keys`` stays strict, so ``combine`` never joins on
     a variant.
     """
@@ -313,14 +317,14 @@ def variant_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
     """
     Build the name keys of an entry's variants, its own name key first.
 
-    Each keeps the entry's start year or volume and issue, so an entry with
-    no name key has no variants either: it still matches by id alone.
+    Each keeps one of the entry's discriminators and its issue, so an entry
+    with no name key has no variants either: it still matches by id alone.
+    For each name, the year key comes before the volume key.
     """
-    if (name_key := _name_key(entry)) is None:
-        return ()
-    _, _, discriminator, *issue = name_key
     return tuple(
-        (NAME_KEY_KIND, name, discriminator, *issue) for name in name_variants(entry)
+        (NAME_KEY_KIND, name, *rest)
+        for name in name_variants(entry)
+        for _, _, *rest in _name_keys(entry)
     )
 
 
@@ -329,16 +333,18 @@ def entry_keys(entry: Mapping[str, Any]) -> tuple[EntryKey, ...]:
     List the keys that identify an entry's issue, strongest first.
 
     ``("id", source, key)`` for each issue id, best ranked source first,
-    then ``("name", series, start year or volume, number, suffix)``, then
-    the weakest, ``("name-year", series, cover year, number, suffix)``.
-    Two entries are the same issue when they share a key. An entry with
-    none, no id and no series and issue with a start year, volume or cover
-    year, matches nothing.
+    then ``("name", series, "year", year, number, suffix)`` by the start
+    year or a year-like volume, then ``("name", series, "volume", volume,
+    number, suffix)`` by a volume number under 1900, then the weakest,
+    ``("name-year", series, cover year, number, suffix)``. Two entries are
+    the same issue when they share a key and their discriminators do not
+    conflict (``Discriminators.conflicts``): Z-Men (1963) and Z-Men (1991)
+    may both be volume 1. An entry with none, no id and no series and issue
+    with a start year, volume or cover year, matches nothing.
     """
-    keys = list(_id_keys(entry))
-    keys.extend(
-        key for key in (_name_key(entry), _name_year_key(entry)) if key is not None
-    )
+    keys = [*_id_keys(entry), *_name_keys(entry)]
+    if (name_year_key := _name_year_key(entry)) is not None:
+        keys.append(name_year_key)
     return tuple(keys)
 
 

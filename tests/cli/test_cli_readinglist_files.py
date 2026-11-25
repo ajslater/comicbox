@@ -90,7 +90,7 @@ def test_an_existing_file_is_kept_without_overwrite(
     assert f"{taken}: exists; --overwrite replaces it" in err
     assert taken.read_text() == "mine"
     assert cli_run(capsys, *argv[:2], "--overwrite", *argv[2:])[0] == 0
-    assert load(taken).reading_list["name"] == "[Marvel] Civil War (Hand Written)"
+    assert load(taken).reading_list["name"] == "[Marvel] Crimson Tide (Hand Written)"
 
 
 def test_combine_output_is_checked_first(
@@ -178,8 +178,8 @@ def test_stdout_carries_only_the_list(
 
     noisy = tmp_path / "noisy.yaml"
     noisy.write_text(
-        "reading_list:\n  name: Civil War\n  descripton: x\n  entries:\n"  # codespell:ignore
-        "    - series: {name: Civil War, start_year: 2006}\n"
+        "reading_list:\n  name: Crimson Tide\n  descripton: x\n  entries:\n"  # codespell:ignore
+        "    - series: {name: Crimson Tide, start_year: 2006}\n"
         "      volume: {number: -1}\n      issue: {name: '1'}\n"
     )
     code = exit_code("rl", "combine", str(noisy), str(COMMON_CBL))
@@ -187,7 +187,7 @@ def test_stdout_carries_only_the_list(
     comicbox_logger.complete()
     captured = capsys.readouterr()
     assert code == 0
-    assert loads(captured.out).reading_list["name"] == "Civil War"
+    assert loads(captured.out).reading_list["name"] == "Crimson Tide"
     assert "a log line" in captured.err
     assert "read as 0" not in captured.out
 
@@ -268,8 +268,8 @@ def test_keyless_entries_are_counted(
     keyless = tmp_path / "keyless.yaml"
     keyless.write_text(
         "reading_list:\n  name: A\n  entries:\n"
-        "    - series: {name: Civil War}\n      issue: {name: '1'}\n"
-        "    - series: {name: Civil War}\n      issue: {name: '2'}\n"
+        "    - series: {name: Crimson Tide}\n      issue: {name: '1'}\n"
+        "    - series: {name: Crimson Tide}\n      issue: {name: '2'}\n"
     )
     for action in ("combine", "compare"):
         code, _, err = cli_run(capsys, "rl", action, str(keyless), str(COMMON_CBL))
@@ -283,7 +283,7 @@ def test_every_action_reports_what_a_read_dropped(
     bad_year = tmp_path / "bad-year.cbl"
     bad_year.write_text(
         "<ReadingList><Name>A</Name><StartYear>abc</StartYear><Books>"
-        "<Book Series='Batman' Number='1' Volume='1940' /></Books>"
+        "<Book Series='Bladehawk' Number='1' Volume='1940' /></Books>"
         "<Matchers /></ReadingList>"
     )
     for argv in (
@@ -302,7 +302,7 @@ def test_one_keyless_entry_is_counted_in_the_singular(
     keyless = tmp_path / "keyless.yaml"
     keyless.write_text(
         "reading_list:\n  name: A\n  entries:\n"
-        "    - series: {name: Civil War}\n      issue: {name: '1'}\n"
+        "    - series: {name: Crimson Tide}\n      issue: {name: '1'}\n"
     )
     _, _, err = cli_run(capsys, "rl", "compare", str(keyless), str(COMMON_CBL))
     assert f"{keyless}: 1 entry has no key and matches nothing" in err

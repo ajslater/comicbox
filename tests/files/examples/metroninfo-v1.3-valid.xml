@@ -11,9 +11,9 @@
 		</Arc>
 	</Arcs>
 	<Characters>
-		<Character id="45678">Aquaman</Character>
+		<Character id="45678">Abyssman</Character>
 		<Character>Barry Allen</Character>
-		<Character>Batman</Character>
+		<Character>Bladehawk</Character>
 		<Character>Cyborg</Character>
 		<Character>Deadman</Character>
 		<Character>Hal Jordan</Character>
@@ -21,8 +21,8 @@
 		<Character>Mera</Character>
 		<Character>Pandora</Character>
 		<Character>Ray Palmer</Character>
-		<Character>Superman</Character>
-		<Character>Wonder Woman</Character>
+		<Character>Sunbolt</Character>
+		<Character>Wonder Lady</Character>
 	</Characters>
 	<CoverDate>2011-10-01</CoverDate>
 	<Credits>
@@ -135,8 +135,8 @@
 		<EndYear>1975</EndYear>
 		<Format>Single Issue</Format>
 		<IssueCount>60</IssueCount>
-		<Name>Justice League</Name>
-		<SortName>Justice League</SortName>
+		<Name>Jade Legion</Name>
+		<SortName>Jade Legion</SortName>
 		<StartYear>1970</StartYear>
 		<Status>Completed</Status>
 		<Summary>A team of heroes defends the Earth.</Summary>
@@ -145,16 +145,16 @@
 	</Series>
 	<StoreDate>2011-08-31</StoreDate>
 	<Stories>
-		<Story id="12">Justice League, Part One</Story>
-		<Story>Justice League, Part Two</Story>
+		<Story id="12">Jade Legion, Part One</Story>
+		<Story>Jade Legion, Part Two</Story>
 	</Stories>
-	<Summary>In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!</Summary>
+	<Summary>In a universe where superheroes are strange and new, Bladehawk has discovered a dark evil that requires him to unite the World Greatest Heroes!</Summary>
 	<Tags>
 		<Tag>Bar</Tag>
 		<Tag id="78945">Foo</Tag>
 	</Tags>
 	<Teams>
-		<Team id="49948">Justice League</Team>
+		<Team id="49948">Jade Legion</Team>
 		<Team>Parademons</Team>
 	</Teams>
 	<URLs>
@@ -162,7 +162,7 @@
 		<URL>https://barcodelookup.com/76194130593600111</URL>
 		<URL>https://comics.org/issue/543/</URL>
 		<URL>https://comicvine.gamespot.com/c/4000-290431/</URL>
-		<URL>https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/</URL>
+		<URL>https://comicvine.gamespot.com/jade-legion-1-jade-legion-part-one/4000-290431/</URL>
 		<URL>https://foo.bar</URL>
 		<URL>https://isbndb.com/book/1234567890123</URL>
 		<URL primary="true">https://metron.cloud/issue/290431</URL>

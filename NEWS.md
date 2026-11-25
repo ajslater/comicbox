@@ -1,5 +1,22 @@
 # 📰 News
 
+## v5.7.1
+
+### ✨ Added
+
+- `comicbox rl match` lists the comics refused for a missing entry as another
+  volume or for their cover year.
+
+### 🐛 Fixed
+
+- Reading lists match an entry with only a volume number to comics that also
+  have a start year, and keep same-numbered volumes of different years apart.
+
+### 🧑‍💻 Developer
+
+- `MatchResult.refused` lists the comics a missing entry refused as another
+  volume or for its cover year.
+
 ## v5.7.0
 
 ### ✨ Added
@@ -74,8 +91,9 @@
   attachment is named like a page number, or like a page it converts to
   (`1.jpeg`), is refused, where its CBZ had the page twice and lost the
   attachment.
-- A plain `series: Civil War`, `volume: 2006`, publisher or imprint in comicbox
-  YAML, JSON or a library patch is read, where it was dropped without a word.
+- A plain `series: Crimson Tide`, `volume: 2006`, publisher or imprint in
+  comicbox YAML, JSON or a library patch is read, where it was dropped without a
+  word.
 - `write_metadata` and `bulk_write` write nothing for a patch that does not
   load, and return the error, where they rewrote the comic and reported success.
 - `--cbz` without `-w` writes back only the tag formats the comic carried, a

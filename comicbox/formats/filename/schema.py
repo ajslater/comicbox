@@ -45,7 +45,7 @@ _OTHER_SCHEMA_ENDS = ("{", ":")
 # shares; a renamed archive travels between systems, so they go on every
 # platform. Left in, macOS's SMB client stores each as a private-use glyph
 # (":" becomes U+F022) and Windows rejects them or reads ":" as an NTFS
-# stream marker. Ordered: ": " before ":", so "Batman: Year One" reads back
+# stream marker. Ordered: ": " before ":", so "Bladehawk: Year One" reads back
 # as one series while "Re:Zero" keeps its break as "Re-Zero".
 _FILENAME_REPLACEMENTS: Final[tuple[tuple[str, str], ...]] = (
     ("/", "_"),

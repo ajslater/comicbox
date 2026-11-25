@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 _COMIC = {
     "series": {
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "start_year": 2006,
         "identifiers": {"comicvine": {"key": "18023"}},
         "summary": "Dropped from the entry.",
@@ -35,7 +35,7 @@ _COMIC = {
 }
 _ENTRY = {
     "series": {
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "start_year": 2006,
         "identifiers": {"comicvine": {"key": "18023"}},
     },
@@ -56,7 +56,7 @@ def test_entry_from_comic_wrapped() -> None:
 
 def _comic(issue: str, arcs: dict[str, Any], **fields: Any) -> dict[str, Any]:
     return {
-        "series": {"name": "Civil War", "start_year": 2006},
+        "series": {"name": "Crimson Tide", "start_year": 2006},
         "issue": {"name": issue},
         "arcs": arcs,
         **fields,
@@ -69,12 +69,12 @@ def _issues(reading_list: dict[str, Any]) -> list[str]:
 
 def test_numbered_arc_is_ordered() -> None:
     comics = [
-        _comic("3", {"Civil War": {"number": 3}}),
-        _comic("1", {"Civil War": {"number": 1}}),
-        _comic("2", {"Civil War": {"number": 2}}),
+        _comic("3", {"Crimson Tide": {"number": 3}}),
+        _comic("1", {"Crimson Tide": {"number": 1}}),
+        _comic("2", {"Crimson Tide": {"number": 2}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
-    assert reading_list["name"] == "Civil War"
+    assert reading_list["name"] == "Crimson Tide"
     assert reading_list["list_type"] == "story"
     assert reading_list["ordered"] is True
     assert reading_list["sources"] == [{"kind": "tags"}]
@@ -83,9 +83,9 @@ def test_numbered_arc_is_ordered() -> None:
 
 def test_unnumbered_arc_sorts_by_date() -> None:
     comics = [
-        _comic("2", {"Civil War": {}}, date={"cover_date": date(2006, 8, 1)}),
-        _comic("1", {"Civil War": {}}, date={"cover_date": date(2006, 7, 1)}),
-        _comic("3", {"Civil War": {}}),
+        _comic("2", {"Crimson Tide": {}}, date={"cover_date": date(2006, 8, 1)}),
+        _comic("1", {"Crimson Tide": {}}, date={"cover_date": date(2006, 7, 1)}),
+        _comic("3", {"Crimson Tide": {}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     assert reading_list["ordered"] is False
@@ -94,8 +94,8 @@ def test_unnumbered_arc_sorts_by_date() -> None:
 
 def test_partly_numbered_arc_is_unordered() -> None:
     comics = [
-        _comic("2", {"Civil War": {}}),
-        _comic("1", {"Civil War": {"number": 1}}),
+        _comic("2", {"Crimson Tide": {}}),
+        _comic("1", {"Crimson Tide": {"number": 1}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     assert reading_list["ordered"] is False
@@ -104,8 +104,8 @@ def test_partly_numbered_arc_is_unordered() -> None:
 
 def test_repeated_numbers_are_unordered() -> None:
     comics = [
-        _comic("2", {"Civil War": {"number": 1}}),
-        _comic("1", {"Civil War": {"number": 1}}),
+        _comic("2", {"Crimson Tide": {"number": 1}}),
+        _comic("1", {"Crimson Tide": {"number": 1}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     assert reading_list["ordered"] is False
@@ -115,13 +115,15 @@ def test_repeated_numbers_are_unordered() -> None:
 
 def test_two_spellings_make_one_list() -> None:
     comics = [
-        _comic("1", {"Civil War": {"number": 1}, "Road to Civil War": {"number": 9}}),
-        _comic("2", {"CIVIL WAR": {"number": 2}}),
+        _comic(
+            "1", {"Crimson Tide": {"number": 1}, "Road to Crimson Tide": {"number": 9}}
+        ),
+        _comic("2", {"CRIMSON TIDE": {"number": 2}}),
     ]
     lists = reading_lists_from_comics(comics)
     assert [reading_list["name"] for reading_list in lists] == [
-        "Civil War",
-        "Road to Civil War",
+        "Crimson Tide",
+        "Road to Crimson Tide",
     ]
     assert _issues(lists[0]) == ["1", "2"]
     assert _issues(lists[1]) == ["1"]
@@ -137,8 +139,8 @@ def _arc_ids(**ids: str) -> dict[str, Any]:
 
 def test_arc_ids_become_pointer_sources() -> None:
     comics = [
-        _comic("1", {"Civil War": {"number": 1, **_arc_ids(comicvine="55766")}}),
-        _comic("2", {"Civil War": {"number": 2, **_arc_ids(metron="17")}}),
+        _comic("1", {"Crimson Tide": {"number": 1, **_arc_ids(comicvine="55766")}}),
+        _comic("2", {"Crimson Tide": {"number": 2, **_arc_ids(metron="17")}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     assert reading_list["sources"] == [
@@ -150,9 +152,9 @@ def test_arc_ids_become_pointer_sources() -> None:
 
 def test_disagreeing_arc_ids_most_common_wins() -> None:
     comics = [
-        _comic("1", {"Civil War": _arc_ids(metron="9", comicvine="1")}),
-        _comic("2", {"Civil War": _arc_ids(metron="17", comicvine="2")}),
-        _comic("3", {"Civil War": _arc_ids(metron="17")}),
+        _comic("1", {"Crimson Tide": _arc_ids(metron="9", comicvine="1")}),
+        _comic("2", {"Crimson Tide": _arc_ids(metron="17", comicvine="2")}),
+        _comic("3", {"Crimson Tide": _arc_ids(metron="17")}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     # Metron: 17 twice beats 9 once. ComicVine: a tie goes to the first seen.
@@ -163,28 +165,32 @@ def test_disagreeing_arc_ids_most_common_wins() -> None:
 
 
 def test_arc_patch() -> None:
-    assert arc_patch("Civil War", 3) == {"arcs": {"Civil War": {"number": 3}}}
-    assert arc_patch("Civil War") == {"arcs": {"Civil War": {}}}
+    assert arc_patch("Crimson Tide", 3) == {"arcs": {"Crimson Tide": {"number": 3}}}
+    assert arc_patch("Crimson Tide") == {"arcs": {"Crimson Tide": {}}}
 
 
 def test_arc_patch_adds_an_arc_and_keeps_the_others(tmp_path: Path) -> None:
     path = tmp_path / "test.cbz"
     shutil.copy(CIX_CBZ_SOURCE_PATH, path)
-    write_metadata(path, arc_patch("Road to Civil War", 9), formats=["comicbox_json"])
-    result = write_metadata(path, arc_patch("Civil War", 1), formats=["comicbox_json"])
+    write_metadata(
+        path, arc_patch("Road to Crimson Tide", 9), formats=["comicbox_json"]
+    )
+    result = write_metadata(
+        path, arc_patch("Crimson Tide", 1), formats=["comicbox_json"]
+    )
     assert result.error is None
     with Comicbox(path) as cb:
         arcs = cb.get_internal_metadata()["comicbox"]["arcs"]
-    assert arcs["Civil War"] == {"number": 1}
-    assert arcs["Road to Civil War"] == {"number": 9}
+    assert arcs["Crimson Tide"] == {"number": 1}
+    assert arcs["Road to Crimson Tide"] == {"number": 9}
 
 
 def test_copies_of_one_issue_are_one_entry() -> None:
     """Two files of one issue neither repeat it nor unorder the list."""
     comics = [
-        _comic("1", {"Civil War": {"number": 1}}),
-        _comic("2", {"Civil War": {"number": 2}}),
-        _comic("1", {"Civil War": {"number": 1}}),
+        _comic("1", {"Crimson Tide": {"number": 1}}),
+        _comic("2", {"Crimson Tide": {"number": 2}}),
+        _comic("1", {"Crimson Tide": {"number": 1}}),
     ]
     (reading_list,) = reading_lists_from_comics(comics)
     assert _issues(reading_list) == ["1", "2"]

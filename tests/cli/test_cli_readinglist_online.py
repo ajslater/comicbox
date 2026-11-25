@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     import requests
 
 _CBL = (TEST_FILES_DIR / "readinglists" / "cbl" / "common.cbl").read_bytes()
-_URL = "https://lists.example/civil-war.cbl"
+_URL = "https://lists.example/crimson-tide.cbl"
 _CATALOG_PATH = "Marvel/Events/CBRO/[Marvel] Example Event (WEB-CBRO).cbl"
 _TREE = {
     "sha": "root",
@@ -60,7 +60,7 @@ def _web(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=_TREE, headers={"ETag": '"v1"'})
     if url.host == "raw.githubusercontent.com" or str(url) == _URL:
         return httpx.Response(200, content=_CBL)
-    if url.path == "/civil-war.cbl":
+    if url.path == "/crimson-tide.cbl":
         return httpx.Response(200, content=_CBL)
     if url.path == "/broken.cbl":
         return httpx.Response(200, content=b"<ReadingList><Name>")
@@ -130,7 +130,7 @@ def test_fetch_a_url_writes_only_the_list_to_stdout(
 
     assert code == 0
     result = loads(out)
-    assert result.reading_list["name"] == "[Marvel] Civil War (Hand Written)"
+    assert result.reading_list["name"] == "[Marvel] Crimson Tide (Hand Written)"
     assert result.reading_list["sources"][0]["kind"] == "url"
     assert f"Fetching url {_URL}" in err
 
@@ -138,7 +138,7 @@ def test_fetch_a_url_writes_only_the_list_to_stdout(
 def test_fetch_to_a_file_in_another_format(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    output = tmp_path / "civil-war.json"
+    output = tmp_path / "crimson-tide.json"
 
     code, out, err = _run(capsys, "fetch", "--to", "json-cbl", "-o", str(output), _URL)
 
@@ -172,7 +172,7 @@ def test_fetch_overwrite_replaces_a_file(
     code, _, _ = _run(capsys, "fetch", "--overwrite", "-o", str(output), _URL)
 
     assert code == 0
-    assert load(output).reading_list["name"] == "[Marvel] Civil War (Hand Written)"
+    assert load(output).reading_list["name"] == "[Marvel] Crimson Tide (Hand Written)"
 
 
 def test_fetch_a_404_is_one_line(capsys: pytest.CaptureFixture[str]) -> None:
@@ -331,7 +331,7 @@ def test_search_metron(capsys: pytest.CaptureFixture[str]) -> None:
 
     assert code == 0
     row = " ".join(out.split())
-    assert "7 Civil War Event cbro curator" in row
+    assert "7 Crimson Tide Event cbro curator" in row
 
 
 # ---------------------------------------------------------------- Ctrl-C
@@ -489,7 +489,7 @@ def test_a_download_that_will_not_read_names_its_url(
 # ---------------------------------------- credentials in a URL (E7)
 
 
-@pytest.mark.parametrize("path", ["/civil-war.cbl", "/missing.cbl"])
+@pytest.mark.parametrize("path", ["/crimson-tide.cbl", "/missing.cbl"])
 def test_the_cli_never_prints_a_urls_credentials(
     capsys: pytest.CaptureFixture[str], path: str
 ) -> None:

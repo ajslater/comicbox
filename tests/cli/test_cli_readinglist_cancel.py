@@ -76,8 +76,8 @@ def test_ctrl_c_while_reading_is_one_line(
     """
     for number in range(40):
         make_comic(
-            library / f"saga{number:02}.cbz",
-            series="Saga",
+            library / f"sonnet{number:02}.cbz",
+            series="Sonnet",
             number=str(number),
             start_year=2012,
         )
@@ -121,13 +121,13 @@ def test_ctrl_c_while_reading_is_one_line(
 
 
 def _twenty_issues(tmp_path: Path) -> tuple[Path, Path]:
-    """List Civil War #1 to #20 and make a comic of each; return both."""
+    """List Crimson Tide #1 to #20 and make a comic of each; return both."""
     numbers = [str(number) for number in range(1, 21)]
     listed = tmp_path / "list.yaml"
     listed.write_text(
-        "reading_list:\n  name: Civil War\n  entries:\n"
+        "reading_list:\n  name: Crimson Tide\n  entries:\n"
         + "".join(
-            f"    - series: {{name: Civil War, start_year: 2006}}\n"
+            f"    - series: {{name: Crimson Tide, start_year: 2006}}\n"
             f"      issue: {{name: '{number}'}}\n"
             for number in numbers
         )
@@ -136,7 +136,7 @@ def _twenty_issues(tmp_path: Path) -> tuple[Path, Path]:
     for number in numbers:
         make_comic(
             comics / f"cw{number:>02}.cbz",
-            series="Civil War",
+            series="Crimson Tide",
             number=number,
             start_year=2006,
         )
@@ -180,7 +180,7 @@ def test_ctrl_c_never_cuts_a_write_short(
 
     said = flat(out)
     assert code == 130
-    assert f"{pressed[0]} added 'Civil War'" in said
+    assert f"{pressed[0]} added 'Crimson Tide'" in said
     assert "not written: cancelled" in said
     assert "Stopping after the writes under way." in err
     assert err.endswith("Cancelled.")
@@ -188,4 +188,4 @@ def test_ctrl_c_never_cuts_a_write_short(
         with zipfile.ZipFile(path) as archive:
             assert archive.testzip() is None
         written = f"{path} added" in said
-        assert ("Civil War" in (read_tags(path).get("arcs") or {})) is written
+        assert ("Crimson Tide" in (read_tags(path).get("arcs") or {})) is written

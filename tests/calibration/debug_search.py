@@ -12,7 +12,7 @@ Prints:
   1. The ComicProfile comicbox builds from the comic's tags + filename.
   2. The exact search call we're issuing (what Metron / CV sees).
   3. The raw response — count and the first few results.
-  4. A series of diagnostic variants ("just Lois Lane", "Lois Lane 2019",
+  4. A series of diagnostic variants ("just Lila Lane", "Lila Lane 2019",
      etc.) so we can see what filter shape actually works.
 
 Useful when calibration shows 0-candidate results that "should" hit the

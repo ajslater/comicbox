@@ -24,13 +24,13 @@ if TYPE_CHECKING:
 
 _COMET = (
     '<?xml version="1.0"?><comet xmlns:comet="http://www.denvog.com/comet/">'
-    "<series>Civil War</series><issue>1</issue><date>{}</date></comet>"
+    "<series>Crimson Tide</series><issue>1</issue><date>{}</date></comet>"
 )
 _METRON = (
-    '<?xml version="1.0"?><MetronInfo><Series><Name>Civil War</Name></Series>'
+    '<?xml version="1.0"?><MetronInfo><Series><Name>Crimson Tide</Name></Series>'
     "<Number>1</Number><CoverDate>{}</CoverDate></MetronInfo>"
 )
-_YAML = "comicbox:\n  series: {{name: Civil War}}\n  date:\n    cover_date: '{}'\n"
+_YAML = "comicbox:\n  series: {{name: Crimson Tide}}\n  date:\n    cover_date: '{}'\n"
 _FORMATS = (
     (MetadataFormats.COMET, _COMET),
     (MetadataFormats.METRON_INFO, _METRON),
@@ -101,7 +101,9 @@ def test_six_digits_that_cannot_be_a_year_and_month_go_to_dateutil() -> None:
 
 def test_an_unquoted_six_digit_yaml_date_is_a_year_and_month() -> None:
     """``-m "date: {cover_date: 200607}"`` hands the field an integer."""
-    text = "comicbox:\n  series: {name: Civil War}\n  date:\n    cover_date: 200607\n"
+    text = (
+        "comicbox:\n  series: {name: Crimson Tide}\n  date:\n    cover_date: 200607\n"
+    )
     assert _date(MetadataFormats.COMICBOX_YAML, text) == {"year": 2006, "month": 7}
 
 

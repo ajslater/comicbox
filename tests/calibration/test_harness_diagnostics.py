@@ -34,7 +34,7 @@ def test_print_failed_outcomes_shows_top_candidates(
     """MISS lines list the top-K candidates with breakdowns."""
     from tests.calibration.run import _print_failed_outcomes
 
-    # Watchmen-shaped: top is wrong, runner-up is right, tied scores.
+    # Wardens-shaped: top is wrong, runner-up is right, tied scores.
     outcome = _make_miss_outcome_with_candidates(
         [
             (476696, 0.89, 0.91, 0.81),  # wrong, tied
@@ -137,7 +137,7 @@ def test_print_failed_outcomes_includes_series_and_year(
             score=0.89,
             metadata_score=0.91,
             cover_score=0.81,
-            series="Watchmen Annotated",
+            series="Wardens Annotated",
             summary_year=1987,
         ),
         _CandidateSummary(
@@ -145,12 +145,12 @@ def test_print_failed_outcomes_includes_series_and_year(
             score=0.89,
             metadata_score=0.91,
             cover_score=0.81,
-            series="Watchmen",
+            series="Wardens",
             summary_year=1987,
         ),
     ]
     outcome = _Outcome(
-        fixture=_Fixture(Path("/Watchmen #5.cbz"), {"comicvine": 27650}, "full"),
+        fixture=_Fixture(Path("/Wardens #5.cbz"), {"comicvine": 27650}, "full"),
         source_name="comicvine",
         top_score=0.89,
         top_issue_id=476696,
@@ -165,8 +165,8 @@ def test_print_failed_outcomes_includes_series_and_year(
     _print_failed_outcomes([outcome])
     out = capsys.readouterr().out
     # The volume names appear in the per-candidate breakdown.
-    assert "Watchmen Annotated" in out
-    assert "Watchmen" in out  # exact-match volume
+    assert "Wardens Annotated" in out
+    assert "Wardens" in out  # exact-match volume
     # The year is attached to the volume label.
     assert "1987" in out
 
@@ -198,14 +198,14 @@ def test_format_candidate_line_includes_volume_id() -> None:
         score=0.89,
         metadata_score=0.91,
         cover_score=0.81,
-        series="Watchmen",
+        series="Wardens",
         summary_year=1987,
         volume_id=10455,
     )
     line = _format_candidate_line(1, c, expected=27650)
     assert "vol=10455" in line
     # The series and year still show.
-    assert "Watchmen" in line
+    assert "Wardens" in line
     assert "1987" in line
 
 
@@ -238,7 +238,7 @@ def test_serialize_top_candidates_includes_volume_id(tmp_path: Path) -> None:
             score=0.89,
             metadata_score=0.91,
             cover_score=0.81,
-            series="Watchmen",
+            series="Wardens",
             summary_year=1987,
             volume_id=10455,
         ),

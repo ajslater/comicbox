@@ -22,7 +22,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 # A ComicInfo.xml with a raw "&", which no XML parser reads.
-_BROKEN_CIX = "<ComicInfo><Series>Batman & Robin</Series><Number>1</Number></ComicInfo>"
+_BROKEN_CIX = (
+    "<ComicInfo><Series>Bladehawk & Rook</Series><Number>1</Number></ComicInfo>"
+)
 
 
 @pytest.fixture
@@ -39,21 +41,23 @@ def restore_cli_state() -> Iterator[None]:
 
 @pytest.fixture
 def reading_list(tmp_path: Path) -> Path:
-    return write_list(tmp_path / "civil-war.yaml")
+    return write_list(tmp_path / "crimson-tide.yaml")
 
 
 @pytest.fixture
 def library(tmp_path: Path) -> Path:
     """Two of the list's issues, one by a variant name, and one it lacks."""
     directory = tmp_path / "comics"
-    make_comic(directory / "cw1.cbz", series="Civil War", number="1", start_year=2006)
+    make_comic(
+        directory / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006
+    )
     make_comic(
         directory / "asm532.cbz",
-        series="The Amazing Spider-Man",
+        series="The Amazing Snail-Man",
         number="532",
         start_year=1963,
     )
-    make_comic(directory / "other.cbz", series="Saga", number="1", start_year=2012)
+    make_comic(directory / "other.cbz", series="Sonnet", number="1", start_year=2012)
     return directory
 
 
@@ -61,7 +65,7 @@ def library(tmp_path: Path) -> Path:
 def unreadable(tmp_path: Path) -> Path:
     """Make a comic its file name matches, with a ComicInfo.xml no parser reads."""
     return make_comic(
-        tmp_path / "comics" / "Batman & Robin v2009 001 (2009).cbz",
+        tmp_path / "comics" / "Bladehawk & Rook v2009 001 (2009).cbz",
         formats=(),
         files={"ComicInfo.xml": _BROKEN_CIX},
         series="unused",
@@ -70,11 +74,11 @@ def unreadable(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def batman_list(tmp_path: Path) -> Path:
-    path = tmp_path / "batman.yaml"
+def bladehawk_list(tmp_path: Path) -> Path:
+    path = tmp_path / "bladehawk.yaml"
     path.write_text(
-        "reading_list:\n  name: Batman Reborn\n  entries:\n"
-        "    - series: {name: Batman & Robin}\n"
+        "reading_list:\n  name: Bladehawk Reborn\n  entries:\n"
+        "    - series: {name: Bladehawk & Rook}\n"
         "      volume: {number: 2009}\n"
         "      issue: {name: '1'}\n"
     )

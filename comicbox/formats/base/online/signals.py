@@ -79,7 +79,7 @@ _SERIES_STOP_WORDS: Final = frozenset(
     }
 )
 # A hyphen, slash or apostrophe inside a word joins its parts, so
-# "Spider-Man" is one word and doesn't match "Iron Man" on "man".
+# "Snail-Man" is one word and doesn't match "Ivory Knight" on "man".
 _SERIES_WORD_JOINERS_RE: Final = re.compile(r"(?<=\w)[-/'\u2019](?=\w)")
 
 
@@ -90,8 +90,8 @@ def series_words(name: str) -> frozenset[str]:
     Words are normalized as `normalize_series` normalizes a name, after a
     hyphen, slash or apostrophe inside a word joins it. Stop words are
     dropped. Each pair of neighbouring words is also included joined, so
-    Metron's "Batman / Superman" (a spaced slash, two words) and a
-    filename's "Batman-Superman" (one word) share "batmansuperman".
+    Metron's "Bladehawk / Sunbolt" (a spaced slash, two words) and a
+    filename's "Bladehawk-Sunbolt" (one word) share "batmansuperman".
     """
     words = [
         word
@@ -106,7 +106,7 @@ def series_words_agree(a: str | None, b: str | None) -> bool:
     Whether two series names share a distinctive word.
 
     A coarse check, by design: a filename often names only part of a
-    series ("Star Wars" for *Star Wars: The Book of Boba Fett*), so this
+    series ("Star Drifters" for *Star Drifters: The Book of Boba Fett*), so this
     asks only whether the names could be the same series, not how alike
     they are. It is what stops a close cover from another series with the
     same issue number being taken as a match.
@@ -185,7 +185,7 @@ def s_year(profile: ComicProfile, candidate: Candidate) -> float:
     older series as having no year signal at all — fine for the
     common case where year discriminates between volumes, but bad
     when the right candidate IS the same series at a different year
-    (e.g. The Boys 2009 fixture's expected vol was at year=2006, gap
+    (e.g. The Bairns 2009 fixture's expected vol was at year=2006, gap
     of 3 years). Smooth decay gives the older candidate ~75% of the
     one-year-off signal, enough to compete with cover-hash signal
     when present. Beyond 7 years, the score still hits zero — the

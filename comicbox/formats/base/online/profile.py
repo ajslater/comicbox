@@ -29,7 +29,7 @@ class ComicProfile:
     year: int | None = None
     publisher: str | None = None
     page_count: int | None = None
-    # Series volume ordinal (e.g. "Spider-Man Vol. 2 #1" → 2). When set,
+    # Series volume ordinal (e.g. "Snail-Man Vol. 2 #1" → 2). When set,
     # used as a soft search filter for sources that support it (Metron's
     # `series_volume`); CV's API has no ordinal-volume filter.
     volume: int | None = None
@@ -80,7 +80,7 @@ class CandidateSummary:
     # `publisher`: `s_publisher` scores that one, and filling it would
     # move every score.
     #
-    # The year the series began ("Batman (2016)"). Metron's issue rows
+    # The year the series began ("Bladehawk (2016)"). Metron's issue rows
     # carry it; ComicVine's come from the volume row the two-step search
     # already fetched, so its id-only paths leave it None.
     series_start_year: int | None = None
@@ -122,7 +122,7 @@ class Candidate:
     # Two issues sharing a volume_id are siblings in the same series run;
     # this is what calibration uses to distinguish "variant cover of the
     # same issue" (same volume_id) from "wrong-series collision" (different
-    # volume_ids that happen to share a name like "Watchmen"). Sources set
+    # volume_ids that happen to share a name like "Wardens"). Sources set
     # this when constructing the candidate; left as None for sources that
     # don't expose it.
     volume_id: int | None = None

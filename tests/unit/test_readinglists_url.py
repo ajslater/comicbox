@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
 _FILES = {
-    "civil-war.yaml": ReadingListFormats.YAML,
+    "crimson-tide.yaml": ReadingListFormats.YAML,
     "cbl/startyear-source.cbl": ReadingListFormats.CBL,
     "json-cbl/minimal.json": ReadingListFormats.JSON_CBL,
 }
@@ -42,7 +42,7 @@ _BASE = "https://lists.example"
 def _serve(request: httpx.Request) -> httpx.Response:
     path = request.url.path.lstrip("/")
     if path == "moved":
-        return httpx.Response(302, headers={"Location": f"{_BASE}/civil-war.yaml"})
+        return httpx.Response(302, headers={"Location": f"{_BASE}/crimson-tide.yaml"})
     if path == "elsewhere":
         return httpx.Response(302, headers={"Location": "ftp://lists.example/x"})
     if path == "native.json":
@@ -99,7 +99,7 @@ def test_the_url_source_takes_the_file_source_place(
 
 def test_a_redirect_is_followed(session: ReadingListSession) -> None:
     result = session.fetch_url(f"{_BASE}/moved")
-    assert result.reading_list["name"] == "Civil War"
+    assert result.reading_list["name"] == "Crimson Tide"
 
 
 @pytest.mark.parametrize(
@@ -128,7 +128,7 @@ def test_a_network_failure_is_a_fetch_error(session: ReadingListSession) -> None
 
     session._transport = httpx.MockTransport(refuse)
     with pytest.raises(ReadingListFetchError, match="connection refused"):
-        session.fetch_url(f"{_BASE}/civil-war.yaml")
+        session.fetch_url(f"{_BASE}/crimson-tide.yaml")
 
 
 def _session_with(
@@ -180,7 +180,7 @@ def test_the_size_cap_while_streaming() -> None:
 def test_events_start_and_finish(
     session: ReadingListSession, events: list[Event]
 ) -> None:
-    session.fetch_url(f"{_BASE}/civil-war.yaml")
+    session.fetch_url(f"{_BASE}/crimson-tide.yaml")
     with pytest.raises(ReadingListFetchError):
         session.fetch_url(f"{_BASE}/missing.cbl")
     assert [type(event) for event in events] == [
@@ -190,7 +190,7 @@ def test_events_start_and_finish(
         ReadingListFetchFinished,
     ]
     assert events[0] == ReadingListFetchStarted(
-        source="url", key=f"{_BASE}/civil-war.yaml"
+        source="url", key=f"{_BASE}/crimson-tide.yaml"
     )
 
 
@@ -204,7 +204,7 @@ def test_a_cancelled_session_fetches_nothing(session: ReadingListSession) -> Non
     session._transport = httpx.MockTransport(record)
     session.cancel()
     with pytest.raises(OnlineLookupAbortedError):
-        session.fetch_url(f"{_BASE}/civil-war.yaml")
+        session.fetch_url(f"{_BASE}/crimson-tide.yaml")
     assert requests == []
 
 
@@ -218,7 +218,7 @@ def test_close_closes_the_client() -> None:
 
 # ------------------------------------------- bounded downloads (R2-E E2)
 
-_LIST = (READING_LISTS_DIR / "civil-war.yaml").read_bytes()
+_LIST = (READING_LISTS_DIR / "crimson-tide.yaml").read_bytes()
 
 
 def _compress(data: bytes, wbits: int) -> bytes:
@@ -257,9 +257,9 @@ class _Streamed:
 def test_a_compressed_list_is_inflated(encoding: str, wbits: int) -> None:
     answer = _Streamed(_compress(_LIST, wbits), encoding)
     with _session_with(answer, 1 << 20) as session:
-        result = session.fetch_url(f"{_BASE}/civil-war.yaml")
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
 
-    assert result.reading_list["name"] == "Civil War"
+    assert result.reading_list["name"] == "Crimson Tide"
     (request,) = answer.seen
     assert request.headers["Accept-Encoding"] == "gzip, deflate"
 
@@ -373,13 +373,13 @@ def test_a_cancel_while_the_body_arrives_returns_no_list() -> None:
 
         session._transport = httpx.MockTransport(cancel_then_answer)
         with pytest.raises(OnlineLookupAbortedError):
-            session.fetch_url(f"{_BASE}/civil-war.yaml")
+            session.fetch_url(f"{_BASE}/crimson-tide.yaml")
 
 
 # ---------------------------------------- credentials in a URL (R2-E E7)
 
-_SECRET_URL = "https://user:secret@lists.example/civil-war.yaml?token=abc"
-_SHOWN_URL = "https://lists.example/civil-war.yaml?token=abc"
+_SECRET_URL = "https://user:secret@lists.example/crimson-tide.yaml?token=abc"
+_SHOWN_URL = "https://lists.example/crimson-tide.yaml?token=abc"
 
 
 def test_a_urls_credentials_are_sent_and_never_recorded(
@@ -408,7 +408,7 @@ def test_a_urls_credentials_are_sent_and_never_recorded(
 
 
 @pytest.mark.parametrize(
-    ("path", "status"), [("/missing.yaml", 404), ("/civil-war.yaml", 200)]
+    ("path", "status"), [("/missing.yaml", 404), ("/crimson-tide.yaml", 200)]
 )
 def test_an_error_never_shows_a_urls_credentials(path: str, status: int) -> None:
     def answer(request: httpx.Request) -> httpx.Response:

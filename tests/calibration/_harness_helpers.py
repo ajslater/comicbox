@@ -76,7 +76,7 @@ def make_miss_outcome_with_candidates(
     top = summaries[0]
     runner = summaries[1] if len(summaries) > 1 else None
     return _Outcome(
-        fixture=_Fixture(Path("/Watchmen #5.cbz"), {"comicvine": expected}, "full"),
+        fixture=_Fixture(Path("/Wardens #5.cbz"), {"comicvine": expected}, "full"),
         source_name="comicvine",
         top_score=top.score,
         top_issue_id=top.issue_id,

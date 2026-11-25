@@ -28,7 +28,7 @@ from comicbox.readinglists.serialize import load_model
 def _entry(
     number: int,
     *,
-    series: str = "Civil War",
+    series: str = "Crimson Tide",
     year: int | None = 2006,
     cover: date | None = None,
     **ids: str,
@@ -46,7 +46,7 @@ def _entry(
 
 
 def _list(entries: list[dict[str, Any]], **header: Any) -> dict[str, Any]:
-    return {"name": "Civil War", "ordered": True, ENTRIES_KEY: entries, **header}
+    return {"name": "Crimson Tide", "ordered": True, ENTRIES_KEY: entries, **header}
 
 
 @dataclass(frozen=True, slots=True)

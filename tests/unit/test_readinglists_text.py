@@ -36,8 +36,8 @@ _NOT_UTF8 = "text: not valid UTF-8; the bytes that are not were replaced with U+
 )
 def test_control_characters_are_removed_with_a_warning(bad: str) -> None:
     result = loads(_json_with(bad))
-    assert result.reading_list["name"] == "Civil War"
-    assert result.reading_list["entries"][0]["series"]["name"] == "X-Men"
+    assert result.reading_list["name"] == "Crimson Tide"
+    assert result.reading_list["entries"][0]["series"]["name"] == "Z-Men"
     assert "name: control characters removed" in result.warnings
     assert "entries #1.series.name: control characters removed" in result.warnings
 
@@ -46,8 +46,8 @@ def _json_with(bad: str) -> str:
     """Build JSON, which can carry any of them as an escape."""
     escape = f"\\u{ord(bad):04x}"
     return (
-        '{"reading_list": {"name": "Civil' + escape + ' War", "entries": '
-        '[{"series": {"name": "X' + escape + '-Men"}, "issue": {"name": "1"}}]}}'
+        '{"reading_list": {"name": "Crimson' + escape + ' Tide", "entries": '
+        '[{"series": {"name": "Z' + escape + '-Men"}, "issue": {"name": "1"}}]}}'
     )
 
 

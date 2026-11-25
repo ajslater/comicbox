@@ -53,7 +53,7 @@ def test_a_dry_run_changes_no_byte(
 
     assert code == 0
     assert digests(library) == before
-    assert "cw1.cbz would add 'Civil War' #1" in flat(out)
+    assert "cw1.cbz would add 'Crimson Tide' #1" in flat(out)
     assert "asm532.cbz: found only by a name variant; --variants tags it" in flat(out)
     assert "Dry run: 1 of 1 matched comic would change; --apply writes them." in err
     assert "1 comic found only by a name variant; --variants tags them." in err
@@ -68,8 +68,8 @@ def test_a_variant_is_tagged_only_with_variants(
     )
 
     assert code == 0
-    assert "asm532.cbz added 'Civil War' #3" in flat(out)
-    assert read_arcs(library)["asm532.cbz"] == {"Civil War": {"number": 3}}
+    assert "asm532.cbz added 'Crimson Tide' #3" in flat(out)
+    assert read_arcs(library)["asm532.cbz"] == {"Crimson Tide": {"number": 3}}
 
 
 def test_write_arcs_warns_of_entries_with_no_key(
@@ -77,8 +77,8 @@ def test_write_arcs_warns_of_entries_with_no_key(
 ) -> None:
     keyless = tmp_path / "keyless.yaml"
     keyless.write_text(
-        "reading_list:\n  name: Civil War\n  entries:\n"
-        "    - series: {name: Civil War}\n      issue: {name: '1'}\n"
+        "reading_list:\n  name: Crimson Tide\n  entries:\n"
+        "    - series: {name: Crimson Tide}\n      issue: {name: '1'}\n"
     )
 
     _, _, err = rl_write(capsys, str(keyless), str(library))
@@ -93,22 +93,22 @@ def test_a_renumber_of_an_arc_with_no_number(
     directory = tmp_path / "tagged"
     make_comic(
         directory / "cw4.cbz",
-        series="Civil War",
+        series="Crimson Tide",
         number="2",
         start_year=2006,
-        arcs={"Civil War": None},
+        arcs={"Crimson Tide": None},
     )
 
     _, out, _ = rl_write(capsys, str(reading_list), str(directory))
 
-    assert "would renumber 'Civil War' #2, had no number" in flat(out)
+    assert "would renumber 'Crimson Tide' #2, had no number" in flat(out)
 
 
 def test_a_list_name_a_format_cannot_hold_refuses_its_w(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """ComicInfo splits arcs on commas: this one would be written as two."""
-    name = "'Avengers, The: Disassembled'"
+    name = "'Ardent, The: Disassembled'"
     listed = write_list(tmp_path / "list.yaml", name)
     missing = tmp_path / "not-even-read"
 
@@ -116,7 +116,7 @@ def test_a_list_name_a_format_cannot_hold_refuses_its_w(
 
     assert code == 2
     assert (
-        "-w: ComicInfo.xml cannot hold the arc 'Avengers, The: Disassembled':"
+        "-w: ComicInfo.xml cannot hold the arc 'Ardent, The: Disassembled':"
         " it reads it back as other arcs"
     ) in err
     assert "not a directory" not in err
@@ -133,7 +133,7 @@ def test_a_format_with_no_arcs_refuses_its_w(
 
     assert code == 2
     assert (
-        "ComicBookInfo comment cannot hold the arc 'Civil War': it has no story arcs"
+        "ComicBookInfo comment cannot hold the arc 'Crimson Tide': it has no story arcs"
         in err
     )
     assert digests(library) == before
@@ -167,7 +167,7 @@ def test_a_list_without_a_name_names_no_arc(
     nameless = tmp_path / "nameless.yaml"
     nameless.write_text(
         "reading_list:\n  entries:\n"
-        "    - series: {name: Civil War, start_year: 2006}\n      issue: {name: '1'}\n"
+        "    - series: {name: Crimson Tide, start_year: 2006}\n      issue: {name: '1'}\n"
     )
 
     code, _, err = rl_write(capsys, str(nameless), str(library))
@@ -203,7 +203,7 @@ def test_a_comic_in_each_format_gets_the_arc(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=formats,
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         volume=2006,
         arcs={"Other": 5},
@@ -215,14 +215,14 @@ def test_a_comic_in_each_format_gets_the_arc(
     )
 
     assert code == 0
-    assert "cw1.cbz added 'Civil War' #1" in flat(out)
+    assert "cw1.cbz added 'Crimson Tide' #1" in flat(out)
     assert tag_files(path) == files
     with zipfile.ZipFile(path) as archive:
         assert archive.testzip() is None
         for name in files:
-            assert "Civil War" in archive.read(name).decode()
+            assert "Crimson Tide" in archive.read(name).decode()
     after = read_tags(path)
-    assert after.pop("arcs") == {"Civil War": {"number": 1}, "Other": {"number": 5}}
+    assert after.pop("arcs") == {"Crimson Tide": {"number": 1}, "Other": {"number": 5}}
     before.pop("arcs")
     assert after == before
 
@@ -231,17 +231,20 @@ def test_a_list_name_with_a_comma_is_written_once(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """In a format that holds it, the arc reads back whole: not re-added each run."""
-    listed = write_list(tmp_path / "list.yaml", "'Avengers, The: Disassembled'")
+    listed = write_list(tmp_path / "list.yaml", "'Ardent, The: Disassembled'")
     path = make_comic(
-        tmp_path / "comics" / "cw1.cbz", series="Civil War", number="1", start_year=2006
+        tmp_path / "comics" / "cw1.cbz",
+        series="Crimson Tide",
+        number="1",
+        start_year=2006,
     )
 
     code, _, _ = rl_write(capsys, str(listed), str(path.parent), apply=True)
     _, again, _ = rl_write(capsys, str(listed), str(path.parent), apply=True)
 
     assert code == 0
-    assert read_tags(path)["arcs"] == {"Avengers, The: Disassembled": {"number": 1}}
-    assert "cw1.cbz: already has 'Avengers, The: Disassembled' #1" in flat(again)
+    assert read_tags(path)["arcs"] == {"Ardent, The: Disassembled": {"number": 1}}
+    assert "cw1.cbz: already has 'Ardent, The: Disassembled' #1" in flat(again)
 
 
 def test_the_merge_is_additive_whatever_the_config_says(
@@ -253,7 +256,7 @@ def test_the_merge_is_additive_whatever_the_config_says(
     )
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
         arcs={"Other": 5},
@@ -263,7 +266,7 @@ def test_the_merge_is_additive_whatever_the_config_says(
 
     assert code == 0
     assert read_tags(path)["arcs"] == {
-        "Civil War": {"number": 1},
+        "Crimson Tide": {"number": 1},
         "Other": {"number": 5},
     }
 
@@ -281,7 +284,7 @@ def test_the_config_dry_run_wins_and_is_said(
 
     assert code == 0
     assert digests(library) == before
-    assert "cw1.cbz would add 'Civil War' #1" in flat(out)
+    assert "cw1.cbz would add 'Crimson Tide' #1" in flat(out)
     assert "added" not in flat(out).replace("would add", "")
     assert "general.dry_run is set in the config, so nothing was written." in err
 
@@ -294,7 +297,7 @@ def test_a_config_that_reads_one_format_loses_nothing_from_another(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         formats=(JSON, CIX),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
         volume=2006,
@@ -305,7 +308,7 @@ def test_a_config_that_reads_one_format_loses_nothing_from_another(
     # ComicInfo has no start year, so only comicbox.json could have kept it.
     written = json.loads(zipfile.ZipFile(path).read("comicbox.json"))
     assert written["comicbox"]["series"]["start_year"] == 2006
-    assert written["comicbox"]["arcs"] == {"Civil War": {"number": 1}}
+    assert written["comicbox"]["arcs"] == {"Crimson Tide": {"number": 1}}
 
 
 def test_a_write_that_does_not_hold_is_said(
@@ -320,8 +323,9 @@ def test_a_write_that_does_not_hold_is_said(
     code, out, _ = rl_write(capsys, str(reading_list), str(library), apply=True)
 
     assert code == 1
-    assert "cw1.cbz the write did not hold: it reads back without 'Civil War'" in flat(
-        out
+    assert (
+        "cw1.cbz the write did not hold: it reads back without 'Crimson Tide'"
+        in flat(out)
     )
     assert "added" not in flat(out)
 
@@ -332,17 +336,17 @@ def test_apply_with_nothing_to_write_says_so(
     directory = tmp_path / "tagged"
     same = make_comic(
         directory / "cw1.cbz",
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
-        arcs={"Civil War": 1},
+        arcs={"Crimson Tide": 1},
     )
     untouched = same.read_bytes()
 
     code, out, err = rl_write(capsys, str(reading_list), str(directory), apply=True)
 
     assert code == 0
-    assert "cw1.cbz: already has 'Civil War' #1; left alone" in flat(out)
+    assert "cw1.cbz: already has 'Crimson Tide' #1; left alone" in flat(out)
     assert "Nothing to write among 1 matched comic." in err
     assert same.read_bytes() == untouched
 
@@ -353,10 +357,10 @@ def test_a_comic_with_the_arc_at_another_number_is_renumbered(
     directory = tmp_path / "tagged"
     make_comic(
         directory / "cw2.cbz",
-        series="Civil War",
+        series="Crimson Tide",
         number="2",
         start_year=2006,
-        arcs={"Civil War": 9, "Other": 1},
+        arcs={"Crimson Tide": 9, "Other": 1},
     )
     before = digests(directory)
 
@@ -364,23 +368,23 @@ def test_a_comic_with_the_arc_at_another_number_is_renumbered(
     assert digests(directory) == before
     code, out, _ = rl_write(capsys, str(reading_list), str(directory), apply=True)
 
-    assert "cw2.cbz would renumber 'Civil War' #2, was #9" in flat(dry)
+    assert "cw2.cbz would renumber 'Crimson Tide' #2, was #9" in flat(dry)
     assert code == 0
-    assert "cw2.cbz renumbered 'Civil War' #2, was #9" in flat(out)
+    assert "cw2.cbz renumbered 'Crimson Tide' #2, was #9" in flat(out)
     assert read_arcs(directory)["cw2.cbz"] == {
-        "Civil War": {"number": 2},
+        "Crimson Tide": {"number": 2},
         "Other": {"number": 1},
     }
 
 
 def test_a_comic_with_an_unreadable_tag_file_is_never_written(
-    capsys: pytest.CaptureFixture[str], batman_list: Path, unreadable: Path
+    capsys: pytest.CaptureFixture[str], bladehawk_list: Path, unreadable: Path
 ) -> None:
     """Matched by its file name, its ComicInfo.xml was replaced by one from it."""
     untouched = unreadable.read_bytes()
 
     code, out, _ = rl_write(
-        capsys, "-w", "cix", str(batman_list), str(unreadable.parent), apply=True
+        capsys, "-w", "cix", str(bladehawk_list), str(unreadable.parent), apply=True
     )
 
     assert code == 1
@@ -393,7 +397,7 @@ def test_a_comic_with_an_unreadable_tag_file_is_never_written(
     [
         "Scanned by a friend",
         # Not JSON, so not ComicBookInfo, whatever it starts with.
-        '{"ComicBookInfo/1.0": {"series": "Civil War",',
+        '{"ComicBookInfo/1.0": {"series": "Crimson Tide",',
     ],
 )
 def test_an_archive_comment_that_is_not_comic_book_info_is_free_text(
@@ -406,7 +410,7 @@ def test_an_archive_comment_that_is_not_comic_book_info_is_free_text(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         comment=comment,
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
@@ -414,7 +418,7 @@ def test_an_archive_comment_that_is_not_comic_book_info_is_free_text(
     code, out, _ = rl_write(capsys, str(reading_list), str(path.parent), apply=True)
 
     assert code == 0
-    assert "added 'Civil War' #1" in flat(out)
+    assert "added 'Crimson Tide' #1" in flat(out)
     assert "could not be read" not in flat(out)
 
 

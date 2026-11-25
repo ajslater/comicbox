@@ -78,7 +78,7 @@ def session(events: list[Event]) -> Iterator[ReadingListSession]:
         yield rl
 
 
-def _civil_war(cv: FakeComicvine) -> None:
+def _crimson_tide(cv: FakeComicvine) -> None:
     """Serve an arc of two issues in one volume."""
     cv.serve(arc_row([1, 2]), [issue_row(1), issue_row(2)], [volume_row(7)])
 
@@ -95,11 +95,11 @@ def _keys(reading_list: dict[str, Any]) -> list[str]:
 def test_an_arc_is_an_unordered_story_list(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
 
     reading_list = session.fetch_comicvine_arc(12).reading_list
 
-    assert reading_list["name"] == "Civil War"
+    assert reading_list["name"] == "Crimson Tide"
     assert reading_list["description"] == "Hero against hero."
     assert reading_list["list_type"] == "story"
     assert reading_list["ordered"] is False
@@ -107,7 +107,7 @@ def test_an_arc_is_an_unordered_story_list(
         {
             "kind": "comicvine-arc",
             "key": "12",
-            "url": "https://comicvine.gamespot.com/civil-war/4045-12/",
+            "url": "https://comicvine.gamespot.com/crimson-tide/4045-12/",
             "revision": "2024-05-01T12:00:00",
         }
     ]
@@ -117,7 +117,7 @@ def test_an_arc_is_three_calls_from_started_to_finished(
     session: ReadingListSession, cv: FakeComicvine, events: list[Event]
 ) -> None:
     """The arc, its issues and their volumes; with no format, and no warning."""
-    _civil_war(cv)
+    _crimson_tide(cv)
 
     result = session.fetch_comicvine_arc(12)
 
@@ -135,14 +135,14 @@ def test_an_arc_is_three_calls_from_started_to_finished(
 def test_enriched_entries_carry_series_number_dates_and_ids(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
 
     entry = session.fetch_comicvine_arc(12).reading_list["entries"][0]
 
     # The story title is nowhere: an entry has no place for one.
     assert entry == {
         "series": {
-            "name": "Civil War",
+            "name": "Crimson Tide",
             "start_year": 2006,
             "identifiers": {"comicvine": {"key": "7"}},
         },
@@ -287,7 +287,7 @@ def test_combine_links_it_with_the_metron_arc_by_name_number_and_start_year(
 def test_the_fetch_shares_taggings_client_and_leaves_it_open(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
     tagging = ComicVineOnlineSource(
         OnlineSourceCredentials(key=_KEY), session.settings.online
     )
@@ -307,7 +307,7 @@ def test_the_fetch_shares_taggings_client_and_leaves_it_open(
 def test_a_cancel_between_calls_stops_the_fetch(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
 
     def cancel_after_the_arc(method: str) -> None:
         if method == "get_story_arc":
@@ -323,7 +323,7 @@ def test_a_cancel_between_calls_stops_the_fetch(
 def test_a_cancel_during_the_last_call_returns_no_list(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
 
     def cancel_during_volumes(method: str) -> None:
         if method == "list_volumes":
@@ -339,7 +339,7 @@ def test_a_cancel_during_the_last_call_returns_no_list(
 def test_a_cancelled_session_sends_nothing(
     session: ReadingListSession, cv: FakeComicvine
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
     session.cancel()
 
     with pytest.raises(OnlineLookupAbortedError):
@@ -370,7 +370,7 @@ def test_no_key_fails_before_any_call(cv: FakeComicvine) -> None:
 
 
 def test_the_config_key_is_used_without_credentials(cv: FakeComicvine) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
     with ReadingListSession() as rl:
         online = rl.settings.online
         auth = OnlineAuthSettings(sources={"comicvine": OnlineSourceCredentials(_KEY)})
@@ -412,7 +412,7 @@ def test_a_failed_call_is_one_fetch_error_naming_the_arc(
     error: Exception,
     message: str,
 ) -> None:
-    _civil_war(cv)
+    _crimson_tide(cv)
     cv.fail[method] = error
 
     with pytest.raises(ReadingListFetchError) as caught:
@@ -426,7 +426,7 @@ def test_a_spent_hourly_budget_fails_at_once_saying_when_it_frees(
     session: ReadingListSession, cv: FakeComicvine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The arc is fetched; the issue call, whose pool is spent, is never sent."""
-    _civil_war(cv)
+    _crimson_tide(cv)
     reset = datetime(2026, 11, 16, 15, 4, tzinfo=UTC).timestamp()
     spent = {"issues": {"limit": 200, "remaining": 0, "reset_epoch": reset}}
     monkeypatch.setattr(comicvine, "shared_client_rate_limit_status", lambda _s: spent)

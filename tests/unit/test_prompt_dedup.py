@@ -72,7 +72,7 @@ def test_identical_candidate_set_dedups() -> None:
         sources={"metron"}, credentials=VALID, prompt_handler=recorder
     )
     selector = session._bridged_selector()
-    profile = ComicProfile(series="Spider-Man", year=2020, publisher="Marvel")
+    profile = ComicProfile(series="Snail-Man", year=2020, publisher="Marvel")
     candidates = (_cand(1, 100), _cand(2, 100))
 
     # First call: invokes handler.
@@ -97,7 +97,7 @@ def test_choose_remaps_volume_id_to_new_index() -> None:
         sources={"metron"}, credentials=VALID, prompt_handler=recorder
     )
     selector = session._bridged_selector()
-    profile = ComicProfile(series="Spider-Man", year=2020, publisher="Marvel")
+    profile = ComicProfile(series="Snail-Man", year=2020, publisher="Marvel")
 
     # First prompt: candidates ordered as (vol=100, vol=200) — user picks index 0 → vol 100.
     first = (_cand(1, 100), _cand(2, 200))
@@ -120,8 +120,8 @@ def test_different_fingerprint_re_prompts() -> None:
     selector = session._bridged_selector()
     candidates = (_cand(1, 100),)
 
-    selector(ComicProfile(series="Spider-Man"), candidates, _ctx())
-    selector(ComicProfile(series="Batman"), candidates, _ctx())
+    selector(ComicProfile(series="Snail-Man"), candidates, _ctx())
+    selector(ComicProfile(series="Bladehawk"), candidates, _ctx())
 
     assert len(recorder.seen) == 2
 

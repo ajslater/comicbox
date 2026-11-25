@@ -34,13 +34,13 @@ if TYPE_CHECKING:
 
 _PLAIN_YAML = """\
 comicbox:
-  series: Civil War
+  series: Crimson Tide
   volume: 2006
   publisher: Marvel
   imprint: Icon
 """
 _LOADED = {
-    "series": {"name": "Civil War"},
+    "series": {"name": "Crimson Tide"},
     "volume": {"number": 2006},
     "publisher": {"name": "Marvel"},
     "imprint": {"name": "Icon"},
@@ -74,26 +74,26 @@ def test_a_comics_yaml_loads_plain_names_and_numbers(tmp_path: Path) -> None:
 
 
 def test_a_number_written_as_a_string_loads(tmp_path: Path) -> None:
-    data = json.dumps({"comicbox": {"volume": "2006", "series": "Civil War"}})
+    data = json.dumps({"comicbox": {"volume": "2006", "series": "Crimson Tide"}})
     path = _comic(tmp_path / "comic.cbz", "comicbox.json", data)
 
     tags = _tags(path)
 
     assert tags["volume"] == {"number": 2006}
-    assert tags["series"] == {"name": "Civil War"}
+    assert tags["series"] == {"name": "Crimson Tide"}
 
 
 def test_a_library_patch_with_plain_names_is_written(tmp_path: Path) -> None:
     """The whole patch failed to load, and the write wrote none of it."""
     path = tmp_path / "comic.cbz"
     shutil.copy(TEST_FILES_DIR / "empty.cbz", path)
-    patch = {"series": "Civil War", "volume": 2006, "imprint": "Icon"}
+    patch = {"series": "Crimson Tide", "volume": 2006, "imprint": "Icon"}
 
     result = write_metadata(path, patch, formats=["COMIC_INFO"])
 
     assert result.written, result.error
     tags = _tags(path)
-    assert tags["series"]["name"] == "Civil War"
+    assert tags["series"]["name"] == "Crimson Tide"
     assert tags["volume"] == {"number": 2006}
     assert tags["imprint"] == {"name": "Icon"}
 
@@ -132,23 +132,23 @@ def test_a_reading_list_reads_a_plain_series_and_volume() -> None:
     """Read, said, and written back as the objects its JSON Schema has."""
     result = loads(
         "reading_list:\n  name: X\n  entries:\n"
-        "    - series: Civil War\n      volume: 2006\n      issue: {name: '1'}\n",
+        "    - series: Crimson Tide\n      volume: 2006\n      issue: {name: '1'}\n",
         fmt="yaml",
     )
 
     entry = {
-        "series": {"name": "Civil War"},
+        "series": {"name": "Crimson Tide"},
         "volume": {"number": 2006},
         "issue": {"name": "1"},
     }
     assert result.reading_list["entries"] == [entry]
-    assert "entries #1.series: 'Civil War' read as {'name': 'Civil War'}" in (
+    assert "entries #1.series: 'Crimson Tide' read as {'name': 'Crimson Tide'}" in (
         result.warnings
     )
     assert "entries #1.volume: 2006 read as {'number': 2006}" in result.warnings
     written = dumps(result.reading_list, "yaml")
     assert loads(written, fmt="yaml").reading_list["entries"] == [entry]
     assert (
-        "- series:\n        name: Civil War\n      volume:\n        number: 2006"
+        "- series:\n        name: Crimson Tide\n      volume:\n        number: 2006"
         in (written)
     )

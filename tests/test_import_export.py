@@ -112,7 +112,7 @@ FNS = MappingProxyType(
             },
             "publisher": {"name": "DC Comics"},
             "community_rating": {"average_rating": Decimal(5)},
-            "series": {"name": "Watchmen", "volume_count": 1},
+            "series": {"name": "Wardens", "volume_count": 1},
             "stories": {"At Midnight, All the Agents": {}},
             "summary": "Tales of the Black Freighter...",
             "tags": {"Rorschach": {}, "Ozymandias": {}, "Nite Owl": {}},
@@ -447,7 +447,7 @@ FNS = MappingProxyType(
                 "The New 52!": {},
             },
             "characters": {
-                "Aquaman": {
+                "Abyssman": {
                     "identifiers": {
                         "metron": {
                             "key": "45678",
@@ -455,7 +455,7 @@ FNS = MappingProxyType(
                     }
                 },
                 "Barry Allen": {},
-                "Batman": {},
+                "Bladehawk": {},
                 "Cyborg": {},
                 "Deadman": {},
                 "Hal Jordan": {},
@@ -463,8 +463,8 @@ FNS = MappingProxyType(
                 "Mera": {},
                 "Pandora": {},
                 "Ray Palmer": {},
-                "Superman": {},
-                "Wonder Woman": {},
+                "Sunbolt": {},
+                "Wonder Lady": {},
             },
             "credits": {
                 "Alex Sinclair": {"roles": {"Colorist": {}, "Cover": {}}},
@@ -533,7 +533,7 @@ FNS = MappingProxyType(
                 "https://bar.foo",
                 "https://barcodelookup.com/76194130593600111",
                 "https://comics.org/issue/543/",
-                "https://comicvine.gamespot.com/justice-league-1-justice-league-part-one/4000-290431/",
+                "https://comicvine.gamespot.com/jade-legion-1-jade-legion-part-one/4000-290431/",
                 "https://foo.bar",
                 "https://isbndb.com/book/1234567890123",
                 "https://metron.cloud/issue/290431",
@@ -605,24 +605,24 @@ FNS = MappingProxyType(
                         "key": "65478",
                     }
                 },
-                "name": "Justice League",
-                "sort_name": "Justice League",
+                "name": "Jade Legion",
+                "sort_name": "Jade Legion",
                 "start_year": 1970,
                 "status": SeriesStatusEnum.COMPLETED,
                 "summary": "A team of heroes defends the Earth.",
                 "volume_count": 3,
             },
             "stories": {
-                "Justice League, Part One": {
+                "Jade Legion, Part One": {
                     "identifiers": {
                         "metron": {
                             "key": "12",
                         }
                     }
                 },
-                "Justice League, Part Two": {},
+                "Jade Legion, Part Two": {},
             },
-            "summary": "In a universe where superheroes are strange and new, Batman has discovered a dark evil that requires him to unite the World Greatest Heroes!",
+            "summary": "In a universe where superheroes are strange and new, Bladehawk has discovered a dark evil that requires him to unite the World Greatest Heroes!",
             "tags": {
                 "Bar": {},
                 "Foo": {
@@ -634,7 +634,7 @@ FNS = MappingProxyType(
                 },
             },
             "teams": {
-                "Justice League": {
+                "Jade Legion": {
                     "identifiers": {
                         "metron": {
                             "key": "49948",
@@ -643,7 +643,7 @@ FNS = MappingProxyType(
                 },
                 "Parademons": {},
             },
-            "title": "Justice League, Part One; Justice League, Part Two",
+            "title": "Jade Legion, Part One; Jade Legion, Part Two",
             "universes": {
                 "ABC": {
                     "designation": "Earth 25",

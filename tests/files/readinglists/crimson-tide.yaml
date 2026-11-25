@@ -1,6 +1,6 @@
 # Hand-written for comicbox's tests. The ids are made up.
 reading_list:
-  name: Civil War
+  name: Crimson Tide
   description: The superhuman registration act divides the heroes.
   list_type: event
   ordered: true
@@ -10,25 +10,25 @@ reading_list:
   sources:
     - kind: metron-list
       key: "123"
-      url: https://metron.cloud/reading-list/civil-war/
+      url: https://metron.cloud/reading-list/crimson-tide/
       revision: "2026-10-01T00:00:00Z"
       curator: cbro
-      curator_url: https://example.org/civil-war
+      curator_url: https://example.org/crimson-tide
     - kind: file
       curator: Hand Written
   previous:
-    name: Road to Civil War
+    name: Road to Crimson Tide
     kind: metron-list
     key: "122"
   next:
-    name: "Civil War: The Initiative"
+    name: "Crimson Tide: The Initiative"
   tags:
     - crossover
     - marvel
   notes: Free text.
   entries:
     - series:
-        name: Civil War
+        name: Crimson Tide
         start_year: 2006
         identifiers:
           comicvine:
@@ -47,7 +47,7 @@ reading_list:
       entry_type: core
       notes: Start here.
     - series:
-        name: Amazing Spider-Man
+        name: Amazing Snail-Man
         start_year: 1999
       volume:
         number: 2
@@ -61,7 +61,7 @@ reading_list:
           key: "105800"
       entry_type: tie-in
     - series:
-        name: Civil War
+        name: Crimson Tide
         start_year: 2006
       issue:
         name: "2"
@@ -72,7 +72,7 @@ reading_list:
         comicvine:
           key: "106000"
     - series:
-        name: Civil War
+        name: Crimson Tide
         start_year: 2006
         identifiers:
           comicvine:

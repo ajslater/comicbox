@@ -52,7 +52,7 @@ _HASH_0 = _HASH
 _HASH_4 = _bits_away(4)
 _HASH_20 = _bits_away(20)
 _HASH_21 = _bits_away(21)
-_PROFILE = ComicProfile(series="Lois Lane", issue="010", issue_int=10, year=2020)
+_PROFILE = ComicProfile(series="Lila Lane", issue="010", issue_int=10, year=2020)
 
 
 def _row(iid: int, cover_hash: str | None) -> dict[str, Any]:
@@ -134,7 +134,7 @@ def test_series_id_replaces_the_date_range(
     """With --series-id, no year is needed and none is sent."""
     adapter = _answer(session, [])
     src = _source(monkeypatch, session, series_id=77)
-    profile = ComicProfile(series="Lois Lane", issue="10", issue_int=10, year=None)
+    profile = ComicProfile(series="Lila Lane", issue="10", issue_int=10, year=None)
 
     assert src.can_search_by_cover(profile)
     assert src.search_by_cover(profile, _HASH) == []
@@ -153,21 +153,21 @@ def test_series_id_replaces_the_date_range(
     "profile",
     [
         pytest.param(
-            ComicProfile(series="Lois Lane", issue=None, year=2020), id="no-number"
+            ComicProfile(series="Lila Lane", issue=None, year=2020), id="no-number"
         ),
         pytest.param(
-            ComicProfile(series="Lois Lane", issue="", year=2020), id="blank-number"
+            ComicProfile(series="Lila Lane", issue="", year=2020), id="blank-number"
         ),
         pytest.param(
-            ComicProfile(series="Lois Lane", issue="10", issue_int=10, year=None),
+            ComicProfile(series="Lila Lane", issue="10", issue_int=10, year=None),
             id="no-year",
         ),
         pytest.param(
-            ComicProfile(series="Lois Lane", issue="10", issue_int=10, year=0),
+            ComicProfile(series="Lila Lane", issue="10", issue_int=10, year=0),
             id="year-0000",
         ),
         pytest.param(
-            ComicProfile(series="Lois Lane", issue="10", issue_int=10, year=2100),
+            ComicProfile(series="Lila Lane", issue="10", issue_int=10, year=2100),
             id="year-2100",
         ),
     ],

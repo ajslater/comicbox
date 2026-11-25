@@ -92,8 +92,8 @@ def test_list_issues_without_a_number_sends_no_q(make_client) -> None:
 
 def test_search_series_caps_the_page_size(make_client) -> None:
     client, transport = make_client()
-    client.search_series("Absolute Batman", 500)
-    assert transport.params() == {"q": "Absolute Batman", "limit": "50"}
+    client.search_series("Absolute Bladehawk", 500)
+    assert transport.params() == {"q": "Absolute Bladehawk", "limit": "50"}
 
 
 @pytest.mark.parametrize(
@@ -338,7 +338,7 @@ def test_request_counts_name_the_endpoint_not_the_issue(make_client) -> None:
     client, _ = make_client()
     client.issue(1)
     client.issue(2)
-    client.search_series("Absolute Batman", 10)
+    client.search_series("Absolute Bladehawk", 10)
     client.list_issues((139382,), "1")
     assert outcome_stats.api_snapshot()["versedb"].requests == {
         "issues": 2,

@@ -2,7 +2,7 @@
 Metron's prompt-time series lookup, `enrich_prompt_candidates`.
 
 Metron's issue rows carry no publication format, publisher or series
-issue count, so two issues of same-named series ("Batman #1 (2016)")
+issue count, so two issues of same-named series ("Bladehawk #1 (2016)")
 read identically in a prompt. A `series(id)` request tells them apart,
 but costs a request per series, so it is paid only for candidates that
 would otherwise read identically and only while the daily quota allows
@@ -33,7 +33,7 @@ def _cand(
     issue_id: int,
     volume_id: int | None,
     *,
-    series: str = "Batman",
+    series: str = "Bladehawk",
     issue: str = "1",
     series_start_year: int | None = 2016,
 ) -> Candidate:
@@ -177,7 +177,7 @@ def test_series_names_collide_regardless_of_case(
     session = _FakeSession({100: _ONGOING, 200: _TPB})
     src = _source(monkeypatch, session)
 
-    src.enrich_prompt_candidates((_cand(1, 100), _cand(2, 200, series="BATMAN")))
+    src.enrich_prompt_candidates((_cand(1, 100), _cand(2, 200, series="BLADEHAWK")))
 
     assert session.series_calls == [100, 200]
 

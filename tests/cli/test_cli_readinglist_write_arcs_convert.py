@@ -133,11 +133,11 @@ def test_one_file_is_written_once(
 
     said = flat(out)
     assert code == 0
-    assert said.count("added 'Civil War' #1") == 1
+    assert said.count("added 'Crimson Tide' #1") == 1
     assert f"{other}: same file as {target}" in said
     with zipfile.ZipFile(target) as archive:
         assert archive.testzip() is None
-    assert read_tags(target)["arcs"] == {"Civil War": {"number": 1}}
+    assert read_tags(target)["arcs"] == {"Crimson Tide": {"number": 1}}
 
 
 def test_a_conversion_through_a_link_converts_the_file_it_names(
@@ -207,19 +207,21 @@ def test_keep_does_not_write_a_kept_format_that_splits_the_arc(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
     """A kept ComicInfo got two bogus arcs, and the next write spread them."""
-    reading_list = write_list(
-        tmp_path / "avx.yaml", name="'Avengers, The: Disassembled'"
-    )
+    reading_list = write_list(tmp_path / "avx.yaml", name="'Ardent, The: Disassembled'")
     comics = tmp_path / "comics"
     split = make_comic(
         comics / "cw1.cbz",
         formats=(CIX, JSON),
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
     held = make_comic(
-        comics / "cw2.cbz", formats=(MI,), series="Civil War", number="2", volume=2006
+        comics / "cw2.cbz",
+        formats=(MI,),
+        series="Crimson Tide",
+        number="2",
+        volume=2006,
     )
     untouched = split.read_bytes()
 
@@ -235,7 +237,7 @@ def test_keep_does_not_write_a_kept_format_that_splits_the_arc(
         "cw1.cbz not written: its ComicInfo.xml would read the arc back as other arcs"
     ) in flat(out)
     assert split.read_bytes() == untouched
-    assert read_tags(held)["arcs"] == {"Avengers, The: Disassembled": {"number": 2}}
+    assert read_tags(held)["arcs"] == {"Ardent, The: Disassembled": {"number": 2}}
 
 
 def test_a_write_without_keep_leaves_a_free_text_comment(
@@ -245,7 +247,7 @@ def test_a_write_without_keep_leaves_a_free_text_comment(
     path = make_comic(
         tmp_path / "comics" / "cw1.cbz",
         comment="Scanned by a friend",
-        series="Civil War",
+        series="Crimson Tide",
         number="1",
         start_year=2006,
     )
@@ -253,7 +255,7 @@ def test_a_write_without_keep_leaves_a_free_text_comment(
     _, dry, dry_err = rl_write(capsys, str(reading_list), str(path.parent))
     code, out, _ = rl_write(capsys, str(reading_list), str(path.parent), apply=True)
 
-    assert "cw1.cbz would add 'Civil War' #1" in flat(dry)
+    assert "cw1.cbz would add 'Crimson Tide' #1" in flat(dry)
     assert "comment" not in flat(dry) + dry_err
     assert "Add keep" not in dry_err
     assert code == 0
@@ -271,7 +273,7 @@ def test_the_summary_counts_comics_that_lose_a_tag_file(
         make_comic(
             comics / f"cw{number}.cbz",
             formats=(MI,),
-            series="Civil War",
+            series="Crimson Tide",
             number=number,
             start_year=2006,
         )
@@ -287,9 +289,9 @@ def test_a_read_only_comic_fails_and_the_rest_are_written(
 ) -> None:
     comics = tmp_path / "comics"
     locked = make_comic(
-        comics / "cw1.cbz", series="Civil War", number="1", start_year=2006
+        comics / "cw1.cbz", series="Crimson Tide", number="1", start_year=2006
     )
-    make_comic(comics / "cw2.cbz", series="Civil War", number="2", start_year=2006)
+    make_comic(comics / "cw2.cbz", series="Crimson Tide", number="2", start_year=2006)
     locked.chmod(0o444)
     untouched = locked.read_bytes()
     try:
@@ -300,5 +302,5 @@ def test_a_read_only_comic_fails_and_the_rest_are_written(
     assert code == 1
     assert "cw1.cbz: Permission denied" in err
     assert locked.read_bytes() == untouched
-    assert "cw2.cbz added 'Civil War' #2" in flat(out)
+    assert "cw2.cbz added 'Crimson Tide' #2" in flat(out)
     assert "1 of 2 matched comics written." in err

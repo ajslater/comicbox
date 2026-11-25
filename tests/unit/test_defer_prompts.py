@@ -75,7 +75,7 @@ def test_defer_mode_queues_prompt_and_returns_skip() -> None:
     """Under defer_prompts, the selector queues + returns ('skip', None)."""
     session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
     selector = session._bridged_selector()
-    profile = ComicProfile(series="Spider-Man", year=2020, publisher="Marvel")
+    profile = ComicProfile(series="Snail-Man", year=2020, publisher="Marvel")
     candidates = (_cand(1, 100), _cand(2, 200))
 
     result = selector(profile, candidates, _ctx())
@@ -86,7 +86,7 @@ def test_defer_mode_queues_prompt_and_returns_skip() -> None:
     d = deferred[0]
     assert d.source == "metron"
     assert d.candidates == candidates
-    assert d.profile_summary["series"] == "Spider-Man"
+    assert d.profile_summary["series"] == "Snail-Man"
     assert d.fingerprint  # non-empty
 
 
@@ -100,7 +100,7 @@ def test_defer_mode_emits_prompt_deferred_event() -> None:
         on_event=events.append,
     )
     selector = session._bridged_selector()
-    profile = ComicProfile(series="Batman", year=2018, publisher="DC")
+    profile = ComicProfile(series="Bladehawk", year=2018, publisher="DC")
     candidates = (_cand(10, 999),)
 
     selector(profile, candidates, _ctx())
@@ -192,7 +192,7 @@ def test_set_defer_prompts_toggles_at_runtime() -> None:
         defer_prompts=True,
     )
     selector = session._bridged_selector()
-    profile = ComicProfile(series="Spider-Man", year=2020, publisher="Marvel")
+    profile = ComicProfile(series="Snail-Man", year=2020, publisher="Marvel")
     cands = (_cand(1, 100),)
 
     # Defer-mode: handler not called.
@@ -202,7 +202,7 @@ def test_set_defer_prompts_toggles_at_runtime() -> None:
 
     # Toggle off, different fingerprint to avoid cache.
     session.set_defer_prompts(defer=False)
-    selector(ComicProfile(series="Batman"), cands, _ctx())
+    selector(ComicProfile(series="Bladehawk"), cands, _ctx())
     assert len(seen) == 1
 
 

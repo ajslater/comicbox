@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 _CIX = "COMIC_INFO"
 _MI = "METRON_INFO"
 _PATCH = {"summary": "Kept"}
-_TAGS: dict[str, Any] = {"series": "Civil War", "number": "1", "volume": 2006}
+_TAGS: dict[str, Any] = {"series": "Crimson Tide", "number": "1", "volume": 2006}
 
 
 def _config(**dests: Any) -> Any:
@@ -139,7 +139,7 @@ def test_keep_rewrites_a_format_carried_twice_in_both_places(tmp_path: Path) -> 
 def test_keep_rewrites_comicinfo_at_each_path_it_is_carried(tmp_path: Path) -> None:
     from comicbox.formats import MetadataFormats
 
-    comic = {"series": {"name": "Civil War"}, "issue": {"name": "1"}}
+    comic = {"series": {"name": "Crimson Tide"}, "issue": {"name": "1"}}
     cix = Comicbox(metadata={"comicbox": comic}).to_string(MetadataFormats.COMIC_INFO)
     path = make_comic(
         tmp_path / "cw1.cbz",

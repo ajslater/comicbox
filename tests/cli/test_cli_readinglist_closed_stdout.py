@@ -31,11 +31,11 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 _LIST = """reading_list:
-  name: Civil War
+  name: Crimson Tide
   entries:
-    - series: {name: Civil War, start_year: 2006}
+    - series: {name: Crimson Tide, start_year: 2006}
       issue: {name: '1'}
-    - series: {name: Civil War, start_year: 2006}
+    - series: {name: Crimson Tide, start_year: 2006}
       issue: {name: '2'}
 """
 
@@ -67,7 +67,7 @@ def _restore_logging() -> Iterator[None]:
 
 @pytest.fixture
 def reading_list(tmp_path: Path) -> Path:
-    path = tmp_path / "civil-war.yaml"
+    path = tmp_path / "crimson-tide.yaml"
     path.write_text(_LIST)
     return path
 
@@ -78,7 +78,7 @@ def library(tmp_path: Path) -> Path:
     for number in ("1", "2"):
         make_comic(
             directory / f"cw{number}.cbz",
-            series="Civil War",
+            series="Crimson Tide",
             number=number,
             start_year=2006,
         )
@@ -148,8 +148,8 @@ def test_write_arcs_apply_finishes_its_writes(
 
     assert code == 0
     assert _arcs(library) == {
-        "cw1.cbz": {"Civil War": {"number": 1}},
-        "cw2.cbz": {"Civil War": {"number": 2}},
+        "cw1.cbz": {"Crimson Tide": {"number": 1}},
+        "cw2.cbz": {"Crimson Tide": {"number": 2}},
     }
 
 

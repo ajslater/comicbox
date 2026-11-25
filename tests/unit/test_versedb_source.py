@@ -36,8 +36,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-_BATMAN = 139382
-_PROFILE = ComicProfile(series="Absolute Batman", issue="1", year=2024)
+_BLADEHAWK = 139382
+_PROFILE = ComicProfile(series="Absolute Bladehawk", issue="1", year=2024)
 
 
 @pytest.fixture
@@ -93,7 +93,7 @@ def test_search_spends_two_calls_and_finds_the_issue(
     params = transport.params()
     assert params["q"] == "1"
     assert params["include"] == "series"
-    assert str(_BATMAN) in params["series_ids"].split(",")
+    assert str(_BLADEHAWK) in params["series_ids"].split(",")
 
 
 def test_candidate_carries_the_series_detail_and_real_link(
@@ -103,7 +103,7 @@ def test_candidate_carries_the_series_detail_and_real_link(
     summary = candidate.summary
     assert (candidate.source, candidate.volume_id, candidate.url) == (
         "versedb",
-        _BATMAN,
+        _BLADEHAWK,
         "https://versedb.com/issue/55684/the-zoo-part-one",
     )
     assert {
@@ -116,7 +116,7 @@ def test_candidate_carries_the_series_detail_and_real_link(
         # Scored fields stay unset until a calibration says otherwise.
         "publisher": summary.publisher,
     } == {
-        "series": "Absolute Batman",
+        "series": "Absolute Bladehawk",
         "issue": "1",
         "year": 2024,
         "series_publisher": "DC Comics",
@@ -131,7 +131,7 @@ def test_candidate_carries_the_series_detail_and_real_link(
 def test_a_series_that_began_after_the_comic_is_not_queried(
     transport: VerseDBTransport, tmp_path: Path
 ) -> None:
-    """Absolute Batman (2026) can't hold a 2024 comic."""
+    """Absolute Bladehawk (2026) can't hold a 2024 comic."""
     _source(tmp_path).search(_PROFILE)
     assert "243748" not in transport.params()["series_ids"].split(",")
 
@@ -142,14 +142,14 @@ def test_a_dissimilar_series_name_is_not_queried(
     mock = VerseDBTransport(
         _with_series_rows(
             [
-                _series_row(_BATMAN, "Absolute Batman"),
+                _series_row(_BLADEHAWK, "Absolute Bladehawk"),
                 _series_row(1, "Gardening Weekly"),
             ]
         )
     )
     monkeypatch.setattr(VerseDBOnlineSource, "http_transport", mock.transport)
     _source(tmp_path).search(_PROFILE)
-    assert mock.params()["series_ids"] == str(_BATMAN)
+    assert mock.params()["series_ids"] == str(_BLADEHAWK)
 
 
 def test_no_surviving_series_spends_no_issue_call(
@@ -172,9 +172,9 @@ def test_only_the_exact_number_is_a_candidate(
 
 
 def test_series_id_skips_discovery(transport: VerseDBTransport, tmp_path: Path) -> None:
-    candidates = _source(tmp_path, series_ids={"versedb": _BATMAN}).search(_PROFILE)
+    candidates = _source(tmp_path, series_ids={"versedb": _BLADEHAWK}).search(_PROFILE)
     assert transport.paths == ["/api/v1/issues"]
-    assert transport.params()["series_ids"] == str(_BATMAN)
+    assert transport.params()["series_ids"] == str(_BLADEHAWK)
     assert [c.issue_id for c in candidates] == [55684]
 
 
@@ -222,7 +222,7 @@ def test_paging_stops_once_matches_run_out(
 ) -> None:
     mock = VerseDBTransport(_paged(pages))
     monkeypatch.setattr(VerseDBOnlineSource, "http_transport", mock.transport)
-    candidates = _source(tmp_path, series_ids={"versedb": _BATMAN}).search(_PROFILE)
+    candidates = _source(tmp_path, series_ids={"versedb": _BLADEHAWK}).search(_PROFILE)
     assert mock.paths.count("/api/v1/issues") == calls
     assert len(candidates) == found
 
@@ -232,8 +232,8 @@ def test_a_numberless_comic_gets_one_page(
 ) -> None:
     mock = VerseDBTransport(_paged([["1", "2"], ["3"]]))
     monkeypatch.setattr(VerseDBOnlineSource, "http_transport", mock.transport)
-    source = _source(tmp_path, series_ids={"versedb": _BATMAN})
-    candidates = source.search(ComicProfile(series="Absolute Batman"))
+    source = _source(tmp_path, series_ids={"versedb": _BLADEHAWK})
+    candidates = source.search(ComicProfile(series="Absolute Bladehawk"))
     assert mock.paths == ["/api/v1/issues"]
     assert "q" not in mock.params()
     assert len(candidates) == 2
@@ -247,7 +247,7 @@ def test_get_returns_the_issue_detail(
 ) -> None:
     data = _source(tmp_path).get(1215061)
     assert data["id"] == 1215061
-    assert data["series"]["name"] == "Absolute Batman"
+    assert data["series"]["name"] == "Absolute Bladehawk"
     assert transport.paths == ["/api/v1/issues/1215061"]
 
 
@@ -270,7 +270,7 @@ def test_get_waits_out_a_429(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) ->
 
 
 def test_lookup_issue_is_one_call(transport: VerseDBTransport, tmp_path: Path) -> None:
-    candidate = _source(tmp_path).lookup_issue(_BATMAN, "001")
+    candidate = _source(tmp_path).lookup_issue(_BLADEHAWK, "001")
     assert candidate is not None
     assert candidate.issue_id == 55684
     assert transport.paths == ["/api/v1/issues"]
@@ -280,7 +280,7 @@ def test_lookup_issue_is_one_call(transport: VerseDBTransport, tmp_path: Path) -
 def test_lookup_issue_without_a_number_sends_nothing(
     transport: VerseDBTransport, tmp_path: Path
 ) -> None:
-    assert _source(tmp_path).lookup_issue(_BATMAN, None) is None
+    assert _source(tmp_path).lookup_issue(_BLADEHAWK, None) is None
     assert transport.requests == []
 
 
@@ -500,7 +500,7 @@ def test_the_daily_cap_skips_searches_so_other_sources_carry_on(
     for _ in range(3):
         assert source.search(_PROFILE) == []
         assert source.search_skip_reason == SKIP_QUOTA_RESERVED
-    assert source.lookup_issue(_BATMAN, "1") is None
+    assert source.lookup_issue(_BLADEHAWK, "1") is None
     # One request learned the limit; nothing after it was sent.
     assert len(mock.requests) == 1
 

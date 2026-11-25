@@ -4,7 +4,7 @@
     "UUID": "1b4e28ba-2fa1-41d2-883f-0016d3cca427"
   },
   "listDetails": {
-    "name": "Civil War",
+    "name": "Crimson Tide",
     "description": "Hand written for comicbox's tests. The ids are made up.",
     "publisher": "Marvel",
     "imprint": "Marvel Knights",
@@ -12,15 +12,15 @@
     "endYear": 2007,
     "type": "character",
     "tags": ["crossover", "marvel"],
-    "coverImageURLs": ["https://example.org/civil-war.jpg"],
+    "coverImageURLs": ["https://example.org/crimson-tide.jpg"],
     "relationships": [
       {
-        "name": "Road to Civil War",
+        "name": "Road to Crimson Tide",
         "UUID": "6fa459ea-ee8a-3ca4-894e-db77e160355e",
         "relationship": "previous"
       },
       {
-        "name": "Civil War: The Initiative",
+        "name": "Crimson Tide: The Initiative",
         "UUID": "16fd2706-8baf-433b-82eb-8c7fada847da",
         "relationship": "following"
       }
@@ -28,11 +28,11 @@
     "source": [
       {
         "name": "Comic Book Reading Orders",
-        "url": "https://example.org/civil-war"
+        "url": "https://example.org/crimson-tide"
       },
       {
         "name": "Metron",
-        "url": "https://metron.cloud/reading-list/civil-war/",
+        "url": "https://metron.cloud/reading-list/crimson-tide/",
         "id": "123"
       }
     ]
@@ -40,7 +40,7 @@
   "notes": "Free text.",
   "issueList": [
     {
-      "seriesName": "Civil War",
+      "seriesName": "Crimson Tide",
       "seriesStartYear": 2006,
       "issueNumber": "1",
       "issueCoverDate": "2006-07-01",
@@ -51,7 +51,7 @@
       ]
     },
     {
-      "seriesName": "The Amazing Spider-Man",
+      "seriesName": "The Amazing Snail-Man",
       "seriesStartYear": 1999,
       "issueNumber": "532",
       "issueCoverDate": "2006-07-01",
@@ -62,7 +62,7 @@
       ]
     },
     {
-      "seriesName": "Civil War: The Return",
+      "seriesName": "Crimson Tide: The Return",
       "seriesStartYear": 2007,
       "issueNumber": "1",
       "issueCoverDate": "2007-03-01",
@@ -73,7 +73,7 @@
       ]
     },
     {
-      "seriesName": "Fantastic Four",
+      "seriesName": "Fearless Four",
       "seriesStartYear": 1998,
       "issueNumber": "538",
       "issueCoverDate": "2006-08-01",

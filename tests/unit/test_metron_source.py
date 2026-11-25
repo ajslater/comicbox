@@ -219,14 +219,14 @@ def test_search_by_name_runs_with_a_number_or_a_year(
     expected_filters: dict[str, Any],
 ) -> None:
     """Either an issue number or a cover year is enough to search by name."""
-    row = _FakeBaseIssue(iid=42, number="1", series_name="Watchmen")
-    fake = _FakeMokkari(issues_by_key={"Watchmen": [row]})
+    row = _FakeBaseIssue(iid=42, number="1", series_name="Wardens")
+    fake = _FakeMokkari(issues_by_key={"Wardens": [row]})
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Watchmen", issue=issue, year=year)
+    profile = ComicProfile(series="Wardens", issue=issue, year=year)
     candidates, warnings = _search_and_warnings(src, profile)
 
     assert [c.issue_id for c in candidates] == [42]
-    assert fake.issues_list_calls == [{"series_name": "Watchmen", **expected_filters}]
+    assert fake.issues_list_calls == [{"series_name": "Wardens", **expected_filters}]
     assert warnings == []
 
 
@@ -429,15 +429,15 @@ def test_to_candidate_propagates_series_id_from_search_result(
 ) -> None:
     """By-name search candidates carry volume_id straight from BaseIssue.series.id."""
     issues = {
-        "Watchmen": [
+        "Wardens": [
             _FakeBaseIssue(
-                iid=27650, number="5", series_name="Watchmen", series_id=10455
+                iid=27650, number="5", series_name="Wardens", series_id=10455
             )
         ],
     }
     fake = _FakeMokkari(issues_by_key=issues)
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.volume_id == 10455
 
@@ -446,11 +446,11 @@ def test_to_candidate_carries_the_series_start_year(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Every issue row names the year its series began; no extra request."""
-    issue = _FakeBaseIssue(iid=27650, number="5", series_name="Watchmen")
+    issue = _FakeBaseIssue(iid=27650, number="5", series_name="Wardens")
     issue.series.year_began = 1986
-    fake = _FakeMokkari(issues_by_key={"Watchmen": [issue]})
+    fake = _FakeMokkari(issues_by_key={"Wardens": [issue]})
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
 
     [cand] = src.search(profile)
 
@@ -470,15 +470,15 @@ def test_to_candidate_url_is_metron_issue_page(
     issue id. Metron redirects the numeric-id path to the slug url.
     """
     issues = {
-        "Watchmen": [
+        "Wardens": [
             _FakeBaseIssue(
-                iid=27650, number="5", series_name="Watchmen", series_id=10455
+                iid=27650, number="5", series_name="Wardens", series_id=10455
             )
         ],
     }
     fake = _FakeMokkari(issues_by_key=issues)
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.url == "https://metron.cloud/issue/27650"
 
@@ -716,11 +716,11 @@ def test_volume_filter_passed_to_metron(
 ) -> None:
     """`profile.volume` is passed as `series_volume` on the first pass."""
     issues = {
-        ("Spider-Man", 2020, 2): [
+        ("Snail-Man", 2020, 2): [
             _FakeBaseIssue(
                 iid=400,
                 number="1",
-                series_name="Spider-Man",
+                series_name="Snail-Man",
                 cover_year=2020,
                 series_id=100,
             )
@@ -729,7 +729,7 @@ def test_volume_filter_passed_to_metron(
     fake = _VolumeAwareMokkari(issues_by_match=issues)
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(
-        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+        series="Snail-Man", issue="1", issue_int=1, year=2020, volume=2
     )
     candidates = src.search(profile)
 
@@ -754,11 +754,11 @@ def test_wide_fallback_drops_a_wrong_volume_filter(
     """
     # Match exists at series_volume=None (i.e. unfiltered), NOT 2.
     issues = {
-        ("Spider-Man", 2020, None): [
+        ("Snail-Man", 2020, None): [
             _FakeBaseIssue(
                 iid=500,
                 number="1",
-                series_name="Spider-Man",
+                series_name="Snail-Man",
                 cover_year=2020,
                 series_id=100,
             )
@@ -767,7 +767,7 @@ def test_wide_fallback_drops_a_wrong_volume_filter(
     fake = _VolumeAwareMokkari(issues_by_match=issues)
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(
-        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+        series="Snail-Man", issue="1", issue_int=1, year=2020, volume=2
     )
     candidates = src.search(profile)
 
@@ -790,11 +790,11 @@ def test_no_year_but_a_volume_falls_back_without_a_range(
     the old call returned.
     """
     issues = {
-        ("Spider-Man", 1994, None): [
+        ("Snail-Man", 1994, None): [
             _FakeBaseIssue(
                 iid=510,
                 number="1",
-                series_name="Spider-Man",
+                series_name="Snail-Man",
                 cover_year=1994,
                 series_id=100,
                 series_volume=9,
@@ -803,13 +803,13 @@ def test_no_year_but_a_volume_falls_back_without_a_range(
     }
     fake = _VolumeAwareMokkari(issues_by_match=issues)
     src = _make_metron_source(monkeypatch, fake)
-    profile = ComicProfile(series="Spider-Man", issue="1", issue_int=1, volume=2)
+    profile = ComicProfile(series="Snail-Man", issue="1", issue_int=1, volume=2)
     candidates = src.search(profile)
 
     assert [c.issue_id for c in candidates] == [510]
     assert len(fake.issues_list_calls) == 2
     wide = fake.issues_list_calls[1]
-    assert wide == {"series_name": "Spider-Man", "number": "1"}
+    assert wide == {"series_name": "Snail-Man", "number": "1"}
 
 
 def test_no_volume_in_profile_still_widens_the_years(
@@ -833,11 +833,11 @@ def test_volume_match_does_not_trigger_the_fallback(
 ) -> None:
     """Year-exact + volume hits → the fallback never runs."""
     issues = {
-        ("Spider-Man", 2020, 2): [
+        ("Snail-Man", 2020, 2): [
             _FakeBaseIssue(
                 iid=600,
                 number="1",
-                series_name="Spider-Man",
+                series_name="Snail-Man",
                 cover_year=2020,
                 series_id=100,
             )
@@ -846,7 +846,7 @@ def test_volume_match_does_not_trigger_the_fallback(
     fake = _VolumeAwareMokkari(issues_by_match=issues)
     src = _make_metron_source(monkeypatch, fake)
     profile = ComicProfile(
-        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=2
+        series="Snail-Man", issue="1", issue_int=1, year=2020, volume=2
     )
     candidates = src.search(profile)
 
@@ -873,7 +873,7 @@ def test_series_id_path_omits_volume_filter(
     fake = _VolumeAwareMokkari(issues_by_match=issues)
     src = _make_metron_source_with_series_id(monkeypatch, fake, series_id=200)
     profile = ComicProfile(
-        series="Spider-Man", issue="1", issue_int=1, year=2020, volume=99
+        series="Snail-Man", issue="1", issue_int=1, year=2020, volume=99
     )
     candidates = src.search(profile)
 
@@ -1247,7 +1247,7 @@ def _http_api_error(
         # substring-match into AUTH.
         pytest.param(
             ApiError(
-                "Validation error: {'name': 'Watchmen #5', 'authors': ['Alan Moore']}"
+                "Validation error: {'name': 'Wardens #5', 'authors': ['Alan Moore']}"
             ),
             RetryCategory.TRANSIENT,
             id="api-error-authors-field-not-auth",

@@ -18,13 +18,13 @@ from comicbox.readinglists import (
 from comicbox.readinglists.serialize import load_model
 from tests.const import TEST_FILES_DIR
 
-CIVIL_WAR_PATH = TEST_FILES_DIR / "readinglists" / "civil-war.yaml"
+CRIMSON_TIDE_PATH = TEST_FILES_DIR / "readinglists" / "crimson-tide.yaml"
 
 
 def _entry(
     number: int,
     *,
-    series: str = "Civil War",
+    series: str = "Crimson Tide",
     year: int | None = 2006,
     cover: date | None = None,
     **ids: str,
@@ -42,7 +42,7 @@ def _entry(
 
 
 def _list(entries: list[dict[str, Any]], **header: Any) -> dict[str, Any]:
-    return {"name": "Civil War", "ordered": True, ENTRIES_KEY: entries, **header}
+    return {"name": "Crimson Tide", "ordered": True, ENTRIES_KEY: entries, **header}
 
 
 def _issues(reading_list: dict[str, Any]) -> list[str]:
@@ -59,7 +59,7 @@ def test_nothing_to_combine() -> None:
 
 
 def test_a_list_with_itself_is_unchanged() -> None:
-    reading_list = load(CIVIL_WAR_PATH).reading_list
+    reading_list = load(CRIMSON_TIDE_PATH).reading_list
     assert combine([reading_list]).reading_list == reading_list
     result = combine([reading_list, reading_list])
     assert result.reading_list == reading_list
@@ -127,7 +127,7 @@ def test_tags_subset_against_a_full_list() -> None:
     result = combine([tags, curated])
     reading_list = result.reading_list
     assert _issues(reading_list) == ["1", "2", "3", "4", "5", "6", "7"]
-    assert reading_list["name"] == "Civil War"
+    assert reading_list["name"] == "Crimson Tide"
     assert reading_list["description"] == "Curated."
     assert reading_list["ordered"] is True
     # The pointer and the fetched arc are one source.
@@ -161,7 +161,7 @@ def test_three_inputs_joined_only_transitively() -> None:
         [
             _entry(
                 n,
-                series="Civil War (2006)",
+                series="Crimson Tide (2006)",
                 year=None,
                 comicvine=f"cv{n}",
                 metron=f"m{n}",
@@ -372,10 +372,10 @@ def test_no_ordered_input_sorts_by_date_series_and_issue() -> None:
     ] == [
         ("Aaa", "1"),
         ("Zzz", "1"),
-        ("Civil War", "2"),
-        ("Civil War", "3"),
-        ("Civil War", "6"),
-        ("Civil War", "7"),
+        ("Crimson Tide", "2"),
+        ("Crimson Tide", "3"),
+        ("Crimson Tide", "6"),
+        ("Crimson Tide", "7"),
     ]
     assert result["ordered"] is False
 
@@ -384,7 +384,7 @@ def test_fields_first_value_wins_and_ids_union() -> None:
     first = _list(
         [
             {
-                "series": {"name": "Civil War", "start_year": 2006},
+                "series": {"name": "Crimson Tide", "start_year": 2006},
                 "issue": {"name": "1"},
                 "identifiers": {"comicvine": {"key": "1"}},
             }
@@ -395,7 +395,7 @@ def test_fields_first_value_wins_and_ids_union() -> None:
         [
             {
                 "series": {
-                    "name": "CIVIL WAR",
+                    "name": "CRIMSON TIDE",
                     "start_year": 2006,
                     "identifiers": {"comicvine": {"key": "18023"}},
                 },
@@ -412,13 +412,13 @@ def test_fields_first_value_wins_and_ids_union() -> None:
         sources=[{"kind": "file", "curator": "x"}],
     )
     result = combine([first, second]).reading_list
-    assert result["name"] == "Civil War"
+    assert result["name"] == "Crimson Tide"
     assert result["tags"] == {"a", "b"}
     assert result["private"] is False
     assert result[ENTRIES_KEY] == [
         {
             "series": {
-                "name": "Civil War",
+                "name": "Crimson Tide",
                 "start_year": 2006,
                 "identifiers": {"comicvine": {"key": "18023"}},
             },

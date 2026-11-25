@@ -66,14 +66,14 @@ def arc_row(
         "id": arc_id,
         "image": _IMAGE,
         "issues": issues,
-        "name": "Civil War",
-        "site_detail_url": f"{_SITE}/civil-war/4045-{arc_id}/",
+        "name": "Crimson Tide",
+        "site_detail_url": f"{_SITE}/crimson-tide/4045-{arc_id}/",
         **fields,
     }
 
 
 def issue_row(
-    issue_id: int, volume_id: int = 7, volume_name: str = "Civil War", **fields: Any
+    issue_id: int, volume_id: int = 7, volume_name: str = "Crimson Tide", **fields: Any
 ) -> dict[str, Any]:
     """Build a ``list_issues`` row; ``fields`` override any key."""
     return {
@@ -93,7 +93,7 @@ def issue_row(
 
 
 def volume_row(
-    volume_id: int = 7, name: str = "Civil War", **fields: Any
+    volume_id: int = 7, name: str = "Crimson Tide", **fields: Any
 ) -> dict[str, Any]:
     """Build a ``list_volumes`` row; ``fields`` override any key."""
     return {

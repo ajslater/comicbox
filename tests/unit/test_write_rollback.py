@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 _CIX = "COMIC_INFO"
 _MI = "METRON_INFO"
-_TAGS: dict[str, Any] = {"series": {"name": "Civil War"}, "issue": {"name": "1"}}
+_TAGS: dict[str, Any] = {"series": {"name": "Crimson Tide"}, "issue": {"name": "1"}}
 
 
 def _page(seed: int) -> bytes:
@@ -210,7 +210,7 @@ def _tags_first(tmp_path: Path) -> Path:
     path = tmp_path / "first.cbz"
     with zipfile.ZipFile(path, "w") as archive:
         archive.writestr(
-            "ComicInfo.xml", "<ComicInfo><Series>Civil War</Series></ComicInfo>"
+            "ComicInfo.xml", "<ComicInfo><Series>Crimson Tide</Series></ComicInfo>"
         )
         _pages(archive)
     return path

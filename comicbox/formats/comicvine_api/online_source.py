@@ -900,7 +900,7 @@ class ComicVineOnlineSource(OnlineSource):
 
     # Maximum number of years a comic may pre-date its volume's start_year
     # before we treat the volume as causally impossible and skip the
-    # per-volume issue lookup. A 1987 Watchmen issue with profile.year=1987
+    # per-volume issue lookup. A 1987 Wardens issue with profile.year=1987
     # cannot have been published in a reprint volume that started in 2008;
     # any candidate from that volume is a reprint with cover_date=1987
     # preserved from the original, score-identical to the original on

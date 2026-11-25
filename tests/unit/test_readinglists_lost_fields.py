@@ -27,7 +27,7 @@ from tests.const import TEST_FILES_DIR
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
 _FIXTURES = (
-    READING_LISTS_DIR / "civil-war.yaml",
+    READING_LISTS_DIR / "crimson-tide.yaml",
     READING_LISTS_DIR / "cbl" / "common.cbl",
     READING_LISTS_DIR / "cbl" / "two-databases.cbl",
     READING_LISTS_DIR / "cbl" / "comicrack-native.cbl",
@@ -119,11 +119,11 @@ def test_fixtures(path: Any, fmt: ReadingListFormats) -> None:
 # Plain names, and the ones outside text brings: control characters, markup,
 # a CDATA end, zero-width and combining characters, an emoji, padding.
 _WORDS = (
-    "Civil War",
+    "Crimson Tide",
     "Pokémon",
-    "X-Men",
+    "Z-Men",
     "ワンピース",
-    "Batman",
+    "Bladehawk",
     "a\x1b[0m",
     "Tom & Jerry <b>meet</b>",
     "]]> & <!--",

@@ -15,8 +15,8 @@ VALID = OnlineCredentials(metron_key="k")
 
 def test_filename_fingerprint_groups_same_series() -> None:
     """Two issues of the same series share a filename fingerprint."""
-    a = Path("Spider-Man #001 (2018).cbz")
-    b = Path("Spider-Man #002 (2018).cbz")
+    a = Path("Snail-Man #001 (2018).cbz")
+    b = Path("Snail-Man #002 (2018).cbz")
     assert filename_series_fingerprint(a) == filename_series_fingerprint(b)
 
 
@@ -28,9 +28,9 @@ def test_filename_fingerprint_groups_across_cover_years() -> None:
     the filename year split a multi-year run into a cold-path search per
     year, which is the batching working against itself.
     """
-    a = Path("Spider-Man #001 (2018).cbz")
-    b = Path("Spider-Man #014 (2019).cbz")
-    c = Path("Spider-Man #027 (2020).cbz")
+    a = Path("Snail-Man #001 (2018).cbz")
+    b = Path("Snail-Man #014 (2019).cbz")
+    c = Path("Snail-Man #027 (2020).cbz")
     assert (
         filename_series_fingerprint(a)
         == filename_series_fingerprint(b)
@@ -39,8 +39,8 @@ def test_filename_fingerprint_groups_across_cover_years() -> None:
 
 
 def test_filename_fingerprint_separates_series() -> None:
-    a = Path("Spider-Man #001 (2018).cbz")
-    b = Path("Batman #001 (2018).cbz")
+    a = Path("Snail-Man #001 (2018).cbz")
+    b = Path("Bladehawk #001 (2018).cbz")
     assert filename_series_fingerprint(a) != filename_series_fingerprint(b)
 
 
@@ -98,9 +98,9 @@ def test_series_batching_can_be_disabled() -> None:
     # The cache still exists (so preload_series_resolution still works),
     # but _run_one won't pass it to Comicbox. tag_many won't sort either.
     paths = [
-        Path("Spider-Man #002 (2018).cbz"),
-        Path("Spider-Man #001 (2018).cbz"),
-        Path("Batman #001 (2018).cbz"),
+        Path("Snail-Man #002 (2018).cbz"),
+        Path("Snail-Man #001 (2018).cbz"),
+        Path("Bladehawk #001 (2018).cbz"),
     ]
     # Cancel before running so we don't actually try to tag files;
     # the assertion is just about ordering of the produced results.
@@ -114,14 +114,14 @@ def test_series_batching_sorts_by_fingerprint() -> None:
     """With series_batching=True, paths cluster by filename fingerprint."""
     session = OnlineSession(sources={"metron"}, credentials=VALID)
     paths = [
-        Path("Spider-Man #002 (2018).cbz"),
-        Path("Batman #001 (2018).cbz"),
-        Path("Spider-Man #001 (2018).cbz"),
+        Path("Snail-Man #002 (2018).cbz"),
+        Path("Bladehawk #001 (2018).cbz"),
+        Path("Snail-Man #001 (2018).cbz"),
     ]
     session.cancel()
     out = [r.path for r in session.tag_many(paths)]
-    # Spider-Man comics adjacent; Batman not interleaved.
-    sp_indices = [i for i, p in enumerate(out) if "Spider" in p.name]
-    bm_indices = [i for i, p in enumerate(out) if "Batman" in p.name]
+    # Snail-Man comics adjacent; Bladehawk not interleaved.
+    sp_indices = [i for i, p in enumerate(out) if "Snail" in p.name]
+    bm_indices = [i for i, p in enumerate(out) if "Bladehawk" in p.name]
     assert max(sp_indices) - min(sp_indices) == len(sp_indices) - 1
     assert max(bm_indices) - min(bm_indices) == len(bm_indices) - 1

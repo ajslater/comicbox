@@ -52,7 +52,7 @@ def _bits_away(bits: int, base: str = _HASH) -> str:
 
 
 def _candidate(
-    iid: int, bits: int, series: str = "Lois Lane", volume_id: int = 77
+    iid: int, bits: int, series: str = "Lila Lane", volume_id: int = 77
 ) -> Candidate:
     return Candidate(
         source="metron",
@@ -78,7 +78,7 @@ def _payload(issue_id: int) -> dict[str, Any]:
         "cover_date": "2020-04-01",
         "modified": "2020-04-02T12:00:00Z",
         "publisher": {"id": 1, "name": "DC Comics"},
-        "series": {"id": 77, "name": "Lois Lane", "year_began": 2019, "volume": 1},
+        "series": {"id": 77, "name": "Lila Lane", "year_began": 2019, "volume": 1},
     }
 
 
@@ -169,7 +169,7 @@ def _run(
     cover_replies: list[list[Candidate] | Exception],
     name_candidates: Sequence[Candidate] | Exception = (),
     hashes: tuple[SearchHash, ...] = _FULL,
-    series: str = "Lois Lane",
+    series: str = "Lila Lane",
     get_error: Exception | None = None,
     prompts: str = "never",
     **comicbox_options: Any,
@@ -418,7 +418,7 @@ def test_a_series_mismatch_is_left_to_the_name_search(
 def test_a_pinned_series_takes_any_series_name(monkeypatch: pytest.MonkeyPatch) -> None:
     run = _run(
         monkeypatch,
-        cover_replies=[[_candidate(1, 2, series="Superman's Girl Friend")]],
+        cover_replies=[[_candidate(1, 2, series="Sunbolt's Girl Friend")]],
         explicit_series_ids=["metron:77"],
     )
 
@@ -457,25 +457,27 @@ def test_a_failed_fetch_of_a_cover_match_falls_through(
 @pytest.mark.parametrize(
     ("profile_series", "metron_series", "cached"),
     [
-        pytest.param("Lois Lane", "Lois Lane", True, id="same-name-is-cached"),
+        pytest.param("Lila Lane", "Lila Lane", True, id="same-name-is-cached"),
         pytest.param(
-            "Amazing Spider-Man",
-            "The Amazing Spider-Man",
+            "Amazing Snail-Man",
+            "The Amazing Snail-Man",
             True,
             id="article-differs-is-cached",
         ),
         # WRatio scored this pair 0.90, under the old 0.95 floor.
-        pytest.param("Avengers", "The Avengers", True, id="short-name-article"),
+        pytest.param("Ardent", "The Ardent", True, id="short-name-article"),
         pytest.param("G O D S", "G.O.D.S.", True, id="punctuation-differs"),
-        # The next "Star Wars #5" from any Star Wars series would otherwise
+        # The next "Star Drifters #5" from any Star Drifters series would otherwise
         # be tagged as Boba Fett #5 without a search.
         pytest.param(
-            "Star Wars",
-            "Star Wars: The Book of Boba Fett",
+            "Star Drifters",
+            "Star Drifters: The Book of Boba Fett",
             False,
             id="part-of-the-name-is-not-cached",
         ),
-        pytest.param("Batman", "Batman: Off-World", False, id="one-word-of-the-name"),
+        pytest.param(
+            "Bladehawk", "Bladehawk: Off-World", False, id="one-word-of-the-name"
+        ),
     ],
 )
 def test_only_a_cover_match_on_the_same_name_seeds_the_series_cache(
@@ -502,7 +504,7 @@ def test_rows_from_several_hashes_rank_by_their_closest_distance() -> None:
 
     a, b = _candidate(1, 0), _candidate(2, 0)
     other = _candidate(3, 0, series="Monster High")
-    profile = ComicProfile(series="Lois Lane", issue="5", issue_int=5, year=2020)
+    profile = ComicProfile(series="Lila Lane", issue="5", issue_int=5, year=2020)
     closest: dict[int, tuple[int, Candidate]] = {}
 
     _keep_closest(closest, [(12, a), (14, b), (1, other)])
@@ -523,11 +525,11 @@ def test_a_collected_edition_sharing_the_cover_is_left_to_the_name_search(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The 2026-11-17 calibration case, through the real lookup."""
-    tpb = _candidate(160512, 2, series="Ultimate X-Men by Peach Momoko")
-    issue = _candidate(111932, 6, series="Ultimate X-Men")
+    tpb = _candidate(160512, 2, series="Ultimate Z-Men by Peach Momoko")
+    issue = _candidate(111932, 6, series="Ultimate Z-Men")
     run = _run(
         monkeypatch,
-        series="Ultimate X-Men",
+        series="Ultimate Z-Men",
         cover_replies=[[tpb, issue]],
         name_candidates=[issue, tpb],
         prompts="ask",

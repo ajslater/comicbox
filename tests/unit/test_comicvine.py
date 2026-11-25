@@ -405,19 +405,23 @@ def test_search_candidates_carry_volume_facts_title_and_deck(
     extra request. The deck is HTML-stripped and trimmed.
     """
     vol = _FakeBasicVolume(
-        vid=100, name="Batman", start_year=2016, publisher="DC Comics", issue_count=85
+        vid=100,
+        name="Bladehawk",
+        start_year=2016,
+        publisher="DC Comics",
+        issue_count=85,
     )
     issue = _FakeBasicIssue(
         iid=5001,
         number="1",
-        volume_name="Batman",
+        volume_name="Bladehawk",
         cover_year=2016,
         name=" I Am Gotham, Part One ",
         summary="<p>A new hero arrives.</p> ",
     )
     fake_cv = _FakeCV(volumes=[vol], issues_by_volume={100: [issue]})
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Batman", issue="1", issue_int=1, year=2016)
+    profile = ComicProfile(series="Bladehawk", issue="1", issue_int=1, year=2016)
 
     [cand] = src.search(profile)
 
@@ -588,8 +592,8 @@ def test_get_injects_publisher_from_volume(
 ) -> None:
     """get() augments the issue dump with publisher fetched via get_volume."""
     publisher = _FakeGenericEntry(eid=10, name="Marvel")
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
-    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=publisher)
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
+    volume = _FakeFullVolume(vid=999, name="Z-Men", publisher=publisher)
     fake_cv = _FakeCVForGet(issue=issue, volume=volume)
     src = _make_cv_source_for_get(monkeypatch, fake_cv)
 
@@ -602,12 +606,12 @@ def test_get_injects_publisher_from_volume(
 
 def test_get_injects_volume_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
     """Aliases ride along on the volume fetch get() already makes."""
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
     volume = _FakeFullVolume(
         vid=999,
-        name="X-Men",
+        name="Z-Men",
         publisher=None,
-        aliases="Uncanny X-Men\nThe X-Men",
+        aliases="Uncanny Z-Men\nThe Z-Men",
     )
     fake_cv = _FakeCVForGet(issue=issue, volume=volume)
     src = _make_cv_source_for_get(monkeypatch, fake_cv)
@@ -616,15 +620,15 @@ def test_get_injects_volume_aliases(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # No extra API call — the same get_volume that chases the publisher.
     assert fake_cv.get_volume_calls == [999]
-    assert payload["volume"]["aliases"] == "Uncanny X-Men\nThe X-Men"
+    assert payload["volume"]["aliases"] == "Uncanny Z-Men\nThe Z-Men"
 
 
 def test_get_injects_volume_series_details(monkeypatch: pytest.MonkeyPatch) -> None:
     """Start year, issue count and description ride the same volume fetch."""
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
     volume = _FakeFullVolume(
         vid=999,
-        name="X-Men",
+        name="Z-Men",
         publisher=None,
         start_year=1963,
         issue_count=544,
@@ -645,8 +649,8 @@ def test_get_injects_volume_series_details(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_get_falls_back_to_volume_deck(monkeypatch: pytest.MonkeyPatch) -> None:
     """A volume with no description offers its short deck instead."""
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
-    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=None, summary="Mutants.")
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
+    volume = _FakeFullVolume(vid=999, name="Z-Men", publisher=None, summary="Mutants.")
     fake_cv = _FakeCVForGet(issue=issue, volume=volume)
     src = _make_cv_source_for_get(monkeypatch, fake_cv)
 
@@ -657,8 +661,8 @@ def test_get_omits_publisher_when_volume_has_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A volume without a publisher leaves the dump unchanged."""
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
-    volume = _FakeFullVolume(vid=999, name="X-Men", publisher=None)
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
+    volume = _FakeFullVolume(vid=999, name="Z-Men", publisher=None)
     fake_cv = _FakeCVForGet(issue=issue, volume=volume)
     src = _make_cv_source_for_get(monkeypatch, fake_cv)
 
@@ -674,7 +678,7 @@ def test_get_handles_get_volume_failure_gracefully(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """If get_volume raises, the issue dump still comes back (sans publisher)."""
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
     fake_cv = _FakeCVForGet(issue=issue, volume=None)  # → get_volume raises
     src = _make_cv_source_for_get(monkeypatch, fake_cv)
 
@@ -699,9 +703,9 @@ def test_get_retries_get_volume_on_rate_limit(
     retry inside the helper; only terminal failures (404, retries
     exhausted) hit the outer `except: warn`.
     """
-    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="X-Men"))
+    issue = _FakeFullIssue(iid=42, volume=_FakeGenericEntry(eid=999, name="Z-Men"))
     volume = _FakeFullVolume(
-        vid=999, name="X-Men", publisher=_FakeGenericEntry(eid=1, name="Marvel")
+        vid=999, name="Z-Men", publisher=_FakeGenericEntry(eid=1, name="Marvel")
     )
 
     class _RateLimitedGetCV(_FakeCVForGet):
@@ -735,11 +739,11 @@ def test_search_includes_cover_date_window_when_year_set(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """profile.year → cover_date:Y-2-01-01|Y+2-12-31 in the issue filter."""
-    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
-    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lois Lane")]}
+    vol = _FakeBasicVolume(vid=100, name="Lila Lane")
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lila Lane")]}
     fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=2019)
+    profile = ComicProfile(series="Lila Lane", issue="1", issue_int=1, year=2019)
     src.search(profile)
     # First (and only) per-volume call carries the cover_date window.
     [call] = fake_cv.list_issues_calls
@@ -750,11 +754,11 @@ def test_search_omits_cover_date_when_no_year(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """profile.year=None → no cover_date filter (we have no year to gate on)."""
-    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
-    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lois Lane")]}
+    vol = _FakeBasicVolume(vid=100, name="Lila Lane")
+    issues = {100: [_FakeBasicIssue(iid=1, number="1", volume_name="Lila Lane")]}
     fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=None)
+    profile = ComicProfile(series="Lila Lane", issue="1", issue_int=1, year=None)
     src.search(profile)
     [call] = fake_cv.list_issues_calls
     assert "cover_date" not in call.get("filter", "")
@@ -771,8 +775,8 @@ def test_search_retries_without_year_when_year_filter_returns_empty(
     *does* honor cover_date and returns empty under it: that triggers
     the year=None fallback.
     """
-    vol = _FakeBasicVolume(vid=100, name="Lois Lane")
-    real_issue = _FakeBasicIssue(iid=42, number="1", volume_name="Lois Lane")
+    vol = _FakeBasicVolume(vid=100, name="Lila Lane")
+    real_issue = _FakeBasicIssue(iid=42, number="1", volume_name="Lila Lane")
 
     class _YearFilterCV(_FakeCV):
         @override
@@ -788,7 +792,7 @@ def test_search_retries_without_year_when_year_filter_returns_empty(
 
     fake_cv = _YearFilterCV(volumes=[vol], issues_by_volume={})
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Lois Lane", issue="1", issue_int=1, year=2019)
+    profile = ComicProfile(series="Lila Lane", issue="1", issue_int=1, year=2019)
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [42]
     assert len(fake_cv.list_issues_calls) == 2
@@ -826,22 +830,22 @@ def test_search_skips_volumes_started_after_comic(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    Watchmen-shaped case: 1987 comic, reprint volume started 2008 is dropped.
+    Wardens-shaped case: 1987 comic, reprint volume started 2008 is dropped.
 
     The matcher otherwise can't distinguish the reprint from the original
     — both candidates carry cover_date=1987, so all metadata signals
     score identically and the wrong volume wins on sort order.
     """
     # 1986 vol — keep (original); 2008 vol — skip (started after comic).
-    vol_keep = _FakeBasicVolume(vid=100, name="Watchmen", start_year=1986)
-    vol_skip = _FakeBasicVolume(vid=200, name="Watchmen Reprint", start_year=2008)
+    vol_keep = _FakeBasicVolume(vid=100, name="Wardens", start_year=1986)
+    vol_skip = _FakeBasicVolume(vid=200, name="Wardens Reprint", start_year=2008)
     issues = {
-        100: [_FakeBasicIssue(iid=27650, number="5", volume_name="Watchmen")],
-        200: [_FakeBasicIssue(iid=476696, number="5", volume_name="Watchmen Reprint")],
+        100: [_FakeBasicIssue(iid=27650, number="5", volume_name="Wardens")],
+        200: [_FakeBasicIssue(iid=476696, number="5", volume_name="Wardens Reprint")],
     }
     fake_cv = _FakeCV(volumes=[vol_keep, vol_skip], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
     candidates = src.search(profile)
 
     # Only the original volume's issue survived.
@@ -881,12 +885,12 @@ def test_search_keeps_volume_when_profile_year_missing(
 
 def test_search_keeps_long_running_volume(monkeypatch: pytest.MonkeyPatch) -> None:
     """A 2020 issue from a volume that started in 1963 should NOT be dropped."""
-    vol = _FakeBasicVolume(vid=100, name="Action Comics", start_year=1938)
-    issues = {100: [_FakeBasicIssue(iid=1, number="1000", volume_name="Action Comics")]}
+    vol = _FakeBasicVolume(vid=100, name="Agile Comics", start_year=1938)
+    issues = {100: [_FakeBasicIssue(iid=1, number="1000", volume_name="Agile Comics")]}
     fake_cv = _FakeCV(volumes=[vol], issues_by_volume=issues)
     src = _make_cv_source(monkeypatch, fake_cv)
     profile = ComicProfile(
-        series="Action Comics", issue="1000", issue_int=1000, year=2018
+        series="Agile Comics", issue="1000", issue_int=1000, year=2018
     )
     candidates = src.search(profile)
     assert [c.issue_id for c in candidates] == [1]
@@ -897,15 +901,15 @@ def test_search_keeps_long_running_volume(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_to_candidate_propagates_volume_id(monkeypatch: pytest.MonkeyPatch) -> None:
     """Candidates carry the parent volume.id (used by calibration diagnostics)."""
-    vol = _FakeBasicVolume(vid=10455, name="Watchmen", start_year=1986)
+    vol = _FakeBasicVolume(vid=10455, name="Wardens", start_year=1986)
     # _FakeBasicIssue's internal volume defaults to vid=999; override
     # to match the parent volume the search step found, so the
     # `basic_issue.volume.id` plumbing has a meaningful value to read.
-    issue = _FakeBasicIssue(iid=27650, number="5", volume_name="Watchmen")
-    issue.volume = _FakeBasicVolume(vid=10455, name="Watchmen")
+    issue = _FakeBasicIssue(iid=27650, number="5", volume_name="Wardens")
+    issue.volume = _FakeBasicVolume(vid=10455, name="Wardens")
     fake_cv = _FakeCV(volumes=[vol], issues_by_volume={10455: [issue]})
     src = _make_cv_source(monkeypatch, fake_cv)
-    profile = ComicProfile(series="Watchmen", issue="5", issue_int=5, year=1987)
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
     [cand] = src.search(profile)
     assert cand.volume_id == 10455
 

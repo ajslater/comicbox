@@ -206,7 +206,7 @@ def series_detail(series_id: int = 7) -> dict[str, Any]:
 
 
 _MODIFIED = "2024-05-01T12:00:00-04:00"
-_LIST_SERIES = {"id": 7, "name": "Civil War", "volume": 1, "year_began": 2006}
+_LIST_SERIES = {"id": 7, "name": "Crimson Tide", "volume": 1, "year_began": 2006}
 
 
 def reading_list_detail(list_id: int = 1, **fields: Any) -> dict[str, Any]:
@@ -214,13 +214,13 @@ def reading_list_detail(list_id: int = 1, **fields: Any) -> dict[str, Any]:
     return {
         "id": list_id,
         "user": {"id": 3, "username": "curator"},
-        "name": "Civil War",
-        "slug": "civil-war",
+        "name": "Crimson Tide",
+        "slug": "crimson-tide",
         "desc": "<p>The <b>Superhuman Registration Act</b> divides them.</p>",
         "list_type": "Event",
         "is_private": False,
         "attribution_source": "CBRO",
-        "attribution_url": "https://www.comicbookreadingorders.com/marvel/events/civil-war/",
+        "attribution_url": "https://www.comicbookreadingorders.com/marvel/events/crimson-tide/",
         "previous": None,
         "next": None,
         "average_rating": 4.5,
@@ -257,8 +257,8 @@ def reading_list_row(list_id: int = 1, **fields: Any) -> dict[str, Any]:
     """Build one `reading_lists_list` row; ``fields`` override any key."""
     return {
         "id": list_id,
-        "name": "Civil War",
-        "slug": "civil-war",
+        "name": "Crimson Tide",
+        "slug": "crimson-tide",
         "user": {"id": 3, "username": "curator"},
         "list_type": "Event",
         "is_private": False,
@@ -274,13 +274,13 @@ def arc_detail(arc_id: int = 5, **fields: Any) -> dict[str, Any]:
     """Build an `arc(id)` payload; ``fields`` override any key."""
     return {
         "id": arc_id,
-        "name": "Civil War",
+        "name": "Crimson Tide",
         "modified": _MODIFIED,
         "desc": "<p>Hero against hero.</p>",
         "image": None,
         "cv_id": 40000,
         "gcd_id": None,
-        "resource_url": f"https://metron.cloud/arc/civil-war-{arc_id}/",
+        "resource_url": f"https://metron.cloud/arc/crimson-tide-{arc_id}/",
         "attribution": [],
         **fields,
     }

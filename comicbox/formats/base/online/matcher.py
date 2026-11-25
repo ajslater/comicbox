@@ -117,7 +117,7 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
        returned weak-prior values (0.5/0.6) that diluted the score even
        when series/issue/year all matched perfectly. A thumbnail-library
        comic with no profile-side publisher / pages would prompt for an
-       otherwise-obvious match ("Wolverine #20 (2026)" → md capped at
+       otherwise-obvious match ("Weaselfang #20 (2026)" → md capped at
        0.91 < confidence_threshold 0.95).
 
     2. The fix is to renormalise — but only over the signals where data
@@ -138,7 +138,7 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
     record. Rev 2 keeps asymmetric signals; only both-None disappears.
 
     Interaction with Phase E: solo-viable candidates can still reach
-    md=1.0 in the symmetric-missing case (Wolverine prompt fix). For
+    md=1.0 in the symmetric-missing case (Weaselfang prompt fix). For
     libraries with full profile metadata (publisher / page_count
     present), the asymmetric-skip stays as the s_publisher=0.5 /
     s_pages=0.6 weak prior, matching pre-Phase-K behaviour. So Phase E's
@@ -340,7 +340,7 @@ def _resolve_policy(
 _TOP_K_FOR_HASHING_MIN: Final[int] = 5
 
 # Maximum number of candidates to hash. Caps cost on very large candidate
-# sets (BALANCED budget over Watchmen-style multi-volume searches can
+# sets (BALANCED budget over Wardens-style multi-volume searches can
 # return 15-25 candidates after pre-filter).
 _TOP_K_FOR_HASHING_MAX: Final[int] = 15
 
@@ -394,7 +394,7 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
        headline output.
     2. ``c.volume_id`` (or sentinel) — secondary: on a tied blended
        score, prefer the candidate from the *lower* volume id. CV
-       creates the canonical volume first; later "Watchmen, 1987"
+       creates the canonical volume first; later "Wardens, 1987"
        volumes that share a name with the original are duplicates,
        regional editions, or admin oversights. None → sentinel so
        known volumes win against unknowns.
@@ -421,7 +421,7 @@ def _candidate_sort_key(c: Candidate) -> tuple[float, int, int]:
 # of that — within which we treat metadata-identical candidates as
 # effectively tied even if cover-hash nudged their blended scores apart.
 #
-# Why this matters: Watchmen (1987) #009 has two CV records — vol=3622
+# Why this matters: Wardens (1987) #009 has two CV records — vol=3622
 # (canonical) and vol=79545 (dupe). Both score md=0.91. Cover-hash
 # rounds out at 0.81 vs 0.84 because of cover-image variance, blended
 # diverges by ~0.006 (displayed 0.01). The plain sort picks vol=79545
@@ -443,8 +443,8 @@ _TIED_METADATA_BLEND_MARGIN: float = 0.02
 # tiebreak collapses them and the lower vol_id wins, which is wrong.
 #
 # Phase G (2026-05-14) tightened this from 0.05 to 0.03 against the
-# bigmedia calibration; 0.02 would also catch Hawkeye Freefall (cover
-# diff exactly 0.03) but risks breaking the Watchmen canonical-volume
+# bigmedia calibration; 0.02 would also catch Harrier Freefall (cover
+# diff exactly 0.03) but risks breaking the Wardens canonical-volume
 # tiebreak, so the boundary stayed conservative. The run-by-run
 # reasoning lives in `tasks/online-tagging/calibration-notes/`.
 _COVER_DIFF_NOISE_MARGIN: float = 0.03
@@ -519,7 +519,7 @@ def _apply_tied_metadata_tiebreak(ranked: list[Candidate]) -> list[Candidate]:
 
     The three predicates together catch the "two records, same series +
     issue + year + publisher, different volume, near-identical covers"
-    duplicate case (Watchmen #005, #009) without touching cases where
+    duplicate case (Wardens #005, #009) without touching cases where
     the matcher's signals genuinely rank the candidates differently
     (Original Sin #001 — different cover scores, the better hash wins).
     """
@@ -717,8 +717,8 @@ COVER_ACCEPT_MARGIN_BITS: Final = 2
 
 # How near another series' cover must be for its better-matching name to
 # overrule the closest cover. A collected edition reuses an issue's cover
-# art, and can be the closer of the two: an Ultimate X-Men #1 (2024) file
-# was 2 bits from *Ultimate X-Men by Peach Momoko* #1 and 6 from the issue.
+# art, and can be the closer of the two: an Ultimate Z-Men #1 (2024) file
+# was 2 bits from *Ultimate Z-Men by Peach Momoko* #1 and 6 from the issue.
 # On 782 correct matches across both calibration passes, no row this near
 # had a better-matching name, at any window from 4 to 16 bits.
 COVER_BETTER_NAME_WINDOW_BITS: Final = 8

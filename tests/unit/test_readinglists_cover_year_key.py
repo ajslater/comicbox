@@ -27,11 +27,11 @@ from comicbox.readinglists.match import FoundBy, match_comics, plan_arcs
 _CBL = """<?xml version="1.0" encoding="utf-8"?>
 <ReadingList xmlns:xsd="http://www.w3.org/2001/XMLSchema"
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <Name>Batman: Year One</Name>
+  <Name>Bladehawk: Year One</Name>
   <Books>
-    <Book Series="Batman" Number="404" Year="1987" />
-    <Book Series="Batman" Number="405" Year="1987" />
-    <Book Series="Batman" Number="406" Year="1987" />
+    <Book Series="Bladehawk" Number="404" Year="1987" />
+    <Book Series="Bladehawk" Number="405" Year="1987" />
+    <Book Series="Bladehawk" Number="406" Year="1987" />
   </Books>
 </ReadingList>
 """
@@ -46,7 +46,7 @@ def _entry(
     cover: date | None = None,
     **ids: str,
 ) -> dict[str, Any]:
-    series: dict[str, Any] = {"name": "Batman"}
+    series: dict[str, Any] = {"name": "Bladehawk"}
     if start_year is not None:
         series["start_year"] = start_year
     entry: dict[str, Any] = {"series": series, "issue": {"name": number}}
@@ -65,7 +65,7 @@ def _entry(
 
 
 def _list(*entries: dict[str, Any]) -> dict[str, Any]:
-    return {"name": "Batman", "ordered": True, ENTRIES_KEY: list(entries)}
+    return {"name": "Bladehawk", "ordered": True, ENTRIES_KEY: list(entries)}
 
 
 # ------------------------------------------------------------ entry_keys
@@ -74,23 +74,23 @@ def _list(*entries: dict[str, Any]) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("entry", "keys"),
     [
-        (_entry(year=2016), (("name-year", "batman", 2016, Decimal(1), ""),)),
+        (_entry(year=2016), (("name-year", "bladehawk", 2016, Decimal(1), ""),)),
         (
             _entry(cover=date(2016, 8, 1)),
-            (("name-year", "batman", 2016, Decimal(1), ""),),
+            (("name-year", "bladehawk", 2016, Decimal(1), ""),),
         ),
         # date.year is the cover year when both are given.
         (
             _entry(year=2017, cover=date(2016, 8, 1)),
-            (("name-year", "batman", 2017, Decimal(1), ""),),
+            (("name-year", "bladehawk", 2017, Decimal(1), ""),),
         ),
         # Every entry with a cover year gets it, after its stronger keys.
         (
             _entry(start_year=2016, year=2016, comicvine="9"),
             (
                 ("id", "comicvine", "9"),
-                ("name", "batman", 2016, Decimal(1), ""),
-                ("name-year", "batman", 2016, Decimal(1), ""),
+                ("name", "bladehawk", "year", 2016, Decimal(1), ""),
+                ("name-year", "bladehawk", 2016, Decimal(1), ""),
             ),
         ),
         # No id, no start year or volume and no cover year: still no key.
@@ -171,7 +171,7 @@ _YEAR_ONLY = _entry(year=2016)
 
 
 def test_two_volumes_with_one_cover_year_stay_apart() -> None:
-    """Avengers #1 of 2011 and of 2016, both dated 2016, joined as one."""
+    """Ardent #1 of 2011 and of 2016, both dated 2016, joined as one."""
     assert _groups(_list(_V2011), _list(_V2016)) == [{0}, {1}]
     assert compare(_list(_V2011), _list(_V2016)).verdict is not Verdict.SAME
 
@@ -228,7 +228,7 @@ def _tags(**fields: Any) -> dict[str, Any]:
 
 
 def test_match_finds_a_comic_by_series_issue_and_cover_year() -> None:
-    comics = {Path("batman.cbz"): _tags(cover=date(2016, 8, 1))}
+    comics = {Path("bladehawk.cbz"): _tags(cover=date(2016, 8, 1))}
 
     (found,) = match_comics(_list(_entry(year=2016)), comics).found
 
@@ -238,7 +238,7 @@ def test_match_finds_a_comic_by_series_issue_and_cover_year() -> None:
 
 
 def test_a_stronger_key_names_how_the_comic_was_found() -> None:
-    comics = {Path("batman.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1))}
+    comics = {Path("bladehawk.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1))}
     entry = _entry(start_year=2016, year=2016)
     (found,) = match_comics(_list(entry), comics).found
     assert found.comics[0].by is FoundBy.NAME
@@ -264,7 +264,7 @@ def test_a_cover_year_match_of_another_volume_than_the_entry_is_refused() -> Non
 
 
 def test_an_entry_that_fits_two_volumes_is_ambiguous() -> None:
-    """Avengers #1 dated 2016, no start year: the 2011 and 2016 volumes alike."""
+    """Ardent #1 dated 2016, no start year: the 2011 and 2016 volumes alike."""
     comics = {
         Path("v2011.cbz"): _tags(start_year=2011, cover=date(2016, 8, 1)),
         Path("v2016.cbz"): _tags(start_year=2016, cover=date(2016, 8, 1)),
@@ -277,7 +277,7 @@ def test_an_entry_that_fits_two_volumes_is_ambiguous() -> None:
     assert found.paths == (Path("v2011.cbz"), Path("v2016.cbz"))
     assert found.volumes == (2011, 2016)
     assert found.ambiguous
-    assert plan_arcs(reading_list, comics, result, "Avengers") == ()
+    assert plan_arcs(reading_list, comics, result, "Ardent") == ()
 
 
 def test_a_cover_year_match_of_another_volume_is_refused_beside_a_strong_one() -> None:
@@ -295,7 +295,7 @@ def test_a_cover_year_match_of_another_volume_is_refused_beside_a_strong_one() -
     (found,) = result.found
     assert found.paths == (Path("v2016.cbz"),)
     assert not found.ambiguous
-    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    changes = plan_arcs(reading_list, comics, result, "Ardent")
     assert [change.path for change in changes] == [Path("v2016.cbz")]
 
 
@@ -340,7 +340,7 @@ def test_cover_year_matches_beside_a_strong_match_with_no_series_year() -> None:
     (found,) = result.found
     assert found.paths == (Path("vol2.cbz"),)
     assert not found.ambiguous
-    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    changes = plan_arcs(reading_list, comics, result, "Ardent")
     assert [change.path for change in changes] == [Path("vol2.cbz")]
 
 
@@ -368,11 +368,11 @@ def test_comics_of_one_volume_are_not_ambiguous(comics: dict[Path, Any]) -> None
 
     (found,) = result.found
     assert not found.ambiguous
-    changes = plan_arcs(reading_list, comics, result, "Avengers")
+    changes = plan_arcs(reading_list, comics, result, "Ardent")
     assert [change.path for change in changes] == (exact or sorted(comics))
 
 
 def test_the_vetoes_apply_to_a_cover_year_match() -> None:
-    comics = {Path("batman.cbz"): _tags(cover=date(2016, 8, 1), metron="2")}
+    comics = {Path("bladehawk.cbz"): _tags(cover=date(2016, 8, 1), metron="2")}
     entry = _entry(year=2016, metron="1")
     assert match_comics(_list(entry), comics).found == ()

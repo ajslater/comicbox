@@ -485,8 +485,10 @@ def test_a_pinned_versedb_id_tags_a_comic_end_to_end(
     assert transport.paths == ["/api/v1/issues/1215061"]
     tags = result.tags or {}
     assert tags["identifiers"]["versedb"] == {"key": "1215061"}
-    assert "https://versedb.com/issue/1215061/absolute-batman-2024-24" in tags["urls"]
-    assert tags["series"]["name"] == "Absolute Batman"
+    assert (
+        "https://versedb.com/issue/1215061/absolute-bladehawk-2024-24" in tags["urls"]
+    )
+    assert tags["series"]["name"] == "Absolute Bladehawk"
     assert budget == {
         "versedb": {"hour": {"limit": 300, "remaining": 299, "reset_epoch": None}}
     }

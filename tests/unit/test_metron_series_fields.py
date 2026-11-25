@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 _SUMMARY = "A team of heroes defends the Earth."
 _METRON_XML = f"""<MetronInfo>
   <Series>
-    <Name>Justice League</Name>
+    <Name>Jade Legion</Name>
     <StartYear>1970</StartYear>
     <EndYear>1975</EndYear>
     <Status>Completed</Status>

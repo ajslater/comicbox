@@ -35,10 +35,10 @@ no place for, and comicbox says what before it writes:
 CBL is read tolerantly: a `<Book>` without a series or number is skipped with a
 warning and the rest of the file loads. A ComicRack smart list, whose
 `<Matchers>` select comics rather than list them, is refused. Comicbox YAML and
-JSON are read tolerantly too: a plain `series: Civil War` or `volume: 2006` is
-read as `{name: Civil War}` or `{number: 2006}`, with a warning saying so, and
-is always written as the object. In every format a date is read as a comic's is:
-`July 15, 2006` is that day, and `July 2006` or `2006` a year and month or a
+JSON are read tolerantly too: a plain `series: Crimson Tide` or `volume: 2006`
+is read as `{name: Crimson Tide}` or `{number: 2006}`, with a warning saying so,
+and is always written as the object. In every format a date is read as a comic's
+is: `July 15, 2006` is that day, and `July 2006` or `2006` a year and month or a
 year, never a guessed day, each with a warning. Dates are written as ISO
 `YYYY-MM-DD`.
 
@@ -52,17 +52,17 @@ The json-cbl schema is vendored byte for byte from
 
 ```sh
 # Print each list as a table, with any warnings.
-comicbox rl print "Civil War.cbl"
+comicbox rl print "Crimson Tide.cbl"
 
 # Check files against their format's schema.
-comicbox rl validate "Civil War.cbl" civil-war.json
+comicbox rl validate "Crimson Tide.cbl" crimson-tide.json
 
 # Write a json-cbl copy beside each input, or into a directory.
-comicbox rl convert --to json-cbl "Civil War.cbl"
+comicbox rl convert --to json-cbl "Crimson Tide.cbl"
 comicbox rl convert --to yaml -o lists/ *.cbl
 
 # Combine lists of one event, the primary first, and print the report.
-comicbox rl combine -o civil-war.yaml cbro.cbl locg.cbl
+comicbox rl combine -o crimson-tide.yaml cbro.cbl locg.cbl
 
 # Say whether two lists are the same list.
 comicbox rl compare cbro.cbl locg.cbl
@@ -71,13 +71,13 @@ comicbox rl compare cbro.cbl locg.cbl
 comicbox rl from-arcs -o lists/ ~/Comics/Marvel
 
 # Show which of a list's issues a directory has, and which are missing.
-comicbox rl match civil-war.yaml ~/Comics/Marvel
+comicbox rl match crimson-tide.yaml ~/Comics/Marvel
 
 # Show how tagging those comics with the list's arc would change them,
 # then do it. -w cix writes ComicInfo.xml and, as comicbox -w does, removes
 # every other tag file: the dry run names them. -w cix,keep keeps them.
-comicbox rl write-arcs -w cix civil-war.yaml ~/Comics/Marvel
-comicbox rl write-arcs --apply -w cix,keep civil-war.yaml ~/Comics/Marvel
+comicbox rl write-arcs -w cix crimson-tide.yaml ~/Comics/Marvel
+comicbox rl write-arcs --apply -w cix,keep crimson-tide.yaml ~/Comics/Marvel
 ```
 
 `--to` takes a format token from the table above; the default is `yaml`.
@@ -101,8 +101,8 @@ DieselTech catalog of ComicRack lists on GitHub, and from any URL:
 
 ```sh
 # Search Metron's reading lists by name, then fetch one by its id.
-comicbox rl search metron civil war
-comicbox rl fetch metron:123 -o civil-war.yaml
+comicbox rl search metron crimson tide
+comicbox rl fetch metron:123 -o crimson-tide.yaml
 
 # A Metron story arc, as an unordered list.
 comicbox rl fetch metron-arc:456
@@ -112,11 +112,11 @@ comicbox rl fetch metron-arc:456
 comicbox rl fetch --auth comicvine:KEY comicvine-arc:789
 
 # Search the catalog's paths, then fetch one by its path.
-comicbox rl search catalog civil war official
-comicbox rl fetch "catalog:Marvel/Events/Official/[Marvel] (2006-02) Civil War (Official).cbl"
+comicbox rl search catalog crimson tide official
+comicbox rl fetch "catalog:Marvel/Events/Official/[Marvel] (2006-02) Crimson Tide (Official).cbl"
 
 # A list anywhere on the web, in any format comicbox reads.
-comicbox rl fetch --to json-cbl -o civil-war.json https://example.org/civil-war.cbl
+comicbox rl fetch --to json-cbl -o crimson-tide.json https://example.org/crimson-tide.cbl
 ```
 
 | Source               | `fetch` takes      | Needs                |
@@ -251,7 +251,7 @@ list and a report. It is pure: no files, no network.
   or volume matches on its series, issue and cover year, so a CBL row with a
   `Year` and no `Volume` matches its own copy and a row that has the start year.
   A row tells its volume by up to two things: a year, its start year or else a
-  volume number of 1900 or more, and a small volume number. X-Men (1991) volume
+  volume number of 1900 or more, and a small volume number. Z-Men (1991) volume
   2 has both. Two rows are of two volumes when they have the same kind and it
   differs: two start years, or volumes 1 and 2. On the cover year, a row always
   joins a row of another list that tells its volume exactly as it does, as its
@@ -261,7 +261,7 @@ list and a report. It is pure: no files, no network.
   between two volumes. So the cover year will not join:
     - rows of two volumes, even through a third row that has only the cover
       year;
-    - a row that fits two rows of one list, such as Avengers #1 of 2016 with no
+    - a row that fits two rows of one list, such as Ardent #1 of 2016 with no
       start year against the 2011 and 2016 volumes, or against X (1999) #1 and X
       volume 2 #1: it stays an entry of its own;
     - a row that another list leaves between two volumes, even where this list
@@ -280,7 +280,10 @@ list and a report. It is pure: no files, no network.
   The same rows with the first two in one list give three.
 - It does not tell volumes apart within the name key. Rows with one series,
   start year and issue number are one entry by name, whatever their volume
-  numbers: X-Men (1991) volume 1 #1 and X-Men (1991) volume 2 #1 join.
+  numbers: Z-Men (1991) volume 1 #1 and Z-Men (1991) volume 2 #1 join. Rows with
+  one series, volume number and issue join by name too, as Bladehawk volume 2 #1
+  and Bladehawk (2011) volume 2 #1 do, but not when their years differ: Z-Men
+  (1963) volume 1 #1 and Z-Men (1991) volume 1 #1 stay apart.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -324,15 +327,18 @@ comic to a list.
 among them, in two passes:
 
 1. Every comic that shares a key with an entry: an issue id from the same
-   database, the series name, start year or volume, and issue number, or the
-   series name, cover year and issue number. Every copy of an issue is found.
+   database, the series name, start year and issue number, the series name,
+   volume number and issue number, or the series name, cover year and issue
+   number. Every copy of an issue is found. A comic sharing only the volume
+   number is refused for another start year.
 2. For each entry the first pass did not find, variants of its series name,
    among the comics no entry found in the first pass: the name without a
-   trailing year or volume in parentheses (`Batman (2016)`, `X-Men (Vol. 2)`),
-   without a leading article (`The Amazing Spider-Man`), and without a reprint
-   suffix such as TPB or Omnibus. A year or volume is never added, so `Iron Man`
-   is not the series `Iron Man 2020`. When a variant finds comics of more than
-   one series, the cover year picks the series.
+   trailing year or volume in parentheses (`Bladehawk (2016)`,
+   `Z-Men (Vol. 2)`), without a leading article (`The Amazing Snail-Man`), and
+   without a reprint suffix such as TPB or Omnibus. A year or volume is never
+   added, so `Ivory Knight` is not the series `Ivory Knight 2020`. When a
+   variant finds comics of more than one series, the cover year picks the
+   series.
 
 A comic is never matched to an entry when both carry an id from one database and
 the ids differ, or both have cover years more than a year apart.
@@ -347,18 +353,24 @@ with no year and a 2011 comic finds the first alone; over the 2011 comic alone
 it finds that. With no such comic, beside comics the entry matched by id or name
 that tell their volume the same way, by a start year or by a volume number, it
 is refused unless it is of one of theirs. Otherwise, when the comics matched on
-the cover year alone are of more than one volume, such as Avengers #1 of 2016
-with no start year against the 2011 and 2016 volumes, or against volumes 1 and
-2, they are all ambiguous: `match` marks them, and `write-arcs` tags none of
-them and exits 1. A start year or volume on the entry settles it. An entry with
-no year beside X (1999) #1 and X volume 2 #1, which cannot be compared, still
-finds both. A refused comic is not listed under the entry. An entry with no id,
-start year, volume or cover year matches nothing, as in `combine`. `match`
-prints each entry with each comic that is it on a row of its own, and how it
-matched (`id`, `name`, `name-year` or `variant`), or `missing`; a comic with a
-tag file comicbox could not read is marked. The count goes to stderr. Linked
-directories are not searched, as with comicbox's `--recurse`, and a directory
-that cannot be read is a warning: the command then exits 1.
+the cover year alone are of more than one volume, such as Ardent #1 of 2016 with
+no start year against the 2011 and 2016 volumes, or against volumes 1 and 2,
+they are all ambiguous: `match` marks them, and `write-arcs` tags none of them
+and exits 1. A start year or volume on the entry settles it. An entry with no
+year beside X (1999) #1 and X volume 2 #1, which cannot be compared, still finds
+both. A refused comic is not listed under an entry that was found. Under a
+missing entry, `match` lists, marked `refused`, each comic that has its series,
+issue and cover year but is of another volume (`other-volume`), and each that
+has its series, start year or volume and issue but a cover year more than a year
+off (`cover-year`). A comic another entry found is not listed, and neither is
+one whose id from some database differs from the entry's, nor one that only
+shares the issue number with another volume and year. An entry with no id, start
+year, volume or cover year matches nothing, as in `combine`. `match` prints each
+entry with each comic that is it on a row of its own, and how it matched (`id`,
+`name`, `name-year` or `variant`), or `missing`; a comic with a tag file
+comicbox could not read is marked. The count goes to stderr. Linked directories
+are not searched, as with comicbox's `--recurse`, and a directory that cannot be
+read is a warning: the command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also
@@ -388,9 +400,9 @@ change its merged title. A free-text archive comment, such as a scanner's note,
 is not a tag format and is left, with or without `keep`:
 
 ```text
-· Marvel/Civil War 001.cbz would add 'Civil War' #1; would remove MetronInfo.xml
-· Marvel/Civil War 002.cbr would add 'Civil War' #2; would convert to Civil War 002.cbz and keep the CBR
-✗ Marvel/Civil War 003.cbr not written: Civil War 003.cbz already exists
+· Marvel/Crimson Tide 001.cbz would add 'Crimson Tide' #1; would remove MetronInfo.xml
+· Marvel/Crimson Tide 002.cbr would add 'Crimson Tide' #2; would convert to Crimson Tide 002.cbz and keep the CBR
+✗ Marvel/Crimson Tide 003.cbr not written: Crimson Tide 003.cbz already exists
 Dry run: 2 of 3 matched comics would change; --apply writes them.
 1 comic would lose a tag file.
 1 matched comic not written; see above.
@@ -447,10 +459,10 @@ passed around is the mapping under `reading_list`. The
 from comicbox.readinglists import ReadingListSession
 
 with ReadingListSession(on_event=print) as session:
-    for found in session.search_metron(name="civil war"):
+    for found in session.search_metron(name="crimson tide"):
         print(found.id, found.name, found.curator)
     result = session.fetch_metron_list(123)
-    for entry in session.search_catalog("civil war official"):
+    for entry in session.search_catalog("crimson tide official"):
         catalog_list = session.fetch_catalog(entry.path, sha=entry.sha)
 ```
 

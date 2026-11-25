@@ -288,10 +288,10 @@ class ComicboxOnlineCovers(ComicboxNormalize):
 
         Only when the two names are the same name: the same distinctive
         words (`series_words`), so case, accents, punctuation and stop words
-        don't matter ("Avengers" is "The Avengers"). A cover match only
-        needs the names to share a word, and caching what "Star Wars" turned
-        out to be (*The Book of Boba Fett*) would tag the next "Star Wars
-        #5", from any Star Wars series, as Boba Fett #5 without a search.
+        don't matter ("Ardent" is "The Ardent"). A cover match only
+        needs the names to share a word, and caching what "Star Drifters" turned
+        out to be (*The Book of Boba Fett*) would tag the next "Star Drifters
+        #5", from any Star Drifters series, as Boba Fett #5 without a search.
         """
         from comicbox.formats.base.online.signals import series_words
 

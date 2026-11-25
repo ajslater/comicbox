@@ -28,7 +28,7 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.signals import series_words, series_words_agree
 
 _HASH = "95977c2b3129c2d3"
-_PROFILE = ComicProfile(series="Lois Lane", issue="5", issue_int=5, year=2020)
+_PROFILE = ComicProfile(series="Lila Lane", issue="5", issue_int=5, year=2020)
 
 
 def _bits_away(bits: int) -> str:
@@ -37,7 +37,7 @@ def _bits_away(bits: int) -> str:
 
 
 def _candidate(
-    iid: int, cover_hash: str | None = _HASH, series: str = "Lois Lane"
+    iid: int, cover_hash: str | None = _HASH, series: str = "Lila Lane"
 ) -> Candidate:
     return Candidate(
         source="metron",
@@ -62,25 +62,31 @@ def _candidate(
     ("a", "b", "agree"),
     [
         # The three cases metron-tagger#294 names.
-        pytest.param("Spider-Man", "Iron Man", False, id="hyphenated-word-is-whole"),
+        pytest.param("Snail-Man", "Ivory Knight", False, id="hyphenated-word-is-whole"),
         pytest.param(
-            "Batman-Superman", "Batman / Superman", True, id="spaced-slash-joins"
+            "Bladehawk-Sunbolt",
+            "Bladehawk / Sunbolt",
+            True,
+            id="spaced-slash-joins",
         ),
         pytest.param(
-            "Punisher: Red Band",
+            "Pursuer: Red Band",
             "Monster High: Boomuda Triangle",
             False,
             id="cgc-slab-false-match",
         ),
         # A filename that names only part of the series.
         pytest.param(
-            "Star Wars", "Star Wars: The Book of Boba Fett", True, id="part-of-name"
+            "Star Drifters",
+            "Star Drifters: The Book of Boba Fett",
+            True,
+            id="part-of-name",
         ),
-        pytest.param("Star Wars:The Empire", "Empire", True, id="article-on-colon"),
+        pytest.param("Star Drifters:The Empire", "Empire", True, id="article-on-colon"),
         pytest.param("Pokémon Adventures", "Pokemon", True, id="accents-fold"),
         pytest.param("Alien vs Predator", "The Thing", False, id="stop-words-only"),
         pytest.param("The", "The", False, id="nothing-distinctive"),
-        pytest.param("Lois Lane", None, False, id="no-name"),
+        pytest.param("Lila Lane", None, False, id="no-name"),
     ],
 )
 def test_series_words_agree(a: str | None, b: str | None, *, agree: bool) -> None:
@@ -88,13 +94,13 @@ def test_series_words_agree(a: str | None, b: str | None, *, agree: bool) -> Non
 
 
 def test_series_words_drops_stop_words_and_volume_and_joins_pairs() -> None:
-    assert series_words("Wonder Woman Historia: The Amazons Vol. 2") == {
+    assert series_words("Wonder Lady Historia: The Amazons Vol. 2") == {
         "wonder",
-        "woman",
+        "lady",
         "historia",
         "amazons",
-        "wonderwoman",
-        "womanhistoria",
+        "wonderlady",
+        "ladyhistoria",
         "historiaamazons",
     }
 
@@ -176,7 +182,7 @@ def test_a_half_spread_is_held_to_the_half_limit() -> None:
 
 def test_a_pinned_series_skips_the_series_check() -> None:
     """With --series-id the search was already limited to the series."""
-    row = (3, _candidate(1, series="Superman's Girl Friend"))
+    row = (3, _candidate(1, series="Sunbolt's Girl Friend"))
 
     assert _verdict(row) is None
     assert _verdict(row, series_pinned=True) == 1
@@ -185,7 +191,7 @@ def test_a_pinned_series_skips_the_series_check() -> None:
 # ------------------------------------------------- better-named runner-up
 
 
-_ULTIMATE = ComicProfile(series="Ultimate X-Men", issue="1", issue_int=1, year=2024)
+_ULTIMATE = ComicProfile(series="Ultimate Z-Men", issue="1", issue_int=1, year=2024)
 
 
 def _ultimate_verdict(*rows: tuple[int, Candidate]) -> int | None:
@@ -202,15 +208,15 @@ def test_a_collected_edition_closer_than_the_issue_is_not_taken() -> None:
     The 2026-11-17 calibration case: a trade paperback reusing the issue's
     cover was 2 bits away, the issue itself 6.
     """
-    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
-    issue = _candidate(111932, series="Ultimate X-Men")
+    tpb = _candidate(160512, series="Ultimate Z-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate Z-Men")
 
     assert _ultimate_verdict((2, tpb), (6, issue)) is None
 
 
 def test_a_better_named_row_past_the_window_does_not_overrule() -> None:
-    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
-    issue = _candidate(111932, series="Ultimate X-Men")
+    tpb = _candidate(160512, series="Ultimate Z-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate Z-Men")
 
     far = 2 + COVER_BETTER_NAME_WINDOW_BITS + 1
     assert _ultimate_verdict((2, tpb), (far, issue)) == 160512
@@ -219,8 +225,8 @@ def test_a_better_named_row_past_the_window_does_not_overrule() -> None:
 def test_a_near_row_of_the_same_name_does_not_overrule() -> None:
     """A second record of the same series' #1 is not a better name."""
     first, second = (
-        _candidate(1, series="Ultimate X-Men"),
-        _candidate(2, series="Ultimate X-Men"),
+        _candidate(1, series="Ultimate Z-Men"),
+        _candidate(2, series="Ultimate Z-Men"),
     )
 
     assert _ultimate_verdict((2, first), (4, second)) == 1
@@ -228,15 +234,15 @@ def test_a_near_row_of_the_same_name_does_not_overrule() -> None:
 
 def test_a_better_named_row_from_another_series_does_not_overrule() -> None:
     """Only rows whose series agrees with the comic's can overrule."""
-    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
+    tpb = _candidate(160512, series="Ultimate Z-Men by Peach Momoko")
     unrelated = _candidate(9, series="Monster High")
 
     assert _ultimate_verdict((2, tpb), (6, unrelated)) == 160512
 
 
 def test_a_pinned_series_skips_the_better_name_check() -> None:
-    tpb = _candidate(160512, series="Ultimate X-Men by Peach Momoko")
-    issue = _candidate(111932, series="Ultimate X-Men")
+    tpb = _candidate(160512, series="Ultimate Z-Men by Peach Momoko")
+    issue = _candidate(111932, series="Ultimate Z-Men")
 
     match = cover_verdict(
         [(2, tpb), (6, issue)], FULL_COVER_ACCEPT_BITS, _ULTIMATE, series_pinned=True

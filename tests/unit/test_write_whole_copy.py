@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 _CIX = "COMIC_INFO"
 _TAGS = frozenset({"comicinfo.xml", "metroninfo.xml"})
-_FIRST_CIX = "<ComicInfo><Series>Civil War</Series></ComicInfo>"
+_FIRST_CIX = "<ComicInfo><Series>Crimson Tide</Series></ComicInfo>"
 
 
 _Date = tuple[int, int, int, int, int, int]
