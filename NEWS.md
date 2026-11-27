@@ -7,6 +7,8 @@
 - `--id` refuses a directory under `-r` that holds more than one comic.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
   prompts or searches, and no waiting out rate-limit retries.
+- A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
+  looping forever.
 
 ## v5.7.1
 
