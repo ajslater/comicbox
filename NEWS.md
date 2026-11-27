@@ -5,7 +5,8 @@
 ### 🐛 Fixed
 
 - `--id` refuses a directory under `-r` that holds more than one comic.
-- Ctrl-C under `-j N` stops the run instead of processing every queued file.
+- Ctrl-C or an abort under `-j N` stops the run promptly instead of processing
+  every queued file or waiting out rate-limit retries.
 
 ## v5.7.1
 

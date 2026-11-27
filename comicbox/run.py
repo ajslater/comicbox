@@ -26,7 +26,7 @@ from comicbox.exceptions import (
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
 )
-from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.series_cache import (
     SeriesCache,
@@ -381,6 +381,11 @@ class Runner:
                         raise
                     except Exception:
                         logger.exception(path)
+            except (OnlineLookupAbortedError, KeyboardInterrupt):
+                # Wake the workers in flight from their retry sleeps, or
+                # the join below waits them out, up to an hour each.
+                retry.request_cancel()
+                raise
             finally:
                 # Any way out -- an abort, Ctrl-C -- drops every file
                 # still queued, so it actually ends the batch. Workers
@@ -392,6 +397,8 @@ class Runner:
         """Run actions with config."""
         outcome_stats.reset()
         self.failure_count = 0
+        # A cancel left from an earlier run would abort this one's retries.
+        retry.clear_cancel()
         try:
             self._run_inner()
         finally:
