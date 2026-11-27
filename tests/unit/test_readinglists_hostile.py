@@ -212,3 +212,23 @@ def test_a_quoted_value_is_cut_short() -> None:
     (warning,) = result.warnings
     assert "is not an entry" in warning
     assert len(warning) < 120
+
+
+# ------------------------------------------------- a root that is not a list
+
+_TEXT_ROOTS = (
+    '<?xml version="1.0"?><ReadingList>hello</ReadingList>',
+    '<?xml version="1.0"?><ReadingList id="1">hello</ReadingList>',
+)
+
+
+@pytest.mark.parametrize("text", _TEXT_ROOTS, ids=["text", "attributes-and-text"])
+@pytest.mark.parametrize("as_bytes", [False, True], ids=["str", "bytes"])
+@pytest.mark.parametrize("fmt", [None, "cbl"], ids=["detected", "cbl"])
+def test_a_reading_list_of_text_is_a_format_error(
+    text: str, *, as_bytes: bool, fmt: str | None
+) -> None:
+    """``<ReadingList>hello</ReadingList>`` raised AttributeError."""
+    data = text.encode() if as_bytes else text
+    with pytest.raises(ReadingListFormatError):
+        loads(data, fmt=fmt)

@@ -55,6 +55,18 @@ def test_print_reports_a_bad_file_and_carries_on(
     assert "[Marvel] Crimson Tide (Hand Written)" in out
 
 
+def test_print_carries_on_past_a_cbl_of_text(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A ``<ReadingList>`` holding only text stopped the batch with a traceback."""
+    bad = tmp_path / "bad.cbl"
+    bad.write_text('<?xml version="1.0"?><ReadingList>hello</ReadingList>')
+    code, out, err = cli_run(capsys, "rl", "print", str(bad), str(COMMON_CBL))
+    assert code == 1
+    assert "bad.cbl" in err
+    assert "[Marvel] Crimson Tide (Hand Written)" in out
+
+
 def test_validate(capsys: pytest.CaptureFixture[str]) -> None:
     paths = (CRIMSON_TIDE, FULL_JSON_CBL, COMMON_CBL)
     code, out, _ = cli_run(capsys, "rl", "validate", *map(str, paths))

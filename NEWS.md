@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- A `.cbl` whose reading list holds only text no longer stops a batch of `rl`
+  commands.
+
 ## v5.7.1
 
 ### ✨ Added
