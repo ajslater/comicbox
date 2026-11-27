@@ -136,6 +136,9 @@ class CblTransform(ReadingListTransform):
         if isinstance(data, bytes | bytearray):
             try:
                 document = xmltodict.parse(bytes(data))
+            except ValueError as exc:
+                # xmltodict refuses an entity declaration with ValueError.
+                raise ReadingListFormatError(str(exc)) from exc
             except ExpatError as exc:
                 if not replaced:
                     raise ReadingListFormatError(describe_syntax_error(exc)) from exc

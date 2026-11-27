@@ -260,3 +260,34 @@ def test_a_json_cbl_with_a_bom_in_utf16_or_32_is_read(codec: str) -> None:
     result = loads(data)
     assert result.fmt is ReadingListFormats.JSON_CBL
     assert result.reading_list["name"] == "Minimal"
+
+
+# ------------------------------------------------- an internal DTD subset
+
+_ENTITY_CBL = (
+    '<?xml version="1.0"?><!DOCTYPE ReadingList [<!ENTITY x "y">]>'
+    "<ReadingList><Name>&x;</Name></ReadingList>"
+)
+
+
+def test_an_internal_subset_is_skipped_to_find_the_root() -> None:
+    assert xml_root(_ENTITY_CBL) == "ReadingList"
+
+
+@pytest.mark.parametrize(
+    ("data", "fmt"),
+    [(_ENTITY_CBL, None), (_ENTITY_CBL.encode(), None), (_ENTITY_CBL.encode(), "cbl")],
+    ids=["str", "bytes", "bytes-cbl"],
+)
+def test_an_entity_declaration_is_refused_as_entities(
+    data: str | bytes, fmt: str | None
+) -> None:
+    """It was 'not a reading list', or with fmt='cbl' a bare ValueError."""
+    with pytest.raises(ReadingListFormatError, match="entities"):
+        loads(data, fmt=fmt)
+
+
+def test_many_doctypes_before_the_root_are_linear() -> None:
+    text = "<!DOCTYPE x>" * 20000 + "!"
+    with _quickly():
+        assert xml_root(text) is None

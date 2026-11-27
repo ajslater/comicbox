@@ -4,6 +4,8 @@
 
 ### 🐛 Fixed
 
+- A CBL that declares entities is refused for its entities, not as "not a
+  reading list".
 - Reading lists saved as UTF-16 or UTF-32 with a byte order mark, as Windows
   "Unicode" files are, are read.
 - `rl convert` no longer reports as `lost` what a format adds, such as a CBL's

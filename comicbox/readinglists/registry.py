@@ -138,6 +138,21 @@ def _match_signature(
     return None
 
 
+def _prolog_end(text: str, start: int, closer: str) -> int:
+    """
+    Find where a prolog part ends, past a DOCTYPE's internal subset.
+
+    ``<!DOCTYPE x [<!ENTITY y "z">]>`` ends at the ``>`` after its ``]``,
+    not at the first ``>``. Each find starts past the last, so the scan
+    stays linear.
+    """
+    end = text.find(closer, start)
+    if closer == ">" and end >= 0 and (bracket := text.find("[", start, end)) >= 0:
+        close = text.find("]", bracket)
+        end = -1 if close < 0 else text.find(closer, close)
+    return end
+
+
 def xml_root(text: str) -> str | None:
     """
     Name an XML document's first element, past its declaration and comments.
@@ -152,7 +167,7 @@ def xml_root(text: str) -> str | None:
         skipped = False
         for opener, closer in _XML_PROLOG:
             if text.startswith(opener, position):
-                end = text.find(closer, position + len(opener))
+                end = _prolog_end(text, position + len(opener), closer)
                 if end < 0:
                     return None
                 position, skipped = end + len(closer), True
