@@ -5,6 +5,8 @@
 ### 🐛 Fixed
 
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
+- Numbers with a decimal comma, thousands separator or fraction are dropped with
+  a warning instead of cut to their first digits.
 
 ## v5.7.1
 

@@ -22,6 +22,15 @@ else:
 
 NumT = TypeVar("NumT", bound=int | float | Decimal)
 PAGE_COUNT_KEY = "page_count"
+# Digits after a comma or a slash mean the first digit run is only part of
+# the number: a decimal comma, a thousands separator or a fraction. Which
+# one is a guess, so such a value is not read rather than truncated.
+_SEPARATED_DIGITS_RE = re.compile(r"[,/]\d")
+
+
+def _match_is_whole(num_str: str, match: re.Match) -> bool:
+    """Whether the matched digits are not cut short by a separator."""
+    return not _SEPARATED_DIGITS_RE.match(num_str, match.end())
 
 
 class RangedNumberMixin(Generic[NumT]):
@@ -80,7 +89,7 @@ class IntegerField(fields.Integer, RangedNumberMixin[int]):
         if not num_str:
             return None
         match: re.Match | None = cls._FIRST_NUMBER_MATCHER.search(num_str)
-        if match:
+        if match and _match_is_whole(num_str, match):
             return int(match.group())
         return None
 
@@ -131,7 +140,7 @@ class DecimalField(fields.Decimal, RangedNumberMixin[Decimal]):
         num_str = num_str.replace(" ", "")
         num_str = half_replace(num_str)
         match = cls.DECIMAL_MATCHER.search(num_str)
-        if match:
+        if match and _match_is_whole(num_str, match):
             return Decimal(match.group())
         return None
 
