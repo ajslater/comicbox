@@ -7,6 +7,7 @@ against every comic format, where ``cbl``, ``json`` and ``yaml`` are taken.
 Within reading lists those tokens are free.
 """
 
+import codecs
 import re
 from collections.abc import Mapping
 from enum import Enum
@@ -87,11 +88,27 @@ _YAML_SIGNATURES: tuple[tuple[frozenset[str], ReadingListFormats], ...] = (
 )
 
 
+# Byte order marks and their codecs, UTF-32 first: its little-endian mark
+# begins with UTF-16's.
+_BOMS = (
+    ((codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE), "utf-32"),
+    ((codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE), "utf-16"),
+)
+
+
+def text_codec(data: bytes | bytearray) -> str:
+    """Name the codec bytes are in: UTF-32 or UTF-16 by their mark, else UTF-8."""
+    for marks, codec in _BOMS:
+        if data.startswith(marks):
+            return codec
+    return "utf-8-sig"
+
+
 def as_text(data: str | bytes | bytearray) -> str:
     """Decode bytes, dropping a byte order mark."""
     if isinstance(data, bytes | bytearray):
-        return bytes(data).decode("utf-8-sig", errors="replace")
-    return data.removeprefix("﻿")
+        return bytes(data).decode(text_codec(data), errors="replace")
+    return data.removeprefix("\ufeff")
 
 
 def _parse_json(text: str) -> Any:

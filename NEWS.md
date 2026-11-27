@@ -4,6 +4,8 @@
 
 ### 🐛 Fixed
 
+- Reading lists saved as UTF-16 or UTF-32 with a byte order mark, as Windows
+  "Unicode" files are, are read.
 - `rl convert` no longer reports as `lost` what a format adds, such as a CBL's
   file source.
 - `rl match` name variants compose: `The Bladehawk (2016) TPB` finds

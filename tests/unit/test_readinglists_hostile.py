@@ -26,6 +26,7 @@ from comicbox.readinglists import (
 )
 from comicbox.readinglists.registry import xml_root
 from comicbox.series_name import normalize_series
+from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -232,3 +233,30 @@ def test_a_reading_list_of_text_is_a_format_error(
     data = text.encode() if as_bytes else text
     with pytest.raises(ReadingListFormatError):
         loads(data, fmt=fmt)
+
+
+# ------------------------------------------------------------- UTF-16 and -32
+
+_UTF16_CBL = (
+    '<?xml version="1.0" encoding="utf-16"?><ReadingList><Name>X</Name>'
+    '<Books><Book Series="A" Number="1"/></Books></ReadingList>'
+)
+_JSON_CBL = (TEST_FILES_DIR / "readinglists" / "json-cbl" / "minimal.json").read_text()
+
+
+@pytest.mark.parametrize("codec", ["utf-16", "utf-16-le", "utf-16-be"])
+def test_a_utf16_cbl_with_a_bom_is_detected_and_read(codec: str) -> None:
+    """Windows 'Unicode' .cbl files decoded to NULs and failed as YAML."""
+    data = _UTF16_CBL.encode(codec)
+    if codec != "utf-16":
+        data = "﻿".encode(codec) + data
+    assert detect_format(data) is ReadingListFormats.CBL
+    assert loads(data).reading_list["name"] == "X"
+
+
+@pytest.mark.parametrize("codec", ["utf-16", "utf-32"])
+def test_a_json_cbl_with_a_bom_in_utf16_or_32_is_read(codec: str) -> None:
+    data = _JSON_CBL.encode(codec)
+    result = loads(data)
+    assert result.fmt is ReadingListFormats.JSON_CBL
+    assert result.reading_list["name"] == "Minimal"

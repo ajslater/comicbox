@@ -24,6 +24,7 @@ from comicbox.readinglists.registry import (
     as_text,
     detect_format,
     get_format,
+    text_codec,
 )
 from comicbox.readinglists.schema import (
     DATE_KEY,
@@ -234,11 +235,15 @@ def resolve_format(
 
 
 def _decode(data: str | bytes | bytearray) -> tuple[str, bool]:
-    """Decode bytes as UTF-8; say whether any had to be replaced."""
+    """
+    Decode bytes as UTF-8, or as UTF-32 or UTF-16 by their byte order mark.
+
+    Say whether any had to be replaced.
+    """
     if not isinstance(data, bytes | bytearray):
         return as_text(data), False
     try:
-        return bytes(data).decode("utf-8-sig"), False
+        return bytes(data).decode(text_codec(data)), False
     except UnicodeDecodeError:
         return as_text(data), True
 
@@ -268,7 +273,8 @@ def loads(
     """
     Read a reading list from a string or bytes, detecting its format.
 
-    Bytes are UTF-8, except XML, which is read in the encoding it declares.
+    Bytes are UTF-8, or UTF-32 or UTF-16 when a byte order mark says so,
+    except XML, which is read in the encoding it declares.
     """
     return _loads(data, fmt, None)
 
