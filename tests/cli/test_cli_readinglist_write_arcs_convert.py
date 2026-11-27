@@ -300,7 +300,8 @@ def test_a_read_only_comic_fails_and_the_rest_are_written(
         locked.chmod(0o644)
 
     assert code == 1
-    assert "cw1.cbz: Permission denied" in err
+    # B3: refused before any write, not failed part way with EACCES.
+    assert "cw1.cbz is read-only: not written." in err
     assert locked.read_bytes() == untouched
     assert "cw2.cbz added 'Crimson Tide' #2" in flat(out)
     assert "1 of 2 matched comics written." in err

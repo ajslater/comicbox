@@ -24,6 +24,7 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ArchiveWriteError,
     DestinationOccupiedError,
+    ReadOnlyComicError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
 )
@@ -643,11 +644,18 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         overlap on it -- ``bulk_write``'s preflight refuses a path named
         twice; the claim is the backstop for concurrent callers -- and the
         finished-file check cannot see a write that is still in flight.
+
+        A read-only comic is refused before an in-place write, whichever
+        way it would be made: a copy replaced over it, as a tags-first CBZ
+        or a PDF is written, would ignore the protection.
         """
         if not self._path:
             reason = "Cannot write archive metadata without a path."
             raise ArchiveWriteError(reason)
         destination = self.get_write_destination()
+        if destination == self._path and not os.access(self._path, os.W_OK):
+            reason = f"{self._path} is read-only: not written."
+            raise ReadOnlyComicError(reason)
         is_zip = self._archive_cls == ZipFile
         _claim_destination(destination, self._path)
         try:

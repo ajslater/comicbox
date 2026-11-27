@@ -49,6 +49,10 @@ class UnwritableFormatError(ArchiveWriteError):
     """A write refused: -w names no format this archive can hold."""
 
 
+class ReadOnlyComicError(UnwritableFormatError):
+    """A write refused: the comic file is read-only."""
+
+
 class UnsafePdfAttachmentError(ArchiveWriteError):
     """A PDF write refused: replacing its tag files would harm another attachment."""
 

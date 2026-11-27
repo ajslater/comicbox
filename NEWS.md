@@ -8,6 +8,7 @@
   longer overwrites one with the other on a case-insensitive disk.
 - A conversion or PDF write keeps the comic's file mode and owner, and a
   conversion is on disk before `delete_orig` removes the original.
+- A read-only comic is refused, never rewritten, whatever its layout.
 
 ## v5.7.1
 
