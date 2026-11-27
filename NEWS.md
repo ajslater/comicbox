@@ -4,6 +4,9 @@
 
 ### 🐛 Fixed
 
+- `rl write-arcs` no longer tags two volumes of an issue for one entry with no
+  start year, and `combine` and `from-arcs` keep a row with only a volume number
+  apart from two volumes it fits.
 - `rl match` and `write-arcs` find variant covers and printings whose barcode
   differs from the list's.
 - `rl from-arcs` reads every tag format, as `match` and `write-arcs` do,

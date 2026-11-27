@@ -4,17 +4,21 @@ Match a reading list against the comics in a directory.
 Each comic becomes an entry with ``entry_from_comic``. Matching goes in two
 passes. First every entry takes each comic it shares a strict key with
 (``entry_keys``: an issue id, the series name, start year or volume and
-issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
-among the comics no entry took strictly. Either way a comic is refused when
-it carries an id from a database the entry has a different id from (a
-barcode excepted: it names a cover or printing), or a
-cover year more than a year off the entry's, and a match on the volume key is
-refused for another year. A comic that shares only the
-cover-year key is refused for another series year than the entry's or its
-strong matches', and is ambiguous beside cover-year matches of another
-volume: listed, never tagged. An entry with no key matches
-nothing. A missing entry reports the comics refused that a person may want to
-see (``Refused``). The matching is pure; reading the directory is separate.
+issue, or, weakest, the series name, cover year and issue). Then each entry
+that found none tries its name variants in order, among the comics no entry
+took strictly. Either way a comic is refused when it carries an id from a
+database the entry has a different id from (a barcode excepted: it names a
+cover or printing), or a cover year more than a year off the entry's.
+
+The volume key and the cover-year key are loose: two volumes may share
+either. A comic that shares only a loose key with an entry is refused when
+it is of another volume than the entry or than any strong match (by id or
+start year); when one comic found has the entry's own signature, only such
+loose comics are found; otherwise the loose comics left are ambiguous when
+any two are of two volumes: listed, never tagged. An entry with no key
+matches nothing. A missing entry reports the comics refused that a person
+may want to see (``Refused``). The matching is pure; reading the directory
+is separate.
 """
 
 from collections import defaultdict
@@ -68,8 +72,9 @@ class FoundComic:
     """
     One comic an entry was found in, and how.
 
-    ``ambiguous`` marks a cover-year match beside others of another
-    volume: ``match`` lists it, and does not choose between them.
+    ``ambiguous`` marks a loose match, on the volume or cover-year key,
+    beside others of another volume: ``match`` lists it, and does not
+    choose between them.
     """
 
     path: Path
@@ -82,8 +87,8 @@ class Found:
     """
     The comics that are entry ``position`` (from 0), in path order.
 
-    ``volumes`` holds the discriminators its ambiguous cover-year matches
-    carry, start years or volume numbers, when it has any.
+    ``volumes`` holds the discriminators its ambiguous loose matches carry,
+    start years or volume numbers, when it has any.
     """
 
     position: int
@@ -214,21 +219,22 @@ def _differing(values: Collection[Discriminators]) -> tuple[int, ...]:
     return tuple(sorted(differing))
 
 
-def _judge(value: Discriminators, strong: Sequence[Discriminators]) -> bool | None:
+def _is_loose(key: EntryKey) -> bool:
     """
-    Judge one loose cover-year comic: found (True), with the rest (False), or refused.
+    Tell whether a key leaves a discriminator unsaid: the volume or cover-year key.
 
-    One that shares a kind with some strong match is found if it agrees with
-    one of those, and refused if not; one that shares none goes to the rest.
+    The volume key says no start year, the cover-year key no start year and
+    no volume, so two volumes may share either.
     """
-    peers = [other for other in strong if value.shares_a_kind(other)]
-    if not peers:
-        return False
-    return True if any(not value.conflicts(other) for other in peers) else None
+    return key[0] == NAME_YEAR_KEY_KIND or (
+        key[0] == NAME_KEY_KIND and key[2] == VOLUME_DISCRIMINATOR
+    )
 
 
-def _cover_year_found(paths: Collection[Path], *, ambiguous: bool) -> list[FoundComic]:
-    return [FoundComic(path, FoundBy.NAME_YEAR, ambiguous=ambiguous) for path in paths]
+def _loose_found(
+    paths: Collection[Path], by: Mapping[Path, FoundBy], *, ambiguous: bool
+) -> list[FoundComic]:
+    return [FoundComic(path, by[path], ambiguous=ambiguous) for path in paths]
 
 
 def _refused_reason(
@@ -274,74 +280,73 @@ class _Index:
         """
         Find the comics that share a strict key with an entry, at position -1.
 
-        Strong matches share an id or a name key, and are always found; a
-        match on the volume key is refused for another year, as Z-Men (1963)
-        is for an Z-Men (1991) entry when both are volume 1. A
-        cover-year match shares only the cover-year key, and is judged by
-        ``_cover_year_matches``. None when nothing is found.
+        Strong matches share an id or the year key, and are always found. A
+        loose match shares only the volume key or the cover-year key, and is
+        judged by ``_loose_matches``. None when nothing is found.
         """
         keys = entry_keys(entry)
         facts = _Facts.of(entry, keys)
         strong: dict[Path, FoundBy] = {}
         # The strongest key comes first, so a comic found by two is found by it.
         for key in keys:
-            if key[0] == NAME_YEAR_KEY_KIND:
+            if _is_loose(key):
                 continue
             by = FoundBy.ID if key[0] == ID_KEY_KIND else FoundBy.NAME
             for path in self.strict.get(key, ()):
                 if path not in strong and not facts.refuses(self.facts[path], key):
                     strong[path] = by
-        cover, unsure, volumes = self._cover_year_matches(keys, facts, strong)
+        by_key = self._loose_candidates(keys, facts, strong)
+        loose, unsure, volumes = self._loose_matches(facts, strong, by_key)
         comics = [
             *(FoundComic(path, by) for path, by in strong.items()),
-            *_cover_year_found(cover, ambiguous=False),
-            *_cover_year_found(unsure, ambiguous=True),
+            *_loose_found(loose, by_key, ambiguous=False),
+            *_loose_found(unsure, by_key, ambiguous=True),
         ]
         if not comics:
             return None
         return Found(-1, tuple(sorted(comics, key=lambda comic: comic.path)), volumes)
 
-    def _cover_year_matches(
+    def _loose_matches(
         self,
-        keys: Sequence[EntryKey],
         facts: "_Facts",
         strong: Collection[Path],
+        candidates: Collection[Path],
     ) -> tuple[list[Path], list[Path], tuple[int, ...]]:
         """
-        Judge the comics that share only an entry's cover-year key.
+        Judge the comics that share only a loose key with an entry, together.
 
-        Each is refused when it conflicts with the entry
-        (``Discriminators.conflicts``). When some comic found for the entry,
-        by any key, has the entry's own signature, only such comics are found:
-        no loose one is. Otherwise a loose one that shares a kind of
-        discriminator with some strong match is found if it agrees with one
-        of those, and refused if not; the others are judged together: if any
-        two conflict, they are all ambiguous. Returns the comics found, those
-        ambiguous, and the discriminators they differ in.
+        Each ``candidate`` has passed the vetoes and does not conflict with
+        the entry (``Discriminators.conflicts``). When some comic found for
+        the entry, by any key, has the entry's own signature, only such
+        comics are found: no looser one is. Otherwise one of another volume
+        than any strong match is refused, and the rest are judged together:
+        if any two conflict, they are all ambiguous. Returns the comics
+        found, those ambiguous, and the discriminators they differ in.
         """
-        candidates = self._cover_year_candidates(keys, facts, strong)
         if (exact := self._exact_only(facts, strong, candidates)) is not None:
             return exact, [], ()
         strong_values = [self.facts[path].discriminators for path in strong]
-        found: list[Path] = []
-        rest: list[Path] = []
-        for path in candidates:
-            verdict = _judge(self.facts[path].discriminators, strong_values)
-            if verdict is not None:
-                (found if verdict else rest).append(path)
-        rest_values = [self.facts[path].discriminators for path in rest]
-        if any_conflict(rest_values):
-            return found, rest, _differing(rest_values)
-        return found + rest, [], ()
+        kept = [
+            path
+            for path in candidates
+            if not any(
+                self.facts[path].discriminators.conflicts(value)
+                for value in strong_values
+            )
+        ]
+        values = [self.facts[path].discriminators for path in kept]
+        if any_conflict(values):
+            return [], kept, _differing(values)
+        return kept, [], ()
 
     def _exact_only(
-        self, facts: "_Facts", strong: Collection[Path], candidates: Sequence[Path]
+        self, facts: "_Facts", strong: Collection[Path], candidates: Collection[Path]
     ) -> list[Path] | None:
         """
-        Find the cover-year comics of the entry's own signature, when exact ones rule.
+        Find the loose comics of the entry's own signature, when exact ones rule.
 
         When some comic found for the entry, by any key, has the entry's own
-        signature, no loose comic is found: returns the exact cover-year ones.
+        signature, no looser comic is found: returns the exact loose ones.
         None when there is no exact comic, and the loose rules apply.
         """
         own = facts.discriminators
@@ -351,21 +356,32 @@ class _Index:
             return None
         return [path for path in candidates if self.facts[path].discriminators == own]
 
-    def _cover_year_candidates(
+    def _loose_candidates(
         self,
         keys: Sequence[EntryKey],
         facts: "_Facts",
         strong: Collection[Path],
-    ) -> list[Path]:
-        """List the comics sharing only the cover-year key, after the vetoes."""
-        key = next((key for key in keys if key[0] == NAME_YEAR_KEY_KIND), None)
-        return [
-            path
-            for path in (self.strict.get(key, ()) if key else ())
-            if path not in strong
-            and not facts.contradicts(self.facts[path])
-            and not facts.other_volume(self.facts[path])
-        ]
+    ) -> dict[Path, FoundBy]:
+        """
+        List the comics sharing only a loose key, after the vetoes, and how.
+
+        One sharing the volume key is found by name, one sharing only the
+        cover-year key by name and year. Neither may conflict with the entry:
+        a volume-key match is refused for another year, as Z-Men (1963) is
+        for an Z-Men (1991) entry when both are volume 1.
+        """
+        candidates: dict[Path, FoundBy] = {}
+        for key in filter(_is_loose, keys):
+            by = FoundBy.NAME_YEAR if key[0] == NAME_YEAR_KEY_KIND else FoundBy.NAME
+            for path in self.strict.get(key, ()):
+                if (
+                    path not in strong
+                    and path not in candidates
+                    and not facts.contradicts(self.facts[path])
+                    and not facts.other_volume(self.facts[path])
+                ):
+                    candidates[path] = by
+        return candidates
 
     def find_variant(
         self, entry: Mapping[str, Any], taken: Collection[Path]
@@ -427,9 +443,10 @@ def match_comics(
     holds them. Strict matches are settled for the whole list first, so a
     comic one entry is strictly is never another entry's variant. A comic
     of one issue in several files is found in all, and an issue the list
-    holds twice is found in the same comics both times. A cover-year match
-    is refused beside strong matches of another volume, and is ambiguous
-    beside cover-year matches of another volume; see ``_Index``. Each
+    holds twice is found in the same comics both times. A loose match, on
+    the volume or cover-year key, is refused beside strong matches of
+    another volume, and is ambiguous beside loose matches of another
+    volume; see ``_Index``. Each
     missing entry reports the comics ``_Index.refused`` finds for it that
     no entry found.
     """
