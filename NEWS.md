@@ -4,6 +4,8 @@
 
 ### 🐛 Fixed
 
+- `rl fetch` refuses a compressed download that ends early instead of reading
+  part of a list.
 - A CBL that declares entities is refused for its entities, not as "not a
   reading list".
 - Reading lists saved as UTF-16 or UTF-32 with a byte order mark, as Windows

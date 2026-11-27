@@ -299,6 +299,28 @@ def test_a_corrupt_gzip_body_is_one_error() -> None:
         session.fetch_url(f"{_BASE}/list.yaml")
 
 
+def _cut_short(data: bytes, wbits: int) -> bytes:
+    """Compress ``data`` and flush partway, never finishing the stream."""
+    packer = zlib.compressobj(9, zlib.DEFLATED, wbits)
+    return packer.compress(data) + packer.flush(zlib.Z_FULL_FLUSH)
+
+
+@pytest.mark.parametrize(
+    ("encoding", "wbits"),
+    [("gzip", zlib.MAX_WBITS | 16), ("deflate", zlib.MAX_WBITS), ("deflate", -15)],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+def test_a_compressed_body_cut_short_is_refused(encoding: str, wbits: int) -> None:
+    """A close-delimited body that ends before its stream does is not whole."""
+    with (
+        _session_with(
+            _Streamed(_cut_short(_LIST, wbits), encoding), 1 << 20
+        ) as session,
+        pytest.raises(ReadingListFetchError, match=f"{encoding} body ends early"),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
 def _drip(seconds: float = 10.0) -> Iterator[bytes]:
     """Send a byte every 50 ms, as a server stalling a client does."""
     for _ in range(int(seconds / 0.05)):
