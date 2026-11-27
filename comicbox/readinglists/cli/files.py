@@ -14,6 +14,7 @@ from comicbox.readinglists.cli.run import (
     Run,
     add_write_options,
     destination_problems,
+    library_configs,
     read_tagged_comics,
 )
 from comicbox.readinglists.combine import combine
@@ -147,6 +148,7 @@ def _from_arcs(run: Run) -> None:
         return
     fmt = get_format(run.args.to)
     output: Path = run.args.output or Path()
+    library = read_tagged_comics(run, directory, library_configs()[0])
     taken: set[str] = set()
     plan = [
         (
@@ -158,7 +160,7 @@ def _from_arcs(run: Run) -> None:
             ),
         )
         for reading_list in reading_lists_from_comics(
-            comic.tags for comic in read_tagged_comics(run, directory).comics.values()
+            comic.tags for comic in library.comics.values()
         )
     ]
     destinations = [destination for _, destination in plan]

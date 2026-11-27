@@ -229,18 +229,16 @@ def _stop_reading(run: Run) -> Callable[[int, object], None]:
 
 
 def read_tagged_comics(
-    run: Run, directory: Path, config: "ComicboxSettings | None" = None
+    run: Run, directory: Path, config: "ComicboxSettings"
 ) -> Library:
     """
-    Read every comic under a directory, in path order.
+    Read every comic under a directory, in path order, with ``config``.
 
-    A comic that cannot be read is one error line, and a directory one
-    warning line; either way the command exits 1 and the rest are read.
+    ``config`` is the read config of ``library_configs``, so every tag
+    format is read whatever the user's config says. A comic that cannot be
+    read is one error line, and a directory one warning line; either way
+    the command exits 1 and the rest are read.
     """
-    if config is None:
-        from comicbox.config import get_config
-
-        config = get_config(Namespace(comicbox=Namespace()))
     previous = signal.signal(signal.SIGINT, _stop_reading(run))
     try:
         library = read_comics(directory, config, run.fail, log_level=run.log_level)

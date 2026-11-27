@@ -20,7 +20,7 @@ import pytest
 from comicbox import cli
 from comicbox.readinglists import ReadingListFormats, load
 from comicbox.readinglists import cli as readinglist_cli
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CIX_CBZ_SOURCE_PATH, METRON_CBZ_FN, TEST_FILES_DIR
 from tests.util.readinglist_cli import (
     COMMON_CBL,
     CRIMSON_TIDE,
@@ -168,6 +168,24 @@ def test_from_arcs(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     assert "written as" in err
     reading_list = load(output / written[0]).reading_list
     assert reading_list["sources"][0] == {"kind": "tags"}
+
+
+def test_from_arcs_reads_every_tag_format(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """``read.formats: [cix]`` in the user's config emptied it for MetronInfo arcs."""
+    # COMICBOXDIR is tmp_path, so this is the user's config.
+    (tmp_path / "config.yaml").write_text("comicbox:\n  read:\n    formats: [cix]\n")
+    comics = tmp_path / "comics"
+    comics.mkdir()
+    shutil.copy(TEST_FILES_DIR / METRON_CBZ_FN, comics / "a.cbz")
+    output = tmp_path / "lists"
+    code, _, _ = cli_run(capsys, "rl", "from-arcs", "-o", str(output), str(comics))
+    assert code == 0
+    assert sorted(path.name for path in output.iterdir()) == [
+        "Captain Arc.yaml",
+        "Other Arc.yaml",
+    ]
 
 
 def test_from_arcs_needs_a_directory(
