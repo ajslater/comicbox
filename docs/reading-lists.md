@@ -376,17 +376,17 @@ An entry with no year beside X (1999) #1 and X volume 2 #1, which cannot be
 compared, still finds both. A refused comic is not listed under an entry that
 was found. Under a missing entry, `match` lists, marked `refused`, each comic
 that has its series, issue and cover year but is of another volume
-(`other-volume`), and each that has its series, start year or volume and issue
-but a cover year more than a year off (`cover-year`). A comic another entry
-found is not listed, and neither is one whose id from some database differs from
-the entry's, nor one that only shares the issue number with another volume and
-year. An entry with no id, start year, volume or cover year matches nothing, as
-in `combine`. `match` prints each entry with each comic that is it on a row of
-its own, and how it matched (`id`, `name`, `name-year` or `variant`), or
-`missing`; a comic with a tag file comicbox could not read is marked. The count
-goes to stderr. Linked directories are not searched, as with comicbox's
-`--recurse`, and a directory that cannot be read is a warning: the command then
-exits 1.
+(`other-volume`), and each that has the entry's id, or its series, start year or
+volume and issue, but a cover year more than a year off (`cover-year`). A comic
+another entry found is not listed, and neither is one whose id from some
+database differs from the entry's, nor one that only shares the issue number
+with another volume and year. An entry with no id, start year, volume or cover
+year matches nothing, as in `combine`. `match` prints each entry with each comic
+that is it on a row of its own, and how it matched (`id`, `name`, `name-year` or
+`variant`), or `missing`; a comic with a tag file comicbox could not read is
+marked. The count goes to stderr. Linked directories are not searched, as with
+comicbox's `--recurse`, and a directory that cannot be read is a warning: the
+command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also

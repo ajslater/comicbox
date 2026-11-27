@@ -4,6 +4,7 @@
 
 ### 🐛 Fixed
 
+- `rl match` lists a comic with the entry's id but a far cover year as refused.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.

@@ -174,6 +174,30 @@ def test_a_name_match_off_by_its_cover_year_is_reported() -> None:
     assert result.refused == (Refused(0, Path("b.cbz"), RefusedReason.COVER_YEAR),)
 
 
+_METRON_999 = {"identifiers": {"metron": {"key": "999"}}}
+
+
+def test_an_id_match_off_by_its_cover_year_is_reported() -> None:
+    """The id was the one key shared, so the entry was missing with no reason."""
+    comic = {**_entry(issue="50", cover=date(2020, 1, 1)), **_METRON_999}
+    entry = {"date": {"year": 2016}, **_METRON_999}
+
+    result = match_comics(_list(entry), {Path("b.cbz"): comic})
+
+    assert result.found == ()
+    assert result.missing == (0,)
+    assert result.refused == (Refused(0, Path("b.cbz"), RefusedReason.COVER_YEAR),)
+
+
+def test_an_id_and_a_name_off_by_the_cover_year_are_reported_once() -> None:
+    comic = {**_entry(start_year=2011, cover=date(2016, 1, 1)), **_METRON_999}
+    entry = {**_entry(start_year=2011), **_METRON_999}
+
+    result = match_comics(_list(entry), {Path("b.cbz"): comic})
+
+    assert result.refused == (Refused(0, Path("b.cbz"), RefusedReason.COVER_YEAR),)
+
+
 def test_a_comic_with_a_contradicting_id_is_not_reported() -> None:
     entry = _entry(start_year=2011, identifiers={"metron": {"key": "1"}})
     comics = {

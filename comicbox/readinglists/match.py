@@ -111,7 +111,7 @@ class RefusedReason(StrEnum):
 
     # It shares the entry's series, issue and cover year, of another volume.
     OTHER_VOLUME = "other-volume"
-    # It shares a name key, and its cover year is more than a year off.
+    # It shares an id or a name key, and its cover year is more than a year off.
     COVER_YEAR = "cover-year"
 
 
@@ -247,7 +247,7 @@ def _refused_reason(
         if not entry.years_apart(comic) and entry.other_volume(comic):
             return RefusedReason.OTHER_VOLUME
     elif (
-        key[0] == NAME_KEY_KIND
+        key[0] in {ID_KEY_KIND, NAME_KEY_KIND}
         and entry.years_apart(comic)
         and not _volume_of_another_year(entry, comic, key)
     ):
@@ -419,7 +419,7 @@ class _Index:
         List the comics refused for a missing entry that a person may want.
 
         One sharing the cover-year key refused only as another volume, and
-        one sharing a name key refused only for its cover year. Not one of
+        one sharing an id or a name key refused only for its cover year. Not one of
         the same number in another volume and year: every missing issue of a
         long-running title would have those.
         """
