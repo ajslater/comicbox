@@ -53,6 +53,10 @@ class ReadOnlyComicError(UnwritableFormatError):
     """A write refused: the comic file is read-only."""
 
 
+class DuplicateMemberError(UnwritableFormatError):
+    """A conversion refused: the archive holds two members of one name."""
+
+
 class UnsafePdfAttachmentError(ArchiveWriteError):
     """A PDF write refused: replacing its tag files would harm another attachment."""
 

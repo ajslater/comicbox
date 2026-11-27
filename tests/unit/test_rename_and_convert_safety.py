@@ -9,7 +9,9 @@ add a second hazard: archives differing only by suffix all convert to one
 
 from __future__ import annotations
 
+import io
 import shutil
+import tarfile
 import threading
 import zipfile
 from contextlib import suppress
@@ -25,8 +27,8 @@ from comicbox.box.archive.write import (
     tmp_archive_path,
 )
 from comicbox.config import get_config
-from comicbox.exceptions import DestinationOccupiedError
-from comicbox.write import BulkWriteItem, bulk_write
+from comicbox.exceptions import DestinationOccupiedError, DuplicateMemberError
+from comicbox.write import BulkWriteItem, bulk_write, write_metadata
 from tests.const import CB7_SOURCE_PATH, CIX_CBT_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
@@ -538,3 +540,36 @@ def test_concurrent_case_variant_conversions_keep_one_original(
     assert isinstance(refused[0].error, DestinationOccupiedError)
     assert refused[0].path.exists()
     assert not written[0].path.exists()
+
+
+def _tar_member(archive: tarfile.TarFile, name: str, data: bytes) -> None:
+    info = tarfile.TarInfo(name)
+    info.size = len(data)
+    archive.addfile(info, io.BytesIO(data))
+
+
+def test_a_tar_with_a_member_named_twice_is_not_converted(tmp_path: Path) -> None:
+    """
+    B4: a tar appended to (``tar -r``) can hold one name twice.
+
+    Read by name, both copies came back as the last one, so the CBZ held
+    it twice and the first was lost; under ``delete_orig`` for good.
+    """
+    cbt = tmp_path / "twice.cbt"
+    with tarfile.open(cbt, "w") as archive:
+        _tar_member(archive, "01.jpg", b"first")
+        _tar_member(archive, "02.jpg", b"two")
+        _tar_member(archive, "01.jpg", b"second")
+    original = cbt.read_bytes()
+    config = get_config({"comicbox": {"general": {"delete_orig": True}}})
+
+    result = write_metadata(
+        cbt, {"title": "x"}, formats=["COMIC_INFO"], base_config=config
+    )
+
+    assert not result.written
+    assert isinstance(result.error, DuplicateMemberError)
+    assert "'01.jpg'" in str(result.error)
+    assert cbt.read_bytes() == original
+    assert not cbt.with_suffix(".cbz").exists()
+    assert not tmp_archive_path(cbt).exists()

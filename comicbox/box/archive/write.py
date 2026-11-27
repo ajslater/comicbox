@@ -24,6 +24,7 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ArchiveWriteError,
     DestinationOccupiedError,
+    DuplicateMemberError,
     ReadOnlyComicError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
@@ -338,22 +339,32 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
     def _refuse_a_page_named_twice(self, write_name: str, written: set[str]) -> None:
         """
-        Refuse a PDF whose attachment takes the name a page converts to.
+        Refuse an archive two of whose members would be written under one name.
 
-        Page 1 converts to ``1.jpeg``, so an attachment named ``1.jpeg`` and
-        the page were both written under one name and one was lost. Which
-        name a page takes depends on its format, and for the image formats on
-        the page, so it is caught as it is written; the temporary archive is
-        then discarded, and the comic is as it was.
+        In a PDF, page 1 converts to ``1.jpeg``, so an attachment named
+        ``1.jpeg`` and the page were both written under one name and one was
+        lost. Which name a page takes depends on its format, and for the
+        image formats on the page, so it is caught as it is written. A tar
+        appended to can hold one name twice, and a member read by name is
+        the last of them, so the CBZ held it twice and the first was lost.
+        Either way the temporary archive is then discarded, and the comic is
+        as it was.
         """
-        if self._archive_is_pdf and write_name in written:
+        if write_name not in written:
+            written.add(write_name)
+            return
+        if self._archive_is_pdf:
             reason = (
                 f"{self._path}: cannot convert it to a CBZ without harming the"
                 f" attachment {write_name!r}, which is also the name of a page it"
                 " converts."
             )
             raise UnsafePdfAttachmentError(reason)
-        written.add(write_name)
+        reason = (
+            f"{self._path}: cannot convert it to a CBZ: it holds more than one"
+            f" member named {write_name!r}."
+        )
+        raise DuplicateMemberError(reason)
 
     def _tail_offset(self, path: Path, rewritten: frozenset[str] | None) -> int | None:
         """

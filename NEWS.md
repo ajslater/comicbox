@@ -9,6 +9,8 @@
 - A conversion or PDF write keeps the comic's file mode and owner, and a
   conversion is on disk before `delete_orig` removes the original.
 - A read-only comic is refused, never rewritten, whatever its layout.
+- A CBT holding one page name twice is refused instead of converted with a page
+  lost.
 
 ## v5.7.1
 
