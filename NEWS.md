@@ -6,6 +6,8 @@
 
 - Converting two comics whose names differ only by case and suffix at once no
   longer overwrites one with the other on a case-insensitive disk.
+- A conversion or PDF write keeps the comic's file mode and owner, and a
+  conversion is on disk before `delete_orig` removes the original.
 
 ## v5.7.1
 

@@ -16,7 +16,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
-from comicbox.box.archive.attributes import keep_attributes
+from comicbox.box.archive.attributes import keep_attributes, keep_stat
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.box.archive.rollback import TAIL_CAP, TailRollback
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
@@ -498,6 +498,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 )
                 self._archive_write_metadata_files(zf, files)
                 zf.comment = self._get_comment() if comment is None else comment
+            # As _patch_a_copy does: on disk, with the comic's mode and owner,
+            # before it is published and ``delete_orig`` unlinks the source.
+            with tmp_path.open("r+b") as tmp:
+                os.fsync(tmp.fileno())
+            keep_attributes(self._path, tmp_path)
         except BaseException:
             tmp_path.unlink(missing_ok=True)
             raise
@@ -604,6 +609,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         self.close()
         delete_all_tags = self._config.write.delete_all_tags
+        # pdffile saves to a new file and replaces the PDF with it, so the
+        # PDF's mode and owner are put back after; its hard links are split.
+        source_stat = self._path.stat()
         pf = self._archive_cls(self._path)
         try:
             if delete_all_tags or mupdf_metadata:
@@ -618,8 +626,8 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             # unsaved, the PDF on disk is as it was.
             del pf
             raise
-        # pdffile saves to a temporary file and replaces the PDF with it.
         pf.close()
+        keep_stat(source_stat, self._path)
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping
