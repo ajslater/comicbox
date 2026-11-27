@@ -338,7 +338,8 @@ among them, in two passes:
    among the comics no entry found in the first pass: the name without a
    trailing year or volume in parentheses (`Bladehawk (2016)`,
    `Z-Men (Vol. 2)`), without a leading article (`The Amazing Snail-Man`), and
-   without a reprint suffix such as TPB or Omnibus. A year or volume is never
+   without a reprint suffix such as TPB or Omnibus, and these together, so
+   `The Bladehawk (2016) TPB` comes to `Bladehawk`. A year or volume is never
    added, so `Ivory Knight` is not the series `Ivory Knight 2020`. When a
    variant finds comics of more than one series, the cover year picks the
    series.

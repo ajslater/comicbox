@@ -65,6 +65,19 @@ def _list(*entries: dict[str, Any], **header: Any) -> dict[str, Any]:
         ("Sonnet Omnibus", None, ("sonnet omnibus", "sonnet")),
         # A hyphenated "A" is part of the name, not an article.
         ("A-Force", 2015, ("a force",)),
+        # Each step is also taken from the ones before: suffix, year, article.
+        (
+            "The Bladehawk (2016) TPB",
+            2016,
+            (
+                "the bladehawk 2016 tpb",
+                "the bladehawk 2016",
+                "the bladehawk",
+                "bladehawk 2016 tpb",
+                "bladehawk 2016",
+                "bladehawk",
+            ),
+        ),
     ],
 )
 def test_name_variants_in_design_order(
@@ -254,6 +267,10 @@ def test_a_contradiction_vetoes_a_variant_too() -> None:
         ("Bladehawk", "Bladehawk (2016)"),
         ("Bladehawk (2016)", "Bladehawk"),
         ("Sonnet", "Sonnet TPB"),
+        # Variants compose: each step is taken from the one before.
+        ("The Bladehawk (2016)", "Bladehawk"),
+        ("Bladehawk (2016) TPB", "Bladehawk"),
+        ("The Bladehawk (2016) TPB", "Bladehawk"),
     ],
 )
 def test_a_name_variant_matches(entry_series: str, comic_series: str) -> None:
@@ -274,6 +291,7 @@ def test_a_name_variant_matches(entry_series: str, comic_series: str) -> None:
         ("Trundlebots (UK)", "Trundlebots"),
         # A year is never added: Ivory Knight (2020) is not the series Ivory Knight 2020.
         ("Ivory Knight", "Ivory Knight 2020"),
+        ("The Ivory Knight TPB", "Ivory Knight 2020"),
     ],
 )
 def test_a_name_that_is_another_series_never_matches(

@@ -294,17 +294,50 @@ def _without_reprint_suffix(normalized: str) -> str:
     return normalized
 
 
+# The same words, as a raw name spells them, to take off before its year.
+_REPRINT_SUFFIX_WORDS = tuple(tuple(suffix.split()) for suffix in _REPRINT_SUFFIXES)
+
+
+def _without_reprint_suffix_words(raw: str) -> str:
+    """Take a reprint suffix off a raw name, by its words: linear in the name."""
+    words = raw.split()
+    folded = tuple(word.casefold() for word in words)
+    for suffix in _REPRINT_SUFFIX_WORDS:
+        if len(words) > len(suffix) and folded[-len(suffix) :] == suffix:
+            return " ".join(words[: -len(suffix)])
+    return raw
+
+
+def _without_year_or_volume(raw: str) -> str:
+    match = _TRAILING_YEAR_OR_VOLUME_RE.search(raw)
+    return raw[: match.start()].rstrip() if match else raw
+
+
+def _without_article(raw: str) -> str:
+    return _LEADING_ARTICLE_RE.sub("", raw, count=1)
+
+
+# Each step is taken from every spelling before it, in this order, so they
+# compose: "The Bladehawk (2016) TPB" comes to "Bladehawk".
+_SPELLING_STEPS = (
+    _without_reprint_suffix_words,
+    _without_year_or_volume,
+    _without_article,
+)
+
+
 def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
     """
     List the series names to try for an entry, normalized, in order.
 
-    The name as given; the name without a trailing year or volume in
-    parentheses (``Bladehawk (2016)``, ``X (Vol. 2)``), when it has one; the
-    name without a leading article; and the name without a reprint suffix
-    such as TPB or Omnibus. A year or volume is never added: ``Ivory Knight``
-    is not the series ``Ivory Knight 2020``. For matching a list against
-    comics only: ``entry_keys`` stays strict, so ``combine`` never joins on
-    a variant.
+    The name as given; then the name without a reprint suffix such as TPB or
+    Omnibus, without a trailing year or volume in parentheses
+    (``Bladehawk (2016)``, ``X (Vol. 2)``), and without a leading article,
+    each step taken from every spelling before it, so they compose: ``The
+    Bladehawk (2016) TPB`` comes to ``bladehawk``. A year or volume is never
+    added: ``Ivory Knight`` is not the series ``Ivory Knight 2020``. For
+    matching a list against comics only: ``entry_keys`` stays strict, so
+    ``combine`` never joins on a variant.
     """
     raw = str((entry.get(SERIES_KEY) or {}).get(NAME_KEY) or "").strip()
     if not raw:
@@ -315,12 +348,10 @@ def name_variants(entry: Mapping[str, Any]) -> tuple[str, ...]:
 
 
 def _spelled_variants(raw: str) -> list[str]:
-    """Spell the name as given, without its year or volume, and its article."""
+    """Spell the name as given, then with each step taken from every spelling."""
     names = [raw]
-    if match := _TRAILING_YEAR_OR_VOLUME_RE.search(raw):
-        names.append(raw[: match.start()].rstrip())
-    if _LEADING_ARTICLE_RE.match(raw):
-        names.append(_LEADING_ARTICLE_RE.sub("", raw))
+    for step in _SPELLING_STEPS:
+        names += [spelled for name in names if (spelled := step(name)) != name]
     return names
 
 

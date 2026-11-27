@@ -96,7 +96,12 @@ def test_variant_keys_keep_both_kinds_for_each_name() -> None:
     entry = _entry(series="The Bladehawk (2011)", start_year=2011, volume=2)
     assert variant_keys(entry) == tuple(
         ("name", name, kind, value, Decimal(1), "")
-        for name in ("the bladehawk 2011", "the bladehawk", "bladehawk 2011")
+        for name in (
+            "the bladehawk 2011",
+            "the bladehawk",
+            "bladehawk 2011",
+            "bladehawk",
+        )
         for kind, value in (("year", 2011), ("volume", 2))
     )
 
