@@ -100,13 +100,28 @@ def _partial_dates(
         if key == STORE_DATE_KEY:
             warnings.append(f"{here}; dropped")
             continue
-        result.setdefault(YEAR_KEY, parts.year)
-        read = f"year {parts.year}"
-        if parts.month is not None:
-            result.setdefault(MONTH_KEY, parts.month)
-            read += f", month {parts.month}"
-        warnings.append(f"{here}; read as {read}")
+        warnings.append(f"{here}; {_read_partial(result, parts)}")
     return {**entry, DATE_KEY: result}
+
+
+def _read_partial(result: dict[str, Any], parts: DateParts) -> str:
+    """
+    Fill a date's year and month from a partial cover date, and say how.
+
+    Only where the entry's own date agrees: a year or month it already gives
+    otherwise keeps the partial date out whole, so no date from neither
+    source is made.
+    """
+    for key, value in ((YEAR_KEY, parts.year), (MONTH_KEY, parts.month)):
+        given = result.get(key)
+        if value is not None and given is not None and given != value:
+            return f"dropped, as the entry gives {key} {given}"
+    result[YEAR_KEY] = parts.year
+    read = f"year {parts.year}"
+    if parts.month is not None:
+        result[MONTH_KEY] = parts.month
+        read += f", month {parts.month}"
+    return f"read as {read}"
 
 
 def _partial_date(value: Any) -> DateParts | None:
