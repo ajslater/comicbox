@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- MetronInfo no longer relabels tag ids as another database's on write, and
+  writes Comic Vine tag ids.
+
 ## v5.7.1
 
 ### ✨ Added
