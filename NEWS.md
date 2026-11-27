@@ -1,5 +1,11 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- `--id` refuses a directory under `-r` that holds more than one comic.
+
 ## v5.7.1
 
 ### ✨ Added
