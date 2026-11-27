@@ -1,8 +1,10 @@
 """
-lost_fields is exact: it names what a round trip changes, and nothing else.
+lost_fields is exact: it names what a round trip does not keep, and nothing else.
 
 The expected answer is worked out here independently: write the list, read
-it back, flatten both and compare, path by path.
+it back, flatten both and compare, path by path. A path is lost when the
+list written has a value there that the list read back does not keep; a
+value the format adds on the way back is not a loss.
 """
 
 from __future__ import annotations
@@ -65,8 +67,8 @@ def _entry_names(kept: list[dict[str, Any]], back: list[dict[str, Any]]) -> set[
         )
         names |= {
             _named(path)
-            for path in set(flat) | set(flat_back)
-            if flat.get(path) != flat_back.get(path)
+            for path in flat
+            if flat[path] is not None and flat_back.get(path) != flat[path]
         }
     return names
 
@@ -78,8 +80,8 @@ def _header_names(before: dict[str, Any], after: dict[str, Any]) -> set[str]:
     header_back.pop(ENTRIES_KEY, None)
     return {
         key
-        for key in set(header) | set(header_back)
-        if header.get(key) != header_back.get(key)
+        for key in header
+        if header[key] is not None and header_back.get(key) != header[key]
     }
 
 
@@ -235,3 +237,32 @@ def test_unwritable_entries_are_named_by_position() -> None:
         ],
     }
     assert lost_fields(reading_list, "cbl") == ("entries #2, #3",)
+
+
+_ADDED = {
+    "name": "X",
+    ENTRIES_KEY: [
+        {
+            "series": {"name": "Bladehawk", "start_year": 2016},
+            "issue": {"name": "1"},
+            "date": {"year": 2016},
+        }
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    ("fmt", "lost"),
+    [
+        # The CBL reader adds a file source and reads Volume="2016" back as a
+        # volume number: nothing the list had is gone.
+        ("cbl", ()),
+        # json-cbl writes the year as a whole cover date: the year is gone.
+        ("json-cbl", ("entries.date.year",)),
+        ("yaml", ()),
+        ("json", ()),
+    ],
+)
+def test_what_a_format_adds_is_not_lost(fmt: str, lost: tuple[str, ...]) -> None:
+    """'lost: sources' for a list with no sources, and the same for its volume."""
+    assert lost_fields(_ADDED, fmt) == lost

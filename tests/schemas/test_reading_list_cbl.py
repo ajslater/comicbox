@@ -170,9 +170,8 @@ def test_write_counts_the_books_it_writes() -> None:
     assert "<NumIssues>2</NumIssues>" in text
     assert 'Number="2"' in text
     # The second is not written; the third's number is written as its name.
+    # The file source the CBL reader adds is not a loss.
     assert lost_fields(reading_list, "cbl") == (
-        "sources",
-        "entries.issue.name",
         "entries.issue.number",
         "entries #2",
     )
@@ -193,7 +192,6 @@ def test_lost_fields_name_what_a_round_trip_drops() -> None:
         "entries.date.cover_date",
         "entries.date.month",
         "entries.date.store_date",
-        "entries.date.year",
         "entries.entry_type",
         "entries.notes",
         "entries.volume.number",
@@ -228,7 +226,6 @@ def test_other_databases_are_lost() -> None:
         ],
     }
     assert lost_fields(reading_list, "cbl") == (
-        "sources",
         "entries.identifiers.grandcomicsdatabase",
         "entries.series.identifiers.grandcomicsdatabase",
     )

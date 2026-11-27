@@ -94,6 +94,20 @@ def test_validate_fails_on_any_bad_file(
     assert "Not a reading list in any format" in out
 
 
+def test_convert_names_no_loss_for_what_the_format_adds(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    source = tmp_path / "x.yaml"
+    source.write_text(
+        "reading_list:\n  name: X\n  entries:\n"
+        "    - series: {name: Bladehawk, start_year: 2016}\n"
+        "      issue: {name: '1'}\n      date: {year: 2016}\n"
+    )
+    code, _, err = cli_run(capsys, "rl", "convert", "--to", "cbl", str(source))
+    assert code == 0
+    assert "lost" not in err
+
+
 def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     code, _, err = cli_run(
         capsys,
@@ -106,7 +120,10 @@ def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
         str(COMMON_CBL),
     )
     assert code == 0
-    assert "lost: entries.date.cover_date" in err
+    # A whole cover date is written for the year: the year is lost, and the
+    # cover date added is not named.
+    assert "lost: entries.date.year" in err
+    assert "lost: entries.date.cover_date" not in err
     result = load(tmp_path / "common.json")
     assert result.fmt is ReadingListFormats.JSON_CBL
     assert len(result.reading_list["entries"]) == 3

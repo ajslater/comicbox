@@ -237,9 +237,9 @@ def test_a_cbl_list_written_as_json_cbl() -> None:
     assert [issue["issueCoverDate"] for issue in issues] == ["2006-01-01"] * 3
     # The year is written as a cover date, the volume as the start year, and
     # the file source becomes the json-cbl one; the fourth is not written.
+    # The cover date added is not a loss.
     assert lost_fields(reading_list, "json-cbl") == (
         "sources",
-        "entries.date.cover_date",
         "entries.date.year",
         "entries.volume.number",
         "entries #4",
@@ -364,8 +364,8 @@ def test_a_whole_date_in_parts_is_named_as_it_changes() -> None:
     """Year, month and day are written as a cover date: no guessing, still a change."""
     entry = _entry(date={"year": 2006, "month": 8, "day": 3})
     assert _written(_list(entry))["issueList"][0]["issueCoverDate"] == "2006-08-03"
+    # The parts are not kept as parts; the cover date they become is not a loss.
     assert lost_fields(_list(entry), "json-cbl") == (
-        "entries.date.cover_date",
         "entries.date.day",
         "entries.date.month",
         "entries.date.year",

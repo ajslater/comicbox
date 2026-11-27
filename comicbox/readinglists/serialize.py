@@ -306,9 +306,10 @@ def lost_fields(
     reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
 ) -> tuple[str, ...]:
     """
-    Name what writing this list in a format and reading it back would change.
+    Name what writing this list in a format and reading it back does not keep.
 
-    Exact: the list is written, read back and compared. Header keys such as
+    Exact: the list is written, read back and compared; what the format adds
+    on the way back is not named. Header keys such as
     ``sources``, entry paths such as ``entries.date.cover_date``, and
     ``entries #2, #5`` for entries the format cannot write at all.
     """

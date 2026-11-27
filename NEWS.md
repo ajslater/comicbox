@@ -4,6 +4,8 @@
 
 ### 🐛 Fixed
 
+- `rl convert` no longer reports as `lost` what a format adds, such as a CBL's
+  file source.
 - `rl match` name variants compose: `The Bladehawk (2016) TPB` finds
   `Bladehawk`.
 - `rl match` lists a comic with the entry's id but a far cover year as refused.
