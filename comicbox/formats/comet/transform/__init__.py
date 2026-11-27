@@ -155,6 +155,27 @@ SIMPLE_KEYMAP = frozenbidict(
 NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KEY})
 
 
+def _first_name(names: set[str]) -> set[str]:
+    """
+    Keep one name, the first in sort order.
+
+    The CoMet XSD allows one coverDesigner, so several cover credits cannot
+    all be written. Sort order keeps repeated writes of a book agreeing.
+    """
+    return {min(names)} if names else names
+
+
+def _comet_credits_transform_from_cb() -> tuple[MetaSpec, ...]:
+    """Write each CoMet credit tag, with a single coverDesigner."""
+    cover_designer_tag = CoMetRoleTagEnum.COVER_DESIGNER.value
+    return tuple(
+        MetaSpec(key_map=metaspec.key_map, spec=(metaspec.spec, _first_name))
+        if cover_designer_tag in metaspec.key_map
+        else metaspec
+        for metaspec in xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES)
+    )
+
+
 class CoMetTransform(BaseTransform):
     """CoMet transforms."""
 
@@ -173,7 +194,7 @@ class CoMetTransform(BaseTransform):
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEYMAP),
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
-        *xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES),
+        *_comet_credits_transform_from_cb(),
         identifier_transform_from_cb("identifier"),
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),

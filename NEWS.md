@@ -11,6 +11,7 @@
   which its schema rejects.
 - ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
   instead of writing issue 1.
+- CoMet reads and writes cover credits.
 
 ## v5.7.1
 

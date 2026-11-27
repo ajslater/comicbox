@@ -7,7 +7,7 @@ class CoMetRoleTagEnum(Enum):
     """Comet Role tags."""
 
     COLORIST = "colorist"
-    COVER_DESIGNER = "colorDesigner"
+    COVER_DESIGNER = "coverDesigner"
     CREATOR = "creator"
     EDITOR = "editor"
     INKER = "inker"
