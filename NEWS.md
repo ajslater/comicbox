@@ -12,6 +12,8 @@
 - ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
   instead of writing issue 1.
 - CoMet reads and writes cover credits.
+- CoMet leaves out an issue that is not a whole number and warns when it has no
+  title, which its schema requires.
 
 ## v5.7.1
 
