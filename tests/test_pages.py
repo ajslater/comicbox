@@ -63,16 +63,29 @@ def test_get_page_by_index_out_of_range() -> None:
 
 
 def test_get_pages_after() -> None:
-    """Test getting many pages."""
-    page_num = 3
+    """
+    Test getting many pages.
+
+    B1: consumed after the archive closed, and with every assertion inside
+    the loop, an empty generator passed.
+    """
+    page_from = 3
     with Comicbox(ARCHIVE_PATH) as car:
-        pages = car.get_pages(page_num)
-    for page in pages:
-        path = Path(PAGE_TMPL.format(page_num=f"{page_num + 1:02d}"))
-        with path.open("rb") as cif:
-            image = cif.read()
-        assert image == page
-        page_num += 1
+        pages = list(car.get_pages(page_from))
+        page_count = car.get_page_count()
+    assert len(pages) == page_count - page_from
+    for page_num, page in enumerate(pages, start=page_from + 1):
+        path = Path(PAGE_TMPL.format(page_num=f"{page_num:02d}"))
+        assert path.read_bytes() == page
+
+
+def test_get_pages_reads_every_page_by_default() -> None:
+    """B1: the default ``page_to`` of -1 read as ``[0:0]``, no pages."""
+    with Comicbox(ARCHIVE_PATH) as car:
+        pages = list(car.get_pages())
+        assert len(pages) == car.get_page_count()
+        assert list(car.get_pages(0, -1)) == pages
+        assert list(car.get_pages(1, 2)) == pages[1:3]
 
 
 def test_ignore_macos_resource_forks() -> None:

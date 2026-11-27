@@ -13,9 +13,15 @@ class ComicboxArchivePages(ComicboxArchiveFilenames):
         return self._archive_readfile(filename, pdf_format=pdf_format)
 
     def get_pages(
-        self, page_from: int = 0, page_to: int = -1, pdf_format: str = ""
+        self, page_from: int = 0, page_to: int | None = None, pdf_format: str = ""
     ) -> Iterator:
-        """Generate all pages starting with page number."""
+        """
+        Generate the pages from ``page_from`` to ``page_to``, inclusive.
+
+        A ``page_to`` of None, or below 0, is the last page.
+        """
+        if page_to is not None and page_to < 0:
+            page_to = None
         if pagenames := self.get_pagenames_from(page_from, page_to):
             for pagename in pagenames:
                 yield self._archive_readfile(pagename, pdf_format=pdf_format)

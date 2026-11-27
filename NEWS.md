@@ -11,6 +11,7 @@
 - A read-only comic is refused, never rewritten, whatever its layout.
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
+- `Comicbox.get_pages()` without an end page returns every page, not none.
 
 ## v5.7.1
 
