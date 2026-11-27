@@ -9,7 +9,11 @@ from typing import Any
 
 import pytest
 
-from comicbox.readinglists import entry_keys, name_variants
+from comicbox.readinglists import (
+    entry_keys,
+    name_variants,
+    reading_lists_from_comics,
+)
 from comicbox.readinglists.match import (
     ArcAction,
     FoundBy,
@@ -157,6 +161,73 @@ def test_a_contradiction_vetoes_a_match(comic_ids: dict[str, str], year: int) ->
 
     assert result.found == ()
     assert result.missing == (0,)
+
+
+# A comic's 17-digit UPC: the title's 12 digits and a 5-digit supplement for
+# the issue, cover and printing. These two differ only in the cover digit.
+_UPC_A = "75960608936800111"
+_UPC_B = "75960608936800121"
+
+
+def test_a_differing_barcode_never_vetoes_an_id_match() -> None:
+    """A variant cover's UPC made metron 5 miss its own comic."""
+    comics = {
+        Path("b.cbz"): _tags(
+            "Bladehawk",
+            "1",
+            start_year=2016,
+            year=2016,
+            ids={"metron": "5", "upc": _UPC_B},
+        )
+    }
+    entry = _entry(
+        "Bladehawk", "1", start_year=2016, year=2016, ids={"metron": "5", "upc": _UPC_A}
+    )
+
+    assert _found(match_comics(_list(entry), comics)) == {0: {"b.cbz": FoundBy.ID}}
+
+
+def test_variant_covers_from_arcs_are_all_found_and_planned() -> None:
+    """from-arcs folds two covers into one entry; match found only one of them."""
+    comics = {
+        Path(f"{name}.cbz"): _tags(
+            "Bladehawk",
+            "1",
+            start_year=2016,
+            year=2016,
+            ids={"metron": "5", "upc": upc},
+            arcs={"Saga": {"number": 1}},
+        )
+        for name, upc in (("a", _UPC_A), ("b", _UPC_B))
+    }
+    (reading_list,) = reading_lists_from_comics(comics.values())
+
+    result = match_comics(reading_list, comics)
+
+    assert result.missing == ()
+    assert _found(result) == {0: {"a.cbz": FoundBy.ID, "b.cbz": FoundBy.ID}}
+    plan = plan_arcs(reading_list, comics, result, "Saga")
+    assert [change.path.name for change in plan] == ["a.cbz", "b.cbz"]
+
+
+def test_a_barcode_alone_still_finds_its_comic() -> None:
+    comics = {Path("b.cbz"): _tags("Other Name", "9", ids={"upc": _UPC_B})}
+    entry = {"identifiers": {"upc": {"key": _UPC_B}}}
+
+    assert _found(match_comics(_list(entry), comics)) == {0: {"b.cbz": FoundBy.ID}}
+
+
+def test_a_differing_metron_id_still_vetoes_beside_a_shared_barcode() -> None:
+    comics = {
+        Path("b.cbz"): _tags(
+            "Bladehawk", "1", start_year=2016, ids={"metron": "6", "upc": _UPC_A}
+        )
+    }
+    entry = _entry(
+        "Bladehawk", "1", start_year=2016, ids={"metron": "5", "upc": _UPC_A}
+    )
+
+    assert match_comics(_list(entry), comics).missing == (0,)
 
 
 def test_cover_years_a_year_apart_still_match() -> None:

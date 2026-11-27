@@ -47,6 +47,17 @@ NAME_YEAR_KEY_KIND = "name-year"
 
 EntryKey = tuple[Any, ...]
 
+# A barcode names a cover, a printing or an edition of an issue, not the
+# issue: a shared one finds a match, and a differing one never vetoes one, in
+# combine as in the matcher.
+BARCODE_ID_SOURCES = frozenset(
+    {
+        IdSources.ASIN.value,
+        IdSources.GTIN.value,
+        IdSources.ISBN.value,
+        IdSources.UPC.value,
+    }
+)
 # Barcodes are spelled with and without separators; compare their digits.
 _BARCODE_SOURCES = frozenset(
     {IdSources.GTIN.value, IdSources.ISBN.value, IdSources.UPC.value}

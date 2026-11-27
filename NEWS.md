@@ -4,6 +4,8 @@
 
 ### 🐛 Fixed
 
+- `rl match` and `write-arcs` find variant covers and printings whose barcode
+  differs from the list's.
 - `rl from-arcs` reads every tag format, as `match` and `write-arcs` do,
   whatever the config's `read.formats`, `metadata` and `delete_keys` say.
 - A `.cbl` whose reading list holds only text no longer stops a batch of `rl`

@@ -36,9 +36,9 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from comicbox.enums.comicbox import IdSources
 from comicbox.identifiers import ID_SOURCE_VALUES
 from comicbox.readinglists.identity import (
+    BARCODE_ID_SOURCES,
     ID_KEY_KIND,
     NAME_YEAR_KEY_KIND,
     VOLUME_DISCRIMINATOR,
@@ -54,16 +54,6 @@ QualifiedKey = tuple[EntryKey, int]
 _Link = tuple[tuple[int, int], Node, Node]
 _Guard = Callable[[Iterable[Discriminators]], bool]
 
-# A barcode differing between two rows of one issue is a variant cover, a
-# printing or an edition, not a bad mapping.
-_BARCODE_SOURCES = frozenset(
-    {
-        IdSources.ASIN.value,
-        IdSources.GTIN.value,
-        IdSources.ISBN.value,
-        IdSources.UPC.value,
-    }
-)
 _ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
 _NAME_STRENGTH = (1, 0)
 _VOLUME_STRENGTH = (1, 1)
@@ -302,7 +292,7 @@ class _Grouper:
         for member in members:
             for (_, source, value), _ in self._id_keys(member):
                 first = kept.setdefault(source, value)
-                if first != value and source not in _BARCODE_SOURCES:
+                if first != value and source not in BARCODE_ID_SOURCES:
                     self._conflicts.append(
                         GroupIdConflict(group, source, first, value, *member)
                     )

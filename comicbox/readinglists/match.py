@@ -6,7 +6,8 @@ passes. First every entry takes each comic it shares a strict key with
 (``entry_keys``: an issue id, the series name, start year or volume and
 issue, or, weakest, the series name, cover year and issue). Then each entry that found none tries its name variants in order,
 among the comics no entry took strictly. Either way a comic is refused when
-it carries an id from a database the entry has a different id from, or a
+it carries an id from a database the entry has a different id from (a
+barcode excepted: it names a cover or printing), or a
 cover year more than a year off the entry's, and a match on the volume key is
 refused for another year. A comic that shares only the
 cover-year key is refused for another series year than the entry's or its
@@ -29,6 +30,7 @@ from comicbox.formats.comicbox.schema import ARCS_KEY
 from comicbox.readinglists.arcs import entry_from_comic
 from comicbox.readinglists.combine.fields import is_ordered
 from comicbox.readinglists.identity import (
+    BARCODE_ID_SOURCES,
     ID_KEY_KIND,
     NAME_KEY_KIND,
     NAME_YEAR_KEY_KIND,
@@ -144,6 +146,8 @@ class _Facts:
     What vetoes a match: an entry's or comic's issue ids and cover year.
 
     And its discriminators, which veto a match on the cover-year key alone.
+    ``ids`` holds no barcode: one differing names another cover, printing or
+    edition of the issue, so it vetoes nothing.
     """
 
     ids: Mapping[str, str]
@@ -152,7 +156,11 @@ class _Facts:
 
     @classmethod
     def of(cls, entry: Mapping[str, Any], keys: Sequence[EntryKey]) -> "_Facts":
-        ids = {key[1]: key[2] for key in keys if key[0] == ID_KEY_KIND}
+        ids = {
+            key[1]: key[2]
+            for key in keys
+            if key[0] == ID_KEY_KIND and key[1] not in BARCODE_ID_SOURCES
+        }
         return cls(ids, _year(entry), discriminators(entry))
 
     def other_volume(self, other: "_Facts") -> bool:

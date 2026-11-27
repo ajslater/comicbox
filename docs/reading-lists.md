@@ -341,7 +341,10 @@ among them, in two passes:
    series.
 
 A comic is never matched to an entry when both carry an id from one database and
-the ids differ, or both have cover years more than a year apart.
+the ids differ, or both have cover years more than a year apart. A barcode (UPC,
+GTIN, ISBN or ASIN) is the exception: it names a cover, a printing or an edition
+of an issue, so a shared one finds a comic and a differing one never refuses
+one, as in `combine`.
 
 A comic that shares only the cover year with an entry is judged with the rest of
 the entry's comics, by volume as `combine` tells them apart. It is refused when
