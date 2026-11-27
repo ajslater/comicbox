@@ -1,5 +1,11 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
+
 ## v5.7.1
 
 ### ✨ Added

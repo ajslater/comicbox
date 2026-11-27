@@ -238,8 +238,13 @@ def test_cix_validation_from_metadata() -> None:
 
 
 def test_cix_validation_from_string() -> None:
-    """Test metadata import from string."""
-    CIX_FILE_TESTER.test_from_string()
+    """
+    Test metadata import from string.
+
+    The string carries ComicInfo's unset Day -1, so it reads with no day,
+    unlike the export file's Day 1.
+    """
+    CIX_TESTER.test_from_string()
 
 
 def test_cix_validation_from_file() -> None:

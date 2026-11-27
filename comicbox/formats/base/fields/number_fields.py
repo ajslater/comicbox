@@ -68,7 +68,9 @@ class RangedNumberMixin(Generic[NumT]):
 class IntegerField(fields.Integer, RangedNumberMixin[int]):
     """Durable integer field."""
 
-    _FIRST_NUMBER_MATCHER = re.compile(r"\d+")
+    # A minus is a sign only where it starts the number, not after a letter
+    # or digit: "-1" is -1 but "1-3" is 1 and "Vol-2" is 2.
+    _FIRST_NUMBER_MATCHER = re.compile(r"(?:(?<!\w)-)?\d+")
 
     @override
     @classmethod
@@ -87,16 +89,25 @@ class IntegerField(fields.Integer, RangedNumberMixin[int]):
         *args: Any,
         minimum: int | None = None,
         maximum: int | None = None,
+        negative_is_unset: bool = False,
         **kwargs: Any,
     ) -> None:
-        """Set the min and max value."""
+        """
+        Set the min and max value.
+
+        negative_is_unset: read a negative value as no value, for formats
+        whose "unset" default is -1, before any range clamping.
+        """
         super().__init__(*args, **kwargs)
         self._set_range(minimum, maximum)
+        self._negative_is_unset = negative_is_unset
 
     @override
     def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         pre_value = self._deserialize_pre(value)
-        result = super()._deserialize(pre_value, *args, **kwargs)
+        result: int | None = super()._deserialize(pre_value, *args, **kwargs)
+        if self._negative_is_unset and result is not None and result < 0:
+            return None
         return self._deserialize_post(result)
 
     @override
