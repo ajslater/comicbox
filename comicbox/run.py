@@ -381,14 +381,12 @@ class Runner:
                         raise
                     except Exception:
                         logger.exception(path)
-            except OnlineLookupAbortedError:
-                # Drop every file still queued so the abort actually ends
-                # the batch. Workers already in flight can't be
-                # interrupted from here -- the pool joins them on the way
-                # out -- but no further file is started.
-                for pending in futures:
-                    pending.cancel()
-                raise
+            finally:
+                # Any way out -- an abort, Ctrl-C -- drops every file
+                # still queued, so it actually ends the batch. Workers
+                # already in flight finish: the pool joins them on the
+                # way out.
+                executor.shutdown(wait=False, cancel_futures=True)
 
     def run(self) -> None:
         """Run actions with config."""

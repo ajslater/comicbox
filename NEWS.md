@@ -5,6 +5,7 @@
 ### 🐛 Fixed
 
 - `--id` refuses a directory under `-r` that holds more than one comic.
+- Ctrl-C under `-j N` stops the run instead of processing every queued file.
 
 ## v5.7.1
 
