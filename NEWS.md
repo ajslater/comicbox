@@ -14,6 +14,7 @@
 - CoMet reads and writes cover credits.
 - CoMet leaves out an issue that is not a whole number and warns when it has no
   title, which its schema requires.
+- PDF author metadata includes Plot, Story, Translator and Author credits.
 
 ## v5.7.1
 
