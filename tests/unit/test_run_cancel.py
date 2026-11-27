@@ -145,3 +145,21 @@ def test_a_run_starts_with_retries_allowed(tmp_path: Path) -> None:
     ):
         runner.run()
     assert cancelled == [False]
+
+
+def test_an_abort_from_any_worker_marks_the_run_aborted(tmp_path: Path) -> None:
+    """
+    An abort raised outside a prompt (quota spent, retry cancelled) ends the run too.
+
+    The prompt marks the shared state itself; this covers the rest, so
+    siblings in flight stop before their next prompt or source.
+    """
+    runner = _runner(tmp_path, count=4)
+    seen: list[Path] = []
+    fake = _interrupting_run_on_file(seen, OnlineLookupAbortedError("quota spent"))
+    with (
+        patch.object(Runner, "run_on_file", fake),
+        pytest.raises(OnlineLookupAbortedError),
+    ):
+        runner.run()
+    assert runner._online_state.is_aborted()

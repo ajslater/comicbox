@@ -383,8 +383,10 @@ class Runner:
                         logger.exception(path)
             except (OnlineLookupAbortedError, KeyboardInterrupt):
                 # Wake the workers in flight from their retry sleeps, or
-                # the join below waits them out, up to an hour each.
+                # the join below waits them out, up to an hour each, and
+                # stop them before their next prompt or source.
                 retry.request_cancel()
+                self._online_state.abort()
                 raise
             finally:
                 # Any way out -- an abort, Ctrl-C -- drops every file

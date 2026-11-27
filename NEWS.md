@@ -5,8 +5,8 @@
 ### 🐛 Fixed
 
 - `--id` refuses a directory under `-r` that holds more than one comic.
-- Ctrl-C or an abort under `-j N` stops the run promptly instead of processing
-  every queued file or waiting out rate-limit retries.
+- Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
+  prompts or searches, and no waiting out rate-limit retries.
 
 ## v5.7.1
 
