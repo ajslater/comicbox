@@ -2,6 +2,10 @@
 
 ## v5.7.2
 
+### ♻️ Changed
+
+- Extracting or reading every page of a CB7 is many times faster.
+
 ### 🐛 Fixed
 
 - Converting two comics whose names differ only by case and suffix at once no

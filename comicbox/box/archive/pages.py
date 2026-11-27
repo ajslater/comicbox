@@ -18,12 +18,14 @@ class ComicboxArchivePages(ComicboxArchiveFilenames):
         """
         Generate the pages from ``page_from`` to ``page_to``, inclusive.
 
-        A ``page_to`` of None, or below 0, is the last page.
+        A ``page_to`` of None, or below 0, is the last page. A 7z is
+        decompressed in batches, as a conversion reads it: read one at a
+        time, each page re-decoded its solid block from the start.
         """
         if page_to is not None and page_to < 0:
             page_to = None
         if pagenames := self.get_pagenames_from(page_from, page_to):
-            for pagename in pagenames:
+            for pagename in self._iter_prefetched(pagenames):
                 yield self._archive_readfile(pagename, pdf_format=pdf_format)
 
     def get_page_by_index(self, index: int, pdf_format: str = "") -> bytes | None:

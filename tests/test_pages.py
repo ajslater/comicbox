@@ -1,10 +1,14 @@
 """Test getting pages."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
+import pytest
+
 from comicbox.box import Comicbox
-from tests.const import TEST_FILES_DIR
+from comicbox.box.archive.archive import Archive
+from tests.const import CB7_SOURCE_PATH, TEST_FILES_DIR
 
 ARCHIVE_PATH = TEST_FILES_DIR / "Captain Science #001.cbz"
 IMAGE_DIR = TEST_FILES_DIR / "Captain Science 001"
@@ -93,3 +97,40 @@ def test_ignore_macos_resource_forks() -> None:
     with Comicbox(RESOURCE_FORK_ARCHIVE) as car:
         page_count = car.get_page_count()
     assert page_count == RESOURCE_FORK_ARCHIVE_PAGE_COUNT
+
+
+@pytest.mark.parametrize("archive_path", [CB7_SOURCE_PATH, ARCHIVE_PATH])
+def test_all_page_reads_match_page_by_page_reads(
+    archive_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    C4: an all-pages read of a solid 7z decodes it once, not once a page.
+
+    Read one by one, each page re-decoded the solid block from its start,
+    so reading every page cost the square of the page count. The pages
+    are byte for byte what a single-page read returns.
+    """
+    with Comicbox(archive_path) as car:
+        count = car.get_page_count()
+        expected = [car.get_page_by_index(index) for index in range(count)]
+    assert count > 1
+    calls: list[int] = []
+    real = Archive.extract_7zipfile
+
+    def counting(archive: Any, factory: Any, filenames: Any) -> None:
+        calls.append(len(filenames))
+        real(archive, factory, filenames)
+
+    monkeypatch.setattr(Archive, "extract_7zipfile", staticmethod(counting))
+    out = tmp_path / "pages"
+    out.mkdir()
+
+    with Comicbox(archive_path) as car:
+        pages = list(car.get_pages())
+        car.extract_pages(0, None, out)
+
+    assert pages == expected
+    names = sorted(out.iterdir())
+    assert [path.read_bytes() for path in names] == expected
+    if archive_path.suffix == ".cb7":
+        assert calls == [count, count]
