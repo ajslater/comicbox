@@ -121,3 +121,20 @@ def test_an_inode_of_0_is_never_trusted(
 
     assert len({file_key(path) for path in paths}) == len(paths)
     assert _same_files(paths).same_as == {}
+
+
+def test_two_case_spellings_of_a_missing_name_are_one_destination(
+    tmp_path: Path,
+) -> None:
+    """
+    A7: a conversion's destination is a name with nothing there yet.
+
+    On a case-insensitive disk ``issue.cbz`` and ``ISSUE.cbz`` are one file
+    once written, so two conversions (``issue.cbt``, ``ISSUE.cb7``) must not
+    both be let through to it.
+    """
+    assert file_key(tmp_path / "issue.cbz") == file_key(tmp_path / "ISSUE.cbz")
+    composed = unicodedata.normalize("NFC", "Café.cbz")
+    decomposed = unicodedata.normalize("NFD", "Café.cbz")
+    assert file_key(tmp_path / composed) == file_key(tmp_path / decomposed)
+    assert file_key(tmp_path / "issue.cbz") != file_key(tmp_path / "other.cbz")

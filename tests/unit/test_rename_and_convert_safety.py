@@ -10,13 +10,16 @@ add a second hazard: archives differing only by suffix all convert to one
 from __future__ import annotations
 
 import shutil
+import threading
 import zipfile
-from typing import TYPE_CHECKING
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from comicbox.box import Comicbox
 from comicbox.box.archive.write import (
+    ComicboxArchiveWrite,
     _claim_destination,
     _release_destination,
     tmp_archive_path,
@@ -24,7 +27,7 @@ from comicbox.box.archive.write import (
 from comicbox.config import get_config
 from comicbox.exceptions import DestinationOccupiedError
 from comicbox.write import BulkWriteItem, bulk_write
-from tests.const import CIX_CBT_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
+from tests.const import CB7_SOURCE_PATH, CIX_CBT_SOURCE_PATH, CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -462,3 +465,76 @@ def test_a_link_still_changes_the_case_of_its_own_name(tmp_path: Path) -> None:
     assert [path.name for path in library.iterdir()] == ["X.cbz"]
     assert respelled.is_symlink()
     assert real.is_file()
+
+
+def test_a_claim_holds_every_case_spelling_of_a_new_name(tmp_path: Path) -> None:
+    """A7: ``issue.cbz`` held refuses ``ISSUE.cbz``, one file on most disks."""
+    dest = tmp_path / "issue.cbz"
+    other = tmp_path / "ISSUE.cbz"
+    _claim_destination(dest, tmp_path / "issue.cbt")
+    try:
+        with pytest.raises(DestinationOccupiedError) as exc_info:
+            _claim_destination(other, tmp_path / "ISSUE.cb7")
+    finally:
+        _release_destination(dest)
+    assert exc_info.value.kind == "inflight"
+    _claim_destination(other, tmp_path / "ISSUE.cb7")
+    _release_destination(other)
+
+
+def _case_insensitive(directory: Path) -> bool:
+    probe = directory / "case-probe"
+    probe.write_bytes(b"")
+    try:
+        return (directory / "CASE-PROBE").exists()
+    finally:
+        probe.unlink()
+
+
+@pytest.mark.parametrize("preflight", [True, False])
+def test_concurrent_case_variant_conversions_keep_one_original(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, preflight: bool
+) -> None:
+    """
+    A7: ``issue.cbt`` and ``ISSUE.cb7`` both convert to one CBZ there.
+
+    Both writers passed the claim and the finished-file check, the second
+    replaced the first's CBZ, and under ``delete_orig`` both originals
+    were unlinked: one comic gone. The barrier holds each writer after its
+    pages are copied so the two overlap; one that is refused never reaches
+    it, and the other then waits out the short timeout.
+    """
+    if not _case_insensitive(tmp_path):
+        pytest.skip("this disk is case-sensitive")
+    cbt = tmp_path / "issue.cbt"
+    cb7 = tmp_path / "ISSUE.cb7"
+    shutil.copy(CIX_CBT_SOURCE_PATH, cbt)
+    shutil.copy(CB7_SOURCE_PATH, cb7)
+    barrier = threading.Barrier(2, timeout=1)
+    original = ComicboxArchiveWrite._copy_archive_files_to_new_archive
+
+    def copy_then_wait(self: ComicboxArchiveWrite, *args: Any, **kwargs: Any) -> None:
+        original(self, *args, **kwargs)
+        with suppress(threading.BrokenBarrierError):
+            barrier.wait()
+
+    monkeypatch.setattr(
+        ComicboxArchiveWrite, "_copy_archive_files_to_new_archive", copy_then_wait
+    )
+    items = [
+        BulkWriteItem(path=path, patch={"title": "x"}, formats=_YAML)
+        for path in (cbt, cb7)
+    ]
+    config = get_config({"comicbox": {"general": {"delete_orig": True}}})
+
+    results = list(
+        bulk_write(items, workers=2, base_config=config, preflight=preflight)
+    )
+
+    written = [result for result in results if result.written]
+    refused = [result for result in results if not result.written]
+    assert len(written) == 1
+    assert len(refused) == 1
+    assert isinstance(refused[0].error, DestinationOccupiedError)
+    assert refused[0].path.exists()
+    assert not written[0].path.exists()

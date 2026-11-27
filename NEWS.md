@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- Converting two comics whose names differ only by case and suffix at once no
+  longer overwrites one with the other on a case-insensitive disk.
+
 ## v5.7.1
 
 ### ✨ Added

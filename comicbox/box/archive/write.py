@@ -31,7 +31,7 @@ from comicbox.exceptions import (
 if TYPE_CHECKING:
     from pdffile import PDFFile
 
-FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | Path
+FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | str | Path
 
 # A conversion's temporary archive: a dot name ending in .tmp, never a comic
 # suffix, so a library watcher skips its creation and its replace alike.
@@ -69,12 +69,16 @@ def file_key(path: Path) -> FileKey:
     name on a case-insensitive disk, or its NFC and NFD forms on one that
     normalizes names, as macOS does. An inode alone is not trusted, as some network
     and FUSE filesystems give every file the same one. A path with nothing
-    there yet, such as a conversion's destination, is its resolved spelling.
+    there yet, such as a conversion's destination, is its resolved spelling
+    case-folded and Unicode-normalized: ``issue.cbz`` and ``ISSUE.cbz`` are
+    one file once either is written to a case-insensitive disk, so two
+    conversions must not both claim them. On a case-sensitive disk that
+    refuses one of two concurrent writes to names differing only by case.
     """
     try:
         stat = path.stat()
     except OSError:
-        return path.resolve()
+        return unicodedata.normalize("NFC", str(path.resolve()).casefold())
     if not stat.st_ino:
         return path.resolve()
     if stat.st_nlink > 1:
@@ -108,13 +112,12 @@ def _claim_destination(destination: Path, source: Path) -> None:
     Take a write destination, refusing one already in flight.
 
     The claim is on the file, not the spelling: ``lib/link.cbz``, a link to
-    ``cw1.cbz``, is refused while ``cw1.cbz`` is being written.
+    ``cw1.cbz``, is refused while ``cw1.cbz`` is being written, and
+    ``ISSUE.cbz`` while a conversion to ``issue.cbz`` is.
     """
     key = file_key(destination)
     with _INFLIGHT_GUARD:
-        if destination in _INFLIGHT_DESTINATIONS or (
-            key in _INFLIGHT_DESTINATIONS.values()
-        ):
+        if key in _INFLIGHT_DESTINATIONS.values():
             raise DestinationOccupiedError(source, destination, "inflight")
         _INFLIGHT_DESTINATIONS[destination] = key
 
