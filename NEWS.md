@@ -15,6 +15,7 @@
 - CoMet leaves out an issue that is not a whole number and warns when it has no
   title, which its schema requires.
 - PDF author metadata includes Plot, Story, Translator and Author credits.
+- Filenames write issue `1/2` as `½` instead of inventing a title from the `2`.
 
 ## v5.7.1
 
