@@ -7,6 +7,8 @@
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
 - Numbers with a decimal comma, thousands separator or fraction are dropped with
   a warning instead of cut to their first digits.
+- MetronInfo leaves out zero issue and volume counts and prices with no country,
+  which its schema rejects.
 
 ## v5.7.1
 
