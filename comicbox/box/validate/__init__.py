@@ -1,6 +1,5 @@
 """Validate methods."""
 
-import sys
 from pathlib import Path
 from types import MappingProxyType
 
@@ -9,7 +8,7 @@ from loguru import logger
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
 from comicbox.box.validate.guess_format import guess_format
-from comicbox.exceptions import MetadataError
+from comicbox.exceptions import MetadataError, ValidationFailedError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.sources import MetadataSources
 from comicbox.validate.spec import build_validator, validation_failure_exceptions
@@ -77,6 +76,7 @@ class ComicboxValidate(ComicboxDumpToFiles):
                 for source_data in source_data_list:
                     validated &= validate_source(source_data)
         if not validated:
-            logger.error("Metadata validation failed")
-            sys.exit(1)
+            # Raised, not exited: the Runner fails this file and goes on.
+            reason = f"{self._path}: metadata validation failed"
+            raise ValidationFailedError(reason)
         logger.success("Metadata validation succeeded")

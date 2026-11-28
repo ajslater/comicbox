@@ -27,6 +27,7 @@ from comicbox.exceptions import (
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
     UsageError,
+    ValidationFailedError,
 )
 from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
@@ -49,10 +50,10 @@ if TYPE_CHECKING:
 #: comic whose tag file did not parse, a write or rename would land on a
 #: file already there, a PDF write would harm another attachment, -w names
 #: no format the archive can hold, the comic is read-only, a conversion
-#: would lose one of two members of one name, or an export or extraction
-#: target is unsafe or not a directory. A traceback tells the user nothing the
-#: message doesn't, so these log one line. Anything else is a bug and earns
-#: the stack.
+#: would lose one of two members of one name, an export or extraction
+#: failed, or the comic's metadata failed --validate. A traceback tells the
+#: user nothing the message doesn't, so these log one line. Anything else is
+#: a bug and earns the stack.
 _EXPECTED_FILE_ERRORS = (
     ComicNotFoundError,
     UnsupportedArchiveTypeError,
@@ -63,6 +64,7 @@ _EXPECTED_FILE_ERRORS = (
     ReadOnlyComicError,
     DuplicateMemberError,
     ExportError,
+    ValidationFailedError,
 )
 
 #: The online sources that hold process-wide clients to release at the
