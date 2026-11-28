@@ -83,9 +83,9 @@
 - `comicbox doctor` warns about each config value a run ignores or defaults,
   such as an invalid format key, merge order source or cache ttl, and about the
   removed Metron `user` and `pass` keys.
-- `general.loglevel` takes a level name in any case, such as `debug`; an unknown
-  name is a one-line config error, and a doctor failure, instead of a traceback
-  on every run.
+- `general.loglevel` takes a level name in any case, such as `debug`; anything
+  but a level name or a whole number 0 or more is a one-line config error, and a
+  doctor failure, instead of a traceback on every run.
 - `COMICBOX_ONLINE__CACHE__MODE=on` or `off`, and an unquoted `mode: off` in a
   config file, work instead of failing every run.
 - An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of

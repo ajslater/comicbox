@@ -177,3 +177,47 @@ def test_per_source_auto_threshold_in_range(value: float) -> None:
         _per_source({"metron": {"auto_threshold": value}})["metron"].auto_threshold
         == value
     )
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "true", "25.5", "25.0", "[1]"])
+def test_a_loglevel_that_is_no_level_is_a_configuration_error(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    """A level is a known name or a whole number 0 or more; nothing else runs."""
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    with pytest.raises((ConfigurationError, ConfigTypeError), match="loglevel"):
+        get_config({})
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "25.5"])
+def test_a_loglevel_that_is_no_level_in_a_config_file(tmp_path: Path, raw: str) -> None:
+    (tmp_path / "config.yaml").write_text(
+        f"comicbox:\n  general:\n    loglevel: {raw}\n"
+    )
+    with pytest.raises(ConfigurationError, match=r"general\.loglevel"):
+        get_config({})
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("0", 0), ("25", 25), ("60", 60)])
+def test_a_whole_number_loglevel_is_kept(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: int
+) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    assert get_config({}).general.loglevel == expected
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "25.5"])
+def test_a_loglevel_that_is_no_level_exits_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    raw: str,
+) -> None:
+    from comicbox import cli
+
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    for flags in ((), ("-Q",)):
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main(("comicbox", *flags, "-p", str(tmp_path / "x.cbz")))
+        assert exc_info.value.code == 1
+        assert "general.loglevel" in capsys.readouterr().out

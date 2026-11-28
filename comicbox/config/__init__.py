@@ -12,6 +12,7 @@ from confuse.templates import (
     Choice,
     Integer,
     MappingTemplate,
+    Number,
     OneOf,
     Optional,
     Sequence,
@@ -20,7 +21,7 @@ from confuse.templates import (
 from loguru import logger
 
 from comicbox._pdf import PAGE_FORMAT_VALUES
-from comicbox.config.computed import compute_config
+from comicbox.config.computed import compute_config, parse_loglevel
 from comicbox.config.online import (
     ONLINE_TEMPLATE,
     TTL_TEMPLATE,
@@ -76,7 +77,9 @@ _TEMPLATE = MappingTemplate(
                         "config": Optional(OneOf((str, Path))),
                         "recurse": bool,
                         "dry_run": bool,
-                        "loglevel": OneOf((String(), Integer())),
+                        # Number, not Integer, which rounds a fraction:
+                        # parse_loglevel refuses what is no level.
+                        "loglevel": OneOf((String(), Number())),
                         "dest_path": OneOf((str, Path)),
                         "delete_keys": Optional(_NON_MAPPING_CONTAINER),
                         "delete_orig": bool,
@@ -185,34 +188,13 @@ def _resolve_merge_order(
     return tuple(out)
 
 
-def _parse_loglevel(raw: str | int) -> str | int:
-    """
-    Name a loguru level in any case; leave a number as it is.
-
-    loguru's names are case-sensitive, so ``loglevel: debug`` passed
-    validation and then failed every run as it set up logging.
-    """
-    if not isinstance(raw, str):
-        return raw
-    name = raw.strip().upper()
-    try:
-        logger.level(name)
-    except ValueError:
-        reason = (
-            f"general.loglevel: unknown level {raw!r}; "
-            "use TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR or CRITICAL"
-        )
-        raise ConfigurationError(reason) from None
-    return name
-
-
 def _build_general_settings(general_block: Any) -> GeneralSettings:
     metadata_cli = general_block.metadata_cli
     return GeneralSettings(
         config=general_block.config,
         recurse=bool(general_block.recurse),
         dry_run=bool(general_block.dry_run),
-        loglevel=_parse_loglevel(general_block.loglevel),
+        loglevel=parse_loglevel(general_block.loglevel),
         dest_path=general_block.dest_path,
         delete_keys=frozenset(general_block.delete_keys or ()),
         delete_orig=bool(general_block.delete_orig),

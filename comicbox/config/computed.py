@@ -10,6 +10,7 @@ from loguru import logger
 
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
+from comicbox.exceptions import ConfigurationError
 from comicbox.print import PrintPhases
 from comicbox.version import DEFAULT_TAGGER
 
@@ -65,14 +66,37 @@ def quiet_loglevel(quiet: int) -> str:
     return _QUIET_LOGLEVEL.get(quiet, "CRITICAL")
 
 
-def _level_no(level: Any) -> int | None:
-    """Return a loglevel's number, or None if loguru has no such level."""
-    if isinstance(level, int):
-        return level
+def parse_loglevel(raw: Any) -> str | int:
+    """
+    Read a loglevel: a loguru level name in any case, or a whole number 0 or up.
+
+    loguru's names are case-sensitive, so ``loglevel: debug`` passed
+    validation and then failed every run as it set up logging, as a
+    negative number still did. A boolean (YAML's bare ``yes``) and a
+    fraction are no level either.
+    """
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        if raw >= 0:
+            return raw
+    elif isinstance(raw, str):
+        name = raw.strip().upper()
+        with contextlib.suppress(ValueError):
+            logger.level(name)
+            return name
+    reason = (
+        f"general.loglevel: unknown level {raw!r}; use TRACE, DEBUG, INFO, "
+        "SUCCESS, WARNING, ERROR, CRITICAL or a whole number 0 or more"
+    )
+    raise ConfigurationError(reason)
+
+
+def _level_no(raw: Any) -> int | None:
+    """Return a loglevel's number, or None if it is no level."""
     try:
-        return logger.level(str(level).strip().upper()).no
-    except ValueError:
+        level = parse_loglevel(raw)
+    except ConfigurationError:
         return None
+    return level if isinstance(level, int) else logger.level(level).no
 
 
 def _fold_quiet(config: Subview) -> None:
