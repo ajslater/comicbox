@@ -94,6 +94,31 @@ def test_close_keeps_the_cache_entries() -> None:
     assert metron._gate_cache
 
 
+def test_close_forgets_the_daily_quota_figure() -> None:
+    """
+    A13: an exhausted day must not outlive the run that spent it.
+
+    The gate is cached for the life of the process, so a long-lived
+    embedder that ran the quota to zero aborted every later lookup until
+    restart. Closing at the end of a run forgets the figure; the burst
+    pacing the gate learned is kept.
+    """
+    _seed(_ClosableSession())
+    gate = metron._gate_cache["k"]
+    gate.observe(
+        burst_limit=30, burst_remaining=30, sustained_limit=5000, sustained_remaining=0
+    )
+
+    metron.close_shared_sessions()
+
+    assert metron._gate_cache["k"] is gate
+    gate.acquire()
+    gate.release()
+    stats = gate.stats()
+    assert stats.sustained_remaining is None
+    assert stats.burst_limit == 30
+
+
 def test_close_tolerates_a_double_without_close() -> None:
     """Tests seed fakes; a missing `close` must not break the teardown."""
     _seed(_UncloseableSession())

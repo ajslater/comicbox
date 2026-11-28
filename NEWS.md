@@ -150,6 +150,9 @@
   that comic instead of every later issue of its series.
   `preload_resolution(action='manual')` takes the `path` of the one comic it
   answers and refuses to run without one.
+- Library: an `OnlineSession` run after one that spent Metron's daily quota
+  looks it up afresh instead of stopping at once, or skipping new searches,
+  until the process restarts.
 
 ### 🔒 Security
 

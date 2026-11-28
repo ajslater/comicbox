@@ -187,10 +187,16 @@ def close_shared_sessions() -> None:
     the `SqliteCache` connection, which `Session.close()` leaves open.
     The cache entries survive -- a closed mokkari Session and SqliteCache
     both reopen on demand, and the gate and `rate_limit_status` are still
-    the right ones.
+    the right ones. Each gate forgets its daily-quota figure, though,
+    which can only fall within a run: the next run's first response
+    reports it afresh, so a day spent once does not refuse every later
+    run in a long-lived process.
     """
     with _session_cache_lock:
         entries = list(_session_cache.values())
+        gates = list(_gate_cache.values())
+    for gate in gates:
+        gate.forget_sustained()
     for session, _signature in entries:
         # Tests seed fakes that are not real Sessions.
         for closeable in (session, getattr(session, "cache", None)):
