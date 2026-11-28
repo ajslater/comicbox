@@ -26,6 +26,7 @@ from comicbox.readinglists import (
 )
 from comicbox.readinglists.registry import xml_root
 from comicbox.series_name import normalize_series
+from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -212,3 +213,106 @@ def test_a_quoted_value_is_cut_short() -> None:
     (warning,) = result.warnings
     assert "is not an entry" in warning
     assert len(warning) < 120
+
+
+# ------------------------------------------------- a root that is not a list
+
+_TEXT_ROOTS = (
+    '<?xml version="1.0"?><ReadingList>hello</ReadingList>',
+    '<?xml version="1.0"?><ReadingList id="1">hello</ReadingList>',
+)
+
+
+@pytest.mark.parametrize("text", _TEXT_ROOTS, ids=["text", "attributes-and-text"])
+@pytest.mark.parametrize("as_bytes", [False, True], ids=["str", "bytes"])
+@pytest.mark.parametrize("fmt", [None, "cbl"], ids=["detected", "cbl"])
+def test_a_reading_list_of_text_is_a_format_error(
+    text: str, *, as_bytes: bool, fmt: str | None
+) -> None:
+    """``<ReadingList>hello</ReadingList>`` raised AttributeError."""
+    data = text.encode() if as_bytes else text
+    with pytest.raises(ReadingListFormatError):
+        loads(data, fmt=fmt)
+
+
+# ------------------------------------------------------------- UTF-16 and -32
+
+_UTF16_CBL = (
+    '<?xml version="1.0" encoding="utf-16"?><ReadingList><Name>X</Name>'
+    '<Books><Book Series="A" Number="1"/></Books></ReadingList>'
+)
+_JSON_CBL = (TEST_FILES_DIR / "readinglists" / "json-cbl" / "minimal.json").read_text()
+
+
+@pytest.mark.parametrize("codec", ["utf-16", "utf-16-le", "utf-16-be"])
+def test_a_utf16_cbl_with_a_bom_is_detected_and_read(codec: str) -> None:
+    """Windows 'Unicode' .cbl files decoded to NULs and failed as YAML."""
+    data = _UTF16_CBL.encode(codec)
+    if codec != "utf-16":
+        data = "﻿".encode(codec) + data
+    assert detect_format(data) is ReadingListFormats.CBL
+    assert loads(data).reading_list["name"] == "X"
+
+
+@pytest.mark.parametrize("codec", ["utf-16", "utf-32"])
+def test_a_json_cbl_with_a_bom_in_utf16_or_32_is_read(codec: str) -> None:
+    data = _JSON_CBL.encode(codec)
+    result = loads(data)
+    assert result.fmt is ReadingListFormats.JSON_CBL
+    assert result.reading_list["name"] == "Minimal"
+
+
+# ------------------------------------------------- an internal DTD subset
+
+_ENTITY_CBL = (
+    '<?xml version="1.0"?><!DOCTYPE ReadingList [<!ENTITY x "y">]>'
+    "<ReadingList><Name>&x;</Name></ReadingList>"
+)
+
+
+def test_an_internal_subset_is_skipped_to_find_the_root() -> None:
+    assert xml_root(_ENTITY_CBL) == "ReadingList"
+
+
+@pytest.mark.parametrize(
+    ("data", "fmt"),
+    [(_ENTITY_CBL, None), (_ENTITY_CBL.encode(), None), (_ENTITY_CBL.encode(), "cbl")],
+    ids=["str", "bytes", "bytes-cbl"],
+)
+def test_an_entity_declaration_is_refused_as_entities(
+    data: str | bytes, fmt: str | None
+) -> None:
+    """It was 'not a reading list', or with fmt='cbl' a bare ValueError."""
+    with pytest.raises(ReadingListFormatError, match="entities"):
+        loads(data, fmt=fmt)
+
+
+def test_many_doctypes_before_the_root_are_linear() -> None:
+    text = "<!DOCTYPE x>" * 20000 + "!"
+    with _quickly():
+        assert xml_root(text) is None
+
+
+def _yaml_loads(monkeypatch: pytest.MonkeyPatch, **kwargs: str) -> int:
+    """Count the times a YAML document is built while one list is read."""
+    from ruamel.yaml import YAML
+
+    calls = []
+    load = YAML.load
+
+    def counting(self: YAML, stream: object) -> object:
+        calls.append(stream)
+        return load(self, stream)
+
+    monkeypatch.setattr(YAML, "load", counting)
+    text = "reading_list:\n  name: X\n  entries:\n    - series: {name: A}\n"
+    assert loads(text, **kwargs).reading_list["name"] == "X"
+    monkeypatch.undo()
+    return len(calls)
+
+
+def test_detecting_yaml_builds_no_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Detection built the whole document once only to read its top keys."""
+    detected = _yaml_loads(monkeypatch)
+    given = _yaml_loads(monkeypatch, fmt="yaml")
+    assert detected == given

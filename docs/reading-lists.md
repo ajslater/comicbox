@@ -283,7 +283,10 @@ list and a report. It is pure: no files, no network.
   numbers: Z-Men (1991) volume 1 #1 and Z-Men (1991) volume 2 #1 join. Rows with
   one series, volume number and issue join by name too, as Bladehawk volume 2 #1
   and Bladehawk (2011) volume 2 #1 do, but not when their years differ: Z-Men
-  (1963) volume 1 #1 and Z-Men (1991) volume 1 #1 stay apart.
+  (1963) volume 1 #1 and Z-Men (1991) volume 1 #1 stay apart. The volume number
+  is joined as the cover year is, by the rule above: a row with no year, such as
+  Z-Men volume 1 #1, joins its exact copy first, and stays an entry of its own
+  beside Z-Men (1963) and Z-Men (1991) volume 1 #1, in one list or in two.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
@@ -330,47 +333,61 @@ among them, in two passes:
    database, the series name, start year and issue number, the series name,
    volume number and issue number, or the series name, cover year and issue
    number. Every copy of an issue is found. A comic sharing only the volume
-   number is refused for another start year.
+   number or only the cover year is judged as below.
 2. For each entry the first pass did not find, variants of its series name,
    among the comics no entry found in the first pass: the name without a
    trailing year or volume in parentheses (`Bladehawk (2016)`,
    `Z-Men (Vol. 2)`), without a leading article (`The Amazing Snail-Man`), and
-   without a reprint suffix such as TPB or Omnibus. A year or volume is never
+   without a reprint suffix such as TPB or Omnibus, and these together, so
+   `The Bladehawk (2016) TPB` comes to `Bladehawk`. A year or volume is never
    added, so `Ivory Knight` is not the series `Ivory Knight 2020`. When a
    variant finds comics of more than one series, the cover year picks the
    series.
 
 A comic is never matched to an entry when both carry an id from one database and
-the ids differ, or both have cover years more than a year apart.
+the ids differ, or both have cover years more than a year apart. A barcode (UPC,
+GTIN, ISBN or ASIN) is the exception: it names a cover, a printing or an edition
+of an issue, so a shared one finds a comic and a differing one never refuses
+one, as in `combine`.
 
-A comic that shares only the cover year with an entry is judged with the rest of
-the entry's comics, by volume as `combine` tells them apart. It is refused when
-it is of another volume than the entry. When some comic found for an entry, by
-any key, tells its volume exactly as the entry does, the cover year finds only
-such comics: every copy of it, and no comic that fits the entry more loosely;
-comics found by id or name are found as ever. An entry with no year over a comic
-with no year and a 2011 comic finds the first alone; over the 2011 comic alone
-it finds that. With no such comic, beside comics the entry matched by id or name
-that tell their volume the same way, by a start year or by a volume number, it
-is refused unless it is of one of theirs. Otherwise, when the comics matched on
-the cover year alone are of more than one volume, such as Ardent #1 of 2016 with
-no start year against the 2011 and 2016 volumes, or against volumes 1 and 2,
-they are all ambiguous: `match` marks them, and `write-arcs` tags none of them
-and exits 1. A start year or volume on the entry settles it. An entry with no
-year beside X (1999) #1 and X volume 2 #1, which cannot be compared, still finds
-both. A refused comic is not listed under an entry that was found. Under a
-missing entry, `match` lists, marked `refused`, each comic that has its series,
-issue and cover year but is of another volume (`other-volume`), and each that
-has its series, start year or volume and issue but a cover year more than a year
-off (`cover-year`). A comic another entry found is not listed, and neither is
-one whose id from some database differs from the entry's, nor one that only
-shares the issue number with another volume and year. An entry with no id, start
-year, volume or cover year matches nothing, as in `combine`. `match` prints each
-entry with each comic that is it on a row of its own, and how it matched (`id`,
-`name`, `name-year` or `variant`), or `missing`; a comic with a tag file
-comicbox could not read is marked. The count goes to stderr. Linked directories
-are not searched, as with comicbox's `--recurse`, and a directory that cannot be
-read is a warning: the command then exits 1.
+The volume number and the cover year are loose keys: a comic that shares only
+one of them with an entry may be of another volume than a comic that shares it
+too, so such comics are judged together, by volume as `combine` tells them
+apart:
+
+1. A comic of another volume than the entry is refused: Z-Men (1963) volume 1 #1
+   for a Z-Men (1991) volume 1 #1 entry.
+2. When some comic found for the entry, by any key, tells its volume exactly as
+   the entry does, a loose key finds only such comics: every copy of it, and no
+   comic that fits the entry more loosely; comics found by id or by the series,
+   start year and issue are found as ever. An entry with no year over a comic
+   with no year and a 2011 comic finds the first alone; over the 2011 comic
+   alone it finds that.
+3. Otherwise a loose comic of another volume than any comic the entry matched by
+   id or by start year is refused: Z-Men volume 1 #1 with the 1963 comic's id
+   does not find Z-Men (1991) volume 1 #1.
+4. When any two of the loose comics left are of two volumes, they are all
+   ambiguous: `match` marks them, and `write-arcs` exits 1 without tagging any
+   of them. Ardent #1 of 2016 with no start year against the 2011 and 2016
+   volumes, or against volumes 1 and 2, is ambiguous, and so is Z-Men volume 1
+   #1 against Z-Men (1963) and Z-Men (1991) volume 1 #1. A start year or volume
+   on the entry settles it.
+
+An entry with no year beside X (1999) #1 and X volume 2 #1, which cannot be
+compared, still finds both. A refused comic is not listed under an entry that
+was found. Under a missing entry, `match` lists, marked `refused`, each comic
+that has its series, issue and cover year but is of another volume
+(`other-volume`), and each that has the entry's id, or its series, start year or
+volume and issue, but a cover year more than a year off (`cover-year`). A comic
+another entry found is not listed, and neither is one whose id from some
+database differs from the entry's, nor one that only shares the issue number
+with another volume and year. An entry with no id, start year, volume or cover
+year matches nothing, as in `combine`. `match` prints each entry with each comic
+that is it on a row of its own, and how it matched (`id`, `name`, `name-year` or
+`variant`), or `missing`; a comic with a tag file comicbox could not read is
+marked. The count goes to stderr. Linked directories are not searched, as with
+comicbox's `--recurse`, and a directory that cannot be read is a warning: the
+command then exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also

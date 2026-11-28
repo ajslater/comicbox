@@ -4,9 +4,10 @@ Which rows of several lists are the same issue.
 Every row is a node ``(input index, row index)`` carrying its
 ``entry_keys``. A key is qualified by how many earlier rows of its own input
 carry it, so the first occurrence of a repeated issue lines up with the
-first in another list and the second with the second. The cover-year key
-is counted among rows of the same signature (``discriminators``): rows of
-two volumes are not repeats of one issue.
+first in another list and the second with the second. The loose keys, the
+volume key and the cover-year key, are counted among rows of the same
+signature (``discriminators``): rows of two volumes are not repeats of one
+issue.
 
 Two rows of different inputs that share a qualified key are linked, and
 links join groups transitively: a ComicVine id joining A and B and a Metron
@@ -20,15 +21,17 @@ refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
 afterwards.
 
-The cover-year key links a row to its candidates: rows of other inputs with
-the same key and occurrence whose signatures do not conflict with its own.
+Each loose key, the volume key first, then the cover-year key, links a row
+to its candidates: rows of other inputs with the same key and occurrence
+whose signatures do not conflict with its own.
 An exact candidate has the same signature, a loose one another. Every exact
 pair is linked, so a list combines with itself unchanged. A loose pair is
 linked only when neither row has an exact candidate in the other's input,
 each is the other's only loose candidate there, and neither has two
 candidates that conflict over all the other inputs: a row that cannot tell
 which volume it is stays its own entry. No group formed through cover-year
-links holds two rows whose signatures conflict.
+links holds two rows whose signatures conflict, nor through volume links two
+years.
 """
 
 from collections import Counter
@@ -36,10 +39,11 @@ from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from comicbox.enums.comicbox import IdSources
 from comicbox.identifiers import ID_SOURCE_VALUES
 from comicbox.readinglists.identity import (
+    BARCODE_ID_SOURCES,
     ID_KEY_KIND,
+    NAME_KEY_KIND,
     NAME_YEAR_KEY_KIND,
     VOLUME_DISCRIMINATOR,
     Discriminators,
@@ -54,19 +58,10 @@ QualifiedKey = tuple[EntryKey, int]
 _Link = tuple[tuple[int, int], Node, Node]
 _Guard = Callable[[Iterable[Discriminators]], bool]
 
-# A barcode differing between two rows of one issue is a variant cover, a
-# printing or an edition, not a bad mapping.
-_BARCODE_SOURCES = frozenset(
-    {
-        IdSources.ASIN.value,
-        IdSources.GTIN.value,
-        IdSources.ISBN.value,
-        IdSources.UPC.value,
-    }
-)
 _ID_SOURCE_RANKS = {source: rank for rank, source in enumerate(ID_SOURCE_VALUES)}
 _NAME_STRENGTH = (1, 0)
-_VOLUME_STRENGTH = (1, 1)
+_VOLUME_EXACT_STRENGTH = (1, 1)
+_VOLUME_LOOSE_STRENGTH = (1, 2)
 _EXACT_STRENGTH = (2, 0)
 _LOOSE_STRENGTH = (2, 1)
 
@@ -78,7 +73,8 @@ def _years_conflict(values: Iterable[Discriminators]) -> bool:
 
 # What would make a link of each strength refused; ids are never refused.
 _GUARDS: Mapping[tuple[int, int], _Guard] = {
-    _VOLUME_STRENGTH: _years_conflict,
+    _VOLUME_EXACT_STRENGTH: _years_conflict,
+    _VOLUME_LOOSE_STRENGTH: _years_conflict,
     _EXACT_STRENGTH: any_conflict,
     _LOOSE_STRENGTH: any_conflict,
 }
@@ -166,19 +162,27 @@ class _Groups:
         return sorted(groups.values())
 
 
+def _is_volume_key(key: EntryKey) -> bool:
+    return key[0] == NAME_KEY_KIND and key[2] == VOLUME_DISCRIMINATOR
+
+
+def _is_loose(key: EntryKey) -> bool:
+    """Tell whether a key leaves a discriminator unsaid: volume or cover year."""
+    return key[0] == NAME_YEAR_KEY_KIND or _is_volume_key(key)
+
+
 def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
     """
     Qualify each row's keys by their count in earlier rows.
 
-    The cover-year key is counted among rows of the same signature.
+    The loose keys are counted among rows of the same signature.
     """
     counts: Counter[tuple[EntryKey, Discriminators | None]] = Counter()
     qualified = []
     for entry in entries:
         value = discriminators(entry)
         tallies = [
-            (key, value if key[0] == NAME_YEAR_KEY_KIND else None)
-            for key in entry_keys(entry)
+            (key, value if _is_loose(key) else None) for key in entry_keys(entry)
         ]
         qualified.append([(tally[0], counts[tally]) for tally in tallies])
         counts.update(tallies)
@@ -187,23 +191,31 @@ def _qualify(entries: Sequence[Mapping[str, Any]]) -> list[list[QualifiedKey]]:
 
 def _strength(key: EntryKey) -> tuple[int, int]:
     """
-    Rank an id or name key.
+    Rank an id or the year key.
 
-    Ids, better ranked databases first, then names by year, then by volume.
+    Ids, better ranked databases first, then names by year.
     """
     if key[0] == ID_KEY_KIND:
         return (0, _ID_SOURCE_RANKS.get(key[1], len(_ID_SOURCE_RANKS)))
-    return _VOLUME_STRENGTH if key[2] == VOLUME_DISCRIMINATOR else _NAME_STRENGTH
+    return _NAME_STRENGTH
 
 
-class _CoverYear:
-    """The rows holding one qualified cover-year key, and their candidates."""
+class _Loose:
+    """The rows holding one qualified loose key, and their candidates."""
 
-    __slots__ = ("candidates", "values")
+    __slots__ = ("candidates", "exact", "loose", "values")
 
     def __init__(
-        self, nodes: Sequence[Node], values: Mapping[Node, Discriminators]
+        self,
+        key: EntryKey,
+        nodes: Sequence[Node],
+        values: Mapping[Node, Discriminators],
     ) -> None:
+        self.exact, self.loose = (
+            (_VOLUME_EXACT_STRENGTH, _VOLUME_LOOSE_STRENGTH)
+            if _is_volume_key(key)
+            else (_EXACT_STRENGTH, _LOOSE_STRENGTH)
+        )
         self.values = values
         # A row's candidates: rows of other inputs whose signatures do not
         # conflict with its own.
@@ -235,11 +247,11 @@ class _CoverYear:
                 if other <= one:
                     continue
                 if self.values[one] == self.values[other]:
-                    yield (_EXACT_STRENGTH, one, other)
+                    yield (self.exact, one, other)
                 elif self._may_link_loosely(one, other) and self._may_link_loosely(
                     other, one
                 ):
-                    yield (_LOOSE_STRENGTH, one, other)
+                    yield (self.loose, one, other)
 
 
 def _links(
@@ -249,8 +261,8 @@ def _links(
     """List every pair of rows to link, strongest first."""
     links: list[_Link] = []
     for (key, _), nodes in holders.items():
-        if key[0] == NAME_YEAR_KEY_KIND:
-            links.extend(_CoverYear(nodes, values).links())
+        if _is_loose(key):
+            links.extend(_Loose(key, nodes, values).links())
             continue
         strength = _strength(key)
         links.extend(
@@ -302,7 +314,7 @@ class _Grouper:
         for member in members:
             for (_, source, value), _ in self._id_keys(member):
                 first = kept.setdefault(source, value)
-                if first != value and source not in _BARCODE_SOURCES:
+                if first != value and source not in BARCODE_ID_SOURCES:
                     self._conflicts.append(
                         GroupIdConflict(group, source, first, value, *member)
                     )

@@ -136,6 +136,9 @@ class CblTransform(ReadingListTransform):
         if isinstance(data, bytes | bytearray):
             try:
                 document = xmltodict.parse(bytes(data))
+            except ValueError as exc:
+                # xmltodict refuses an entity declaration with ValueError.
+                raise ReadingListFormatError(str(exc)) from exc
             except ExpatError as exc:
                 if not replaced:
                     raise ReadingListFormatError(describe_syntax_error(exc)) from exc
@@ -148,7 +151,8 @@ class CblTransform(ReadingListTransform):
     @override
     def load_document(self, document: Mapping[str, Any]) -> dict[str, Any]:
         """Keep an empty ``<Book />`` in its place, so positions count it."""
-        books = (document.get(self.root_tag) or {}).get(BOOKS_TAG)
+        root = document.get(self.root_tag)
+        books = root.get(BOOKS_TAG) if isinstance(root, Mapping) else None
         if isinstance(books, dict) and BOOK_TAG in books:
             items = books[BOOK_TAG]
             items = items if isinstance(items, list) else [items]

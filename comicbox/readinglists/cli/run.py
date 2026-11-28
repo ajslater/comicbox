@@ -36,9 +36,8 @@ from comicbox.readinglists.render import (
 from comicbox.readinglists.schema import ENTRIES_KEY
 from comicbox.readinglists.serialize import (
     ReadingListResult,
-    dumps,
+    dumps_with_losses,
     load,
-    lost_fields,
 )
 
 if TYPE_CHECKING:
@@ -181,8 +180,8 @@ class Run:
         self, reading_list: dict, fmt: ReadingListFormats, path: Path | None
     ) -> None:
         """Write a list to a file, or to stdout, after naming its losses."""
-        print_messages(self.err, lost_fields(reading_list, fmt), "lost")
-        text = dumps(reading_list, fmt)
+        text, lost = dumps_with_losses(reading_list, fmt)
+        print_messages(self.err, lost, "lost")
         if path is None:
             self.out.out(text, end="" if text.endswith("\n") else "\n")
             return
@@ -229,18 +228,16 @@ def _stop_reading(run: Run) -> Callable[[int, object], None]:
 
 
 def read_tagged_comics(
-    run: Run, directory: Path, config: "ComicboxSettings | None" = None
+    run: Run, directory: Path, config: "ComicboxSettings"
 ) -> Library:
     """
-    Read every comic under a directory, in path order.
+    Read every comic under a directory, in path order, with ``config``.
 
-    A comic that cannot be read is one error line, and a directory one
-    warning line; either way the command exits 1 and the rest are read.
+    ``config`` is the read config of ``library_configs``, so every tag
+    format is read whatever the user's config says. A comic that cannot be
+    read is one error line, and a directory one warning line; either way
+    the command exits 1 and the rest are read.
     """
-    if config is None:
-        from comicbox.config import get_config
-
-        config = get_config(Namespace(comicbox=Namespace()))
     previous = signal.signal(signal.SIGINT, _stop_reading(run))
     try:
         library = read_comics(directory, config, run.fail, log_level=run.log_level)

@@ -8,6 +8,24 @@
  
 ### 🐛 Fixed
 
+- `rl write-arcs` no longer tags two volumes of an issue for one entry with no
+  start year, and `combine` and `from-arcs` keep a row with only a volume number
+  apart from two volumes it fits.
+- `rl match` and `write-arcs` find variant covers and printings whose barcode
+  differs from the list's.
+- `rl from-arcs` reads every tag format, as `match` and `write-arcs` do,
+  whatever the config's `read.formats`, `metadata` and `delete_keys` say.
+- Reading lists saved as UTF-16 or UTF-32 with a byte order mark, as Windows
+  "Unicode" files are, are read.
+- `rl fetch` refuses a compressed download that ends early instead of reading
+  part of a list.
+- `rl convert` no longer reports as `lost` what a format adds, such as a CBL's
+  file source.
+- A `.cbl` whose reading list holds only text no longer stops a batch of `rl`
+  commands, and one that declares entities is refused for its entities.
+- `rl match` name variants compose: `The Bladehawk (2016) TPB` finds
+  `Bladehawk`.
+- `rl match` lists a comic with the entry's id but a far cover year as refused.
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
 - Numbers with a decimal comma, thousands separator or fraction are dropped with
   a warning instead of cut to their first digits.

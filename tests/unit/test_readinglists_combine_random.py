@@ -1,17 +1,20 @@
 """
-Combining randomized lists: the invariants that hold whatever the input.
+Combining and matching randomized lists: the invariants that hold whatever the input.
 
 Each is worked out from the generated fields, never by asking the code under
 test what it thinks: every row lands once, no entry holds two rows of one
 list, the first list's order is kept, a keyed list combines with itself
 unchanged, compare is symmetric, no group holds two volumes, and permuting a
-list that repeats no issue changes no group.
+list that repeats no issue changes no group. Matching a list against comics
+never tags two volumes for one entry, and a comic is always found, and
+taggable, by the entry made from its own tags.
 """
 
 import random
 from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -22,6 +25,7 @@ from comicbox.readinglists import (
     combine,
     compare,
 )
+from comicbox.readinglists.match import match_comics, plan_arcs
 from comicbox.readinglists.serialize import load_model
 
 
@@ -77,19 +81,24 @@ _DENSE_ROWS = (1, 2)
 SEEDS = range(80)
 
 
+# Each volume: its number and start year. A relaunch numbered volume 1 again
+# shares the volume key with the first: only their start years differ.
+_VOLUMES = ((1, 1999), (2, 2014), (1, 2020))
+
+
 def _volume_issues(numbers: range) -> list[_Issue]:
-    """Issues in volumes 1 and 2, started in 1999 and 2014, with one cover year."""
+    """Issues in volumes 1 and 2 and a relaunched 1, with one cover year."""
     return [
         _Issue(
             f"Series {number % 4}",
             number,
-            1999 if v == 1 else 2014,
-            f"cv{number}v{v}",
-            f"m{number}v{v}",
-            v,
+            year,
+            f"cv{number}v{index}",
+            f"m{number}v{index}",
+            volume,
         )
         for number in numbers
-        for v in (1, 2)
+        for index, (volume, year) in enumerate(_VOLUMES)
     ]
 
 
@@ -425,3 +434,82 @@ def test_the_generator_draws_every_form_in_one_list_and_rows_that_conflict() -> 
 def test_the_generator_makes_shared_ids() -> None:
     """The restated test is only worth having if some seed shares an id."""
     assert any(combine(_random_inputs(seed)).shared_ids for seed in SEEDS)
+
+
+# ------------------------------------------------------------------ matching
+
+
+def _comics(entries: list[dict[str, Any]]) -> dict[Path, dict[str, Any]]:
+    """Make each generated row a comic, its tags the row."""
+    return {Path(f"{row:03}.cbz"): entry for row, entry in enumerate(entries)}
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_matching_never_tags_two_volumes_for_one_entry(seed: int) -> None:
+    """
+    The comics planned for one entry never hold two start years or volumes.
+
+    The generator's ids are each volume's own, so two volumes planned for
+    one entry were found by a name key that could not tell them apart.
+    """
+    inputs = _random_inputs(seed)
+    for reading_list in inputs:
+        # The library: every other list's rows.
+        comics = _comics(
+            [
+                row
+                for other in inputs
+                if other is not reading_list
+                for row in other[ENTRIES_KEY]
+            ]
+        )
+        result = match_comics(reading_list, comics)
+        for found in result.found:
+            taggable = {
+                comic.path
+                for comic in found.comics
+                if comic.by.strict and not comic.ambiguous
+            }
+            rows = [comics[path] for path in taggable]
+            years = {row["series"].get("start_year") for row in rows} - {None}
+            volumes = {(row.get("volume") or {}).get("number") for row in rows} - {None}
+            assert len(years) <= 1, (found.position, sorted(taggable))
+            assert len(volumes) <= 1, (found.position, sorted(taggable))
+        planned = {
+            change.path for change in plan_arcs(reading_list, comics, result, "A")
+        }
+        assert planned <= {
+            comic.path for found in result.found for comic in found.comics
+        }
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_a_comic_is_found_by_the_entry_made_from_its_own_tags(seed: int) -> None:
+    """A thing compared with itself: found, and never ambiguous."""
+    for generated in _random_inputs(seed):
+        rows = [entry for entry in generated[ENTRIES_KEY] if _has_key(entry)]
+        comics = _comics(rows)
+        result = match_comics({**generated, ENTRIES_KEY: rows}, comics)
+        found = {one.position: one for one in result.found}
+        for position, path in enumerate(comics):
+            assert position in found, position
+            own = [comic for comic in found[position].comics if comic.path == path]
+            assert own, position
+            assert not own[0].ambiguous, position
+
+
+def test_the_generator_gives_one_volume_number_two_start_years() -> None:
+    """The volume key meets two years only if some list draws both."""
+    assert any(
+        len(
+            {
+                entry["series"].get("start_year")
+                for entry in rl[ENTRIES_KEY]
+                if (entry.get("volume") or {}).get("number") == 1
+            }
+            - {None}
+        )
+        > 1
+        for seed in SEEDS
+        for rl in _random_inputs(seed)
+    )

@@ -24,6 +24,7 @@ from comicbox.readinglists.registry import (
     as_text,
     detect_format,
     get_format,
+    text_codec,
 )
 from comicbox.readinglists.schema import (
     DATE_KEY,
@@ -100,13 +101,28 @@ def _partial_dates(
         if key == STORE_DATE_KEY:
             warnings.append(f"{here}; dropped")
             continue
-        result.setdefault(YEAR_KEY, parts.year)
-        read = f"year {parts.year}"
-        if parts.month is not None:
-            result.setdefault(MONTH_KEY, parts.month)
-            read += f", month {parts.month}"
-        warnings.append(f"{here}; read as {read}")
+        warnings.append(f"{here}; {_read_partial(result, parts)}")
     return {**entry, DATE_KEY: result}
+
+
+def _read_partial(result: dict[str, Any], parts: DateParts) -> str:
+    """
+    Fill a date's year and month from a partial cover date, and say how.
+
+    Only where the entry's own date agrees: a year or month it already gives
+    otherwise keeps the partial date out whole, so no date from neither
+    source is made.
+    """
+    for key, value in ((YEAR_KEY, parts.year), (MONTH_KEY, parts.month)):
+        given = result.get(key)
+        if value is not None and given is not None and given != value:
+            return f"dropped, as the entry gives {key} {given}"
+    result[YEAR_KEY] = parts.year
+    read = f"year {parts.year}"
+    if parts.month is not None:
+        result[MONTH_KEY] = parts.month
+        read += f", month {parts.month}"
+    return f"read as {read}"
 
 
 def _partial_date(value: Any) -> DateParts | None:
@@ -204,7 +220,7 @@ def resolve_format(
     Name the format given, else detect it, else raise with the reason.
 
     A YAML document that uses an alias is refused here, before anything
-    parses or validates it whole.
+    builds or validates it: detection reads only the parser's events.
     """
     with readable_depth():
         resolved = get_format(fmt) if fmt else detect_format(text)
@@ -219,11 +235,15 @@ def resolve_format(
 
 
 def _decode(data: str | bytes | bytearray) -> tuple[str, bool]:
-    """Decode bytes as UTF-8; say whether any had to be replaced."""
+    """
+    Decode bytes as UTF-8, or as UTF-32 or UTF-16 by their byte order mark.
+
+    Say whether any had to be replaced.
+    """
     if not isinstance(data, bytes | bytearray):
         return as_text(data), False
     try:
-        return bytes(data).decode("utf-8-sig"), False
+        return bytes(data).decode(text_codec(data)), False
     except UnicodeDecodeError:
         return as_text(data), True
 
@@ -253,7 +273,8 @@ def loads(
     """
     Read a reading list from a string or bytes, detecting its format.
 
-    Bytes are UTF-8, except XML, which is read in the encoding it declares.
+    Bytes are UTF-8, or UTF-32 or UTF-16 when a byte order mark says so,
+    except XML, which is read in the encoding it declares.
     """
     return _loads(data, fmt, None)
 
@@ -287,19 +308,32 @@ def dumps(reading_list: Mapping[str, Any], fmt: ReadingListFormats | str) -> str
     return transform.render(document)
 
 
-def lost_fields(
+def dumps_with_losses(
     reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
-) -> tuple[str, ...]:
+) -> tuple[str, tuple[str, ...]]:
     """
-    Name what writing this list in a format and reading it back would change.
+    Write a reading list in a format, and name what the format does not keep.
 
-    Exact: the list is written, read back and compared. Header keys such as
-    ``sources``, entry paths such as ``entries.date.cover_date``, and
-    ``entries #2, #5`` for entries the format cannot write at all.
+    ``dumps`` and ``lost_fields`` at once: the list is validated and
+    rendered once, and that text is the one read back.
     """
     resolved = get_format(fmt)
     model = _model_for_write(reading_list)
     transform = resolved.value.transform_class()
     text = transform.render(transform.from_reading_list(model))
     back = _loads(text, resolved, None).reading_list
-    return describe_losses(model, back, transform.unwritable(model))
+    return text, describe_losses(model, back, transform.unwritable(model))
+
+
+def lost_fields(
+    reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
+) -> tuple[str, ...]:
+    """
+    Name what writing this list in a format and reading it back does not keep.
+
+    Exact: the list is written, read back and compared; what the format adds
+    on the way back is not named. Header keys such as
+    ``sources``, entry paths such as ``entries.date.cover_date``, and
+    ``entries #2, #5`` for entries the format cannot write at all.
+    """
+    return dumps_with_losses(reading_list, fmt)[1]

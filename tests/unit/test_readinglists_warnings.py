@@ -356,3 +356,48 @@ def test_a_second_cbl_database_of_one_name_is_a_warning() -> None:
 )
 def test_root_keys_beside_the_list_are_named(text: str) -> None:
     assert loads(text).warnings == ("bogus: 1 dropped",)
+
+
+def _yaml_date(date_text: str) -> tuple[dict[str, Any], tuple[str, ...]]:
+    result = loads(
+        "reading_list:\n  name: x\n  entries:\n"
+        f"    - series: {{name: A}}\n      issue: {{name: '1'}}\n      date: {date_text}\n",
+        fmt="yaml",
+    )
+    return result.reading_list[ENTRIES_KEY][0]["date"], result.warnings
+
+
+_PARTIAL = "entries #1.date.cover_date: '2006-07' is not a whole date"
+
+
+@pytest.mark.parametrize(
+    ("date_text", "entry_date", "warning"),
+    [
+        # A year from neither source was made: 2005 with July of 2006.
+        (
+            "{year: 2005, cover_date: '2006-07'}",
+            {"year": 2005},
+            f"{_PARTIAL}; dropped, as the entry gives year 2005",
+        ),
+        # The month kept was 3, and the warning said 7.
+        (
+            "{year: 2006, month: 3, cover_date: '2006-07'}",
+            {"year": 2006, "month": 3},
+            f"{_PARTIAL}; dropped, as the entry gives month 3",
+        ),
+        (
+            "{year: 2006, cover_date: '2006-07'}",
+            {"year": 2006, "month": 7},
+            f"{_PARTIAL}; read as year 2006, month 7",
+        ),
+        (
+            "{cover_date: '2006-07'}",
+            {"year": 2006, "month": 7},
+            f"{_PARTIAL}; read as year 2006, month 7",
+        ),
+    ],
+)
+def test_a_partial_cover_date_beside_a_year_says_what_was_kept(
+    date_text: str, entry_date: dict[str, Any], warning: str
+) -> None:
+    assert _yaml_date(date_text) == (entry_date, (warning,))

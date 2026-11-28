@@ -152,6 +152,16 @@ class _Inflater:
         """Input not yet inflated because the output reached its limit."""
         return self._zlib.unconsumed_tail
 
+    @property
+    def eof(self) -> bool:
+        """Whether the stream reached its end: its last block, and its trailer."""
+        return self._zlib.eof
+
+    def ended_early(self) -> ReadingListFetchError:
+        """Say the body stopped before its stream's end."""
+        reason = f"{self._url}: its {self._encoding} body ends early."
+        return ReadingListFetchError(reason)
+
 
 class _BoundedBody:
     """Read one response's body within the cap, the deadline and a cancel."""
@@ -223,6 +233,11 @@ class _BoundedBody:
             if wire > self._max:
                 raise _over_limit(self._url, self._max)
             self._add(chunk)
+        # A close-delimited body cut short ends without error; only the
+        # stream's own end says it is whole. An empty body is left to fail
+        # as one, as an identity body would.
+        if self._inflater is not None and wire and not self._inflater.eof:
+            raise self._inflater.ended_early()
         return bytes(self._body)
 
 

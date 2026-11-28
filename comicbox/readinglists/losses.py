@@ -1,10 +1,11 @@
 """
-Name what a format changes: the model paths a round trip does not keep.
+Name what a format loses: the model paths a round trip does not keep.
 
 ``lost_fields`` writes a list, reads it back and compares, so its answer
-is exact by construction: every path on which the list read back differs
-from the list written is named, and nothing else. A flag at its default
-is the same as a flag left out.
+is exact by construction: every path where the list written has a value
+that the list read back does not keep is named, and nothing else. A value
+the format adds on the way back, such as a CBL's file source, is not a
+loss. A flag at its default is the same as a flag left out.
 """
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -49,9 +50,12 @@ def _leaves(data: Mapping[str, Any], prefix: str) -> dict[str, Any]:
     return leaves
 
 
-def _different(before: Mapping[str, Any], after: Mapping[str, Any]) -> set[str]:
+def _not_kept(before: Mapping[str, Any], after: Mapping[str, Any]) -> set[str]:
+    """Name each key ``before`` has a value at that ``after`` does not keep."""
     return {
-        key for key in set(before) | set(after) if before.get(key) != after.get(key)
+        key
+        for key, value in before.items()
+        if value is not None and after.get(key) != value
     }
 
 
@@ -59,13 +63,13 @@ def describe_losses(
     before: Mapping[str, Any], after: Mapping[str, Any], skipped: Sequence[int]
 ) -> tuple[str, ...]:
     """
-    Name the paths on which ``after`` differs from ``before``.
+    Name the paths where ``before`` has a value that ``after`` does not keep.
 
     Header keys come first, then entry paths such as
     ``entries.date.cover_date`` for any entry, then ``entries #2, #5`` for
     the entries ``skipped`` names, which were not written at all.
     """
-    lost = sorted(_different(_header(before), _header(after)))
+    lost = sorted(_not_kept(_header(before), _header(after)))
     kept = [
         entry
         for position, entry in enumerate(before.get(ENTRIES_KEY) or ())
@@ -75,7 +79,7 @@ def describe_losses(
     for entry, entry_back in zip_longest(
         kept, after.get(ENTRIES_KEY) or (), fillvalue={}
     ):
-        paths |= _different(
+        paths |= _not_kept(
             _leaves(entry, ENTRIES_KEY), _leaves(entry_back, ENTRIES_KEY)
         )
     lost.extend(sorted(paths))

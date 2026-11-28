@@ -13,14 +13,14 @@ import contextlib
 import json
 import re
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from comicbox import cli
 from comicbox.readinglists import ReadingListFormats, load
 from comicbox.readinglists import cli as readinglist_cli
-from tests.const import CIX_CBZ_SOURCE_PATH
+from tests.const import CIX_CBZ_SOURCE_PATH, METRON_CBZ_FN, TEST_FILES_DIR
 from tests.util.readinglist_cli import (
     COMMON_CBL,
     CRIMSON_TIDE,
@@ -55,6 +55,18 @@ def test_print_reports_a_bad_file_and_carries_on(
     assert "[Marvel] Crimson Tide (Hand Written)" in out
 
 
+def test_print_carries_on_past_a_cbl_of_text(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """A ``<ReadingList>`` holding only text stopped the batch with a traceback."""
+    bad = tmp_path / "bad.cbl"
+    bad.write_text('<?xml version="1.0"?><ReadingList>hello</ReadingList>')
+    code, out, err = cli_run(capsys, "rl", "print", str(bad), str(COMMON_CBL))
+    assert code == 1
+    assert "bad.cbl" in err
+    assert "[Marvel] Crimson Tide (Hand Written)" in out
+
+
 def test_validate(capsys: pytest.CaptureFixture[str]) -> None:
     paths = (CRIMSON_TIDE, FULL_JSON_CBL, COMMON_CBL)
     code, out, _ = cli_run(capsys, "rl", "validate", *map(str, paths))
@@ -82,6 +94,44 @@ def test_validate_fails_on_any_bad_file(
     assert "Not a reading list in any format" in out
 
 
+def test_convert_names_no_loss_for_what_the_format_adds(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    source = tmp_path / "x.yaml"
+    source.write_text(
+        "reading_list:\n  name: X\n  entries:\n"
+        "    - series: {name: Bladehawk, start_year: 2016}\n"
+        "      issue: {name: '1'}\n      date: {year: 2016}\n"
+    )
+    code, _, err = cli_run(capsys, "rl", "convert", "--to", "cbl", str(source))
+    assert code == 0
+    assert "lost" not in err
+
+
+def test_convert_renders_each_list_once(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """lost_fields and dumps each validated and rendered the list."""
+    from comicbox.readinglists import serialize
+
+    calls = []
+    model_for_write = serialize._model_for_write
+
+    def counting(reading_list: Any) -> Any:
+        calls.append(reading_list)
+        return model_for_write(reading_list)
+
+    monkeypatch.setattr(serialize, "_model_for_write", counting)
+    code, _, _ = cli_run(
+        capsys, "rl", "convert", "--to", "yaml", "-o", str(tmp_path), str(COMMON_CBL)
+    )
+    assert code == 0
+    assert len(calls) == 1
+    assert load(tmp_path / "common.yaml").reading_list["name"]
+
+
 def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     code, _, err = cli_run(
         capsys,
@@ -94,7 +144,10 @@ def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
         str(COMMON_CBL),
     )
     assert code == 0
-    assert "lost: entries.date.cover_date" in err
+    # A whole cover date is written for the year: the year is lost, and the
+    # cover date added is not named.
+    assert "lost: entries.date.year" in err
+    assert "lost: entries.date.cover_date" not in err
     result = load(tmp_path / "common.json")
     assert result.fmt is ReadingListFormats.JSON_CBL
     assert len(result.reading_list["entries"]) == 3
@@ -156,6 +209,24 @@ def test_from_arcs(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:
     assert "written as" in err
     reading_list = load(output / written[0]).reading_list
     assert reading_list["sources"][0] == {"kind": "tags"}
+
+
+def test_from_arcs_reads_every_tag_format(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """``read.formats: [cix]`` in the user's config emptied it for MetronInfo arcs."""
+    # COMICBOXDIR is tmp_path, so this is the user's config.
+    (tmp_path / "config.yaml").write_text("comicbox:\n  read:\n    formats: [cix]\n")
+    comics = tmp_path / "comics"
+    comics.mkdir()
+    shutil.copy(TEST_FILES_DIR / METRON_CBZ_FN, comics / "a.cbz")
+    output = tmp_path / "lists"
+    code, _, _ = cli_run(capsys, "rl", "from-arcs", "-o", str(output), str(comics))
+    assert code == 0
+    assert sorted(path.name for path in output.iterdir()) == [
+        "Captain Arc.yaml",
+        "Other Arc.yaml",
+    ]
 
 
 def test_from_arcs_needs_a_directory(
