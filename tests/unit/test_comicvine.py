@@ -1245,28 +1245,43 @@ def test_a_lookup_whose_every_volume_failed_reports_a_failed_search(
     assert not any(isinstance(e, SearchCompleted | NoMatch) for e in events)
 
 
-# ------------------------------------------ budget units are requests (C2)
+# ------------------------------- budget units are requests (C2, D-1)
 
 _ROWS_PER_VOLUME = 450
 
 
-def _paged_client(monkeypatch: pytest.MonkeyPatch, client, requests: list[dict]):
+def _paged_client(
+    monkeypatch: pytest.MonkeyPatch,
+    client,
+    requests: list[dict],
+    *,
+    volumes: int = 4,
+    rows_in_year_window: int | None = None,
+):
     """
     Serve a real `Comicvine` from fakes below its paginator.
 
     `_request` answers `/issues/` with offset/limit pages of a 450-issue
-    volume, or one row when an issue number is in the filter, and records
-    every page asked for; rows convert to the module's issue fakes.
+    volume, one row when an issue number is in the filter, or
+    ``rows_in_year_window`` rows under a cover-date filter, and records
+    every page asked for; rows convert to the module's issue fakes, with
+    ids unique per volume (volume * 1000 + row).
     """
-    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2, 3, 4)]
+    found = [_FakeBasicVolume(vid=i, name="Wardens") for i in range(1, volumes + 1)]
 
     def request(method, endpoint, params=None):
         params = dict(params or {})
         requests.append(params)
-        total = 1 if "issue_number:" in params.get("filter", "") else _ROWS_PER_VOLUME
+        issue_filter = params.get("filter", "")
+        total = _ROWS_PER_VOLUME
+        if "issue_number:" in issue_filter:
+            total = 1
+        elif "cover_date:" in issue_filter and rows_in_year_window is not None:
+            total = rows_in_year_window
+        volume_id = int(issue_filter.split(",")[0].split(":")[1])
         offset, limit = int(params["offset"]), int(params["limit"])
         rows = [
-            {"id": i, "number": str(i)}
+            {"id": volume_id * 1000 + i, "number": str(i)}
             for i in range(offset, min(total, offset + limit))
         ]
         return {"status_code": 1, "results": rows, "number_of_total_results": total}
@@ -1278,31 +1293,31 @@ def _paged_client(monkeypatch: pytest.MonkeyPatch, client, requests: list[dict])
 
     monkeypatch.setattr(client, "_request", request)
     monkeypatch.setattr(client, "_convert", convert)
-    monkeypatch.setattr(client, "search_volumes", lambda *_a, **_k: list(volumes))
+    monkeypatch.setattr(client, "search_volumes", lambda *_a, **_k: list(found))
     monkeypatch.setattr(client, "list_volumes", lambda *_a, **_k: [])
 
 
-@pytest.mark.parametrize(
-    ("issue", "expected_requests"),
-    [(None, 4), ("5", 4)],
-    ids=["unnumbered", "numbered"],
-)
-def test_each_budgeted_issue_list_is_one_request(
-    monkeypatch: pytest.MonkeyPatch, tmp_path, issue, expected_requests
-) -> None:
-    """
-    C2: an unnumbered comic with no year listed whole volumes, 5 pages each.
-
-    The budget charged one unit per wrapper call, so 4 budgeted calls sent
-    20 requests against Comic Vine's 200 an hour. One unit is one page now.
-    """
+def _paged_search(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    profile: ComicProfile,
+    effort: Effort = Effort.BALANCED,
+    **client_options,
+) -> tuple[list[dict], _SearchBudget, list]:
+    """Search a paged fake; return the requests, the budget and the result."""
     from tests.util.online_client import comicvine_client
 
     requests: list[dict] = []
     budgets: list[_SearchBudget] = []
+    tuning = OnlineTuningSettings(
+        per_source={"comicvine": OnlineSourceTuning(effort=effort)}
+    )
     with comicvine_client(tmp_path) as client:
-        _paged_client(monkeypatch, client, requests)
-        src = _make_cv_source(monkeypatch, client)
+        _paged_client(monkeypatch, client, requests, **client_options)
+        src = ComicVineOnlineSource(
+            OnlineSourceCredentials(key="test-key"), OnlineSettings(tuning=tuning)
+        )
+        monkeypatch.setattr(src, "_get_session", lambda: client)
         new_budget = src._new_search_budget
 
         def spy() -> _SearchBudget:
@@ -1310,7 +1325,114 @@ def test_each_budgeted_issue_list_is_one_request(
             return budgets[-1]
 
         monkeypatch.setattr(src, "_new_search_budget", spy)
-        src.search(ComicProfile(series="Wardens", issue=issue))
+        candidates = src.search(profile)
+    return requests, budgets[0], candidates
+
+
+@pytest.mark.parametrize(
+    ("issue", "effort", "volumes", "expected_requests"),
+    [
+        # 4 volumes x 450 issues, no year: every page fits the budget.
+        (None, Effort.BALANCED, 4, 20),
+        (None, Effort.MINIMAL, 4, 10),
+        (None, Effort.THOROUGH, 4, 20),
+        # 25 matching volumes: discovery keeps 20 (5 at minimal).
+        (None, Effort.BALANCED, 25, 20),
+        (None, Effort.MINIMAL, 25, 10),
+        (None, Effort.THOROUGH, 25, 125),
+        # A number filter is one page a volume, at any effort.
+        ("5", Effort.BALANCED, 4, 4),
+        ("5", Effort.BALANCED, 25, 20),
+    ],
+    ids=[
+        "unnumbered-4-balanced",
+        "unnumbered-4-minimal",
+        "unnumbered-4-thorough",
+        "unnumbered-25-balanced",
+        "unnumbered-25-minimal",
+        "unnumbered-25-thorough",
+        "numbered-4",
+        "numbered-25",
+    ],
+)
+def test_every_issue_list_request_is_a_budget_unit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, issue, effort, volumes, expected_requests
+) -> None:
+    """
+    C2: one unit was charged per call while simyan paged up to five.
+
+    D-1: an unnumbered listing pages on while units remain, a unit a page,
+    so the requests sent always equal the units charged.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens", issue=issue),
+        effort,
+        volumes=volumes,
+    )
 
     assert len(requests) == expected_requests
-    assert budgets[0].spent == len(requests)
+    assert budget.spent == len(requests)
+
+
+def test_pages_are_shared_out_one_round_at_a_time(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """
+    D-1: when the budget can't cover every page, volumes take turns.
+
+    Minimal effort has 10 units for 4 volumes of 5 pages: every volume's
+    first page, then every volume's second, then the first two volumes'
+    third, in discovery order.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens"),
+        Effort.MINIMAL,
+    )
+
+    asked = [(r["filter"], int(r["offset"])) for r in requests]
+    assert asked == [
+        *((f"volume:{v}", 0) for v in (1, 2, 3, 4)),
+        *((f"volume:{v}", 100) for v in (1, 2, 3, 4)),
+        *((f"volume:{v}", 200) for v in (1, 2)),
+    ]
+    assert budget.pages_cut
+    assert budget.dropped == 0
+
+
+def test_an_issue_past_the_first_page_is_found_again(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """D-1: after C2 an unnumbered listing stopped at row 100."""
+    _, _, candidates = _paged_search(
+        monkeypatch, tmp_path, ComicProfile(series="Wardens"), volumes=1
+    )
+
+    ids = {c.issue_id for c in candidates}
+    assert 1250 in ids  # row 250 of volume 1
+    assert len(ids) == _ROWS_PER_VOLUME
+
+
+def test_a_year_window_that_falls_back_pages_on_unfiltered(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """
+    An empty year window costs its unit, then the unfiltered list pages.
+
+    4 volumes: 4 empty windows, 4 unfiltered first pages, then 12 more
+    pages until balanced's 20 units are spent.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens", year=2020),
+        rows_in_year_window=0,
+    )
+
+    windowed = [r for r in requests if "cover_date:" in r["filter"]]
+    assert len(windowed) == 4
+    assert len(requests) == budget.spent == 20
+    assert all(int(r["offset"]) == 0 for r in windowed)

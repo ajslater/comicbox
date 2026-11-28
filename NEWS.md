@@ -20,8 +20,9 @@
 - `comicbox rl` logs at `general.loglevel` and counts `-Q` as `comicbox` does,
   so each `-Q` count logs one step more than before.
 - Extracting or reading every page of a CB7 is many times faster.
-- A Comic Vine search for an unnumbered comic with no year sends one request per
-  volume instead of up to five, and ranks the first 100 of each volume's issues.
+- A Comic Vine search for an unnumbered comic counts every page of a volume's
+  issues against the effort budget, which caps the requests it sends; before,
+  one counted call could send five.
 - Under `-j N`, comics of one series that start together search once instead of
   once each.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
