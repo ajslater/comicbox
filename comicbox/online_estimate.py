@@ -10,10 +10,13 @@ copy.
 The model is deliberately simple. Per comic, each source costs a
 characteristic number of API requests:
 
-- Metron resolves an issue with a single ``issues_list`` search plus the
-  final issue fetch — a flat count (see v4.0.5 / PR #143; no
-  series-discovery step since series ids land directly on issue-list
-  results). Metron does not fan out, so effort does not move it.
+- Metron asks its cover search first (one ``issues_by_cover_hash`` for a
+  normal cover, since v5.6.2), then on a cover miss one ``issues_list``
+  name search (no series-discovery step since series ids land directly on
+  issue-list results, v4.0.5 / PR #143), then the final issue fetch: a
+  flat count, priced at the miss as an upper bound, as Comic Vine's is. A
+  cover hit skips the name search. Metron does not fan out, so effort
+  does not move it.
 - Comic Vine discovers volumes, asks each surviving candidate for its
   issues, then fetches the issue it accepts. Only the middle step varies:
   ``Effort`` decides how many candidates are worth a call.
@@ -70,6 +73,7 @@ __all__ = (
     "COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT",
     "DEFAULT_RATE_PER_MINUTE",
     "DEFAULT_REQUESTS_PER_COMIC",
+    "METRON_COVER_SEARCH_REQUESTS",
     "METRON_REQUESTS_PER_COMIC",
     "METRON_REQUESTS_PER_WARM_COMIC",
     "SOURCE_RATE_PER_MINUTE",
@@ -94,10 +98,16 @@ SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
     }
 )
 
-# API requests one comic costs against Metron when it pays full price:
-# the search and the issue fetch. Metron has no fan-out to throttle, so
-# effort does not move it.
-METRON_REQUESTS_PER_COMIC: Final[int] = 2
+# The cover search a cold Metron comic asks first: one request per search
+# hash, one for a normal cover (a wraparound spread tries up to three).
+METRON_COVER_SEARCH_REQUESTS: Final[int] = 1
+
+# API requests one comic costs against Metron when it pays full price: the
+# cover search, and on a cover miss the name search, then the issue fetch.
+# Priced at the miss as an upper bound; a cover hit costs one less. Counted
+# from the lookup's code path, not measured by a calibration run. Metron
+# has no fan-out to throttle, so effort does not move it.
+METRON_REQUESTS_PER_COMIC: Final[int] = METRON_COVER_SEARCH_REQUESTS + 2
 
 # What the comics AFTER the first of a series cost. A batch clustered by
 # series resolves the series once; the rest take the volume-scoped warm
@@ -162,6 +172,9 @@ def _comicvine_issue_list_requests(effort: str) -> int:
 def metron_requests_for_batch(comics: int, series: int) -> int:
     """
     Return what a Metron batch of ``comics`` over ``series`` runs costs.
+
+    For external callers: `estimate_run` prices every comic cold and does
+    not call this.
 
     The per-comic constant prices a comic that resolves its own series.
     That is the right number for a scattered batch and badly wrong for a

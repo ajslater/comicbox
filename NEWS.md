@@ -169,6 +169,8 @@
 - Library: a Metron `RateLimited` event carries the server's wait instead of
   0.
 - The end-of-run summary counts a search that found nothing as a no-match.
+- Library: the run estimate prices a Metron comic at 3 requests, counting the
+  cover search, instead of 2.
 
 ### 🔒 Security
 

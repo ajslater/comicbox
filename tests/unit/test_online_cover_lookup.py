@@ -537,3 +537,25 @@ def test_a_collected_edition_sharing_the_cover_is_left_to_the_name_search(
 
     assert run.source.search_calls == 1
     assert 160512 not in run.source.get_calls
+
+
+def test_a_cold_metron_comic_costs_what_the_estimator_prices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    D5: the estimator priced a cold Metron comic at the search and fetch.
+
+    Since the cover search, a comic whose cover misses asks the cover
+    search, then the name search, then fetches the issue it accepts.
+    """
+    from comicbox.online_estimate import requests_per_comic
+
+    run = _run(monkeypatch, cover_replies=[[]], name_candidates=[_candidate(3, 30)])
+
+    sent = (
+        len(run.source.cover_calls)
+        + run.source.search_calls
+        + len(run.source.get_calls)
+    )
+    assert sent == 3
+    assert requests_per_comic("metron") == sent
