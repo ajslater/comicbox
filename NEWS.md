@@ -27,8 +27,9 @@
   `Bladehawk`.
 - `rl match` lists a comic with the entry's id but a far cover year as refused.
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
-- Numbers with a decimal comma, thousands separator or fraction are dropped with
-  a warning instead of cut to their first digits.
+- Numbers with a decimal comma or thousands separator are dropped with a warning
+  instead of cut to their first digits. A number before a slash is still read:
+  a `4.5/5` rating is 4.5 and a `1999/2000` year is 1999.
 - MetronInfo leaves out zero issue and volume counts and prices with no country,
   which its schema rejects.
 - ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
