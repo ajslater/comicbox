@@ -6,7 +6,7 @@ import threading
 import time
 import tracemalloc
 import zlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
@@ -28,7 +28,7 @@ from comicbox.readinglists.sources import url as url_source
 from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Mapping
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
 _FILES = {
@@ -357,7 +357,20 @@ def test_gzip_members_are_inflated_one_after_another(*, separate: bool) -> None:
     with _session_with(_Streamed(_LIST), 1 << 20) as session:
         plain = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
 
-    assert result.reading_list == plain.reading_list
+    # Each fetch's source records when it was fetched (no ETag or date was
+    # sent), so compare the lists without that.
+    assert _without_revisions(result.reading_list) == _without_revisions(
+        plain.reading_list
+    )
+
+
+def _without_revisions(reading_list: Mapping[str, Any]) -> dict[str, Any]:
+    """Copy a reading list with each source's fetch revision left out."""
+    sources = [
+        {key: value for key, value in source.items() if key != "revision"}
+        for source in reading_list.get("sources", ())
+    ]
+    return {**reading_list, "sources": sources}
 
 
 def _drip(seconds: float = 10.0) -> Iterator[bytes]:
