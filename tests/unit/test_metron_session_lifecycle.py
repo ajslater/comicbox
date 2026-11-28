@@ -9,6 +9,7 @@ a run, and not letting a forked child inherit them.
 
 from __future__ import annotations
 
+import weakref
 from argparse import Namespace
 from typing import TYPE_CHECKING, Any
 
@@ -20,7 +21,9 @@ from comicbox.config.online.settings import (
     OnlineSettings,
     OnlineSourceCredentials,
 )
+from comicbox.formats.base.online import shared_clients
 from comicbox.formats.base.online.rate_gate import RateGate
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.metron_api import online_source as metron
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.metron_api.paced_session import GateRateLimiter
@@ -54,13 +57,21 @@ class _UncloseableSession:
 @pytest.fixture(autouse=True)
 def _clear_caches(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every test gets its own empty module-level session and gate caches."""
-    monkeypatch.setattr(metron, "_session_cache", {})
-    monkeypatch.setattr(metron, "_gate_cache", {})
+    monkeypatch.setattr(metron, "_sessions", SharedClients("metron", "session"))
+    monkeypatch.setattr(metron, "_gates", SharedClients("metron", "gate"))
+    # The fork handler, called directly below, reaches only these two
+    # registries, and the prefetch lock it rebinds is put back after.
+    monkeypatch.setattr(
+        shared_clients,
+        "_registries",
+        weakref.WeakSet((metron._sessions, metron._gates)),
+    )
+    monkeypatch.setattr(metron, "_prefetch_lock", metron._prefetch_lock)
 
 
 def _seed(session: Any, key: str = "k") -> None:
-    metron._session_cache[key] = (session, ())
-    metron._gate_cache[key] = RateGate(default_limit=20)
+    metron._sessions.get_or_build(key, (), lambda: session)
+    metron._gates.get_or_build(key, (), lambda: RateGate(default_limit=20))
 
 
 def test_close_closes_every_shared_session() -> None:
@@ -90,8 +101,8 @@ def test_close_keeps_the_cache_entries() -> None:
 
     metron.close_shared_sessions()
 
-    assert metron._session_cache
-    assert metron._gate_cache
+    assert metron._sessions.keys() == ("k",)
+    assert metron._gates.keys() == ("k",)
 
 
 def test_close_forgets_the_daily_quota_figure() -> None:
@@ -104,14 +115,15 @@ def test_close_forgets_the_daily_quota_figure() -> None:
     pacing the gate learned is kept.
     """
     _seed(_ClosableSession())
-    gate = metron._gate_cache["k"]
+    gate = metron._gates.get("k")
+    assert gate is not None
     gate.observe(
         burst_limit=30, burst_remaining=30, sustained_limit=5000, sustained_remaining=0
     )
 
     metron.close_shared_sessions()
 
-    assert metron._gate_cache["k"] is gate
+    assert metron._gates.get("k") is gate
     gate.acquire()
     gate.release()
     stats = gate.stats()
@@ -132,8 +144,8 @@ def test_reset_drops_sessions_and_gates() -> None:
 
     metron.reset_shared_sessions()
 
-    assert not metron._session_cache
-    assert not metron._gate_cache
+    assert not metron._sessions.keys()
+    assert not metron._gates.keys()
 
 
 def test_the_fork_handler_empties_both_caches_and_rebinds_the_lock() -> None:
@@ -145,13 +157,14 @@ def test_the_fork_handler_empties_both_caches_and_rebinds_the_lock() -> None:
     would deadlock forever.
     """
     _seed(_ClosableSession())
-    before = metron._session_cache_lock
+    locks = (metron._sessions.lock, metron._gates.lock, metron._prefetch_lock)
 
-    metron._after_fork_in_child()
+    shared_clients._after_fork_in_child()
 
-    assert not metron._session_cache
-    assert not metron._gate_cache
-    assert metron._session_cache_lock is not before
+    assert not metron._sessions.keys()
+    assert not metron._gates.keys()
+    after = (metron._sessions.lock, metron._gates.lock, metron._prefetch_lock)
+    assert all(old is not new for old, new in zip(locks, after, strict=True))
 
 
 def test_the_fork_handler_does_not_close_inherited_sockets() -> None:
@@ -159,7 +172,7 @@ def test_the_fork_handler_does_not_close_inherited_sockets() -> None:
     session = _ClosableSession()
     _seed(session)
 
-    metron._after_fork_in_child()
+    shared_clients._after_fork_in_child()
 
     assert session.closed == 0
 

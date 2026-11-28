@@ -56,6 +56,7 @@ from comicbox.formats.base.online.series_filter import (
     max_calls_for,
     should_keep_volume_name,
 )
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
     resolve_cache_db_path,
@@ -112,27 +113,19 @@ _VOLUMES_POOL: Final = "volumes"
 # In milliseconds to match pyrate-limiter's `item_timestamp` stamps.
 _RATE_LIMIT_WINDOW_MS: Final[int] = 3600 * 1000
 
-# Clients are shared process-wide across the credential set that built
-# them (see `_get_session`), keyed by (api_key, base_url). Sources are
-# rebuilt per file by `_build_active_online_sources`
-# (comicbox/box/online_lookup.py), so without sharing, every file of a
-# batch paid for a fresh `Comicvine`: a new requests session (no
-# connection reuse across files), a new requests_cache sqlite handle, a
-# new ratelimit-bucket file handle, and a re-run of the cache
-# maintenance path. simyan keeps its rate-limit state in a sqlite
-# bucket file rather than in memory, so sharing is about connection and
-# handle reuse rather than about rate-limit visibility — that part
-# already worked across instances.
-#
-# Contract: FIRST BUILD WINS, matching `metron_api`'s session cache. The
-# client (and the response cache baked into it) is constructed from the
-# settings of whichever source instance hits the cache miss; later
-# same-credential sources reuse it even if their own cache settings
-# differ, and we warn once when they do. Entries are deliberately never
-# evicted: the cache is bounded by distinct credential sets used in one
-# process.
-_session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
-_session_cache_lock = threading.Lock()
+# Clients are shared by the credential set that built them, keyed by
+# (api_key, base_url), under the first-build-wins contract in
+# `base/online/shared_clients`. Without sharing, every file of a batch
+# paid for a fresh `Comicvine`: a new requests session (no connection
+# reuse across files), a new requests_cache sqlite handle, a new
+# ratelimit-bucket file handle, and a re-run of the cache maintenance
+# path. simyan keeps its rate-limit state in a sqlite bucket file rather
+# than in memory, so sharing is about connection and handle reuse
+# rather than about rate-limit visibility -- that part already worked
+# across instances.
+_sessions: SharedClients[tuple[str, str], Comicvine] = SharedClients(
+    "comicvine", "simyan client"
+)
 
 
 def reset_shared_sessions() -> None:
@@ -143,8 +136,7 @@ def reset_shared_sessions() -> None:
     tmp_path cache dirs; without this the first test's client would be
     handed to every later test that reuses a credential set.
     """
-    with _session_cache_lock:
-        _session_cache.clear()
+    _sessions.drain()
 
 
 def close_shared_sessions() -> None:
@@ -155,11 +147,9 @@ def close_shared_sessions() -> None:
     of reopening what it needs on its next request. The response cache
     reopens lazily and the hourly budget lives in the rate-limit bucket
     *file* rather than in the bucket object, so nothing a run has spent
-    is forgotten by closing. Mirrors `metron_api`'s `close_shared_sessions`.
+    is forgotten by closing. The entries stay, as Metron's do.
     """
-    with _session_cache_lock:
-        entries = list(_session_cache.values())
-    for client, _signature in entries:
+    for client in _sessions.clients():
         close_client(client)
 
 
@@ -564,7 +554,7 @@ class ComicVineOnlineSource(OnlineSource):
         pool, response-cache handle and ratelimit-bucket handle per
         comic. Memoizing by (api_key, base_url) at module scope lets
         every file, and every thread in `Runner._run_parallel`'s pool,
-        reuse one. See `_session_cache` for the first-build-wins
+        reuse one. See `_sessions` for the first-build-wins
         contract.
         """
         if self._client is None:
@@ -582,25 +572,9 @@ class ComicVineOnlineSource(OnlineSource):
 
     def _get_or_build_shared_session(self) -> Comicvine:
         key = (self._credentials.key or "", self._credentials.url or "")
-        signature = self._session_config_signature()
-        with _session_cache_lock:
-            entry = _session_cache.get(key)
-            if entry is None:
-                client = self._build_session()
-                _session_cache[key] = (client, signature)
-                return client
-        client, built_signature = entry
-        if built_signature != signature:
-            # First build wins (see the _session_cache comment); tell the
-            # user their differing cache config is not taking effect.
-            warn_once(
-                f"{self.name}:session-config-mismatch",
-                f"online {self.name}: reusing the existing shared simyan "
-                "client; this instance's differing cache settings "
-                f"{signature} are ignored in favor of the client's "
-                f"{built_signature}",
-            )
-        return client
+        return _sessions.get_or_build(
+            key, self._session_config_signature(), self._build_session
+        )
 
     def _new_client(self, cache_expiry: Any) -> Comicvine:
         from simyan.comicvine import Comicvine

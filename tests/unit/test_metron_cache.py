@@ -24,6 +24,7 @@ from comicbox.config.online.settings import (
     OnlineSourceCredentials,
 )
 from comicbox.formats.base.online import warn_once
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.base.online.sources import base as sources_base
 from comicbox.formats.metron_api import online_source as metron
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
@@ -39,8 +40,8 @@ _WEEK: Final = timedelta(days=7)
 @pytest.fixture(autouse=True)
 def _isolate(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fresh shared sessions, refresh registry and warn-once keys per test."""
-    monkeypatch.setattr(metron, "_session_cache", {})
-    monkeypatch.setattr(metron, "_gate_cache", {})
+    monkeypatch.setattr(metron, "_sessions", SharedClients("metron", "session"))
+    monkeypatch.setattr(metron, "_gates", SharedClients("metron", "gate"))
     monkeypatch.setattr(sources_base, "_refreshed_cache_paths", set())
     monkeypatch.setattr(warn_once, "_seen", set())
 

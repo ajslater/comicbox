@@ -19,7 +19,6 @@ the candidate's thumbnail when it needs to.
 from __future__ import annotations
 
 import sys
-import threading
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from loguru import logger
@@ -38,8 +37,8 @@ from comicbox.formats.base.online.series_filter import (
     should_keep_volume_name,
     threshold_for,
 )
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.base.online.sources.base import OnlineSource
-from comicbox.formats.base.online.warn_once import warn_once
 from comicbox.formats.sources import MetadataSources
 from comicbox.formats.versedb_api.cache import open_response_cache
 from comicbox.formats.versedb_api.client import (
@@ -74,23 +73,19 @@ if TYPE_CHECKING:
 # doesn't decide whether a call is made.
 _NAME_THRESHOLD: Final = threshold_for(Effort.BALANCED)
 
-# Clients are shared process-wide by credential set, keyed by (token,
-# base_url): sources are rebuilt per file, and every file and worker thread
-# should reuse one connection pool and one cache handle. FIRST BUILD WINS,
-# as for the other two sources; a later source with different cache
-# settings is warned once and reuses the built client. A closed client
-# can't send, so it is dropped and rebuilt on next use. Only its in-memory
-# budget readout and cooldown are lost; the cache file keeps its rows.
-_client_cache: dict[tuple[str, str], tuple[VerseDBClient, tuple]] = {}
-_client_cache_lock = threading.Lock()
+# Clients are shared by credential set, keyed by (token, base_url), under
+# the first-build-wins contract in `base/online/shared_clients`. Unlike the
+# other two sources' clients, a closed one can't send, so closing drops
+# it and the next use builds a new one. Only its in-memory budget readout
+# and cooldown are lost; the cache file keeps its rows.
+_clients: SharedClients[tuple[str, str], VerseDBClient] = SharedClients(
+    "versedb", "client"
+)
 
 
 def close_shared_sessions() -> None:
     """Close every shared client's connections and cache handle, and drop it."""
-    with _client_cache_lock:
-        entries = list(_client_cache.values())
-        _client_cache.clear()
-    for client, _signature in entries:
+    for client in _clients.drain():
         client.close()
 
 
@@ -109,9 +104,8 @@ def shared_client_rate_limit_status(
     no shared client exists yet or none of its responses carried the
     headers. VerseDB sends no reset time, so ``reset_epoch`` is always None.
     """
-    with _client_cache_lock:
-        entry = _client_cache.get((token or "", base_url or ""))
-    return entry[0].rate_limit_status() if entry else {}
+    client = _clients.get((token or "", base_url or ""))
+    return client.rate_limit_status() if client else {}
 
 
 def _display_text(text: str | None) -> str | None:
@@ -212,22 +206,12 @@ class VerseDBOnlineSource(OnlineSource):
 
     def _get_or_build_shared_client(self) -> VerseDBClient:
         key = (self._credentials.key or "", self._credentials.url or "")
-        signature = self._client_signature()
-        with _client_cache_lock:
-            entry = _client_cache.get(key)
-            if entry is None or entry[0].closed:
-                client = self._build_client()
-                _client_cache[key] = (client, signature)
-                return client
-        client, built_signature = entry
-        if built_signature != signature:
-            warn_once(
-                f"{self.name}:session-config-mismatch",
-                f"online {self.name}: reusing the existing shared client; this "
-                f"instance's differing cache settings {signature} are ignored "
-                f"in favor of the client's {built_signature}",
-            )
-        return client
+        return _clients.get_or_build(
+            key,
+            self._client_signature(),
+            self._build_client,
+            reusable=lambda client: not client.closed,
+        )
 
     def _build_client(self, *, cached: bool = True) -> VerseDBClient:
         cache = None

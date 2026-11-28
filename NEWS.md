@@ -153,6 +153,9 @@
 - Library: an `OnlineSession` run after one that spent Metron's daily quota
   looks it up afresh instead of stopping at once, or skipping new searches,
   until the process restarts.
+- Library: a process forked after an online lookup builds its own Comic Vine
+  and VerseDB connections instead of sharing its parent's, and no longer hangs
+  on a Metron lock held at the fork.
 
 ### 🔒 Security
 

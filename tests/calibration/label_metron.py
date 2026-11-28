@@ -90,7 +90,7 @@ def _build_metron_source() -> MetronOnlineSource:
     exception classifier and its rate-limit listener off the instance it
     decorates. Its `_get_session()` transparently returns the
     process-wide Session memoized per credential set (see
-    `_session_cache` in `metron_api/online_source.py`), whose
+    `_sessions` in `metron_api/online_source.py`), whose
     header-tracked `rate_limit_status` is shared with anything else in
     this process using the same credentials.
     """

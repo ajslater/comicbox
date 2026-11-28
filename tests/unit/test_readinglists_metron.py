@@ -545,7 +545,7 @@ def test_no_token_raises_before_any_request(
         pytest.raises(ReadingListFetchError, match="Metron needs an API token"),
     ):
         call(rl)
-    assert metron._session_cache == {}
+    assert metron._sessions.keys() == ()
     assert events == []
 
 

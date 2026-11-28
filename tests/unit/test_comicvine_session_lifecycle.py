@@ -21,6 +21,7 @@ import pytest
 
 from comicbox.config.online.settings import OnlineCacheSettings, OnlineSettings
 from comicbox.formats.base.online.rate_limits import COMICVINE_DEFAULT_PER_HOUR
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.comicvine_api import online_source as comicvine
 from tests.util.online_client import build_comicvine_client, spend
 
@@ -89,11 +90,11 @@ class _Unclosable:
 @pytest.fixture(autouse=True)
 def _clear_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every test gets its own empty shared-client cache."""
-    monkeypatch.setattr(comicvine, "_session_cache", {})
+    monkeypatch.setattr(comicvine, "_sessions", SharedClients("comicvine", "client"))
 
 
 def _seed(client: Any, key: tuple[str, str] = ("key", "")) -> None:
-    comicvine._session_cache[key] = (client, ())
+    comicvine._sessions.get_or_build(key, (), lambda: client)
 
 
 def _buckets(client: Any) -> list[Any]:
@@ -124,7 +125,7 @@ def test_close_keeps_the_cache_entries() -> None:
 
     comicvine.close_shared_sessions()
 
-    assert comicvine._session_cache
+    assert comicvine._sessions.keys()
 
 
 def test_close_tolerates_a_client_without_a_session() -> None:
