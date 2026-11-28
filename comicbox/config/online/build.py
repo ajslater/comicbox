@@ -28,6 +28,7 @@ from typing import Any
 
 from loguru import logger
 
+from comicbox.config.online.credentials import resolve_credentials
 from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     CacheMode,
@@ -46,7 +47,6 @@ from comicbox.config.settings import parse_enum
 from comicbox.exceptions import ConfigurationError
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
-from comicbox.formats.base.online.credentials import resolve_credentials
 from comicbox.identifiers import PARSE_COMICVINE_RE
 
 # ComicVine resource-type prefixes.
@@ -504,12 +504,9 @@ def runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
     """Extract online-related runtime values from CLI args (Namespace only)."""
-    if not isinstance(args, Namespace):
+    cns: Any = cns_for_overrides(args)
+    if cns is None:
         return _RuntimeOnlineInputs()
-
-    cns: Any = getattr(args, "comicbox", args)
-    if not isinstance(cns, Namespace):
-        cns = args
 
     ids = _parse_db_id_list(
         getattr(cns, "explicit_ids", None), "--id", _parse_explicit_id

@@ -51,13 +51,7 @@ from comicbox.events import (
     Skipped,
     SourceStarted,
 )
-
-# Historical import path for OnlineLookupAbortedError; defined in
-# comicbox.exceptions so it shares the ComicboxError base. The redundant
-# alias marks it as an explicit re-export for consumers of the old path.
-from comicbox.exceptions import (
-    OnlineLookupAbortedError as OnlineLookupAbortedError,  # noqa: PLC0414
-)
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import FORMAT_REGISTRATIONS
 from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.matcher import (
@@ -101,10 +95,6 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import Candidate
     from comicbox.formats.base.online.selector import SelectorCallback, SelectorResult
     from comicbox.formats.base.online.sources.base import OnlineSource
-
-
-# Source factories let tests substitute mocks without monkey-patching imports.
-OnlineSourceFactory = "Callable[[Any, OnlineSettings], OnlineSource]"
 
 
 # Short-name → OnlineSource class. Kept centralized rather than declared

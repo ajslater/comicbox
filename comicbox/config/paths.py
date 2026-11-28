@@ -129,14 +129,20 @@ def post_process_set_for_path(
 
 
 def expand_glob_paths(paths: Sequence[str | Path] | None) -> tuple[Path, ...]:
-    """Expand glob paths into a tuple of real paths."""
+    """
+    Expand glob paths into a tuple of real paths.
+
+    A pattern that matches nothing is kept as it is, so reading it fails
+    as any import file that cannot be read does, rather than vanishing.
+    """
     if not paths:
         return ()
     expanded_paths: set[Path] = set()
     for path in paths:
         path_str = str(path)
         if "*" in path_str:
-            expanded_paths |= {Path(expanded_path) for expanded_path in glob(path_str)}  # noqa: PTH207
+            matches = {Path(expanded_path) for expanded_path in glob(path_str)}  # noqa: PTH207
+            expanded_paths |= matches or {Path(path_str)}
         else:
             expanded_paths.add(Path(path))
     return tuple(sorted(expanded_paths))

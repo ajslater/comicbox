@@ -12,6 +12,7 @@ exception: they stay flat and are consumed by ``runtime_online_inputs`` /
 dynamically keyed maps that a fixed template can't express.
 """
 
+import re
 import sys
 from argparse import Action, ArgumentParser, Namespace
 from collections.abc import Sequence
@@ -141,6 +142,36 @@ class CSVAction(Action):
         setattr(namespace, self.dest, values_array)
 
 
+# A page index: plain decimal digits, or empty for an open end.
+_PAGE_INDEX_RE = re.compile(r"[0-9]*")
+
+
+def _page_range(values: str | Sequence[Any] | None) -> tuple[int | None, int | None]:
+    """
+    Read a page index ``N`` or a range ``N:M``, ``N:`` or ``:M``.
+
+    Indexes are plain decimal digits, from 0, and a range is inclusive.
+    Anything else names no page and raises ``ValueError``: an empty value
+    or bare ``:``, a sign, an underscore, a third part, or a range that
+    ends before it starts.
+    """
+    parts = values.split(":") if isinstance(values, str) else list(values or ())
+    if not 1 <= len(parts) <= 2 or not all(  # noqa: PLR2004
+        isinstance(part, str) and _PAGE_INDEX_RE.fullmatch(part) for part in parts
+    ):
+        reason = f"expected N or N:M, got {values!r}"
+        raise ValueError(reason)
+    index_from = int(parts[0]) if parts[0] else None
+    index_to = index_from if len(parts) == 1 else (int(parts[1]) if parts[1] else None)
+    if index_from is None and index_to is None:
+        reason = f"expected N or N:M, got {values!r}"
+        raise ValueError(reason)
+    if index_from is not None and index_to is not None and index_to < index_from:
+        reason = f"{values!r} ends before it starts"
+        raise ValueError(reason)
+    return index_from, index_to
+
+
 class PageRangeAction(Action):
     """Parse page range delimited by ``:``."""
 
@@ -152,25 +183,12 @@ class PageRangeAction(Action):
         values: str | Sequence[Any] | None,
         option_string: str | None = None,
     ) -> None:
-        """Parse page range delimited by :."""
-        raw = values
-        if isinstance(values, str):
-            values = values.split(":")
-        if not values:
-            return
-
+        """Parse a page index or range; anything else is a usage error."""
         try:
-            index_from = int(values[0]) if len(values[0]) else None
-
-            if len(values) == 1:
-                index_to = index_from
-            elif len(values[1]):
-                index_to = int(values[1])
-            else:
-                index_to = None
-        except ValueError:
+            index_from, index_to = _page_range(values)
+        except ValueError as exc:
             # argparse makes a usage error only of its own exceptions.
-            parser.error(f"--extract-pages: expected N or N:M, got {raw!r}")
+            parser.error(f"--extract-pages: {exc}")
 
         # Dotted keys, matching the confuse template path directly. This
         # action's own dest stays None and is dropped by confuse.

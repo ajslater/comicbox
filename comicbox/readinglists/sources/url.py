@@ -45,6 +45,9 @@ _WINDOW_BITS: Final = {
 }
 # Some servers send "deflate" without its zlib wrapper.
 _RAW_DEFLATE_BITS = -zlib.MAX_WBITS
+# What may follow a stream's end and is ignored, as gzip(1) and Python's
+# gzip module ignore zero bytes: zero bytes and ASCII whitespace.
+_PADDING = b"\0 \t\n\r\f\v"
 # The longest one download may take, beside the per-read timeout: a server
 # dripping a byte at a time never trips that.
 DEADLINE_SECONDS = 120.0
@@ -128,13 +131,34 @@ class _Inflater:
         self._bits = _WINDOW_BITS[encoding]
         self._zlib = zlib.decompressobj(self._bits)
         self._started = False
+        self._pending = b""
 
     def _corrupt(self, exc: zlib.error) -> ReadingListFetchError:
         reason = f"{self._url}: its {self._encoding} body is corrupt: {exc}"
         return ReadingListFetchError(reason)
 
     def inflate(self, data: bytes, limit: int) -> bytes:
-        """Inflate up to ``limit`` bytes; input that would pass it waits."""
+        """
+        Inflate up to ``limit`` bytes; input that would pass it waits.
+
+        Zero bytes and whitespace after a stream's end are padding, and are
+        skipped. Anything else after it is another member of a gzip body,
+        which RFC 1952 makes a series of members, each inflated in turn. A
+        zlib or raw deflate body is one stream, so anything else after it
+        is refused.
+        """
+        if self._zlib.eof:
+            # Only this chunk's padding is looked at: none of it is kept.
+            data = data.lstrip(_PADDING)
+            if not data:
+                self._pending = b""
+                return b""
+            if self._bits != _WINDOW_BITS["gzip"]:
+                reason = (
+                    f"{self._url}: its {self._encoding} body has data after its end."
+                )
+                raise ReadingListFetchError(reason)
+            self._zlib = zlib.decompressobj(self._bits)
         try:
             out = self._zlib.decompress(data, limit)
         except zlib.error as exc:
@@ -145,12 +169,13 @@ class _Inflater:
             self._zlib = zlib.decompressobj(self._bits)
             return self.inflate(data, limit)
         self._started = True
+        self._pending = self._zlib.unconsumed_tail or self._zlib.unused_data
         return out
 
     @property
     def pending(self) -> bytes:
-        """Input not yet inflated because the output reached its limit."""
-        return self._zlib.unconsumed_tail
+        """Input not yet inflated: past the output limit, or past a stream's end."""
+        return self._pending
 
     @property
     def eof(self) -> bool:

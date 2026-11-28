@@ -115,8 +115,9 @@ class IntegerField(fields.Integer, RangedNumberMixin[int]):
     @override
     def _deserialize(self, value: int | str, *args: Any, **kwargs: Any) -> int | None:  #  pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         pre_value = self._deserialize_pre(value)
-        result: int | None = super()._deserialize(pre_value, *args, **kwargs)
-        if self._negative_is_unset and result is not None and result < 0:
+        # marshmallow's Integer returns an int or raises, never None.
+        result: int = super()._deserialize(pre_value, *args, **kwargs)
+        if self._negative_is_unset and result < 0:
             return None
         return self._deserialize_post(result)
 

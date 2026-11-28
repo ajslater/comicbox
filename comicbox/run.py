@@ -21,6 +21,7 @@ from comicbox.exceptions import (
     DestinationOccupiedError,
     DuplicateMemberError,
     ExportError,
+    ImportFileError,
     OnlineLookupAbortedError,
     ReadOnlyComicError,
     UnparsedTagFileError,
@@ -65,6 +66,7 @@ _EXPECTED_FILE_ERRORS = (
     ReadOnlyComicError,
     DuplicateMemberError,
     ExportError,
+    ImportFileError,
     ValidationFailedError,
 )
 

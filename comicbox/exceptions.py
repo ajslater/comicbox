@@ -139,6 +139,10 @@ class MetadataError(ComicboxError):
     """Metadata could not be loaded or routed through the source pipeline."""
 
 
+class ImportFileError(MetadataError):
+    """An -i import file could not be read, or held nothing comicbox can parse."""
+
+
 class ValidationFailedError(MetadataError):
     """A comic's metadata failed --validate against its format's schema."""
 

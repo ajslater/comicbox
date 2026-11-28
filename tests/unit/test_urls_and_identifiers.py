@@ -325,3 +325,33 @@ def test_comicinfo_web_is_written_in_order() -> None:
     with Comicbox(metadata=xml, fmt=MetadataFormats.COMIC_INFO) as car:
         written = car.to_string(MetadataFormats.COMIC_INFO)
     assert f"<Web>{web} https://comicvine.gamespot.com/c/4000-222/</Web>" in written
+
+
+def test_ids_from_tags_come_out_in_one_order() -> None:
+    """
+    The order tags happen to iterate in does not order the identifiers.
+
+    Tags and genres are parsed into sets, so they iterate in hash order,
+    which changes with PYTHONHASHSEED. The identifiers read from them,
+    and the urls made from those, were written in that order: the same
+    comic got a different ``Web`` element from run to run.
+    """
+    forward = {"urn:metron:9999": {}, "CVDB1234": {}}
+    backward = dict(reversed(forward.items()))
+    with Comicbox() as car:
+        computed = [
+            car._get_computed_from_tags({"tags": tags}) for tags in (forward, backward)
+        ]
+    assert computed[0]
+    assert computed[1]
+    assert list(computed[0]["identifiers"]) == list(computed[1]["identifiers"])
+
+
+def test_ids_in_tags_win_over_ids_in_genres() -> None:
+    """When tags and genres name one database, the tags' id is kept, every run."""
+    with Comicbox() as car:
+        computed = car._get_computed_from_tags(
+            {"tags": {"urn:metron:1": {}}, "genres": {"urn:metron:2": {}}}
+        )
+    assert computed
+    assert computed["identifiers"]["metron"]["key"] == "1"

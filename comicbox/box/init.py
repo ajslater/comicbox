@@ -38,6 +38,8 @@ class SourceData:
     path: Path | str | None = None
     fmt: MetadataFormats | None = None
     from_archive: bool = False
+    # Named with -i: data that is no metadata fails the comic, not a warning.
+    required: bool = False
 
 
 @dataclass

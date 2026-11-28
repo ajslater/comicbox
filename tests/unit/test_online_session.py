@@ -279,7 +279,7 @@ def test_cancel_skips_subsequent_files(tmp_path) -> None:
 
 def test_abort_from_lookup_cancels_the_batch(tmp_path, monkeypatch) -> None:
     """An 'abort' answer aborts the entire run, not just the current file."""
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
 
@@ -305,7 +305,7 @@ def test_an_abort_keeps_its_reason(tmp_path, monkeypatch) -> None:
     an embedding application has to scrape the log to learn that the day's
     API budget ran out rather than that a user pressed pause.
     """
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     reason = "online: daily API request quota exhausted"
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
@@ -329,9 +329,64 @@ def test_a_plain_cancel_has_no_abort_reason() -> None:
     assert session.abort_reason is None
 
 
+def test_a_cancel_that_ends_a_waiting_lookup_names_the_wait(
+    tmp_path, monkeypatch
+) -> None:
+    """A cancel caught at a lookup's wait reads as that wait's abort."""
+    import threading
+
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    waiting = threading.Event()
+
+    def wait_to_retry(self, _path):
+        waiting.set()
+        self._retry_sleep_wait(30)
+
+    monkeypatch.setattr(OnlineSession, "_run_one", wait_to_retry)
+    results = []
+    worker = threading.Thread(
+        target=lambda: results.append(session.tag(tmp_path / "f0.cbz"))
+    )
+    worker.start()
+    assert waiting.wait(10)
+    session.cancel()
+    worker.join(10)
+
+    assert results[0].cancelled
+    assert session.abort_reason == "online: session cancelled during retry wait"
+
+
+def test_tag_takes_a_str_path(tmp_path, monkeypatch) -> None:
+    """tag() and tag_many() take a str as preload_resolution does."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    seen = []
+
+    def run_one(self, path):
+        seen.append(path)
+        return {}, False
+
+    monkeypatch.setattr(OnlineSession, "_run_one", run_one)
+    name = str(tmp_path / "Foo 001.cbz")
+    one = session.tag(name)
+    (many,) = session.tag_many([name])
+
+    assert seen == [Path(name), Path(name)]
+    assert all(isinstance(path, Path) for path in seen)
+    assert one.path == many.path == Path(name)
+    assert one.error is None
+    assert many.error is None
+
+
+def test_a_manual_preload_refuses_an_empty_path() -> None:
+    """An empty path is the current directory, which no comic is tagged as."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    with pytest.raises(ValueError, match="path"):
+        session.preload_resolution("fp", action="manual", payload=1, path="")
+
+
 def test_retry_sleep_wait_aborts_when_cancelled() -> None:
     """The wired retry sleep aborts the in-flight lookup on cancel()."""
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     session.cancel()

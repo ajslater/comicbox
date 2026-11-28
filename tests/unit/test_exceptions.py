@@ -9,7 +9,7 @@ import pytest
 from comicbox import exceptions
 from comicbox.box import Comicbox
 from comicbox.exceptions import ComicboxError
-from comicbox.write import WriteValidationError, write_metadata
+from comicbox.write import write_metadata
 
 PUBLIC_EXCEPTIONS = (
     exceptions.UnsupportedArchiveTypeError,
@@ -29,14 +29,15 @@ def test_all_public_exceptions_share_the_base() -> None:
         assert issubclass(exc_class, ComicboxError)
 
 
-def test_historical_import_paths_still_work() -> None:
-    """The pre-hierarchy import locations keep resolving."""
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
-    from comicbox.online_session import OnlineConfigurationError
+def test_the_api_modules_export_the_errors_they_raise() -> None:
+    """The write and online-session APIs hand out the errors they raise."""
+    from comicbox import online_session, write
 
-    assert OnlineLookupAbortedError is exceptions.OnlineLookupAbortedError
-    assert OnlineConfigurationError is exceptions.OnlineConfigurationError
-    assert WriteValidationError is exceptions.WriteValidationError
+    assert write.WriteValidationError is exceptions.WriteValidationError
+    assert write.DestinationOccupiedError is exceptions.DestinationOccupiedError
+    assert online_session.OnlineConfigurationError is (
+        exceptions.OnlineConfigurationError
+    )
 
 
 def test_write_validation_catchable_as_comicbox_error() -> None:

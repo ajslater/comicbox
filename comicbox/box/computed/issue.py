@@ -20,7 +20,6 @@ from comicbox.formats.comicbox.schema import (
     VOLUME_NUMBER_TO_KEY,
 )
 
-ISSUE_SUFFIX_KEYPATH = f"{ISSUE_KEY}.{ISSUE_SUFFIX_KEY}"
 # MangaVolume is a free string. A single number or a "first-last" range is
 # what publishers actually write, so comicbox reads those into the volume
 # numbers for clients rather than making every client parse it.

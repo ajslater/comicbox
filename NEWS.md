@@ -174,6 +174,24 @@
   cover search and the series detail, instead of 2.
 - Library: `OnlineSession.cancel()` also ends that session's lookups waiting for
   Metron's pacing, instead of letting them run to completion.
+- Urls made from ids found in tags or genres are written in the same order on
+  every run, and an id in tags wins over one for the same database in genres.
+- A reading list downloaded as several gzip members reads them all instead of
+  only the first. Zero bytes or whitespace after a compressed download are
+  ignored, and anything else after its end is refused.
+- Library: `OnlineSession.tag()` and `tag_many()` take `str` paths, and
+  `preload_resolution(action="manual")` refuses an empty path.
+- `-x` with an empty, reversed, signed or three-part range is a usage error, and
+  a range that starts past a comic's last page fails that comic, instead of
+  exiting 0 with nothing extracted. An end past the last page still extracts to
+  the last page.
+- Library: `extract_pages` reads an end below 0 as the last page, as `get_pages`
+  does, instead of extracting nothing or one page short.
+- An `-i` import file (or `convert.import_paths` from a config file, the
+  environment or a library caller) that cannot be read, or is not metadata at
+  all, fails the comic instead of a warning and a write without it. One that
+  holds no tags gives one warning naming it, and a quoted `-i` pattern that
+  matches no file fails the comic instead of being skipped.
 
 ### 🔒 Security
 

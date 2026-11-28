@@ -6,7 +6,7 @@ import threading
 import time
 import tracemalloc
 import zlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import pytest
@@ -28,7 +28,7 @@ from comicbox.readinglists.sources import url as url_source
 from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable, Iterator, Mapping
 
 READING_LISTS_DIR = TEST_FILES_DIR / "readinglists"
 _FILES = {
@@ -319,6 +319,148 @@ def test_a_compressed_body_cut_short_is_refused(encoding: str, wbits: int) -> No
         pytest.raises(ReadingListFetchError, match=f"{encoding} body ends early"),
     ):
         session.fetch_url(f"{_BASE}/list.yaml")
+
+
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+@pytest.mark.parametrize(
+    ("encoding", "wbits", "refusal"),
+    [
+        ("gzip", zlib.MAX_WBITS | 16, "gzip body is corrupt"),
+        ("deflate", zlib.MAX_WBITS, "deflate body has data after its end"),
+        ("deflate", -15, "deflate body has data after its end"),
+    ],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+def test_junk_after_a_whole_compressed_body_is_refused(
+    encoding: str, wbits: int, refusal: str, *, separate: bool
+) -> None:
+    """A stream that ends before its body does was not all the server sent."""
+    whole = _compress(_LIST, wbits)
+    junk = b"<html>proxy error</html>"
+    body = iter([whole, junk]) if separate else whole + junk
+    with (
+        _session_with(_Streamed(body, encoding), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match=refusal),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+def test_gzip_members_are_inflated_one_after_another(*, separate: bool) -> None:
+    """RFC 1952: a gzip body is a series of members, each read in turn."""
+    half = len(_LIST) // 2
+    gzip_bits = zlib.MAX_WBITS | 16
+    members = [_compress(_LIST[:half], gzip_bits), _compress(_LIST[half:], gzip_bits)]
+    body = iter(members) if separate else b"".join(members)
+    with _session_with(_Streamed(body, "gzip"), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    with _session_with(_Streamed(_LIST), 1 << 20) as session:
+        plain = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+
+    # Each fetch's source records when it was fetched (no ETag or date was
+    # sent), so compare the lists without that.
+    assert _without_revisions(result.reading_list) == _without_revisions(
+        plain.reading_list
+    )
+
+
+_GZIP_BITS = zlib.MAX_WBITS | 16
+
+
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+@pytest.mark.parametrize(
+    ("encoding", "wbits"),
+    [("gzip", _GZIP_BITS), ("deflate", zlib.MAX_WBITS), ("deflate", -15)],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+@pytest.mark.parametrize(
+    "padding",
+    [b"\0", b"\0" * 8, b"\n", b" \r\n\t"],
+    ids=["NUL", "8NUL", "LF", "spaces"],
+)
+def test_padding_after_a_whole_compressed_body_is_ignored(
+    encoding: str, wbits: int, padding: bytes, *, separate: bool
+) -> None:
+    """Zero bytes or whitespace after the stream, as gzip(1) and Python allow."""
+    whole = _compress(_LIST, wbits)
+    body = iter([whole, padding]) if separate else whole + padding
+    with _session_with(_Streamed(body, encoding), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    assert result.reading_list["name"] == "Crimson Tide"
+
+
+def test_padding_between_gzip_members_is_ignored() -> None:
+    """Python's gzip module reads past zero bytes to the next member."""
+    half = len(_LIST) // 2
+    body = (
+        _compress(_LIST[:half], _GZIP_BITS)
+        + b"\0" * 4
+        + _compress(_LIST[half:], _GZIP_BITS)
+    )
+    with _session_with(_Streamed(body, "gzip"), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    with _session_with(_Streamed(_LIST), 1 << 20) as session:
+        plain = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    assert _without_revisions(result.reading_list) == _without_revisions(
+        plain.reading_list
+    )
+
+
+@pytest.mark.parametrize(
+    ("encoding", "wbits", "refusal"),
+    [
+        ("gzip", _GZIP_BITS, "gzip body is corrupt"),
+        ("deflate", zlib.MAX_WBITS, "deflate body has data after its end"),
+    ],
+    ids=["gzip", "zlib-deflate"],
+)
+def test_junk_after_padding_is_still_refused(
+    encoding: str, wbits: int, refusal: str
+) -> None:
+    body = _compress(_LIST, wbits) + b"\0\0\n" + b"<html>proxy error</html>"
+    with (
+        _session_with(_Streamed(body, encoding), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match=refusal),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+def _padded(whole: bytes, size: int) -> Iterator[bytes]:
+    """Send a whole body, then ``size`` zero bytes 64 KiB at a time."""
+    yield whole
+    block = bytes(1 << 16)
+    for _ in range(size >> 16):
+        yield block
+
+
+def test_padding_is_not_held_and_counts_against_the_cap() -> None:
+    """A megabyte of NULs after the stream is read through, not kept."""
+    whole = _compress(_LIST, _GZIP_BITS)
+    tracemalloc.start()
+    try:
+        with _session_with(
+            _Streamed(_padded(whole, 1 << 20), "gzip"), 4 << 20
+        ) as session:
+            result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result.reading_list["name"] == "Crimson Tide"
+    assert peak < 1 << 20
+    with (
+        _session_with(_Streamed(_padded(whole, 1 << 20), "gzip"), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match="download limit"),
+    ):
+        session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+
+
+def _without_revisions(reading_list: Mapping[str, Any]) -> dict[str, Any]:
+    """Copy a reading list with each source's fetch revision left out."""
+    sources = [
+        {key: value for key, value in source.items() if key != "revision"}
+        for source in reading_list.get("sources", ())
+    ]
+    return {**reading_list, "sources": sources}
 
 
 def _drip(seconds: float = 10.0) -> Iterator[bytes]:

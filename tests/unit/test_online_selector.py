@@ -9,8 +9,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from comicbox.box import Comicbox
-from comicbox.box.online_lookup import ComicboxOnlineLookup, OnlineLookupAbortedError
+from comicbox.box.online_lookup import ComicboxOnlineLookup
 from comicbox.config.online.settings import MatchMode, Prompts
+from comicbox.exceptions import OnlineLookupAbortedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.online.profile import Candidate, CandidateSummary
 from comicbox.formats.base.online.session_state import OnlineSessionState

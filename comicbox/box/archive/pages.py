@@ -18,7 +18,10 @@ class ComicboxArchivePages(ComicboxArchiveFilenames):
         """
         Generate the pages from ``page_from`` to ``page_to``, inclusive.
 
-        A ``page_to`` of None, or below 0, is the last page. A 7z is
+        A ``page_to`` of None, or below 0, is the last page. A ``page_from``
+        below 0 counts back from the last page, as a slice does: -1 is the
+        last page. A range partly past the last page reads the pages it
+        covers; one that matches no page reads nothing. A 7z is
         decompressed in batches, as a conversion reads it: read one at a
         time, each page re-decoded its solid block from the start.
         """

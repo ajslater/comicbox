@@ -50,7 +50,8 @@ _IRREGULAR_SINGULAR_ID_TYPES = MappingProxyType(
         STORIES_KEY: "story",
     }
 )
-_PARSE_AS_IDENTIFIERS = frozenset({TAGS_KEY, GENRES_KEY})
+# In this order: an id in tags replaces one for the same database in genres.
+_PARSE_AS_IDENTIFIERS = (GENRES_KEY, TAGS_KEY)
 
 
 class ComicboxComputedIdentifiers(ComicboxComputedNotes):
@@ -74,13 +75,15 @@ class ComicboxComputedIdentifiers(ComicboxComputedNotes):
         if (
             not sub_data
             or self._config.is_skip_computed_from_tags
-            or _PARSE_AS_IDENTIFIERS.issubset(self._config.general.delete_keys)
+            or set(_PARSE_AS_IDENTIFIERS).issubset(self._config.general.delete_keys)
         ):
             return None
         identifiers = {}
         for key in _PARSE_AS_IDENTIFIERS:
             if tags := sub_data.get(key):
-                for tag in tags:
+                # Read from a set: sorted, so the identifiers, and the urls
+                # made from them, come out in one order every run.
+                for tag in sorted(tags):
                     self._add_identifier_from_tag(tag, identifiers)
 
         if not identifiers:

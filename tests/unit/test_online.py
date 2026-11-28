@@ -5,9 +5,9 @@ from argparse import Namespace
 import pytest
 
 from comicbox.config import get_config
+from comicbox.config.online.credentials import resolve_credentials
 from comicbox.config.online.settings import CacheMode, Effort, MatchMode, Prompts
 from comicbox.formats.base.online.cli_overrides import CliOverrides
-from comicbox.formats.base.online.credentials import resolve_credentials
 
 # ------------------------------------------------------------- CLI overrides
 

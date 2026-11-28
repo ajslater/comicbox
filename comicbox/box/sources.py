@@ -9,7 +9,7 @@ from loguru import logger
 
 from comicbox.box.archive import ComicboxArchive
 from comicbox.box.init import SourceData
-from comicbox.exceptions import MetadataError
+from comicbox.exceptions import ImportFileError, MetadataError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
 from comicbox.formats.pdf.schema import MuPDFSchema
 from comicbox.formats.sources import MetadataSources
@@ -74,19 +74,24 @@ class ComicboxSources(ComicboxArchive):
         if not paths:
             return source_data_list
         for path_str in paths:
+            path = Path(path_str)
             try:
-                path = Path(path_str)
                 with path.open("r") as f:
                     source_string = f.read()
-                fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
-                if not fmt or fmt in self._config.read.formats:
-                    sd = SourceData(source_string, path, fmt)
-                    source_data_list.append(sd)
-            except Exception as exc:
-                logger.warning(
-                    f"Error reading metadata from import path {path_str}: {exc}"
+            except (OSError, UnicodeDecodeError) as exc:
+                # A file the user named: the comic fails rather than being
+                # written without it.
+                if "*" in str(path_str) and not path.exists():
+                    # expand_glob_paths keeps a pattern that matched nothing.
+                    reason = f"Import file pattern {path_str}: matches no file."
+                else:
+                    reason = f"Import file {path_str}: cannot read it: {exc}"
+                raise ImportFileError(reason) from exc
+            fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
+            if not fmt or fmt in self._config.read.formats:
+                source_data_list.append(
+                    SourceData(source_string, path, fmt, required=True)
                 )
-                logger.exception("")
         return source_data_list
 
     def _get_source_filename_metadata(self) -> list[SourceData]:
@@ -243,6 +248,8 @@ class ComicboxSources(ComicboxArchive):
             if source not in self._sources:
                 self._set_source_metadata(source)
             return self._sources.get(source) or None
+        except ImportFileError:
+            raise
         except Exception as exc:
             logger.warning(
                 f"{self._path} reading source metadata from {source.value.label}: {exc}"

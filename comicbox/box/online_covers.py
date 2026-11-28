@@ -163,18 +163,6 @@ class ComicboxOnlineCovers(ComicboxNormalize):
         resolved.update(fetched)
         return resolved
 
-    def _candidate_cover_hash_fetcher(self, url: str) -> str | None:
-        """
-        Download a candidate cover from URL and return its pHash, with caching.
-
-        The single-URL entry point, kept for callers that resolve one
-        candidate at a time; the matcher's hot path goes through
-        `_candidate_cover_hash_batch_fetcher` instead.
-        """
-        if not url:
-            return None
-        return self._candidate_cover_hash_batch_fetcher((url,)).get(url)
-
     def _close_cover_hash_resources(self) -> None:
         """Release the cover-hash sqlite connection and HTTP client."""
         if self._cover_hash_url_cache is not None:

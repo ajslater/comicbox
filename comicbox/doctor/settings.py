@@ -29,7 +29,7 @@ from loguru import logger
 
 from comicbox.cli.parser import FOLDED_DESTS
 from comicbox.config.online.template import _PER_SOURCE_TUNING_TEMPLATE
-from comicbox.config.read import _LEGACY_ENV_VARS, _config_path
+from comicbox.config.read import _ENV_PREFIX, _ENV_SEP, _LEGACY_ENV_VARS, _config_path
 from comicbox.doctor.result import CheckResult, Status
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.version import PACKAGE_NAME
@@ -43,8 +43,6 @@ if TYPE_CHECKING:
 
 SECTION = "Config"
 
-_ENV_PREFIX = f"{PACKAGE_NAME.upper()}_"
-_ENV_SEP = "__"
 _CONFIG_DIR_ENV = f"{PACKAGE_NAME.upper()}DIR"
 # Set, it looks like it would load a file. Only --config does.
 _IGNORED_CONFIG_ENV = f"{_ENV_PREFIX}GENERAL{_ENV_SEP}CONFIG"
