@@ -91,7 +91,7 @@ def test_a_comic_cannot_take_its_own_cover(tmp_path: Path) -> None:
 
 
 def _cover(comic: Path, tmp_path: Path) -> bytes:
-    """The cover `-X` saves for a comic, extracted on its own."""
+    """Extract a comic's cover on its own and return what `-X` saves."""
     out = tmp_path / f"{comic.stem}-cover"
     out.mkdir()
     code, _ = _run_cli("-X", "-d", str(out), str(comic))

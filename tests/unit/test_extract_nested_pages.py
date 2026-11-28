@@ -70,7 +70,11 @@ def test_flat_archives_keep_their_names(tmp_path: Path) -> None:
 
 def test_the_index_is_padded_to_the_page_count(tmp_path: Path) -> None:
     """Ten pages: two digits, as comicbox pads a PDF's page names."""
-    members = {f"{folder}/{n:02}.jpg": f"{folder}{n}".encode() for folder in "ab" for n in range(5)}
+    members = {
+        f"{folder}/{n:02}.jpg": f"{folder}{n}".encode()
+        for folder in "ab"
+        for n in range(5)
+    }
     extracted = _extract(_comic(tmp_path, members), tmp_path / "out")
     assert sorted(extracted) == [
         "00.jpg",
