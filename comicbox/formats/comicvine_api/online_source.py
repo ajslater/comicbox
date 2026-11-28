@@ -1181,19 +1181,15 @@ class ComicVineOnlineSource(OnlineSource):
         name_threshold = self._effort_name_threshold()
 
         budget = self._new_search_budget()
-        candidates: list[Candidate] = []
-        for vol in volumes:
-            candidates.extend(
-                self._candidates_for_volume(
-                    session,
-                    vol,
-                    profile=profile,
-                    issue_number=issue_number,
-                    year=year,
-                    name_threshold=name_threshold,
-                    budget=budget,
-                )
-            )
+        candidates, failure = self._fan_out(
+            session,
+            volumes,
+            profile=profile,
+            issue_number=issue_number,
+            year=year,
+            name_threshold=name_threshold,
+            budget=budget,
+        )
         if budget.dropped:
             # Never truncate silently: a short candidate list has to be
             # distinguishable from a thin one upstream.
@@ -1204,7 +1200,61 @@ class ComicVineOnlineSource(OnlineSource):
                 "not queried. Use `--effort thorough` (config key "
                 "`online.tuning.effort`) to search them all."
             )
+        if failure is not None:
+            raise failure
         return candidates
+
+    def _fan_out(
+        self,
+        session: Any,
+        volumes: Sequence[Any],
+        *,
+        profile: ComicProfile,
+        issue_number: str | None,
+        year: int | None,
+        name_threshold: float,
+        budget: _SearchBudget,
+    ) -> tuple[list[Candidate], Exception | None]:
+        """
+        List each volume's matching issues, degrading past a failed volume.
+
+        One volume's failure costs only its candidates. When every volume
+        that was asked failed, though -- an outage, a spent pool -- the
+        last failure comes back for the caller to raise, so the lookup
+        reports a failed search rather than a no-match. A volume a filter
+        or the budget skipped was never asked and counts for neither.
+        """
+        candidates: list[Candidate] = []
+        queried = failed = 0
+        failure: Exception | None = None
+        for vol in volumes:
+            try:
+                found = self._candidates_for_volume(
+                    session,
+                    vol,
+                    profile=profile,
+                    issue_number=issue_number,
+                    year=year,
+                    name_threshold=name_threshold,
+                    budget=budget,
+                )
+            except OnlineLookupAbortedError:
+                # An abort ends the whole lookup; it is not a source-side
+                # failure to degrade past. Mirrors OnlineSource.lookup_issue.
+                raise
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for volume {vol.id} "
+                    f"({vol.name!r}) failed: {exc}"
+                )
+                queried += 1
+                failed += 1
+                failure = exc
+                continue
+            if found is not None:
+                queried += 1
+                candidates.extend(found)
+        return candidates, failure if failed and failed == queried else None
 
     def _new_search_budget(self) -> _SearchBudget:
         """Resolve this search's pre-call fan-out limits from the effort knob."""
@@ -1224,9 +1274,12 @@ class ComicVineOnlineSource(OnlineSource):
         year: int | None,
         name_threshold: float,
         budget: _SearchBudget | None = None,
-    ) -> list[Candidate]:
+    ) -> list[Candidate] | None:
         """
         Apply pre-call filters and (if kept) fetch the volume's matching issues.
+
+        Returns None when a filter or the budget skipped the volume, so no
+        request was made; the caller handles a failed request.
 
         Pre-filters in order: start_year causality (skip volumes that
         started after the comic), then series-name fuzzy match (skip
@@ -1250,7 +1303,7 @@ class ComicVineOnlineSource(OnlineSource):
                 f"year={year} predates the volume — issue cannot "
                 f"originate here."
             )
-            return []
+            return None
         alt_series = tuple(split_aliases(getattr(vol, "aliases", None)))
         if not should_keep_volume_name(
             profile.series, vol.name, name_threshold, alt_names=alt_series
@@ -1261,28 +1314,17 @@ class ComicVineOnlineSource(OnlineSource):
                 f"profile.series={profile.series!r} (threshold="
                 f"{name_threshold:.2f}, effort pre-filter)."
             )
-            return []
+            return None
         if budget is not None and not budget.take():
-            return []
-        try:
-            return self._list_with_year_retry(
-                session,
-                vol.id,
-                issue_number,
-                _VolumeFacts.from_volume(vol, alt_series),
-                year=year,
-                budget=budget,
-            )
-        except OnlineLookupAbortedError:
-            # An abort ends the whole lookup; it is not a source-side
-            # failure to degrade past. Mirrors OnlineSource.lookup_issue.
-            raise
-        except Exception as exc:
-            logger.warning(
-                f"online {self.name}: issue-list for volume {vol.id} "
-                f"({vol.name!r}) failed: {exc}"
-            )
-            return []
+            return None
+        return self._list_with_year_retry(
+            session,
+            vol.id,
+            issue_number,
+            _VolumeFacts.from_volume(vol, alt_series),
+            year=year,
+            budget=budget,
+        )
 
     def _list_with_year_retry(
         self,

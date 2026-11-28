@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 import time
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
+import pytest
 from simyan.errors import RateLimitError
 
 from comicbox.config.online.settings import (
@@ -27,9 +27,6 @@ if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class _HintedRateLimitError(RateLimitError):
@@ -1085,3 +1082,146 @@ def test_lookup_issue_in_volume_without_number_makes_no_request(
 
         assert src.lookup_issue(500, issue_number) is None, issue_number
         assert fake_cv.list_issues_calls == [], issue_number
+
+
+# ------------------------------------------- per-volume failures (A15)
+
+
+class _FailingCV(_FakeCV):
+    """A Comic Vine whose issue list fails for the volumes it is told to."""
+
+    def __init__(self, *args: object, failing: set[int], **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+        self._failing = failing
+
+    @override
+    def list_issues(self, params=None, max_results=500):
+        from simyan.errors import ServiceError
+
+        filter_str = (params or {}).get("filter", "")
+        vid = int(filter_str.split(",")[0].split(":", 1)[1])
+        if vid in self._failing:
+            self.list_issues_calls.append(dict(params or {}))
+            msg = "502: Bad Gateway"
+            raise ServiceError(msg)
+        return super().list_issues(params, max_results)
+
+
+def _three_volume_source(
+    monkeypatch: pytest.MonkeyPatch, failing: set[int]
+) -> tuple[ComicVineOnlineSource, _FailingCV]:
+    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2, 3)]
+    issues = {
+        i: [_FakeBasicIssue(iid=i * 10, number="5", volume_name="Wardens")]
+        for i in (1, 2, 3)
+    }
+    fake = _FailingCV(volumes=volumes, issues_by_volume=issues, failing=failing)
+    src = _make_cv_source(monkeypatch, fake)
+    src.retry_sleep = lambda _delay: None  # pyright: ignore[reportAttributeAccessIssue]
+    return src, fake
+
+
+def test_a_search_whose_every_volume_failed_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An outage is a failed search, not a clean no-match.
+
+    Every per-volume issue list failing used to return [], which the
+    lookup reported as searched-and-missed.
+    """
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={1, 2, 3})
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    with pytest.raises(ServiceError, match="502"):
+        src.search(profile)
+    assert {c["filter"].split(",")[0] for c in fake.list_issues_calls} == {
+        "volume:1",
+        "volume:2",
+        "volume:3",
+    }
+
+
+def test_a_search_with_one_failed_volume_keeps_the_others(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src, _ = _three_volume_source(monkeypatch, failing={2})
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    assert sorted(c.issue_id for c in src.search(profile)) == [10, 30]
+
+
+def test_volumes_the_filters_skip_are_not_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No volume queried is a no-match, even when the issue list would fail."""
+    src, fake = _three_volume_source(monkeypatch, failing={1, 2, 3})
+    # Every volume started after the comic: the causality filter skips them.
+    for vol in fake._volumes:
+        vol.start_year = 2020
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
+
+    assert src.search(profile) == []
+    assert fake.list_issues_calls == []
+
+
+def test_a_failed_volume_with_the_rest_out_of_budget_still_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Volumes the budget dropped were never asked, so they are not answers."""
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={1})
+    monkeypatch.setattr(
+        src,
+        "_new_search_budget",
+        lambda: _SearchBudget(max_calls=1, deadline=None),
+    )
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    with pytest.raises(ServiceError):
+        src.search(profile)
+    assert {c["filter"].split(",")[0] for c in fake.list_issues_calls} == {"volume:1"}
+
+
+def test_a_lookup_whose_every_volume_failed_reports_a_failed_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Through the box: no SearchCompleted(n_candidates=0), so no no-match."""
+    from argparse import Namespace
+    from types import MappingProxyType
+
+    from comicbox.box import Comicbox
+    from comicbox.box.online_lookup import ComicboxOnlineLookup
+    from comicbox.events import Event, NoMatch, SearchCompleted
+
+    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2)]
+    fake = _FailingCV(volumes=volumes, issues_by_volume={}, failing={1, 2})
+
+    def factory(creds, settings) -> ComicVineOnlineSource:
+        src = ComicVineOnlineSource(creds, settings)
+        monkeypatch.setattr(src, "_get_session", lambda: fake)
+        return src
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"comicvine": factory}),
+    )
+    metadata = {"comicbox": {"series": {"name": "Wardens"}, "issue": {"name": "5"}}}
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["comicvine"],
+            general=Namespace(metadata=metadata),
+            auth=["comicvine:key=k"],
+        )
+    )
+    events: list[Event] = []
+    cb = Comicbox(config=args)
+    cb.set_event_handler(events.append)
+    cb.set_retry_sleep(lambda _delay: None)
+
+    assert cb.run_online_lookup() is False
+    assert not any(isinstance(e, SearchCompleted | NoMatch) for e in events)

@@ -156,6 +156,8 @@
 - Library: a process forked after an online lookup builds its own Comic Vine
   and VerseDB connections instead of sharing its parent's, and no longer hangs
   on a Metron lock held at the fork.
+- A Comic Vine search whose every issue list failed, as in an outage or with
+  the hourly budget spent, is reported as a failed search instead of no match.
 
 ### 🔒 Security
 
