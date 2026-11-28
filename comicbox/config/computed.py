@@ -13,7 +13,8 @@ from comicbox.config.paths import clean_paths
 from comicbox.print import PrintPhases
 from comicbox.version import DEFAULT_TAGGER
 
-_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
+# Each -Q is one step quieter than the shipped INFO; more than these is CRITICAL.
+_QUIET_LOGLEVEL = MappingProxyType({1: "SUCCESS", 2: "WARNING", 3: "ERROR"})
 
 
 def _optional(view: Subview) -> Any:
@@ -59,15 +60,37 @@ def _deduplicate_delete_keys(config: Subview) -> None:
     config["general"]["delete_keys"].set(delete_keys)
 
 
+def quiet_loglevel(quiet: int) -> str:
+    """Name the loglevel a count of ``-Q`` asks for."""
+    return _QUIET_LOGLEVEL.get(quiet, "CRITICAL")
+
+
+def _level_no(level: Any) -> int | None:
+    """Return a loglevel's number, or None if loguru has no such level."""
+    if isinstance(level, int):
+        return level
+    try:
+        return logger.level(str(level).strip().upper()).no
+    except ValueError:
+        return None
+
+
 def _fold_quiet(config: Subview) -> None:
     """
     Fold ``-Q`` counts into a loglevel.
 
     ``-Q`` has no config key of its own; it's shorthand for
-    ``general.loglevel``, and the count picks how quiet.
+    ``general.loglevel``, and the count picks how quiet. It never makes
+    a quieter configured level louder. A level loguru doesn't know is
+    left for validation to report.
     """
-    if quiet := _optional(config["general"]["quiet"]):
-        config["general"]["loglevel"].set(_QUIET_LOGLEVEL.get(quiet, "CRITICAL"))
+    if not (quiet := _optional(config["general"]["quiet"])):
+        return
+    view = config["general"]["loglevel"]
+    configured = _level_no(_optional(view))
+    level = quiet_loglevel(quiet)
+    if configured is not None and logger.level(level).no > configured:
+        view.set(level)
 
 
 def _parse_print(config: Subview) -> None:

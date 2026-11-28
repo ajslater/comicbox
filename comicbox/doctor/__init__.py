@@ -37,7 +37,6 @@ __all__ = ("CheckResult", "DoctorReport", "Status", "main", "run_checks")
 _REDACTED = "***"
 # Below this, a string is too short to scrub safely from free text.
 _MIN_SECRET_LEN = 4
-_QUIET_CRITICAL = 5
 
 
 def _checks() -> tuple[Check, ...]:
@@ -146,12 +145,15 @@ def _hold_logging(cns: Namespace) -> None:
     Keep log lines out of the middle of the report.
 
     The checks turn what would be warnings into rows. ``-Q`` still means
-    what it always does, so five of them silence errors too.
+    what it does in a run, so enough of them to reach CRITICAL silence
+    errors too.
     """
+    from comicbox.config.computed import quiet_loglevel
     from comicbox.logger import init_logging
 
     quiet = getattr(cns, "general.quiet", None) or 0
-    init_logging("CRITICAL" if quiet >= _QUIET_CRITICAL else "ERROR")
+    critical = quiet and quiet_loglevel(quiet) == "CRITICAL"
+    init_logging("CRITICAL" if critical else "ERROR")
 
 
 def main(params: Sequence[str]) -> int:

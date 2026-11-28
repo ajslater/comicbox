@@ -12,6 +12,8 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import TYPE_CHECKING
 
+import pytest
+
 from comicbox.cli.parser import build_parser
 from comicbox.doctor import settings
 from comicbox.doctor.context import DoctorContext
@@ -19,8 +21,6 @@ from comicbox.doctor.result import Status
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
     from comicbox.doctor.result import CheckResult
 
@@ -301,3 +301,19 @@ def test_removed_metron_user_and_pass_warn(tmp_path: Path) -> None:
     assert all(row.status is Status.WARN and row.found == path for row in rows)
     assert {row.fix for row in rows} == {"put an API token in online.auth.metron.key"}
     assert all("FAKE-PASSWORD" not in str(row) for row in rows)
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"), [(0, "ERROR"), (3, "ERROR"), (4, "CRITICAL")]
+)
+def test_doctor_quiet_holds_its_log_as_a_run_would(
+    monkeypatch: pytest.MonkeyPatch, count: int, expected: str
+) -> None:
+    """-Q means what it does in a run: four of them silence errors."""
+    from comicbox import doctor
+
+    levels: list[str] = []
+    monkeypatch.setattr("comicbox.logger.init_logging", levels.append)
+    argv = [f"-{'Q' * count}"] if count else []
+    doctor._hold_logging(build_parser().parse_args(argv))
+    assert levels == [expected]

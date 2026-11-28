@@ -411,20 +411,10 @@ def test_real_config_default_is_verbose() -> None:
     assert prompt._resolve_terse(_settings_for("x.cbz")) is False
 
 
-def test_real_config_double_quiet_is_terse() -> None:
-    """`-QQ` resolves to SUCCESS, the first level that means "less"."""
-    assert prompt._resolve_terse(_settings_for("-QQ", "x.cbz")) is True
-
-
-def test_real_config_single_quiet_changes_nothing() -> None:
-    """
-    Documents `-Q`'s no-op first level.
-
-    `comicbox.config.computed._QUIET_LOGLEVEL` maps one `-Q` to INFO, which is
-    already `config_default.yaml`'s level, so a single `-Q` neither
-    quiets the log nor trims the prompt. Two Qs is where it starts.
-    """
-    assert prompt._resolve_terse(_settings_for("-Q", "x.cbz")) is False
+@pytest.mark.parametrize("flag", ["-Q", "-QQ"])
+def test_real_config_quiet_is_terse(flag: str) -> None:
+    """One `-Q` resolves to SUCCESS, the first level that means "less"."""
+    assert prompt._resolve_terse(_settings_for(flag, "x.cbz")) is True
 
 
 def test_real_config_yaml_loglevel_is_terse() -> None:
