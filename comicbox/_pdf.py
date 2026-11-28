@@ -42,11 +42,20 @@ PAGE_FORMAT_IMAGE: str = "image"
 #: The page format that rasterizes the whole page to an RGB jpeg.
 PAGE_FORMAT_PIXMAP_JPEG: str = "pixmap_jpeg"
 
+
+def _is_installed() -> bool:
+    try:
+        return find_spec("pdffile") is not None
+    except ValueError:
+        # A module in sys.modules without a spec, as a test stub is, is there.
+        return True
+
+
 #: Whether pdffile is installed, not whether it imports. Only for what is
 #: decided at import or on every run without paying for pymupdf: the PDF
 #: formats' registration, the CLI options and the config choices. Whether
 #: a PDF opens, and ``is_pdf_supported()``, ask ``PDF_ENABLED``.
-PDF_INSTALLED: bool = find_spec("pdffile") is not None
+PDF_INSTALLED: bool = _is_installed()
 
 #: pdffile.PageFormat's values, written out so that naming them costs no
 #: import. A test holds them to pdffile's.

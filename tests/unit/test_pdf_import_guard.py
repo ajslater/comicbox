@@ -177,3 +177,18 @@ def test_help_with_pdffile_offers_pdf_pages(tmp_path: Path) -> None:
     out = _loaded_after(tmp_path, _main("-h"))
     assert "not installed with PDF support" not in out
     assert "--pdf-pages MODE" in out
+
+
+
+def test_a_pdffile_module_without_a_spec_does_not_break_the_import(
+    tmp_path: Path,
+) -> None:
+    """A bare module in sys.modules, as test stubs leave, counts as installed."""
+    code = (
+        "import sys, types\n"
+        "sys.modules['pdffile'] = types.ModuleType('pdffile')\n"
+        "from comicbox import _pdf\n"
+        "print('INSTALLED', _pdf.PDF_INSTALLED, 'ENABLED', _pdf.PDF_ENABLED)\n"
+    )
+    out = _loaded_after(tmp_path, code)
+    assert "INSTALLED True ENABLED False" in out
