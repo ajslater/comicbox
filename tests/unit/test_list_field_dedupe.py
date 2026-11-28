@@ -172,3 +172,112 @@ def test_unparsed_metron_reprints_survive_to_dict() -> None:
         "(2019)",
         "(2020)",
     ]
+
+
+def _reprint(issue: str, name: str, **ids: str) -> dict:
+    reprint: dict = {"series": {"name": "X"}, "issue": issue, "name": name}
+    if ids:
+        reprint["identifiers"] = {source: {"key": key} for source, key in ids.items()}
+    return reprint
+
+
+def _ids(reprint: Mapping) -> dict:
+    return {
+        source: identifier["key"]
+        for source, identifier in reprint.get("identifiers", {}).items()
+    }
+
+
+def test_reprints_with_differing_ids_stay_apart() -> None:
+    """Two ids from one database name two reprints, whatever they parse to."""
+    dumped = _dump_comicbox(
+        [_reprint("1", "X #1", metron="11"), _reprint("1", "X #1 F", metron="22")]
+    )
+    assert [_ids(reprint) for reprint in dumped] == [
+        {"metron": "11"},
+        {"metron": "22"},
+    ]
+    assert [reprint["name"] for reprint in dumped] == ["X #1", "X #1 F"]
+
+
+def test_reprints_with_equal_ids_merge() -> None:
+    """The same id is the same reprint, as before."""
+    dumped = _dump_comicbox(
+        [_reprint("1", "X #1", metron="11"), _reprint("1", "X #1 F", metron="11")]
+    )
+    assert len(dumped) == 1
+    assert _ids(dumped[0]) == {"metron": "11"}
+
+
+def test_an_id_beside_no_id_merges() -> None:
+    """Nothing says a reprint without an id differs, so it merges."""
+    dumped = _dump_comicbox([_reprint("1", "X #1", metron="11"), _reprint("1", "B")])
+    assert len(dumped) == 1
+    assert _ids(dumped[0]) == {"metron": "11"}
+    assert dumped[0]["name"] == "B"
+
+
+def test_ids_from_two_databases_do_not_conflict() -> None:
+    """A Metron id and a Comic Vine id merge, and both are kept."""
+    dumped = _dump_comicbox(
+        [_reprint("1", "A", metron="11"), _reprint("1", "B", comicvine="5")]
+    )
+    assert len(dumped) == 1
+    assert _ids(dumped[0]) == {"metron": "11", "comicvine": "5"}
+
+
+def test_three_reprints_two_sharing_an_id() -> None:
+    """The two that share an id merge; the third stays apart."""
+    dumped = _dump_comicbox(
+        [
+            _reprint("1", "A", metron="11"),
+            _reprint("1", "B", metron="22"),
+            _reprint("1", "C", metron="11"),
+            _reprint("1", "D"),
+        ]
+    )
+    # The id-less reprint joins the first one it doesn't contradict.
+    assert [(reprint["name"], _ids(reprint)) for reprint in dumped] == [
+        ("D", {"metron": "11"}),
+        ("B", {"metron": "22"}),
+    ]
+
+
+def test_alternative_names_with_differing_ids_stay_apart() -> None:
+    """The other identified ListField follows the same rule."""
+    md = {
+        "comicbox": {
+            "series": {
+                "name": "S",
+                "alternative_names": [
+                    {"name": "Alt", "identifiers": {"metron": {"key": "1"}}},
+                    {"name": "Alt", "identifiers": {"metron": {"key": "2"}}},
+                ],
+            }
+        }
+    }
+    dumped = ComicboxYamlSchema().dump(md)
+    assert isinstance(dumped, Mapping)
+    alt_names = dumped["comicbox"]["series"]["alternative_names"]
+    assert [_ids(alt_name) for alt_name in alt_names] == [
+        {"metron": "1"},
+        {"metron": "2"},
+    ]
+
+
+def test_metron_reprints_with_differing_ids_survive_end_to_end() -> None:
+    """MetronInfo in, to_dict and MetronInfo out all keep ids 11 and 22."""
+    xml = """<MetronInfo>
+  <Series><Name>S</Name></Series>
+  <Reprints>
+    <Reprint id="11">X #1</Reprint>
+    <Reprint id="22">X #1 Facsimile</Reprint>
+  </Reprints>
+</MetronInfo>"""
+    with Comicbox() as car:
+        car.add_metadata(xml, MetadataFormats.METRON_INFO)
+        reprints = car.to_dict()["comicbox"]["reprints"]
+        written = car.to_string(MetadataFormats.METRON_INFO)
+    assert sorted(_ids(reprint)["metron"] for reprint in reprints) == ["11", "22"]
+    assert '<Reprint id="11">X #1</Reprint>' in written
+    assert '<Reprint id="22">X #1 Facsimile</Reprint>' in written
