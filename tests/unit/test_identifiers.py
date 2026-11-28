@@ -726,6 +726,36 @@ def test_known_word_types_on_gcd_and_metron_still_parse() -> None:
         assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url)[0] == id_type, url
 
 
+def test_known_word_type_in_another_case_still_parses() -> None:
+    """
+    The url regex ignores case, and so does the word slug lookup.
+
+    With unknown types giving no id, a case-sensitive lookup made
+    comics.org/Issue/123/ an unknown page instead of issue 123.
+    """
+    cases = (
+        (IdSources.GCD, "https://comics.org/Issue/123/", ("issue", "123")),
+        (IdSources.GCD, "https://comics.org/ISSUE/123/", ("issue", "123")),
+        (IdSources.GCD, "https://comics.org/Series/55/", ("series", "55")),
+        (IdSources.METRON, "https://metron.cloud/Issue/123/", ("issue", "123")),
+        (IdSources.METRON, "https://metron.cloud/Reading-List/12/", ("", "")),
+    )
+    for id_source, url, expected in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == expected, url
+
+
+def test_comicvine_urls_are_unchanged_by_case_folding() -> None:
+    """Comic Vine reads its numeric codes exactly as before, in any case."""
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE]
+    for url in (
+        "https://comicvine.gamespot.com/x/4000-12/",
+        "https://comicvine.gamespot.com/X/4000-12/",
+        "https://comicvine.gamespot.com/foo/4099-12/",
+    ):
+        assert id_parts.parse_url_path(url) == ("issue", "12"), url
+        assert identifier_from_url(url) == ("comicvine", {"key": "12"}), url
+
+
 def test_gcd_publisher_web_link_adds_no_issue_id() -> None:
     """End to end: a Web link to a GCD publisher page adds no id or url."""
     cix = """<?xml version="1.0"?><ComicInfo><Series>S</Series>

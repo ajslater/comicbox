@@ -126,6 +126,10 @@ class IdentifierParts:
             id_type_slug = match.group("id_type")
         except IndexError:
             id_type_slug = ""
+        if self.unknown_type_is_no_id:
+            # The regex ignores case, so the word lookup must too, or a known
+            # type spelled Issue/ reads as an unknown page with no id.
+            id_type_slug = id_type_slug.lower()
         id_type = self.get_type_by_code(id_type_slug, "")
         if not id_type:
             if id_type_slug and self.unknown_type_is_no_id:
