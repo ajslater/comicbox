@@ -3,6 +3,7 @@
 import re
 import sys
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from decimal import Decimal
 from typing import Any
 
@@ -13,6 +14,7 @@ from marshmallow.utils import is_collection
 from comicbox.empty import filter_list_empty, is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.merge import AdditiveMerger
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -47,9 +49,25 @@ def _comparable(value: Any) -> tuple[int, Any]:
 
 
 def case_insensitive_dict(d: dict) -> dict:
-    """Make a dict with string keys case insensitive."""
-    cid = {k.lower(): (k, v) for k, v in d.items()}
-    return {v[0]: v[1] for v in cid.values()}
+    """
+    Make a dict with string keys case insensitive.
+
+    Keys that differ only in case name the same thing, such as one credited
+    person spelled two ways by two sources. When both values are mappings
+    they are deep merged additively under the first spelling, so neither
+    side's roles or ids are lost. Other values can't merge: the later
+    key and value win, as they always have.
+    """
+    folded: dict[str, tuple[str, Any]] = {}
+    for key, value in d.items():
+        folded_key = key.lower()
+        old = folded.get(folded_key)
+        if old and isinstance(old[1], Mapping) and isinstance(value, Mapping):
+            merged = AdditiveMerger.merge(deepcopy(dict(old[1])), value)
+            folded[folded_key] = (old[0], merged)
+        else:
+            folded[folded_key] = (key, value)
+    return dict(folded.values())
 
 
 class ListField(fields.List):
