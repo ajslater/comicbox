@@ -19,7 +19,9 @@
 ### 🐛 Fixed
 
 - `--validate` fails an invalid comic and goes on to the rest of the batch
-  instead of ending the run there.
+  instead of ending the run there. It passes over `-m` metadata, imports of no
+  known format and free-text archive comments instead of failing on them, and
+  counts a malformed JSON or YAML file as invalid, not a crash.
 - A failed export, page extraction or cover extraction fails its file and the
   run exits 1, instead of logging and exiting 0.
 - `-X -d FILE` refuses to overwrite a comic or PDF with the cover, and more

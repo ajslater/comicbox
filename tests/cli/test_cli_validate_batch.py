@@ -72,3 +72,62 @@ def test_a_valid_comic_exits_zero(tmp_path: Path) -> None:
     code, out = _run_cli("--validate", str(good))
     assert code == 0
     assert "Metadata validation succeeded" in out
+
+
+# --- sources that are not files to validate (review box-core-3) -------------
+
+
+def test_a_free_text_comment_is_not_validated(tmp_path: Path) -> None:
+    """Most archive comments are not ComicBookInfo; the loader agrees."""
+    comic = make_comic(
+        tmp_path / "comment.cbz",
+        series="Good",
+        number="1",
+        comment="Scanned by someone, enjoy",
+    )
+    code, out = _run_cli("--validate", str(comic))
+    assert code == 0
+    assert "Metadata validation succeeded" in out
+    assert "Traceback" not in out
+
+
+def test_cli_metadata_is_not_validated(tmp_path: Path) -> None:
+    good = make_comic(tmp_path / "good.cbz", series="Good", number="1")
+    code, out = _run_cli("--validate", "-m", "series: Foo", str(good))
+    assert code == 0
+    assert "Metadata validation succeeded" in out
+    assert "Cannot determine format" not in out
+
+
+def test_an_import_of_unknown_format_is_not_validated(tmp_path: Path) -> None:
+    good = make_comic(tmp_path / "good.cbz", series="Good", number="1")
+    meta = tmp_path / "meta.json"
+    meta.write_text('{"comicbox": {"series": {"name": "Foo"}}}')
+    code, out = _run_cli("--validate", "-i", str(meta), str(good))
+    assert code == 0
+    assert "Metadata validation succeeded" in out
+
+
+def test_an_import_named_for_its_format_is_still_validated(tmp_path: Path) -> None:
+    good = make_comic(tmp_path / "good.cbz", series="Good", number="1")
+    meta = tmp_path / "ComicInfo.xml"
+    meta.write_text(_BOGUS_CIX)
+    code, out = _run_cli("--validate", "-i", str(meta), str(good))
+    assert code == 1
+    assert "ComicInfo: failed validation" in out
+
+
+@pytest.mark.parametrize(
+    ("name", "text"),
+    [("comic-book-info.json", "{bad"), ("comicbox.yaml", "comicbox: [")],
+)
+def test_a_malformed_file_fails_validation_cleanly(
+    tmp_path: Path, name: str, text: str
+) -> None:
+    good = make_comic(tmp_path / "good.cbz", series="Good", number="1")
+    meta = tmp_path / name
+    meta.write_text(text)
+    code, out = _run_cli("--validate", "-i", str(meta), str(good))
+    assert code == 1
+    assert "failed validation" in out
+    assert "Traceback" not in out

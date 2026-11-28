@@ -1,5 +1,6 @@
 """Validate methods."""
 
+from contextlib import suppress
 from pathlib import Path
 from types import MappingProxyType
 
@@ -7,6 +8,7 @@ from loguru import logger
 
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
+from comicbox.box.load import is_comic_book_info
 from comicbox.box.validate.guess_format import guess_format
 from comicbox.exceptions import MetadataError, ValidationFailedError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
@@ -62,6 +64,32 @@ def validate_source(
     return result
 
 
+def _validated_format(
+    source: MetadataSources, source_data: SourceData
+) -> MetadataFormats | None:
+    """
+    Get the format to validate a source as, or None when it is not one.
+
+    -m metadata, an API string and an import whose name says no format
+    have no format to check against, and an archive comment of free text
+    is not ComicBookInfo, as the loader agrees: each is logged and passed
+    over, not failed.
+    """
+    label = source.value.label
+    if source == MetadataSources.ARCHIVE_COMMENT and not is_comic_book_info(
+        source_data.data
+    ):
+        logger.info(f"{label}: not ComicBookInfo, not validated")
+        return None
+    if source_data.fmt:
+        return source_data.fmt
+    if source_data.path and str(source_data.path) not in ("", "."):
+        with suppress(MetadataError):
+            return guess_format(source_data.path)
+    logger.info(f"{label}: format unknown, not validated")
+    return None
+
+
 class ComicboxValidate(ComicboxDumpToFiles):
     """Validate Methods."""
 
@@ -72,9 +100,9 @@ class ComicboxValidate(ComicboxDumpToFiles):
 
         validated = True
         for source in MetadataSources:
-            if source_data_list := self.get_source_metadata(source):
-                for source_data in source_data_list:
-                    validated &= validate_source(source_data)
+            for source_data in self.get_source_metadata(source) or ():
+                if fmt := _validated_format(source, source_data):
+                    validated &= validate_source(source_data.data, fmt)
         if not validated:
             # Raised, not exited: the Runner fails this file and goes on.
             reason = f"{self._path}: metadata validation failed"

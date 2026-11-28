@@ -71,7 +71,7 @@ def build_validator(spec: ValidatorSpec) -> "BaseValidator":
 @cache
 def validation_failure_exceptions() -> tuple[type[Exception], ...]:
     """
-    Get the exceptions a validator raises for invalid data.
+    Get the exceptions a validator raises for invalid data, malformed included.
 
     Deferred for the same reason the validators are: importing these
     names at module scope pulls in all of ``xmlschema`` and
@@ -84,10 +84,15 @@ def validation_failure_exceptions() -> tuple[type[Exception], ...]:
         UnknownType,
         ValidationError,
     )
+    from ruamel.yaml.error import YAMLError
+    from simplejson.errors import JSONDecodeError
     from xmlschema.exceptions import XMLSchemaException
 
     return (
         XMLSchemaException,
+        # Malformed documents: invalid too, not a crash.
+        JSONDecodeError,
+        YAMLError,
         # JsonValidation Errors
         ValidationError,
         SchemaError,
