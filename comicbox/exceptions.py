@@ -49,11 +49,11 @@ class UnwritableFormatError(ArchiveWriteError):
     """A write refused: -w names no format this archive can hold."""
 
 
-class ReadOnlyComicError(UnwritableFormatError):
+class ReadOnlyComicError(ArchiveWriteError):
     """A write refused: the comic file is read-only."""
 
 
-class DuplicateMemberError(UnwritableFormatError):
+class DuplicateMemberError(ArchiveWriteError):
     """A conversion refused: the archive holds two members of one name."""
 
 

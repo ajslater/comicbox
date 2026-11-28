@@ -19,8 +19,10 @@ from comicbox.exceptions import (
     ComicNotFoundError,
     ConfigurationError,
     DestinationOccupiedError,
+    DuplicateMemberError,
     ExportError,
     OnlineLookupAbortedError,
+    ReadOnlyComicError,
     UnparsedTagFileError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
@@ -47,8 +49,9 @@ if TYPE_CHECKING:
 #: names nothing or isn't an archive we can open, a keep write refused a
 #: comic whose tag file did not parse, a write or rename would land on a
 #: file already there, a PDF write would harm another attachment, -w names
-#: no format the archive can hold, or an export or extraction target is
-#: unsafe or not a directory. A traceback tells the user nothing the
+#: no format the archive can hold, the comic is read-only, a conversion
+#: would lose one of two members of one name, or an export or extraction
+#: target is unsafe or not a directory. A traceback tells the user nothing the
 #: message doesn't, so these log one line. Anything else is a bug and earns
 #: the stack.
 _EXPECTED_FILE_ERRORS = (
@@ -58,6 +61,8 @@ _EXPECTED_FILE_ERRORS = (
     DestinationOccupiedError,
     UnsafePdfAttachmentError,
     UnwritableFormatError,
+    ReadOnlyComicError,
+    DuplicateMemberError,
     ExportError,
 )
 
