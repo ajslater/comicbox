@@ -260,13 +260,18 @@ class ComicboxLoad(ComicboxSources):
             if md and fmt:
                 return MappingProxyType(md), fmt
         except Exception as exc:
-            if source_data.required and not _is_structured(source_data.data):
+            if not source_data.required:
+                self._except_on_load(source, fmt, exc)
+                self._failed_loads.add((source, str(source_data.path)))
+                return None, None
+            if not _is_structured(source_data.data):
                 # A file the user named that is no metadata at all: writing
                 # the comic without it is not what was asked for.
                 reason = f"-i {source_data.path}: not metadata comicbox can read: {exc}"
                 raise ImportFileError(reason) from exc
-            self._except_on_load(source, fmt, exc)
-            self._failed_loads.add((source, str(source_data.path)))
+        if source_data.required:
+            # Read fine, but nothing in it: the run goes on without it.
+            logger.warning(f"Import file {source_data.path}: no tags comicbox can use.")
         return None, None
 
     def _set_loaded_metadata(self, source: MetadataSources) -> None:

@@ -34,6 +34,8 @@ _NO_TAGS = {
     "other-root.xml": "<Something><Else>1</Else></Something>",
     "empty-mapping.yaml": "{}\n",
     "blank.txt": "",
+    # Named for its format, so read as ComicInfo without guessing.
+    "ComicInfo.xml": "<ComicInfo></ComicInfo>",
 }
 
 
@@ -95,6 +97,27 @@ def test_an_import_with_no_usable_tags_is_a_warning(tmp_path: Path, name: str) -
     code, out = _run_cli("-p", "-i", str(empty), str(comic))
     assert code == 0
     assert not _errors(out)
+    warnings = [line for line in out.splitlines() if "| WARNING " in line]
+    assert warnings == [_warning_line(warnings, empty)]
+
+
+@pytest.mark.parametrize("with_comic", [True, False], ids=["comic", "no-comic"])
+def test_a_no_tags_import_warns_once_with_or_without_a_comic(
+    tmp_path: Path, *, with_comic: bool
+) -> None:
+    empty = _write(tmp_path, "empty.xml", _NO_TAGS["empty.xml"])
+    paths = [str(_comic(tmp_path))] if with_comic else []
+    code, out = _run_cli("-p", "-i", str(empty), *paths)
+    assert code == 0
+    warnings = [line for line in out.splitlines() if "| WARNING " in line]
+    assert warnings == [_warning_line(warnings, empty)]
+
+
+def _warning_line(warnings: list[str], path: Path) -> str:
+    """Check the one warning a no-tags import gives names the import file."""
+    (line,) = warnings or [""]
+    assert f"Import file {path}: no tags comicbox can use" in line
+    return line
 
 
 def test_one_bad_import_of_several_fails_every_comic_and_writes_none(
