@@ -28,7 +28,8 @@
   `true` there is dropped with a warning instead of read as a name or not at
   all.
 - A link to a Grand Comics Database sub-page, such as `issue/123/cover/4/`,
-  reads as issue 123 instead of issue 4.
+  reads as issue 123 instead of issue 4. A GCD or Metron link to a page comicbox
+  doesn't know, such as a publisher, brand or reading list, adds no issue id.
 - Library: `AdditiveMerger` concatenates tuples and unions frozensets instead of
   dropping one side.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
