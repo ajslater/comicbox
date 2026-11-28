@@ -79,6 +79,9 @@
   traceback.
 - `comicbox doctor` warns about each config value a run ignores or defaults,
   such as an invalid format key, merge order source or cache ttl.
+- `general.loglevel` takes a level name in any case, such as `debug`; an unknown
+  name is a one-line config error, and a doctor failure, instead of a traceback
+  on every run.
 
 ## v5.7.1
 

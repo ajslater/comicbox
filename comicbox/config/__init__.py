@@ -185,13 +185,34 @@ def _resolve_merge_order(
     return tuple(out)
 
 
+def _parse_loglevel(raw: str | int) -> str | int:
+    """
+    Name a loguru level in any case; leave a number as it is.
+
+    loguru's names are case-sensitive, so ``loglevel: debug`` passed
+    validation and then failed every run as it set up logging.
+    """
+    if not isinstance(raw, str):
+        return raw
+    name = raw.strip().upper()
+    try:
+        logger.level(name)
+    except ValueError:
+        reason = (
+            f"general.loglevel: unknown level {raw!r}; "
+            "use TRACE, DEBUG, INFO, SUCCESS, WARNING, ERROR or CRITICAL"
+        )
+        raise ConfigurationError(reason) from None
+    return name
+
+
 def _build_general_settings(general_block: Any) -> GeneralSettings:
     metadata_cli = general_block.metadata_cli
     return GeneralSettings(
         config=general_block.config,
         recurse=bool(general_block.recurse),
         dry_run=bool(general_block.dry_run),
-        loglevel=general_block.loglevel,
+        loglevel=_parse_loglevel(general_block.loglevel),
         dest_path=general_block.dest_path,
         delete_keys=frozenset(general_block.delete_keys or ()),
         delete_orig=bool(general_block.delete_orig),

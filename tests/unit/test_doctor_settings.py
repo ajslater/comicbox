@@ -264,3 +264,13 @@ def test_value_warnings_reported_elsewhere_are_not_repeated(
     )
     (values,) = [row for row in _config_rows(_ctx()) if row.name == "values"]
     assert (values.status, values.detail) == (Status.OK, "validated")
+
+
+def test_unknown_loglevel_is_misconfigured(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every run would die on it; the doctor used to call it validated."""
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "LOUD")
+    ctx = _ctx()
+    (values,) = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert values.status is Status.MISCONFIGURED
+    assert "general.loglevel" in values.detail
+    assert ctx.settings is None

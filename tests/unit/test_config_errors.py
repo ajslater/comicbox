@@ -92,3 +92,45 @@ def test_per_source_null_block_is_skipped() -> None:
 def test_per_source_unknown_source_warns(warnings: list[str]) -> None:
     assert _per_source({"metorn": {"auto_threshold": 0.9}}) == {}
     assert any("unknown source 'metorn'" in msg for msg in warnings)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("debug", "DEBUG"), (" Warning ", "WARNING"), ("INFO", "INFO"), (10, 10)],
+)
+def test_loglevel_names_any_case(
+    tmp_path: Path, raw: str | int, expected: str | int
+) -> None:
+    """Level names are case-sensitive in loguru; a run used to die on ``debug``."""
+    value = f'"{raw}"' if isinstance(raw, str) else raw
+    (tmp_path / "config.yaml").write_text(
+        f"comicbox:\n  general:\n    loglevel: {value}\n"
+    )
+    assert get_config({}).general.loglevel == expected
+
+
+def test_loglevel_from_env_any_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "info")
+    assert get_config({}).general.loglevel == "INFO"
+
+
+def test_unknown_loglevel_is_a_configuration_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "LOUD")
+    with pytest.raises(ConfigurationError, match=r"general\.loglevel.*LOUD"):
+        get_config({})
+
+
+def test_unknown_loglevel_exits_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from comicbox import cli
+
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "LOUD")
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(("comicbox", "-p", str(tmp_path / "x.cbz")))
+    assert exc_info.value.code == 1
+    assert "general.loglevel" in capsys.readouterr().out
