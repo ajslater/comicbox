@@ -5,7 +5,7 @@
 ### ♻️ Changed
 
 - Extracting or reading every page of a CB7 is many times faster.
- 
+
 ### 🐛 Fixed
 
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
