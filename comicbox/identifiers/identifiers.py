@@ -95,6 +95,11 @@ class IdentifierParts:
     # so no url built from the key alone would resolve. Its urls are still
     # read into ids; the real url is kept where the source wrote it.
     derives_urls: bool = True
+    # True for a database whose type slugs are words. An unknown one there
+    # is a page that names no issue (a publisher, brand, reading list or
+    # login page), so it parses to no id instead of an issue id. Comic
+    # Vine's numeric type codes keep the issue fallback.
+    unknown_type_is_no_id: bool = False
 
     def __post_init__(self) -> None:
         """Initialize url_regex & template prefix."""
@@ -121,7 +126,15 @@ class IdentifierParts:
             id_type_slug = match.group("id_type")
         except IndexError:
             id_type_slug = ""
-        id_type = self.get_type_by_code(id_type_slug, self.id_type.default_slug_type)
+        if self.unknown_type_is_no_id:
+            # The regex ignores case, so the word lookup must too, or a known
+            # type spelled Issue/ reads as an unknown page with no id.
+            id_type_slug = id_type_slug.lower()
+        id_type = self.get_type_by_code(id_type_slug, "")
+        if not id_type:
+            if id_type_slug and self.unknown_type_is_no_id:
+                return "", ""
+            id_type = self.id_type.default_slug_type
         id_key = match.group("id_key") or ""
         return id_type, id_key
 
@@ -191,8 +204,11 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
                 publisher="indicia_publisher",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\d+)/?",
+            # The first two segments only: a greedy type read a sub-page such
+            # as issue/123/cover/4/ as type "issue/123/cover" and key 4.
+            url_path_regex=r"^(?P<id_type>[^/]+)/(?P<id_key>\d+)(?:/|$)",
             url_path_template="{id_type}/{id_key}/",
+            unknown_type_is_no_id=True,
         ),
         IdSources.ISBN: IdentifierParts(
             domain="isbndb.com",
@@ -259,8 +275,11 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
             ),
             # id_key is a single path segment ([^/]+), so a trailing slash in
             # the url (…/issue/123495/) isn't swallowed into the captured id.
-            url_path_regex=r"(?P<id_type>[^/]+)/(?P<id_key>[^/]+)/?",
+            # Anchored like GCD's: the first two segments, so a sub-page such
+            # as series/<slug>/issue_list/ reads as the series it hangs off.
+            url_path_regex=r"^(?P<id_type>[^/]+)/(?P<id_key>[^/]+)(?:/|$)",
             url_path_template="{id_type}/{id_key}",
+            unknown_type_is_no_id=True,
         ),
         IdSources.MYANIMELIST: IdentifierParts(
             domain="myanimelist.net",
