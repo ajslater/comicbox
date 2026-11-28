@@ -298,7 +298,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             count = self.get_page_count()
             plural = "" if count == 1 else "s"
             reason = (
-                f"{self._path}: no page in --extract-pages range"
+                f"{self._path}: no page in the page range"
                 f" {_range_text(page_from, page_to)}; it has {count} page{plural}."
             )
             raise ExportError(reason)

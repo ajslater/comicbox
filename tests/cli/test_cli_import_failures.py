@@ -72,7 +72,7 @@ def test_an_unreadable_import_fails_the_comic(tmp_path: Path, missing: str) -> N
     assert code == 1
     assert "1 file(s) failed." in out
     (error,) = _errors(out)
-    assert f"-i {bad}: cannot read it:" in error
+    assert f"Import file {bad}: cannot read it:" in error
     assert "Traceback" not in out
     assert comic.read_bytes() == before
 
@@ -86,7 +86,7 @@ def test_an_unparsable_import_fails_the_comic(tmp_path: Path, name: str) -> None
     assert code == 1
     assert "1 file(s) failed." in out
     (error,) = _errors(out)
-    assert f"-i {bad}: not metadata comicbox can read" in error
+    assert f"Import file {bad}: not metadata comicbox can read" in error
     assert comic.read_bytes() == before
 
 
@@ -159,3 +159,18 @@ def test_api_add_metadata_file_unparsable_warns_as_before(tmp_path: Path) -> Non
     with Comicbox() as cb:
         cb.add_metadata_file(bad)
         assert cb.to_dict() == {}
+
+
+def test_api_import_paths_config_fails_as_dash_i_does(tmp_path: Path) -> None:
+    """convert.import_paths is -i's setting, whoever sets it: a library caller too."""
+    from argparse import Namespace
+
+    from comicbox.exceptions import ImportFileError
+
+    bad = _write(tmp_path, "words.txt", _UNPARSED["words.txt"])
+    config = Namespace(comicbox=Namespace(convert=Namespace(import_paths=(str(bad),))))
+    with (
+        Comicbox(config=config) as cb,
+        pytest.raises(ImportFileError, match=f"Import file {bad}: not metadata"),
+    ):
+        cb.to_dict()

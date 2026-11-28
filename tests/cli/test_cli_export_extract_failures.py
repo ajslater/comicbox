@@ -186,7 +186,7 @@ def test_an_open_range_fails_only_the_comic_too_short_for_it(tmp_path: Path) -> 
     assert code == 1
     assert "1 file(s) failed." in out
     (error,) = _errors(out)
-    assert f"{short}: no page in --extract-pages range 3:; it has 3 pages." in error
+    assert f"{short}: no page in the page range 3:; it has 3 pages." in error
     assert len(list(out_dir.iterdir())) == 2
 
 

@@ -267,7 +267,7 @@ class ComicboxLoad(ComicboxSources):
             if not _is_structured(source_data.data):
                 # A file the user named that is no metadata at all: writing
                 # the comic without it is not what was asked for.
-                reason = f"-i {source_data.path}: not metadata comicbox can read: {exc}"
+                reason = f"Import file {source_data.path}: not metadata comicbox can read: {exc}"
                 raise ImportFileError(reason) from exc
         if source_data.required:
             # Read fine, but nothing in it: the run goes on without it.

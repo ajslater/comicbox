@@ -186,9 +186,10 @@
   nothing extracted.
 - Library: `extract_pages` reads an end below 0 as the last page, as
   `get_pages` does, instead of extracting nothing or one page short.
-- An `-i` file that cannot be read, or is not metadata at all, fails the comic
-  instead of a warning and a write without it. One that holds no tags still
-  warns.
+- An `-i` import file (or `convert.import_paths` from a config file, the
+  environment or a library caller) that cannot be read, or is not metadata at
+  all, fails the comic instead of a warning and a write without it. One that
+  holds no tags gives one warning naming it.
 
 ### 🔒 Security
 
