@@ -330,7 +330,12 @@ def _build_cache(
     cli: Callable[[str], Any],
 ) -> OnlineCacheSettings:
     """Build `OnlineCacheSettings` from CLI > config."""
-    cache_mode_raw = _coalesce(runtime.cache_mode_cli, online_block.cache.mode)
+    config_mode = online_block.cache.mode
+    if isinstance(config_mode, bool):
+        # YAML 1.1, which the env layer speaks too, reads a bare on or off
+        # as a boolean.
+        config_mode = CacheMode.ON if config_mode else CacheMode.OFF
+    cache_mode_raw = _coalesce(runtime.cache_mode_cli, config_mode)
     cache_mode = parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
     cache_dir_raw = _coalesce(cli("cache_dir"), online_block.cache.dir)
     cache_dir = Path(cache_dir_raw).expanduser() if cache_dir_raw else None

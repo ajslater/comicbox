@@ -63,6 +63,26 @@ def test_deep_online_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.online.tuning.retry_budget == 9
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("on", CacheMode.ON), ("off", CacheMode.OFF), ("refresh", CacheMode.REFRESH)],
+)
+def test_every_cache_mode_from_env(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: CacheMode
+) -> None:
+    """The env layer reads ``on`` and ``off`` as YAML 1.1 booleans."""
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__MODE", raw)
+    assert get_config().online.cache.mode is expected
+
+
+def test_unquoted_cache_mode_in_a_config_file(tmp_path: Path) -> None:
+    """``COMICBOXDIR`` is this test's ``tmp_path`` (tests/conftest.py)."""
+    (tmp_path / "config.yaml").write_text(
+        "comicbox:\n  online:\n    cache:\n      mode: off\n"
+    )
+    assert get_config({}).online.cache.mode is CacheMode.OFF
+
+
 def test_credentials_arrive_through_the_config_view(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

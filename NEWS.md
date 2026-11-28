@@ -82,6 +82,8 @@
 - `general.loglevel` takes a level name in any case, such as `debug`; an unknown
   name is a one-line config error, and a doctor failure, instead of a traceback
   on every run.
+- `COMICBOX_ONLINE__CACHE__MODE=on` or `off`, and an unquoted `mode: off` in a
+  config file, work instead of failing every run.
 
 ## v5.7.1
 
