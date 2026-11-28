@@ -387,8 +387,14 @@ def test_resolve_terse_stays_off_at_or_below_info(loglevel: str | int) -> None:
 
 
 def test_resolve_terse_ignores_an_unknown_level() -> None:
-    """A bad `--loglevel` is the logger's problem to report, not ours."""
-    assert prompt._resolve_terse(make_settings("NONSENSE")) is False
+    """
+    A bad level is the config's problem to report, not ours.
+
+    get_config refuses one, so only settings built past it carry one.
+    """
+    settings = make_settings()
+    settings = replace(settings, general=replace(settings.general, loglevel="NONSENSE"))
+    assert prompt._resolve_terse(settings) is False
 
 
 # --- terse against the real config ------------------------------------------
