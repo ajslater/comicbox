@@ -11,6 +11,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from dateutil.tz import tzutc
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
@@ -501,3 +502,23 @@ def test_compute_pages_drops_entries_past_the_last_page(tmp_path: Path) -> None:
     # The entries for pages that exist keep what the metadata said.
     assert md["pages"][4]["page_type"] == ComicInfoPageTypeEnum.STORY
     assert md["pages"][4]["size"] > 0
+
+
+def test_compute_pages_says_what_it_drops(tmp_path: Path) -> None:
+    """Dropping entries past the last page says how many, and what went."""
+    archive_path = _one_image_cbz(tmp_path, 5)
+    pages: dict[int, dict[str, str]] = {i: {"page_type": "Story"} for i in range(8)}
+    pages[7] = {"page_type": "BackCover"}
+    messages: list[str] = []
+    handler_id = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+            car.add_metadata({"comicbox": {"pages": pages, "bookmark": 6}})
+            car.to_string(MetadataFormats.COMIC_INFO)
+    finally:
+        logger.remove(handler_id)
+    dropped = [message for message in messages if "past the last page" in message]
+    assert len(dropped) == 1, messages
+    assert "3 page entries" in dropped[0]
+    assert "bookmark" in dropped[0]
+    assert "BackCover" in dropped[0]

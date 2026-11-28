@@ -82,7 +82,8 @@
 - Library: `get_cover_paths()` and `extract_covers()` follow metadata added with
   `add_metadata()` or `add_source()`.
 - `compute.pages` gives macOS resource forks no ComicInfo page entries and drops
-  entries past the last page.
+  entries past the last page, with a warning naming the bookmark and page types
+  that go with them.
 
 ## v5.7.1
 

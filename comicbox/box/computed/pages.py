@@ -85,12 +85,42 @@ class ComicboxComputedPages(ComicboxComputedUrls):
             max_page_index = maxsize
         return max_page_index
 
+    def _log_dropped_pages(
+        self,
+        md: Mapping[str, Any],
+        dropped: Mapping[int, Mapping[str, Any]],
+        max_page_index: int,
+    ) -> None:
+        """Say how many page entries the archive has no page for, and what went."""
+        lost = []
+        bookmark = md.get(BOOKMARK_KEY)
+        if (isinstance(bookmark, int) and bookmark > max_page_index) or any(
+            page.get(PAGE_BOOKMARK_KEY) for page in dropped.values()
+        ):
+            lost.append("the bookmark")
+        page_types = sorted(
+            {
+                str(getattr(page_type, "value", page_type))
+                for page in dropped.values()
+                if (page_type := page.get(PAGE_TYPE_KEY))
+            }
+        )
+        if page_types:
+            lost.append(f"page types {', '.join(page_types)}")
+        detail = f", and with them {' and '.join(lost)}" if lost else ""
+        logger.warning(
+            f"{self._path}: Dropped {len(dropped)} page entries past the last page"
+            f" ({max_page_index + 1} pages){detail}."
+        )
+
     def _get_computed_merged_pages_metadata(
         self, md: dict[str, Any], pages: dict[int, dict[str, Any]]
     ) -> MutableMapping[int, dict[str, Any]]:
         old_pages: dict[int, dict[str, Any]] = md.get(PAGES_KEY, {})
         max_page_index = self._get_max_page_index()
         trimmed_old_pages = {k: v for k, v in old_pages.items() if k <= max_page_index}
+        if dropped := {k: v for k, v in old_pages.items() if k > max_page_index}:
+            self._log_dropped_pages(md, dropped, max_page_index)
         computed_pages: MutableMapping[int, dict[str, Any]] = AdditiveMerger.merge(
             trimmed_old_pages, pages
         )
