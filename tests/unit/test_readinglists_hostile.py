@@ -254,6 +254,23 @@ def test_a_utf16_cbl_with_a_bom_is_detected_and_read(codec: str) -> None:
     assert loads(data).reading_list["name"] == "X"
 
 
+@pytest.mark.parametrize("codec", ["utf-32", "utf-32-le", "utf-32-be"])
+def test_a_utf32_cbl_with_a_bom_is_detected_and_read(codec: str) -> None:
+    """Expat has no UTF-32: the raw bytes failed as invalid XML."""
+    text = _UTF16_CBL.replace('encoding="utf-16"', 'encoding="utf-32"')
+    # Python's "utf-32" writes its own mark; the others need one.
+    data = text.encode(codec) if codec == "utf-32" else f"\ufeff{text}".encode(codec)
+    assert detect_format(data) is ReadingListFormats.CBL
+    assert loads(data).reading_list["name"] == "X"
+    assert loads(data, fmt="cbl").reading_list["name"] == "X"
+
+
+def test_a_utf32_cbl_still_refuses_entities() -> None:
+    text = _ENTITY_CBL.replace('version="1.0"', 'version="1.0" encoding="utf-32"')
+    with pytest.raises(ReadingListFormatError, match="entities"):
+        loads(text.encode("utf-32"))
+
+
 @pytest.mark.parametrize("codec", ["utf-16", "utf-32"])
 def test_a_json_cbl_with_a_bom_in_utf16_or_32_is_read(codec: str) -> None:
     data = _JSON_CBL.encode(codec)
