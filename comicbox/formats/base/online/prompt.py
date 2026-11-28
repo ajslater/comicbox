@@ -190,12 +190,18 @@ def _interpret(
     return None
 
 
-def _read_input(message: str) -> str:
-    """Read one line from stdin; never returns None."""
+def _read_line(message: str) -> str | None:
+    """Read one line from stdin; None at end of input."""
     try:
         return input(message)
     except EOFError:
-        return ""
+        return None
+
+
+def _read_input(message: str) -> str:
+    """Read one line from stdin; never returns None (EOF reads as '')."""
+    line = _read_line(message)
+    return "" if line is None else line
 
 
 def _ask_manual_id(default_source: str) -> str | None:
@@ -261,7 +267,8 @@ def _prompt_line(message: str) -> str | None:
             return questionary.text(message).ask()
         except (ImportError, KeyboardInterrupt):
             return None
-    return _read_input(message + " ")
+    # EOF is None, an abort: read as '', it re-prompted forever.
+    return _read_line(message + " ")
 
 
 def _resolve_policy_input(s: str, *, key_to_name: dict[str, str]) -> str | None:
