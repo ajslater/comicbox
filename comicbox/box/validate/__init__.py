@@ -1,6 +1,7 @@
 """Validate methods."""
 
 from contextlib import suppress
+from dataclasses import replace
 from pathlib import Path
 from types import MappingProxyType
 
@@ -102,7 +103,7 @@ class ComicboxValidate(ComicboxDumpToFiles):
         for source in MetadataSources:
             for source_data in self.get_source_metadata(source) or ():
                 if fmt := _validated_format(source, source_data):
-                    validated &= validate_source(source_data.data, fmt)
+                    validated &= validate_source(replace(source_data, fmt=fmt))
         if not validated:
             # Raised, not exited: the Runner fails this file and goes on.
             reason = f"{self._path}: metadata validation failed"
