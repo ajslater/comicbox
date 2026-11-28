@@ -5,6 +5,9 @@
 ### ♻️ Changed
 
 - Extracting or reading every page of a CB7 is many times faster.
+- A half issue is .5 in every format: issue `1/2` or `½` is number 0.5 and
+  `5 1/2` or `5½` is 5.5, with no suffix, where they were number 1 with suffix
+  `/2`, or no number with suffix `½`. This changes how half issues sort.
 
 ### 🐛 Fixed
 
@@ -37,7 +40,8 @@
 - CoMet leaves out an issue that is not a whole number and warns when it has no
   title, which its schema requires.
 - PDF author metadata includes Plot, Story, Translator and Author credits.
-- Filenames write issue `1/2` as `½` instead of inventing a title from the `2`.
+- Filenames write a half issue as `½` and any other `/` in an issue as `+`
+  instead of inventing a title from what follows the `/`.
 - Converting two comics whose names differ only by case and suffix at once no
   longer overwrites one with the other on a case-insensitive disk.
 - A conversion or PDF write keeps the comic's file mode and owner, and a

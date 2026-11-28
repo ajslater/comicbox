@@ -7,7 +7,6 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
-import re
 import sys
 from typing import Any, Final
 
@@ -15,7 +14,7 @@ from comicfn2dict import comicfn2dict, dict2comicfn
 from marshmallow.fields import Nested
 
 from comicbox.formats.base.fields.collection_fields import StringListField
-from comicbox.formats.base.fields.fields import StringField
+from comicbox.formats.base.fields.fields import StringField, issue_half_replace
 from comicbox.formats.base.fields.number_fields import IntegerField
 from comicbox.formats.base.schemas.base import (
     BaseRenderModule,
@@ -56,9 +55,10 @@ _FILENAME_REPLACEMENTS: Final[tuple[tuple[str, str], ...]] = (
     *((char, "") for char in '"*<>?|'),
 )
 
-# A half issue, "1/2" or "5 1/2". comicfn2dict keeps "½" in the issue token,
-# but a "/" sanitized to "_" ends the issue and starts an invented title.
-_HALF_ISSUE_RE = re.compile(r"(?:^|(?<=\d)\s+)1/2$")
+# comicfn2dict keeps "½" and "+" in the issue token, but a "/" sanitized to
+# "_" ends the issue and starts an invented title. A half is written "½",
+# any other "/" in an issue (3/4, 1/2/3) as "+".
+_ISSUE_SLASH_REPLACEMENT: Final = "+"
 
 
 class FilenameRenderModule(BaseRenderModule):
@@ -77,7 +77,8 @@ class FilenameRenderModule(BaseRenderModule):
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         if issue := data.get(ISSUE_TAG):
-            data = {**data, ISSUE_TAG: _HALF_ISSUE_RE.sub("½", issue)}
+            issue = issue_half_replace(issue, "½").replace("/", _ISSUE_SLASH_REPLACEMENT)
+            data = {**data, ISSUE_TAG: issue}
         fn = dict2comicfn(data, *args, **kwargs)
         return cls._sanitize(fn)
 
