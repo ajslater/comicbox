@@ -308,6 +308,23 @@ def dumps(reading_list: Mapping[str, Any], fmt: ReadingListFormats | str) -> str
     return transform.render(document)
 
 
+def dumps_with_losses(
+    reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
+) -> tuple[str, tuple[str, ...]]:
+    """
+    Write a reading list in a format, and name what the format does not keep.
+
+    ``dumps`` and ``lost_fields`` at once: the list is validated and
+    rendered once, and that text is the one read back.
+    """
+    resolved = get_format(fmt)
+    model = _model_for_write(reading_list)
+    transform = resolved.value.transform_class()
+    text = transform.render(transform.from_reading_list(model))
+    back = _loads(text, resolved, None).reading_list
+    return text, describe_losses(model, back, transform.unwritable(model))
+
+
 def lost_fields(
     reading_list: Mapping[str, Any], fmt: ReadingListFormats | str
 ) -> tuple[str, ...]:
@@ -319,9 +336,4 @@ def lost_fields(
     ``sources``, entry paths such as ``entries.date.cover_date``, and
     ``entries #2, #5`` for entries the format cannot write at all.
     """
-    resolved = get_format(fmt)
-    model = _model_for_write(reading_list)
-    transform = resolved.value.transform_class()
-    text = transform.render(transform.from_reading_list(model))
-    back = _loads(text, resolved, None).reading_list
-    return describe_losses(model, back, transform.unwritable(model))
+    return dumps_with_losses(reading_list, fmt)[1]

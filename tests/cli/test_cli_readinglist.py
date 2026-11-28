@@ -13,7 +13,7 @@ import contextlib
 import json
 import re
 import shutil
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -106,6 +106,30 @@ def test_convert_names_no_loss_for_what_the_format_adds(
     code, _, err = cli_run(capsys, "rl", "convert", "--to", "cbl", str(source))
     assert code == 0
     assert "lost" not in err
+
+
+def test_convert_renders_each_list_once(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """lost_fields and dumps each validated and rendered the list."""
+    from comicbox.readinglists import serialize
+
+    calls = []
+    model_for_write = serialize._model_for_write
+
+    def counting(reading_list: Any) -> Any:
+        calls.append(reading_list)
+        return model_for_write(reading_list)
+
+    monkeypatch.setattr(serialize, "_model_for_write", counting)
+    code, _, _ = cli_run(
+        capsys, "rl", "convert", "--to", "yaml", "-o", str(tmp_path), str(COMMON_CBL)
+    )
+    assert code == 0
+    assert len(calls) == 1
+    assert load(tmp_path / "common.yaml").reading_list["name"]
 
 
 def test_convert(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> None:

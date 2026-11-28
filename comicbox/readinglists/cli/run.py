@@ -36,9 +36,8 @@ from comicbox.readinglists.render import (
 from comicbox.readinglists.schema import ENTRIES_KEY
 from comicbox.readinglists.serialize import (
     ReadingListResult,
-    dumps,
+    dumps_with_losses,
     load,
-    lost_fields,
 )
 
 if TYPE_CHECKING:
@@ -181,8 +180,8 @@ class Run:
         self, reading_list: dict, fmt: ReadingListFormats, path: Path | None
     ) -> None:
         """Write a list to a file, or to stdout, after naming its losses."""
-        print_messages(self.err, lost_fields(reading_list, fmt), "lost")
-        text = dumps(reading_list, fmt)
+        text, lost = dumps_with_losses(reading_list, fmt)
+        print_messages(self.err, lost, "lost")
         if path is None:
             self.out.out(text, end="" if text.endswith("\n") else "\n")
             return
