@@ -182,8 +182,9 @@
 - Library: `OnlineSession.tag()` and `tag_many()` take `str` paths, and
   `preload_resolution(action="manual")` refuses an empty path.
 - `-x` with an empty, reversed, signed or three-part range is a usage error, and
-  a range past a comic's last page fails that comic, instead of exiting 0 with
-  nothing extracted.
+  a range that starts past a comic's last page fails that comic, instead of
+  exiting 0 with nothing extracted. An end past the last page still extracts to
+  the last page.
 - Library: `extract_pages` reads an end below 0 as the last page, as
   `get_pages` does, instead of extracting nothing or one page short.
 - An `-i` import file (or `convert.import_paths` from a config file, the
