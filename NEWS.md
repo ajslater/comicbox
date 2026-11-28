@@ -23,6 +23,9 @@
 - `-X -d FILE` refuses to overwrite a comic or PDF with the cover, and more
   than one comic to one file is a usage error, instead of every cover
   replacing the one before.
+- Extracting pages that share a name in two folders of a comic saves every
+  page: a repeated name gets its page number in front, where it replaced the
+  page before.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.

@@ -1,5 +1,6 @@
 """Methods for extracting files from the archive."""
 
+import unicodedata
 from collections.abc import Iterable, Sequence
 from pathlib import Path
 
@@ -37,6 +38,11 @@ def _refuse_comic_destination(path: Path) -> None:
         raise ExportError(reason)
 
 
+def _fold(name: str) -> str:
+    """Fold a name as a case-insensitive, normalizing disk does."""
+    return unicodedata.normalize("NFC", name).casefold()
+
+
 def _validate_extract_path(path: Path, dest_dir: Path) -> None:
     """Validate that the extract path doesn't escape the destination directory."""
     if not path.resolve().is_relative_to(dest_dir.resolve()):
@@ -53,7 +59,27 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _extract_page(self, dest_path: Path, fn: str) -> None:
+    def _unclaimed_page_path(self, path: Path, fn: str, taken: set[str]) -> Path:
+        """
+        Name a page no other page of this extraction has: a repeat gets its index.
+
+        Pages in two folders of the archive can share a base name. Names
+        are compared folded, as a case-insensitive disk sees them, so the
+        output is the same on every disk.
+        """
+        if _fold(path.name) in taken:
+            pagenames = self.get_page_filenames()
+            width = len(str(len(pagenames) - 1))
+            path = path.with_name(f"{pagenames.index(fn):0{width}}-{path.name}")
+            if _fold(path.name) in taken:
+                reason = f"Two pages would be saved as {path}"
+                raise ExportError(reason)
+        taken.add(_fold(path.name))
+        return path
+
+    def _extract_page(
+        self, dest_path: Path, fn: str, taken: set[str] | None = None
+    ) -> None:
         path = self._extract_page_get_path(dest_path, fn)
         props = {}
         data = self._archive_readfile(fn, props=props)
@@ -61,6 +87,8 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix("." + ext)
         if dest_path.is_dir():
             dest_dir = dest_path
+            if taken is not None:
+                path = self._unclaimed_page_path(path, fn, taken)
         else:
             dest_dir = dest_path.parent
             _refuse_comic_destination(path)
@@ -72,10 +100,11 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             # Every page, so a 7z is decompressed in batches, not once a page.
             pagenames = self._iter_prefetched(tuple(pagenames))
         success_page_count = 0
+        taken: set[str] = set()
         try:
             # The prefetch reads in the loop, so it is guarded too.
             for fn in pagenames:
-                self._extract_page(path, fn)
+                self._extract_page(path, fn, taken)
                 success_page_count += 1
                 if not path.is_dir():
                     break
