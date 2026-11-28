@@ -146,30 +146,30 @@ class EnumBooleanField(EnumField):
 
     YES = "Yes"
     NO = "No"
-    TRUTHY = frozenset(
-        {
-            "1",
-            "true",
-            "yes",
-        }
-    )
+    TRUTHY = frozenset({"1", "true", "y", "yes"})
+    FALSY = frozenset({"0", "false", "n", "no"})
 
-    def _coerce_bool(self, value: Any) -> str:
+    def _coerce_bool(self, value: Any) -> Any:
         """
-        Coerce a value the enum doesn't recognize into its yes or no value.
+        Coerce a boolean spelling the enum doesn't hold into its yes or no value.
 
         The enum vocabulary wins first so multi valued enums keep their extra
-        members. Only unrecognized values get read as a boolean, where anything
-        that isn't truthy is no.
+        members. Then only known boolean spellings map, ignoring case and
+        surrounding whitespace. Anything else is returned unchanged for the
+        enum field to refuse, so an unrecognised value is dropped with a
+        warning instead of read as no.
         """
         if self.get_enum(value):
             return value
-        return self.YES if str(value).lower() in self.TRUTHY else self.NO
+        key = str(value).strip().lower()
+        if key in self.TRUTHY:
+            return self.YES
+        if key in self.FALSY:
+            return self.NO
+        return value
 
     @override
-    def _deserialize(
-        self, value: Enum | str | bool, attr, data, *args, **kwargs
-    ) -> Any:
+    def _deserialize(self, value: Any, attr, data, *args, **kwargs) -> Any:
         if not isinstance(value, self.ENUM):
             value = self._coerce_bool(value)
         return super()._deserialize(value, attr, data, *args, **kwargs)
@@ -178,6 +178,9 @@ class EnumBooleanField(EnumField):
     def _serialize(self, value, *args, **kwargs) -> str | None:
         if value is not None and not isinstance(value, self.ENUM):
             value = self._coerce_bool(value)
+            if not self.get_enum(value):
+                # Nothing to write for a value no spelling matches.
+                return None
         return super()._serialize(value, *args, **kwargs)
 
 

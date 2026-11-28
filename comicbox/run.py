@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from comicbox.box import Comicbox
+from comicbox.box.pages.extract import CoverDestinations
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
@@ -27,6 +28,7 @@ from comicbox.exceptions import (
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
     UsageError,
+    ValidationFailedError,
 )
 from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
@@ -49,10 +51,10 @@ if TYPE_CHECKING:
 #: comic whose tag file did not parse, a write or rename would land on a
 #: file already there, a PDF write would harm another attachment, -w names
 #: no format the archive can hold, the comic is read-only, a conversion
-#: would lose one of two members of one name, or an export or extraction
-#: target is unsafe or not a directory. A traceback tells the user nothing the
-#: message doesn't, so these log one line. Anything else is a bug and earns
-#: the stack.
+#: would lose one of two members of one name, an export or extraction
+#: failed, or the comic's metadata failed --validate. A traceback tells the
+#: user nothing the message doesn't, so these log one line. Anything else is
+#: a bug and earns the stack.
 _EXPECTED_FILE_ERRORS = (
     ComicNotFoundError,
     UnsupportedArchiveTypeError,
@@ -63,6 +65,7 @@ _EXPECTED_FILE_ERRORS = (
     ReadOnlyComicError,
     DuplicateMemberError,
     ExportError,
+    ValidationFailedError,
 )
 
 #: The online sources that hold process-wide clients to release at the
@@ -174,6 +177,8 @@ class Runner:
         self._failure_lock = threading.Lock()
         #: A file the run reaches by several paths, processed once.
         self._same_files = _SameFiles()
+        #: The cover files this run wrote: a second comic's is refused.
+        self._cover_destinations = CoverDestinations()
         #: Batch-wide series cache for online tagging (series-first
         #: batching, plan §3.10). `OnlineSession` has always had one; the
         #: CLI did not, so `comicbox --online` re-ran the full candidate
@@ -270,6 +275,8 @@ class Runner:
             path = self._same_files.process_as.get(path, path)
 
         with Comicbox(path, config=self._config) as car:
+            if self._config.convert.extract_covers:
+                car.set_cover_destinations(self._cover_destinations)
             if self._config.online.lookup.enabled:
                 car.set_series_cache(self._series_cache)
                 car.set_online_session_state(self._online_state)
@@ -414,6 +421,7 @@ class Runner:
         """Run actions with config."""
         outcome_stats.reset()
         self.failure_count = 0
+        self._cover_destinations = CoverDestinations()
         try:
             self._run_inner()
         finally:

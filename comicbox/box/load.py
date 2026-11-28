@@ -19,6 +19,7 @@ from comicbox.box.sources import ComicboxSources
 from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.base.schemas.error_store import unlogged_drops
 from comicbox.formats.sources import MetadataSources
 
 # The sources that are files in, or metadata of, the archive itself.
@@ -197,24 +198,27 @@ class ComicboxLoad(ComicboxSources):
     def _load_unknown_metadata(
         self, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
-        """Parse import data string from file trying many different file schemas."""
-        success_md = None
-        fmt = None
+        """
+        Parse import data string from file trying many different file schemas.
+
+        The filename format reads any string, so it is never guessed: it
+        is used only when the caller names it.
+        """
         for fmt in source.value.formats:
-            if not fmt.value.enabled:
+            if not fmt.value.enabled or fmt == MetadataFormats.FILENAME:
                 continue
             try:
-                if (success_md := self._call_load(source, fmt, data)) and glom(
-                    success_md, fmt.value.schema_class.ROOT_KEYPATH
-                ):
+                # Quietly: a format that does not fit drops everything.
+                with unlogged_drops():
+                    md = self._call_load(source, fmt, data)
+                if md and glom(md, fmt.value.schema_class.ROOT_KEYPATH):
                     logger.debug(f"Parsed {source.value.label} with {fmt.value.label}")
-                    break
+                    # Again, aloud: what the chosen format drops is news.
+                    return self._call_load(source, fmt, data), fmt
             except Exception as exc:
                 self._except_on_load(source, fmt, exc, level="DEBUG")
-        if not success_md:
-            reason = f"Unable to load {source.value.label}."
-            raise MetadataError(reason)
-        return success_md, fmt
+        reason = f"Unable to load {source.value.label}."
+        raise MetadataError(reason)
 
     def _load_metadata(
         self, source: MetadataSources, source_data: SourceData | None

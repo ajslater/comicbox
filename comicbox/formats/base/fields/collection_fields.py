@@ -3,16 +3,18 @@
 import re
 import sys
 from collections.abc import Iterable, Mapping
+from copy import deepcopy
 from decimal import Decimal
 from typing import Any
 
 from glom import glom
-from marshmallow import fields
+from marshmallow import ValidationError, fields
 from marshmallow.utils import is_collection
 
 from comicbox.empty import filter_list_empty, is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.merge import AdditiveMerger
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
@@ -47,9 +49,28 @@ def _comparable(value: Any) -> tuple[int, Any]:
 
 
 def case_insensitive_dict(d: dict) -> dict:
-    """Make a dict with string keys case insensitive."""
-    cid = {k.lower(): (k, v) for k, v in d.items()}
-    return {v[0]: v[1] for v in cid.values()}
+    """
+    Make a dict with string keys case insensitive.
+
+    Keys that differ only in case name the same thing, such as one credited
+    person spelled two ways by two sources. The later key wins, as it always
+    has: sources merge highest precedence last, so the higher precedence
+    source names it. When both values are mappings they are deep merged
+    additively, so neither side's roles or ids are lost, and the later value
+    wins a scalar both set. No DictField value schema holds a list, so the
+    additive merge never extends one. Other values can't merge: the later
+    value wins.
+    """
+    folded: dict[str, tuple[str, Any]] = {}
+    for key, value in d.items():
+        folded_key = key.lower()
+        old = folded.get(folded_key)
+        if old and isinstance(old[1], Mapping) and isinstance(value, Mapping):
+            merged = AdditiveMerger.merge(deepcopy(dict(old[1])), value)
+            folded[folded_key] = (key, merged)
+        else:
+            folded[folded_key] = (key, value)
+    return dict(folded.values())
 
 
 class ListField(fields.List):
@@ -61,6 +82,7 @@ class ListField(fields.List):
         # Sorting also does deduplication
         sort: bool = True,
         sort_keys: tuple[str, ...] | list[str] = (),
+        fallback_sort_keys: tuple[str, ...] | list[str] = (),
         allow_empty: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -68,6 +90,9 @@ class ListField(fields.List):
         self._sort = sort
         # A tuple of dot delimited keys becomes a tuple of tuples.
         self._sort_keys = tuple(sort_keys)
+        # Keys only for elements whose sort_keys are all empty, so elements
+        # with no structured data don't all dedupe into one.
+        self._fallback_sort_keys = tuple(fallback_sort_keys)
         self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
@@ -89,15 +114,21 @@ class ListField(fields.List):
         """Override in XmlListField."""
         return value
 
+    def _key_values(self, value: Any, key_paths: tuple[str, ...]) -> list:
+        key = []
+        for key_path in key_paths:
+            sort_value = glom(value, key_path, default=None)
+            sort_value = self.get_tag_value(sort_value)
+            key.append(_comparable(sort_value))
+        return key
+
     def _sort_value(self, value: Any, sort_dict: dict[Any, Any]) -> None:
         if is_empty(value):
             return
-        key = []
         if self._sort_keys:
-            for key_path in self._sort_keys:
-                sort_value = glom(value, key_path, default=None)
-                sort_value = self.get_tag_value(sort_value)
-                key.append(_comparable(sort_value))
+            key = self._key_values(value, self._sort_keys)
+            if self._fallback_sort_keys and all(rank == _EMPTY_RANK for rank, _ in key):
+                key += self._key_values(value, self._fallback_sort_keys)
         else:
             key = (_comparable(self.get_tag_value(value)),)
         key = tuple(key)
@@ -226,22 +257,41 @@ class StringListField(fields.List):
     def _seq_to_str_seq(seq: Iterable[Any]) -> list[str]:
         return [str(item) for item in seq if not is_empty(item)]
 
+    @staticmethod
+    def _seq_to_items(seq: Iterable[Any]) -> list[Any]:
+        # A mapping or a nested collection is no name: the item field unwraps
+        # an XML element's text or refuses it, instead of naming an item
+        # after its repr.
+        return [
+            item if isinstance(item, Mapping) or is_collection(item) else str(item)
+            for item in seq
+            if not is_empty(item)
+        ]
+
     @override
-    def _deserialize(
-        self, value: list[str] | set[str] | str, *args: Any, **kwargs: Any
-    ) -> list[str | None]:
+    def _deserialize(self, value: Any, *args: Any, **kwargs: Any) -> list[str | None]:
         """Deserialize CSV encodings of lists."""
         result = []
-        if not value:
+        if is_empty(value):
             return result
+        if isinstance(value, bool):
+            reason = f"{value!r} is not a list of names"
+            raise ValidationError(reason)
+        if isinstance(value, (*_NUMBER_TYPES, Mapping)):
+            # A bare number is one name. A lone mapping is one item for the
+            # item field to read or refuse.
+            value = [value]
         # CSV encoding.
         if isinstance(value, str) and (value := StringField().deserialize(value)):
             value = self._split_regex.split(value)
-        if value and is_collection(value):
-            # Already deserialized.
-            value = self._seq_to_str_seq(value)
-            result = super()._deserialize(value, *args, **kwargs)
-        return result
+        if not value:
+            return result
+        if not is_collection(value):
+            reason = f"{type(value).__name__} is not a list of names"
+            raise ValidationError(reason)
+        # Already deserialized.
+        value = self._seq_to_items(value)
+        return super()._deserialize(value, *args, **kwargs)
 
     @override
     def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
@@ -265,7 +315,12 @@ class StringSetField(StringListField):
     @override
     def _deserialize(self, *args: Any, **kwargs: Any) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         """Cast to a set."""
-        str_list = super()._deserialize(*args, **kwargs)
+        try:
+            str_list = super()._deserialize(*args, **kwargs)
+        except ValidationError as exc:
+            # A partial load's valid_data is a list, not a set: drop the
+            # field whole instead, as SimpleNamedDictField's union does.
+            raise ValidationError(exc.messages) from exc
         if not str_list:
             return None
         return set(str_list)

@@ -12,12 +12,51 @@
 - ComicBookInfo reads a text or fractional issue as an issue name, as other
   formats do: `1/2` is 0.5, `1.5` is 1.5 and `1a` is 1 with suffix `a`, where
   they were dropped or read as 1. A whole issue reads as before.
+- Each `-Q` logs less: `-Q` hides info lines, `-QQ` success lines, `-QQQ`
+  warnings and `-QQQQ` errors, one step earlier than before, and `-Q` no longer
+  logs more than a quieter `general.loglevel`.
 - Extracting or reading every page of a CB7 is many times faster.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
   of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
 
 ### 🐛 Fixed
 
+- `--validate` fails an invalid comic and goes on to the rest of the batch
+  instead of ending the run there. It passes over `-m` metadata, imports of no
+  known format and free-text archive comments instead of failing on them, and
+  counts a malformed JSON or YAML file as invalid, not a crash.
+- A failed export, page extraction or cover extraction fails its file and the
+  run exits 1, instead of logging and exiting 0.
+- `-X -d FILE` fails a comic instead of writing its cover over an archive or PDF
+  comicbox can open (a comic, but also a zip, epub, tar, 7z or rar), or over
+  another comic's cover from the same run. Any other existing file is still
+  replaced.
+- Extracting pages that share a name in two folders of a comic saves every page
+  instead of overwriting: the first keeps its name, and each later one is named
+  by its page index, zero-padded to the page count's digits, a hyphen and the
+  name (`05-01.jpg`, prefixed again if a page has that name), the same on every
+  run.
+- Library: `write_metadata` and `bulk_write` report nothing written, with the
+  dry-run payload, when the config sets `general.dry_run`.
+- A credit, character, tag or other name spelled in two cases, such as
+  `Stan Lee` and `STAN LEE`, keeps the roles and ids of both spellings in
+  comicbox YAML, JSON and `to_dict()` instead of only one's.
+- Reprints with no series or issue that the name can be read as, such as
+  `(2019)` and `(2020)`, are all kept instead of only the last.
+- A bare number for tags, genres, stories or series groups, such as
+  `tags: 1984`, is read as one name instead of dropped silently. A mapping, a
+  nested list or `true` there is dropped with a warning instead of read as a
+  name or not at all.
+- A link to a Grand Comics Database sub-page, such as `issue/123/cover/4/`,
+  reads as issue 123 instead of issue 4. A GCD or Metron link to a page comicbox
+  doesn't know, such as a publisher, brand or reading list, adds no issue id.
+- An unrecognised Manga or BlackAndWhite value, such as `maybe`, is dropped with
+  a warning instead of read and written back as No. `y` now reads as Yes.
+- Library: `AdditiveMerger` concatenates tuples and unions frozensets instead of
+  dropping one side.
+- `--import` of a file whose name no format claims, such as `tags.xml`, reads
+  its real format instead of writing its text into the series and title as a
+  filename, and an unreadable one is skipped with a warning.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
@@ -64,6 +103,8 @@
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
 - `Comicbox.get_pages()` without an end page returns every page, not none.
+- A malformed `-x` page range, such as `1-3`, is a usage error instead of a
+  traceback.
 - `--id` refuses a directory under `-r` that holds more than one comic, with the
   same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
@@ -84,6 +125,22 @@
 - `compute.pages` gives macOS resource forks no ComicInfo page entries and drops
   entries past the last page, with a warning naming the bookmark and page types
   that go with them.
+- `comicbox doctor` warns about each config value a run ignores or defaults,
+  such as an invalid format key, merge order source or cache ttl, and about the
+  removed Metron `user` and `pass` keys.
+- `general.loglevel` takes a level name in any case, such as `debug`; anything
+  but a level name or a whole number 0 or more is a one-line config error, and a
+  doctor failure, instead of a traceback on every run.
+- `online.cache.mode`, in a config file or `COMICBOX_ONLINE__CACHE__MODE`, takes
+  a bare or quoted `on`, `off`, `yes`, `no`, `true` or `false` instead of
+  failing every run on a bare `on` or `off`.
+- An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of
+  silently never, or always, auto-writing.
+
+### 🔒 Security
+
+- A malformed `--auth` entry's error, in a run or `comicbox doctor`, no longer
+  prints the token.
 
 ## v5.7.1
 
