@@ -132,12 +132,19 @@ _YAML_MAX_DEPTH = 1000
 
 
 class _RootKeys:
-    """Collect the scalar keys of a YAML root mapping from its events."""
+    """
+    Collect the scalar keys of a YAML root mapping from its events.
 
-    __slots__ = ("depth", "done", "is_key", "keys")
+    A key given as an alias of a scalar is read as that scalar, as the
+    loader would, so a list spelling ``reading_list`` with an alias is
+    detected, and then refused for its alias.
+    """
+
+    __slots__ = ("anchors", "depth", "done", "is_key", "keys")
 
     def __init__(self) -> None:
         self.keys: set[str] = set()
+        self.anchors: dict[str, str] = {}
         self.depth = 0
         self.is_key = True
         self.done = False
@@ -164,9 +171,16 @@ class _RootKeys:
     def _node(self, event: ScalarEvent | AliasEvent) -> bool:
         if self.depth == 0:
             return False
+        if isinstance(event, ScalarEvent) and event.anchor:
+            self.anchors[event.anchor] = event.value
         if self.depth == 1:
-            if self.is_key and isinstance(event, ScalarEvent):
-                self.keys.add(event.value)
+            value = (
+                event.value
+                if isinstance(event, ScalarEvent)
+                else self.anchors.get(event.anchor)
+            )
+            if self.is_key and value is not None:
+                self.keys.add(value)
             self.is_key = not self.is_key
         return True
 
