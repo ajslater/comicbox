@@ -349,7 +349,7 @@ def cli_selector(
     """
     Default CLI prompt selector.
 
-    Uses `questionary.select` when available + TTY; falls back to a
+    Uses `questionary.text` when available + TTY; falls back to a
     plain `input()` loop otherwise. Loops on `m` and `o` (session
     options submenu) until the user enters a valid id, skips, or
     aborts.

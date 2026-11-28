@@ -1,8 +1,8 @@
 """
 Confidence-score matcher and policy resolution.
 
-For M3 the matcher is metadata-only — cover hashing lives behind a
-hook that returns `None` until M4 wires up pHash.
+Candidates are scored on metadata signals, with cover hashes folded in
+when the hashing policy runs (see `cover_hash`).
 
 Public surface:
 
@@ -141,9 +141,10 @@ def metadata_score(profile: ComicProfile, candidate: Candidate) -> float:
     md=1.0 in the symmetric-missing case (Weaselfang prompt fix). For
     libraries with full profile metadata (publisher / page_count
     present), the asymmetric-skip stays as the s_publisher=0.5 /
-    s_pages=0.6 weak prior, matching pre-Phase-K behaviour. So Phase E's
-    `solo_confidence_threshold` is the load-bearing protection only on
-    thumbnail-library calibration runs.
+    s_pages=0.6 weak prior, matching pre-Phase-K behaviour. Phase E's
+    solo floor defaults to the source's resolved `auto_threshold` (see
+    `resolve_solo_threshold`), so a lone candidate clears the same bar as
+    a multi-candidate win unless `solo_threshold` is lowered per source.
     """
     # Skip a signal only when BOTH sides are empty (truly no data on
     # either side). When asymmetric — profile has data, candidate doesn't

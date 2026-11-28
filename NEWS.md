@@ -122,7 +122,7 @@
 - `--id` refuses a directory under `-r` that holds more than one comic, with the
   same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
-  prompts or searches, and no waiting out rate-limit retries.
+  prompts or searches, and no waiting out rate-limit retries or Metron's pacing.
 - A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
   looping forever.
 - MetronInfo no longer relabels tag ids as another database's on write, and
@@ -164,6 +164,16 @@
 - A Comic Vine search that found nothing while an issue list failed, as in an
   outage or with the hourly budget spent, is reported as a failed search instead
   of no match.
+- Metron requests stay paced when a proxy error or bot-check page answers first.
+- The end-of-run HTTP summary lists a source whose every request failed to
+  connect, as in an IP ban.
+- Library: a Metron `RateLimited` event carries the wait comicbox applies, the
+  server's up to 5 minutes or a minute without one, instead of 0.
+- The end-of-run summary counts a search that found nothing as a no-match.
+- Library: the run estimate prices a Metron comic at 4 requests, counting the
+  cover search and the series detail, instead of 2.
+- Library: `OnlineSession.cancel()` also ends that session's lookups waiting for
+  Metron's pacing, instead of letting them run to completion.
 
 ### 🔒 Security
 

@@ -14,6 +14,7 @@ from comicbox.events import (
     AutoWritten,
     Event,
     FileFinished,
+    NoMatch,
     PromptQueued,
     PromptResolved,
     SearchCompleted,
@@ -329,8 +330,14 @@ def test_event_handler_absent_is_a_noop(monkeypatch) -> None:
     cb.run_online_lookup()
 
 
-def test_no_match_emits_no_match_event(monkeypatch) -> None:
-    """Empty candidate list ⇒ no SearchCompleted top score, no NoMatch (matcher unreached)."""
+def test_an_empty_search_emits_no_no_match_event(monkeypatch) -> None:
+    """
+    Empty candidate list ⇒ SearchCompleted(n_candidates=0) and no NoMatch.
+
+    The matcher is never reached, so the event stream says "nothing found"
+    through the search's own event; the CLI summary still counts it as a
+    no-match (see `test_an_empty_search_counts_as_a_no_match`).
+    """
     _patch_metron(monkeypatch, [])
     events: list[Event] = []
     cb = _build_cb()
@@ -342,8 +349,29 @@ def test_no_match_emits_no_match_event(monkeypatch) -> None:
     assert len(completed) == 1
     assert completed[0].n_candidates == 0
     assert completed[0].top_score is None
-    # No AutoWritten / Skipped / PromptQueued for the empty case
-    assert not any(isinstance(e, AutoWritten | Skipped | PromptQueued) for e in events)
+    # No AutoWritten / Skipped / PromptQueued / NoMatch for the empty case
+    assert not any(
+        isinstance(e, AutoWritten | Skipped | PromptQueued | NoMatch) for e in events
+    )
+
+
+def test_an_empty_search_counts_as_a_no_match(monkeypatch) -> None:
+    """
+    B19: the database's commonest "not found" was missing from the summary.
+
+    Only a search whose candidates all ranked under the floor was counted.
+    """
+    from comicbox.formats.base.online import outcome_stats
+
+    outcome_stats.reset()
+    try:
+        _patch_metron(monkeypatch, [])
+        _build_cb().run_online_lookup()
+        lines = outcome_stats.summary_lines()
+    finally:
+        outcome_stats.reset()
+
+    assert any(line.strip().startswith("1 no-match") for line in lines), lines
 
 
 if __name__ == "__main__":  # pragma: no cover

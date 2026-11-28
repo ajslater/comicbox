@@ -97,6 +97,25 @@ def test_summary_reports_connection_failures() -> None:
     assert "2 connection failures" in "\n".join(outcome_stats.summary_lines())
 
 
+def test_summary_reports_a_source_that_only_failed_to_connect() -> None:
+    """
+    B17: a run started inside an IP ban got no HTTP block at all.
+
+    fail2ban drops the IP, so every send times out: the source records
+    connection failures and gate waits, never a request.
+    """
+    for _ in range(12):
+        outcome_stats.record_connection_failure("metron")
+    outcome_stats.record_gate_wait("metron", 30.0)
+
+    lines = outcome_stats.summary_lines()
+
+    assert lines == [
+        "  metron API: 0 requests",
+        "    12 connection failures, 30s paced",
+    ]
+
+
 def test_summary_omits_the_new_counters_when_nothing_went_wrong() -> None:
     outcome_stats.record_http_request("metron", "issue_list")
 

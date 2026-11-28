@@ -764,6 +764,44 @@ def test_paced_source_still_spends_its_rate_limit_budget() -> None:
     assert sleeps == []
 
 
+@pytest.mark.parametrize(
+    ("hint", "reported"),
+    [(0.0, 60.0), (1.0, 1.0), (37.0, 37.0), (3600.0, 300.0), (None, 60.0)],
+    ids=["zero-hint", "one-second", "server-hint", "past-the-cap", "no-hint"],
+)
+def test_a_paced_source_reports_the_wait_its_gate_applies(
+    hint: float | None, reported: float | None
+) -> None:
+    """
+    B18: a paced source reported every 429 as a 0 s wait.
+
+    The retry loop plans no sleep for it, because the gate does the
+    waiting, so the planned delay is always 0.0. D-3: what is reported is
+    the wait the gate's cooldown applies: the server's hint capped at the
+    gate's longest wait, or a whole window when there is no usable hint.
+    """
+    _sleeps, fake_sleep = _capture_sleeps()
+    notices: list[tuple[str, float | None]] = []
+
+    class _ListeningPacedSource(_PacedSource):
+        on_rate_limit: Any = staticmethod(
+            lambda name, delay: notices.append((name, delay))
+        )
+
+    calls = 0
+
+    @_stub_retry(_ListeningPacedSource(), sleep=fake_sleep)
+    def fn() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise _RateLimitedError(retry_after=hint)
+        return "ok"
+
+    assert fn() == "ok"
+    assert notices == [("stub", reported)]
+
+
 def test_paced_source_still_sleeps_generic_transient_errors() -> None:
     """The gate paces rate limits, not 5xx — those keep the normal backoff."""
     sleeps, fake_sleep = _capture_sleeps()

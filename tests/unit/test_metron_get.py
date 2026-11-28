@@ -21,6 +21,7 @@ from comicbox.formats.base.online.rate_gate import RateGate
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 from comicbox.formats.metron_api.paced_session import build_paced_session
 from comicbox.formats.metron_api.transform import MetronApiTransform
+from comicbox.online_estimate import METRON_FETCH_REQUESTS
 from tests.util.metron_transport import (
     FakeAdapter,
     Reply,
@@ -85,9 +86,12 @@ def test_get_fetches_each_series_once(
     src, adapter, _ = _source(monkeypatch, session, Reply(series_detail(_SERIES_ID)))
 
     first = src.get(1)
+    first_cost = len(adapter.urls)
     second = src.get(2)
 
     assert _paths(adapter) == ["/issue/1/", f"/series/{_SERIES_ID}/", "/issue/2/"]
+    # What the run estimate prices a cold comic's fetch at.
+    assert first_cost == METRON_FETCH_REQUESTS
     for payload in (first, second):
         series = payload["series"]
         assert series["year_end"] == 2021

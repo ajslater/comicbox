@@ -106,6 +106,9 @@ if TYPE_CHECKING:
     from comicbox.formats.base.online.rate_gate import RateGate
 
 _TOO_MANY_REQUESTS = 429
+# The 2xx range, the only statuses a header-less answer is trusted from.
+_SUCCESS_MIN = 200
+_SUCCESS_END = 300
 
 _RATE_LIMIT_HEADERS = (
     HEADER_BURST_LIMIT,
@@ -148,11 +151,13 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
-# Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
-# mokkari fetches every page of a list inside that one blocking call, and it
-# is synchronous, so its rate-limiter and response hooks run on the calling
-# thread and see these. Unset by default: tagging neither cancels inside a
-# call nor counts pages, and behaves exactly as it did without them.
+# Hooks a caller sets around its mokkari calls (see fetch_hooks): a
+# reading-list fetch, for its abort and page counter, and tagging, for its
+# abort, which `MetronOnlineSource.cancellable` sets for each source's
+# lookup. mokkari is synchronous and fetches every page of a list inside
+# one blocking call, so its rate-limiter and response hooks run on the
+# calling thread and see these. Unset, a call is neither cancelled inside
+# nor counted by page.
 
 
 @dataclass(frozen=True, slots=True)
@@ -381,13 +386,25 @@ def _feed_gate(gate: RateGate, response: requests.Response) -> None:
     rejected = response.status_code == _TOO_MANY_REQUESTS
     if not saw_headers:
         _report_unthrottled(response)
-    # A header-less 429 has nothing to teach the gate: every window
-    # figure is None, so `observe` would only log "pacing disabled" on
-    # its way to a `cooldown` that overrides it a moment later, and
-    # `record_rate_limit_windows` would be a no-op. Worse, it would flip
-    # the gate OPEN a moment before the cooldown sets it PACED.
-    if saw_headers or not rejected:
+    # A header-less response teaches the gate only that the server does
+    # not throttle, which turns pacing off, so it has to look like the
+    # API answering: a 2xx JSON body. A proxy error or a bot-check page
+    # (see `_report_unthrottled`) leaves the gate as it was, and an
+    # UNKNOWN gate keeps serializing until a real answer arrives. That
+    # also rules out a header-less 429, which has nothing to teach: its
+    # `cooldown` is what sets the gate PACED.
+    if saw_headers or (not rejected and _looks_like_the_api(response)):
         _observe_headers(gate, headers, saw_headers=saw_headers)
+
+
+def _looks_like_the_api(response: requests.Response) -> bool:
+    """Whether a header-less response is an API answer: 2xx JSON."""
+    content_type = response.headers.get("Content-Type", "")
+    media_type = content_type.split(";", 1)[0].strip().lower()
+    success = _SUCCESS_MIN <= response.status_code < _SUCCESS_END
+    return success and (
+        media_type == "application/json" or media_type.endswith("+json")
+    )
 
 
 def _observe_headers(gate: RateGate, headers: Any, *, saw_headers: bool) -> None:

@@ -121,7 +121,7 @@ class _OutcomeStats:
             self._bucket_for(source_name).skip += 1
 
     def record_no_match(self, source_name: str) -> None:
-        """Record a NO_MATCH (no candidate cleared `min_confidence`)."""
+        """Record a no-match: no candidates, or none cleared `min_confidence`."""
         with self._lock:
             self._counts.no_match += 1
             self._bucket_for(source_name).no_match += 1
@@ -241,13 +241,16 @@ def _format_api_lines(per_source: dict[str, _ApiCounts]) -> list[str]:
 def _format_source_api_lines(src: str, api: _ApiCounts) -> list[str]:
     """Format one source's block: the header row and whichever rows apply."""
     total = sum(api.requests.values())
-    if not total and not api.rejections:
+    # Connection failures alone are a block of their own: that is what a
+    # run started inside an IP ban records, and why the counter exists.
+    if not total and not api.rejections and not api.connection_failures:
         return []
     breakdown = ", ".join(
         f"{count} {endpoint}" for endpoint, count in sorted(api.requests.items())
     )
     rows = (_format_detail(api), _format_unthrottled(api), _format_budget_row(api))
-    lines = [f"  {src} API: {total} requests ({breakdown})"]
+    header = f"  {src} API: {total} requests"
+    lines = [f"{header} ({breakdown})" if breakdown else header]
     lines.extend(f"    {row}" for row in rows if row)
     return lines
 
@@ -342,7 +345,8 @@ def _format_summary(c: _Counts, per_source: dict[str, _Counts]) -> list[str]:
         lines.append(f"  {c.skip:>4} skipped (matcher declined)")
     if c.no_match:
         lines.append(
-            f"  {c.no_match:>4} no-match (nothing scored above min_confidence)"
+            f"  {c.no_match:>4} no-match (nothing found, or nothing scored "
+            "above min_confidence)"
         )
     if len(per_source) > 1:
         lines.append("  by source:")
