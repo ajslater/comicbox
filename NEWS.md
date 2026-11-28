@@ -174,6 +174,8 @@
   cover search and the series detail, instead of 2.
 - Library: `OnlineSession.cancel()` also ends that session's lookups waiting for
   Metron's pacing, instead of letting them run to completion.
+- Urls made from ids found in tags or genres are written in the same order on
+  every run, and an id in tags wins over one for the same database in genres.
 
 ### 🔒 Security
 
