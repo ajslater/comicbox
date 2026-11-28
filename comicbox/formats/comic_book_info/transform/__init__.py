@@ -1,5 +1,7 @@
 """Comic Book Info transform to and from Comicbox format."""
 
+import re
+
 from bidict import frozenbidict
 
 from comicbox.formats.base.transforms.base import BaseTransform
@@ -61,7 +63,6 @@ SIMPLE_KEYPATHS = frozenbidict(
     {
         "comments": SUMMARY_KEY,
         "country": COUNTRY_KEY,
-        "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
         "numberOfIssues": ISSUE_COUNT_KEYPATH,
         "numberOfVolumes": VOLUME_COUNT_KEYPATH,
@@ -75,6 +76,15 @@ SIMPLE_KEYPATHS = frozenbidict(
         "volume": VOLUME_NUMBER_KEYPATH,
     }
 )
+ISSUE_TAG = "issue"
+_WHOLE_NUMBER_RE = re.compile(r"\d+")
+
+
+def _issue_from_cb(issue_name: str) -> int | None:
+    """CBI's issue is an integer: write a whole issue number, or nothing."""
+    return int(issue_name) if _WHOLE_NUMBER_RE.fullmatch(issue_name) else None
+
+
 NAME_OBJ_KEYPATHS = frozenbidict(
     {
         "genre": GENRES_KEY,
@@ -93,7 +103,7 @@ class ComicBookInfoTransform(BaseTransform):
             inherit_root_keypath=False,
         ),
         MetaSpec(
-            key_map=SIMPLE_KEYPATHS.inverse,
+            key_map={**SIMPLE_KEYPATHS.inverse, ISSUE_NAME_KEYPATH: ISSUE_TAG},
         ),
         cbi_credits_transform_to_cb("credits"),
         cbi_rating_to_cb(),
@@ -108,6 +118,7 @@ class ComicBookInfoTransform(BaseTransform):
         MetaSpec(
             key_map=SIMPLE_KEYPATHS,
         ),
+        MetaSpec(key_map={ISSUE_TAG: ISSUE_NAME_KEYPATH}, spec=_issue_from_cb),
         cbi_credits_transform_from_cb("credits"),
         cbi_rating_from_cb(),
         name_obj_from_cb(NAME_OBJ_KEYPATHS),

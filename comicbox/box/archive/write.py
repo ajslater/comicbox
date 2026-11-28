@@ -16,7 +16,7 @@ from zipremove import ZIP_DEFLATED, ZIP_STORED, ZipFile
 
 from comicbox._pdf import PAGE_FORMAT_PIXMAP_JPEG
 from comicbox.box.archive.archiveinfo import ArchiveInfo, InfoType
-from comicbox.box.archive.attributes import keep_attributes
+from comicbox.box.archive.attributes import keep_attributes, keep_stat
 from comicbox.box.archive.read import ComicboxArchiveRead
 from comicbox.box.archive.rollback import TAIL_CAP, TailRollback
 from comicbox.box.archive.tag_names import ALL_ARCHIVE_METADATA_FILENAMES
@@ -24,6 +24,8 @@ from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ArchiveWriteError,
     DestinationOccupiedError,
+    DuplicateMemberError,
+    ReadOnlyComicError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
 )
@@ -32,6 +34,9 @@ if TYPE_CHECKING:
     from pdffile import PDFFile
 
 FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | Path
+# What an in-flight claim holds: a file's key, or for a name with nothing
+# there yet its directory's key and its folded name.
+ClaimKey: TypeAlias = FileKey | tuple[FileKey, str]
 
 # A conversion's temporary archive: a dot name ending in .tmp, never a comic
 # suffix, so a library watcher skips its creation and its replace alike.
@@ -53,7 +58,7 @@ _ARCHIVE_KINDS = MappingProxyType(
 # one archive's contents gone for good. Claiming the destination turns the
 # loser into an ordinary per-file error instead. Each claim is held under
 # the path it was taken by, mapped to the file that path named then.
-_INFLIGHT_DESTINATIONS: dict[Path, FileKey] = {}
+_INFLIGHT_DESTINATIONS: dict[Path, ClaimKey] = {}
 _INFLIGHT_GUARD = Lock()
 
 
@@ -103,18 +108,37 @@ def tmp_archive_path(path: Path) -> Path:
     return path.with_name(_hidden_name(path.name, _TMP_ARCHIVE_SUFFIX))
 
 
+def _claim_key(destination: Path) -> ClaimKey:
+    """
+    Key an in-flight claim: the file, or a new name in its directory.
+
+    A name with nothing there yet is its directory's key and its name,
+    case-folded and Unicode-normalized: ``issue.cbz`` and ``ISSUE.cbz``
+    become one file once either is written to a case-insensitive disk, so
+    two conversions writing at once must not both claim them. The directory
+    is never folded, so names in two directories never meet. Only this
+    claim folds; the run-wide claim maps key a new name by its spelling.
+    """
+    try:
+        destination.stat()
+    except OSError:
+        name = unicodedata.normalize("NFC", destination.name).casefold()
+        return (file_key(destination.parent), name)
+    return file_key(destination)
+
+
 def _claim_destination(destination: Path, source: Path) -> None:
     """
     Take a write destination, refusing one already in flight.
 
     The claim is on the file, not the spelling: ``lib/link.cbz``, a link to
-    ``cw1.cbz``, is refused while ``cw1.cbz`` is being written.
+    ``cw1.cbz``, is refused while ``cw1.cbz`` is being written, and
+    ``ISSUE.cbz`` while a conversion to ``issue.cbz`` in the same directory
+    is, on any disk.
     """
-    key = file_key(destination)
+    key = _claim_key(destination)
     with _INFLIGHT_GUARD:
-        if destination in _INFLIGHT_DESTINATIONS or (
-            key in _INFLIGHT_DESTINATIONS.values()
-        ):
+        if key in _INFLIGHT_DESTINATIONS.values():
             raise DestinationOccupiedError(source, destination, "inflight")
         _INFLIGHT_DESTINATIONS[destination] = key
 
@@ -334,22 +358,32 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
 
     def _refuse_a_page_named_twice(self, write_name: str, written: set[str]) -> None:
         """
-        Refuse a PDF whose attachment takes the name a page converts to.
+        Refuse an archive two of whose members would be written under one name.
 
-        Page 1 converts to ``1.jpeg``, so an attachment named ``1.jpeg`` and
-        the page were both written under one name and one was lost. Which
-        name a page takes depends on its format, and for the image formats on
-        the page, so it is caught as it is written; the temporary archive is
-        then discarded, and the comic is as it was.
+        In a PDF, page 1 converts to ``1.jpeg``, so an attachment named
+        ``1.jpeg`` and the page were both written under one name and one was
+        lost. Which name a page takes depends on its format, and for the
+        image formats on the page, so it is caught as it is written. A tar
+        appended to can hold one name twice, and a member read by name is
+        the last of them, so the CBZ held it twice and the first was lost.
+        Either way the temporary archive is then discarded, and the comic is
+        as it was.
         """
-        if self._archive_is_pdf and write_name in written:
+        if write_name not in written:
+            written.add(write_name)
+            return
+        if self._archive_is_pdf:
             reason = (
                 f"{self._path}: cannot convert it to a CBZ without harming the"
                 f" attachment {write_name!r}, which is also the name of a page it"
                 " converts."
             )
             raise UnsafePdfAttachmentError(reason)
-        written.add(write_name)
+        reason = (
+            f"{self._path}: cannot convert it to a CBZ: it holds more than one"
+            f" member named {write_name!r}."
+        )
+        raise DuplicateMemberError(reason)
 
     def _tail_offset(self, path: Path, rewritten: frozenset[str] | None) -> int | None:
         """
@@ -495,6 +529,11 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
                 )
                 self._archive_write_metadata_files(zf, files)
                 zf.comment = self._get_comment() if comment is None else comment
+            # As _patch_a_copy does: on disk, with the comic's mode and owner,
+            # before it is published and ``delete_orig`` unlinks the source.
+            with tmp_path.open("r+b") as tmp:
+                os.fsync(tmp.fileno())
+            keep_attributes(self._path, tmp_path)
         except BaseException:
             tmp_path.unlink(missing_ok=True)
             raise
@@ -601,6 +640,9 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             raise ArchiveWriteError(reason)
         self.close()
         delete_all_tags = self._config.write.delete_all_tags
+        # pdffile saves to a new file and replaces the PDF with it, so the
+        # PDF's mode and owner are put back after; its hard links are split.
+        source_stat = self._path.stat()
         pf = self._archive_cls(self._path)
         try:
             if delete_all_tags or mupdf_metadata:
@@ -615,8 +657,16 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             # unsaved, the PDF on disk is as it was.
             del pf
             raise
-        # pdffile saves to a temporary file and replaces the PDF with it.
         pf.close()
+        # The new PDF is saved: a filesystem that refuses chmod or chown
+        # (vfat, CIFS) costs it its old mode, not the write.
+        try:
+            keep_stat(source_stat, self._path)
+        except OSError as exc:
+            logger.warning(
+                f"{self._path}: written, but its mode and owner could not be"
+                f" restored: {exc}"
+            )
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping
@@ -632,11 +682,18 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
         overlap on it -- ``bulk_write``'s preflight refuses a path named
         twice; the claim is the backstop for concurrent callers -- and the
         finished-file check cannot see a write that is still in flight.
+
+        A read-only comic is refused before an in-place write, whichever
+        way it would be made: a copy replaced over it, as a tags-first CBZ
+        or a PDF is written, would ignore the protection.
         """
         if not self._path:
             reason = "Cannot write archive metadata without a path."
             raise ArchiveWriteError(reason)
         destination = self.get_write_destination()
+        if destination == self._path and not os.access(self._path, os.W_OK):
+            reason = f"{self._path} is read-only: not written."
+            raise ReadOnlyComicError(reason)
         is_zip = self._archive_cls == ZipFile
         _claim_destination(destination, self._path)
         try:

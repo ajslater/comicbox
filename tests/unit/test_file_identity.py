@@ -121,3 +121,16 @@ def test_an_inode_of_0_is_never_trusted(
 
     assert len({file_key(path) for path in paths}) == len(paths)
     assert _same_files(paths).same_as == {}
+
+
+def test_a_missing_name_is_keyed_by_its_spelling(tmp_path: Path) -> None:
+    """
+    A7 follow-up: run-wide claim maps key a new file by its spelling.
+
+    ``bulk_write``'s preflight and ``rl``'s one-per-destination check key
+    destinations with ``file_key``. Folded there, ``issue.cbz`` and
+    ``ISSUE.cbz``, two files on a case-sensitive disk, refused a valid
+    sequential batch. Only the in-flight claim folds a new name.
+    """
+    assert file_key(tmp_path / "issue.cbz") != file_key(tmp_path / "ISSUE.cbz")
+    assert file_key(tmp_path / "a" / "x.cbz") != file_key(tmp_path / "A" / "x.cbz")

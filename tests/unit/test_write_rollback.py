@@ -26,6 +26,7 @@ from loguru import logger
 from comicbox.box import Comicbox
 from comicbox.box.archive import rollback as rollback_module
 from comicbox.box.archive import write as write_module
+from comicbox.exceptions import ReadOnlyComicError
 from comicbox.write import write_metadata
 from tests.const import CIX_PDF_SOURCE_PATH
 
@@ -379,3 +380,49 @@ def test_the_rollback_changes_no_byte_of_a_write(
     assert write_metadata(plain, patch, formats=formats).written
 
     assert kept.read_bytes() == plain.read_bytes()
+
+
+# ------------------------------------------------------- read-only comics
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32" or os.geteuid() == 0, reason="needs POSIX permissions"
+)
+@pytest.mark.parametrize("layout", ["tail", "tags-first", "pdf"])
+def test_a_read_only_comic_is_refused_whatever_its_layout(
+    tmp_path: Path, layout: str
+) -> None:
+    """
+    B3: a 0444 comic's protection held only on the tail path.
+
+    There it failed with a false "could not undo" error; a tags-first CBZ
+    was copied and replaced over it, and a PDF saved over it.
+    """
+    if layout == "tail":
+        path = _comic(tmp_path)
+    elif layout == "tags-first":
+        path = _tags_first(tmp_path)
+    else:
+        path = tmp_path / "comic.pdf"
+        shutil.copy(CIX_PDF_SOURCE_PATH, path)
+    path.chmod(0o444)
+    original = path.read_bytes()
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="ERROR", format="{message}")
+    try:
+        result = (
+            _retag(path)
+            if layout != "pdf"
+            else write_metadata(path, {"summary": "New"}, formats=["PDF"])
+        )
+    finally:
+        logger.remove(handler)
+        mode = path.stat().st_mode
+
+    assert not result.written
+    assert isinstance(result.error, ReadOnlyComicError)
+    assert "read-only" in str(result.error)
+    assert path.read_bytes() == original
+    assert mode & 0o777 == 0o444
+    assert not any("could not undo" in message for message in messages)
+    assert _leftovers(tmp_path) == set()

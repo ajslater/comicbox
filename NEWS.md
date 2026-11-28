@@ -2,6 +2,10 @@
 
 ## v5.7.2
 
+### ♻️ Changed
+
+- Extracting or reading every page of a CB7 is many times faster.
+ 
 ### 🐛 Fixed
 
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
@@ -22,6 +26,35 @@
 - `rl match` name variants compose: `The Bladehawk (2016) TPB` finds
   `Bladehawk`.
 - `rl match` lists a comic with the entry's id but a far cover year as refused.
+- ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
+- Numbers with a decimal comma, thousands separator or fraction are dropped with
+  a warning instead of cut to their first digits.
+- MetronInfo leaves out zero issue and volume counts and prices with no country,
+  which its schema rejects.
+- ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
+  instead of writing issue 1.
+- CoMet reads and writes cover credits.
+- CoMet leaves out an issue that is not a whole number and warns when it has no
+  title, which its schema requires.
+- PDF author metadata includes Plot, Story, Translator and Author credits.
+- Filenames write issue `1/2` as `½` instead of inventing a title from the `2`.
+- Converting two comics whose names differ only by case and suffix at once no
+  longer overwrites one with the other on a case-insensitive disk.
+- A conversion or PDF write keeps the comic's file mode and owner, and a
+  conversion is on disk before `delete_orig` removes the original.
+- A read-only comic is refused, never rewritten, whatever its layout.
+- A CBT holding one page name twice is refused instead of converted with a page
+  lost.
+- `Comicbox.get_pages()` without an end page returns every page, not none.
+- `--id` refuses a directory under `-r` that holds more than one comic.
+- Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
+  prompts or searches, and no waiting out rate-limit retries.
+- A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
+  looping forever.
+- MetronInfo no longer relabels tag ids as another database's on write, and
+  writes Comic Vine tag ids.
+- On Python 3.11, a Metron reading-list fetch error no longer prints a
+  traceback.
 
 ## v5.7.1
 

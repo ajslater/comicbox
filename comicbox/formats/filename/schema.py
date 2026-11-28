@@ -7,6 +7,7 @@ optional fields. But this brute force method with the parse library is
 effective, simple and easy to read and to contribute to.
 """
 
+import re
 import sys
 from typing import Any, Final
 
@@ -55,6 +56,10 @@ _FILENAME_REPLACEMENTS: Final[tuple[tuple[str, str], ...]] = (
     *((char, "") for char in '"*<>?|'),
 )
 
+# A half issue, "1/2" or "5 1/2". comicfn2dict keeps "½" in the issue token,
+# but a "/" sanitized to "_" ends the issue and starts an invented title.
+_HALF_ISSUE_RE = re.compile(r"(?:^|(?<=\d)\s+)1/2$")
+
 
 class FilenameRenderModule(BaseRenderModule):
     """Filename Render module."""
@@ -71,6 +76,8 @@ class FilenameRenderModule(BaseRenderModule):
     def dumps(cls, obj: dict, *args: Any, **kwargs: Any) -> str:
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
+        if issue := data.get(ISSUE_TAG):
+            data = {**data, ISSUE_TAG: _HALF_ISSUE_RE.sub("½", issue)}
         fn = dict2comicfn(data, *args, **kwargs)
         return cls._sanitize(fn)
 

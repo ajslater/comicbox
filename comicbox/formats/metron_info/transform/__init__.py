@@ -1,7 +1,12 @@
 """MetronInfo.xml Transformer."""
 
+import sys
+from collections.abc import Mapping
+from types import MappingProxyType
+
 from bidict import frozenbidict
 
+from comicbox.constants import ROOT_TAG
 from comicbox.formats.base.transforms.base import BaseTransform
 from comicbox.formats.base.transforms.spec import (
     MetaSpec,
@@ -13,6 +18,7 @@ from comicbox.formats.comicbox.schema import (
     COLLECTION_TITLE_KEY,
     NOTES_KEY,
     PAGE_COUNT_KEY,
+    PRIMARY_ID_SOURCE_KEY,
     SUMMARY_KEY,
     UPDATED_AT_KEY,
 )
@@ -36,6 +42,7 @@ from comicbox.formats.metron_info.transform.identifiers import (
     METRON_PRIMARY_SOURCE_KEY_TRANSFORM_TO_CB,
     METRON_URLS_TRANSFORM_FROM_CB,
     METRON_URLS_TRANSFORM_TO_CB,
+    metron_primary_id_source_from_cb,
 )
 from comicbox.formats.metron_info.transform.publishing_tags import (
     METRON_IMPRINT_TRANSFORM_TO_CB,
@@ -43,6 +50,7 @@ from comicbox.formats.metron_info.transform.publishing_tags import (
     METRON_MANGA_VOLUME_TRANSFORM_TO_CB,
     METRON_PUBLISHER_TRANSFORM_FROM_CB,
     METRON_PUBLISHER_TRANSFORM_TO_CB,
+    METRON_SERIES_COUNTS_TRANSFORM_FROM_CB,
     METRON_SERIES_END_YEAR_TRANSFORM_FROM_CB,
     METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB,
     METRON_SERIES_IDENTIFIER_TRANSFORM_TO_CB,
@@ -70,6 +78,11 @@ from comicbox.formats.metron_info.transform.resources import (
     METRON_UNIVERSES_TRANSFORM_FROM_CB,
     METRON_UNIVERSES_TRANSFORM_TO_CB,
 )
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 SIMPLE_KEY_MAP = frozenbidict(
     {
@@ -119,6 +132,7 @@ class MetronInfoTransform(BaseTransform):
         metron_credits_from_cb(),
         METRON_PUBLISHER_TRANSFORM_FROM_CB,
         METRON_SERIES_TRANSFORM_FROM_CB,
+        METRON_SERIES_COUNTS_TRANSFORM_FROM_CB,
         METRON_SERIES_END_YEAR_TRANSFORM_FROM_CB,
         METRON_SERIES_IDENTIFIER_TRANSFORM_FROM_CB,
         METRON_ALTERNATIVE_NAMES_TRANSFORM_FROM_CB,
@@ -132,3 +146,14 @@ class MetronInfoTransform(BaseTransform):
         METRON_UNIVERSES_TRANSFORM_FROM_CB,
         format_root_keypath=MetronInfoSchema.ROOT_KEYPATH,
     )
+
+    @override
+    def from_comicbox(self, data: Mapping) -> MappingProxyType:
+        """Resolve the one primary id source every writer uses, then transform."""
+        comicbox = data.get(ROOT_TAG) or {}
+        primary_id_source = metron_primary_id_source_from_cb(comicbox)
+        data = {
+            **data,
+            ROOT_TAG: {**comicbox, PRIMARY_ID_SOURCE_KEY: primary_id_source},
+        }
+        return super().from_comicbox(data)

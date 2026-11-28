@@ -1,7 +1,6 @@
 """Json Schema."""
 
 import sys
-from math import ceil, log10
 from typing import Any
 
 from marshmallow.fields import Constant, Nested
@@ -52,14 +51,15 @@ class ComicboxJsonSchema(ComicboxSchemaMixin, JsonSchema):
 
     @override
     def dump(self, obj: dict, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        """Inject zero fill for page string numbers."""
-        if (
-            obj
-            and (pages := obj.get(self.ROOT_TAG, {}).get(PAGES_KEY))
-            and (max_page := max(*tuple(pages.keys()), 0))
-        ):
-            zero_fill = ceil(log10(max_page))
-            comicbox_field = self.fields[self.ROOT_TAG].schema  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
-            pages_field = comicbox_field.fields[PAGES_KEY]
-            pages_field.key_field.ZERO_FILL = zero_fill
+        """
+        Inject zero fill for page string numbers.
+
+        Pad to the width of the highest page index, and always set it, so a
+        book with no pages to pad never reuses the schema's last width.
+        """
+        pages = obj.get(self.ROOT_TAG, {}).get(PAGES_KEY) if obj else None
+        max_page = max(pages.keys(), default=0) if pages else 0
+        zero_fill = len(str(max_page)) if max_page else 0
+        comicbox_field = self.fields[self.ROOT_TAG].schema  # pyright: ignore[reportAttributeAccessIssue], # ty: ignore[missing-attribute]
+        comicbox_field.fields[PAGES_KEY].key_field.ZERO_FILL = zero_fill
         return super().dump(obj, *args, **kwargs)  # pyright: ignore[reportReturnType]
