@@ -53,10 +53,13 @@ def case_insensitive_dict(d: dict) -> dict:
     Make a dict with string keys case insensitive.
 
     Keys that differ only in case name the same thing, such as one credited
-    person spelled two ways by two sources. When both values are mappings
-    they are deep merged additively under the first spelling, so neither
-    side's roles or ids are lost. Other values can't merge: the later
-    key and value win, as they always have.
+    person spelled two ways by two sources. The later key wins, as it always
+    has: sources merge highest precedence last, so the higher precedence
+    source names it. When both values are mappings they are deep merged
+    additively, so neither side's roles or ids are lost, and the later value
+    wins a scalar both set. No DictField value schema holds a list, so the
+    additive merge never extends one. Other values can't merge: the later
+    value wins.
     """
     folded: dict[str, tuple[str, Any]] = {}
     for key, value in d.items():
@@ -64,7 +67,7 @@ def case_insensitive_dict(d: dict) -> dict:
         old = folded.get(folded_key)
         if old and isinstance(old[1], Mapping) and isinstance(value, Mapping):
             merged = AdditiveMerger.merge(deepcopy(dict(old[1])), value)
-            folded[folded_key] = (old[0], merged)
+            folded[folded_key] = (key, merged)
         else:
             folded[folded_key] = (key, value)
     return dict(folded.values())

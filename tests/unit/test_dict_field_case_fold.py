@@ -38,14 +38,14 @@ _METRON = """<?xml version="1.0"?>
 
 
 def test_case_variant_keys_merge_their_values() -> None:
-    """Both roles survive under the first spelling."""
+    """Both roles survive under the later spelling."""
     folded = case_insensitive_dict(
         {
             "Stan Lee": {"roles": {"Writer": {}}},
             "STAN LEE": {"roles": {"Editor": {}}},
         }
     )
-    assert folded == {"Stan Lee": {"roles": {"Writer": {}, "Editor": {}}}}
+    assert folded == {"STAN LEE": {"roles": {"Writer": {}, "Editor": {}}}}
 
 
 def test_case_variant_sets_union() -> None:
@@ -53,7 +53,7 @@ def test_case_variant_sets_union() -> None:
     folded = case_insensitive_dict(
         {"Arc": {"tags": {"a"}, "number": 1}, "ARC": {"tags": {"b"}}}
     )
-    assert folded == {"Arc": {"tags": {"a", "b"}, "number": 1}}
+    assert folded == {"ARC": {"tags": {"a", "b"}, "number": 1}}
 
 
 def test_case_variant_merge_does_not_mutate_the_input() -> None:
@@ -66,6 +66,17 @@ def test_case_variant_merge_does_not_mutate_the_input() -> None:
 def test_case_variant_non_mappings_keep_the_later_value() -> None:
     """Values that can't merge keep the old behavior: the later pair wins."""
     assert case_insensitive_dict({"a": 1, "A": 2}) == {"A": 2}
+
+
+def test_later_spelling_wins_a_conflicting_scalar() -> None:
+    """
+    Sources merge highest precedence last, so the later value wins.
+
+    The key and any scalar both sides set come from the later mapping, as
+    the key always did before values were merged.
+    """
+    folded = case_insensitive_dict({"Arc": {"number": 1}, "ARC": {"number": 2}})
+    assert folded == {"ARC": {"number": 2}}
 
 
 def test_distinct_keys_are_untouched() -> None:
@@ -113,11 +124,12 @@ def test_cross_source_to_dict_keeps_roles_and_ids() -> None:
         md = car.to_dict()["comicbox"]
         yaml = car.to_string(MetadataFormats.COMICBOX_YAML)
     people = md["credits"]
-    assert len(people) == 1
+    # MetronInfo merges after ComicInfo, so its spelling names the person.
+    assert list(people) == ["STAN LEE"]
     (credit,) = people.values()
     assert set(credit["roles"]) == {"Writer", "Editor"}
     characters = md["characters"]
-    assert len(characters) == 1
+    assert list(characters) == ["SPIDER-MAN"]
     (character,) = characters.values()
     assert character["identifiers"]["metron"]["key"] == "42"
     assert "Writer" in yaml
