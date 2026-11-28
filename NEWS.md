@@ -80,7 +80,7 @@
 - Tag files written together carry the same `updated_at` and notes stamp.
 - A tag file that does not parse is read and warned about once per comic.
 - Library: `get_cover_paths()` and `extract_covers()` follow metadata added with
-  `add_metadata()` or `add_source()`.
+  `add_metadata()` or `add_source()`, or set with `set_internal_metadata()`.
 - `compute.pages` gives macOS resource forks no ComicInfo page entries and drops
   entries past the last page, with a warning naming the bookmark and page types
   that go with them.

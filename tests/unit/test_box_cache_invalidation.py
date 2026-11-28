@@ -15,6 +15,7 @@ from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
@@ -267,3 +268,18 @@ def test_a_source_added_after_an_empty_load_is_read(tmp_cbz: Path) -> None:
         )
         md = cb.to_dict()
     assert md["comicbox"]["title"] == "Imported"
+
+
+def test_cover_paths_follow_set_internal_metadata(tmp_cbz: Path) -> None:
+    """Metadata set directly finds its covers too."""
+    with Comicbox(tmp_cbz) as cb:
+        before = cb.get_cover_paths()
+        sub = dict(cb.get_internal_metadata()["comicbox"])
+        pages = {index: dict(page) for index, page in sub["pages"].items()}
+        pages[2]["page_type"] = ComicInfoPageTypeEnum.FRONT_COVER
+        sub["pages"] = pages
+        cb.set_internal_metadata({"comicbox": sub})
+        after = cb.get_cover_paths()
+    assert len(before) == 1
+    assert len(after) == 2
+    assert after[1].endswith("_03.jpg")
