@@ -128,9 +128,7 @@ def test_library_import_of_the_filename_export_parses(tmp_path: Path) -> None:
     assert md["series"]["name"] == "Captain Science"
 
 
-def test_an_unreadable_import_warns_once(
-    tmp_path: Path, warnings: list[str]
-) -> None:
+def test_an_unreadable_import_warns_once(tmp_path: Path, warnings: list[str]) -> None:
     """Formats that do not fit drop everything: that is no news."""
     meta = tmp_path / "notes.txt"
     meta.write_text("just some text\n")
