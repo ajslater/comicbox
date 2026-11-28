@@ -8,10 +8,10 @@ from confuse import ConfigError
 from rich import print as rich_print
 from rich.markup import escape
 
-from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.cli.parser import build_parser
 from comicbox.exceptions import (
     ConfigurationError,
+    OnlineLookupAbortedError,
     UnsupportedArchiveTypeError,
     UsageError,
 )

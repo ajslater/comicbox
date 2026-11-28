@@ -22,7 +22,6 @@ from comicbox.formats.comicbox.schema import ISSUE_SUFFIX_KEY
 from comicbox.identifiers import DEFAULT_ID_TYPE, ID_KEY_KEY, ID_TYPE_KEY
 from comicbox.readinglists.changes import describe_changes
 from comicbox.readinglists.schema import (
-    ENTRIES_KEY,
     IDENTIFIERS_KEY,
     ISSUE_KEY,
     NAME_KEY,
@@ -37,7 +36,6 @@ from comicbox.readinglists.syntax import describe_syntax_error
 # xmltodict lets expat's through.
 _PARSE_ERRORS = (ValueError, YAMLError, ExpatError)
 NOT_UTF8 = "text: not valid UTF-8; the bytes that are not were replaced with U+FFFD"
-_ENTRIES_PREFIX = f"{ENTRIES_KEY}."
 
 
 def issue_id(entry: Mapping[str, Any], source: str) -> str:

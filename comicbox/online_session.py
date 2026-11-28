@@ -27,9 +27,6 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
-# OnlineConfigurationError keeps its historical comicbox.online_session
-# import path; the definition lives in comicbox.exceptions so it shares
-# the ComicboxError base.
 from loguru import logger
 
 from comicbox.box import Comicbox

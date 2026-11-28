@@ -279,7 +279,7 @@ def test_cancel_skips_subsequent_files(tmp_path) -> None:
 
 def test_abort_from_lookup_cancels_the_batch(tmp_path, monkeypatch) -> None:
     """An 'abort' answer aborts the entire run, not just the current file."""
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
 
@@ -305,7 +305,7 @@ def test_an_abort_keeps_its_reason(tmp_path, monkeypatch) -> None:
     an embedding application has to scrape the log to learn that the day's
     API budget ran out rather than that a user pressed pause.
     """
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     reason = "online: daily API request quota exhausted"
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
@@ -386,7 +386,7 @@ def test_a_manual_preload_refuses_an_empty_path() -> None:
 
 def test_retry_sleep_wait_aborts_when_cancelled() -> None:
     """The wired retry sleep aborts the in-flight lookup on cancel()."""
-    from comicbox.box.online_lookup import OnlineLookupAbortedError
+    from comicbox.exceptions import OnlineLookupAbortedError
 
     session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
     session.cancel()
