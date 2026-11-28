@@ -38,6 +38,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]
+from comicbox.doctor.online import _PROXY_VARS
+from comicbox.formats.base.online import warn_once
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -83,10 +85,18 @@ def _hermetic_comicbox_env(
     that cache outlives a test, so without this a fake client built with
     throwaway credentials would be handed to every later test that
     happens to reuse them.
+
+    Also strips the proxy and CA variables (any case) that requests and
+    ``comicbox doctor`` read, so a run behind a proxy sees what a run
+    without one sees; tests that need one set it. And it gives each test
+    an empty ``warn_once`` set: that set is process-wide, so a warning
+    emitted by an earlier test in the same worker would otherwise
+    silence the one a later test asserts on.
     """
     for key in list(os.environ):
-        if key.startswith("COMICBOX"):
+        if key.startswith("COMICBOX") or key.upper() in _PROXY_VARS:
             monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(warn_once, "_seen", set())
     monkeypatch.setenv("COMICBOXDIR", str(tmp_path))
     monkeypatch.setenv("COMICBOX_ONLINE__CACHE__DIR", str(tmp_path / "online-cache"))
     yield

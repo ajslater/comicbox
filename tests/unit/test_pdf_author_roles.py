@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
-from comicbox.formats.pdf.transform.credits import _credits_to_authors  # pyright: ignore[reportPrivateUsage]
+from comicbox.formats.pdf.transform.credits import _credits_to_authors
 
 
 def test_every_writing_role_is_an_author() -> None:

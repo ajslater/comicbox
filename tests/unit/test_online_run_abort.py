@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     import pytest
 
     from comicbox.formats.base.online.profile import Candidate
-    from comicbox.formats.base.online.prompt import SelectorContext, SelectorResult
+    from comicbox.formats.base.online.selector import SelectorContext, SelectorResult
 
 _WORKERS = 3
 
