@@ -1225,3 +1225,74 @@ def test_a_lookup_whose_every_volume_failed_reports_a_failed_search(
 
     assert cb.run_online_lookup() is False
     assert not any(isinstance(e, SearchCompleted | NoMatch) for e in events)
+
+
+# ------------------------------------------ budget units are requests (C2)
+
+_ROWS_PER_VOLUME = 450
+
+
+def _paged_client(monkeypatch: pytest.MonkeyPatch, client, requests: list[dict]):
+    """
+    Serve a real `Comicvine` from fakes below its paginator.
+
+    `_request` answers `/issues/` with offset/limit pages of a 450-issue
+    volume, or one row when an issue number is in the filter, and records
+    every page asked for; rows convert to the module's issue fakes.
+    """
+    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2, 3, 4)]
+
+    def request(method, endpoint, params=None):
+        params = dict(params or {})
+        requests.append(params)
+        total = 1 if "issue_number:" in params.get("filter", "") else _ROWS_PER_VOLUME
+        offset, limit = int(params["offset"]), int(params["limit"])
+        rows = [
+            {"id": i, "number": str(i)}
+            for i in range(offset, min(total, offset + limit))
+        ]
+        return {"status_code": 1, "results": rows, "number_of_total_results": total}
+
+    def convert(data, type_):
+        return _FakeBasicIssue(
+            iid=data["id"], number=data["number"], volume_name="Wardens"
+        )
+
+    monkeypatch.setattr(client, "_request", request)
+    monkeypatch.setattr(client, "_convert", convert)
+    monkeypatch.setattr(client, "search_volumes", lambda *_a, **_k: list(volumes))
+    monkeypatch.setattr(client, "list_volumes", lambda *_a, **_k: [])
+
+
+@pytest.mark.parametrize(
+    ("issue", "expected_requests"),
+    [(None, 4), ("5", 4)],
+    ids=["unnumbered", "numbered"],
+)
+def test_each_budgeted_issue_list_is_one_request(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, issue, expected_requests
+) -> None:
+    """
+    C2: an unnumbered comic with no year listed whole volumes, 5 pages each.
+
+    The budget charged one unit per wrapper call, so 4 budgeted calls sent
+    20 requests against Comic Vine's 200 an hour. One unit is one page now.
+    """
+    from tests.util.online_client import comicvine_client
+
+    requests: list[dict] = []
+    budgets: list[_SearchBudget] = []
+    with comicvine_client(tmp_path) as client:
+        _paged_client(monkeypatch, client, requests)
+        src = _make_cv_source(monkeypatch, client)
+        new_budget = src._new_search_budget
+
+        def spy() -> _SearchBudget:
+            budgets.append(new_budget())
+            return budgets[-1]
+
+        monkeypatch.setattr(src, "_new_search_budget", spy)
+        src.search(ComicProfile(series="Wardens", issue=issue))
+
+    assert len(requests) == expected_requests
+    assert budgets[0].spent == len(requests)

@@ -340,14 +340,15 @@ def _drop_v2_cache_table(cache_path: Path) -> None:
 @dataclass
 class _SearchBudget:
     """
-    Pre-call spend limit for one `search()`: N issue-list calls, T seconds.
+    Pre-call spend limit for one `search()`: N issue-list requests, T seconds.
 
     ComicVine's fan-out is the one place a single comic can cost an
     unbounded amount of wall clock: `_discover_volumes` unions two
     capped result sets, so the volume list can reach 2x the discovery
     cap, and every survivor costs one rate-limited `list_issues` call
-    (two when the cover-date window comes back empty). At 1/sec that is
-    minutes for one comic, and there was nothing to stop it.
+    (two when the cover-date window comes back empty), each capped at one
+    page (`_ISSUE_LIST_MAX_RESULTS`), so a call is one request. At 1/sec
+    that is minutes for one comic, and there was nothing to stop it.
 
     Both limits gate whether a call is ISSUED. Neither looks at a
     response, so the effort/api-budget contract — pre-call fan-out
@@ -872,6 +873,14 @@ class ComicVineOnlineSource(OnlineSource):
     # that score well on every other signal.
     _COVER_DATE_WINDOW_YEARS: ClassVar[int] = 2
 
+    # The most rows one per-volume issue list asks for: one page of Comic
+    # Vine's offset paginator. simyan's default of 500 is five requests,
+    # and a volume listed without an issue number (an unnumbered comic,
+    # no year window) used them all while the search budget counted one.
+    # Capped, one budget unit is one request. A number filter returns a
+    # row or two anyway.
+    _ISSUE_LIST_MAX_RESULTS: ClassVar[int] = 100
+
     # Maximum number of years a comic may pre-date its volume's start_year
     # before we treat the volume as causally impossible and skip the
     # per-volume issue lookup. A 1987 Wardens issue with profile.year=1987
@@ -1073,7 +1082,10 @@ class ComicVineOnlineSource(OnlineSource):
             issue_filter.append(
                 f"cover_date:{year - window}-01-01|{year + window}-12-31"
             )
-        issues = session.list_issues(params={"filter": ",".join(issue_filter)})
+        issues = session.list_issues(
+            params={"filter": ",".join(issue_filter)},
+            max_results=self._ISSUE_LIST_MAX_RESULTS,
+        )
         return [self._to_candidate(i, volume) for i in issues]
 
     def _volume_predates_comic(
