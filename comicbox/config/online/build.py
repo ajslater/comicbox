@@ -504,12 +504,9 @@ def runtime_online_inputs(
     args: Namespace | Mapping | None,
 ) -> _RuntimeOnlineInputs:
     """Extract online-related runtime values from CLI args (Namespace only)."""
-    if not isinstance(args, Namespace):
+    cns: Any = cns_for_overrides(args)
+    if cns is None:
         return _RuntimeOnlineInputs()
-
-    cns: Any = getattr(args, "comicbox", args)
-    if not isinstance(cns, Namespace):
-        cns = args
 
     ids = _parse_db_id_list(
         getattr(cns, "explicit_ids", None), "--id", _parse_explicit_id
