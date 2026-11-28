@@ -389,6 +389,97 @@ def test_exhausted_daily_quota_aborts_instead_of_sending(clock: _Clock) -> None:
         gate.acquire()
 
 
+def test_an_exhausted_quota_admits_again_once_forgotten(clock: _Clock) -> None:
+    """
+    A13: the zero state ends with the run, not the process.
+
+    Nothing can lift it from inside: at zero no request is sent, so no
+    response can report the refilled window. Forgetting the figure lets
+    the next send through, and its headers teach the gate again.
+    """
+    gate = _gate(clock)
+    gate.observe(
+        burst_limit=4, burst_remaining=4, sustained_limit=5000, sustained_remaining=0
+    )
+    gate.forget_sustained()
+    gate.acquire()
+    gate.release()
+    stats = gate.stats()
+    assert stats.sustained_remaining is None
+    assert stats.sustained_limit is None
+
+
+def test_a_forget_serializes_the_next_request_again(clock: _Clock) -> None:
+    """F1: a paced gate goes back to UNKNOWN, keeping its burst limit."""
+    gate = _gate(clock)
+    _paced(gate, limit=30)
+    gate.forget_sustained()
+
+    assert gate._state is GateState.UNKNOWN
+    gate.acquire()  # alone: the first answer of the run teaches the gate
+    assert _pending_wait(gate) > 0
+    gate.release()
+    assert gate._limit() == 30
+
+
+def test_a_forget_leaves_an_open_gate_open(clock: _Clock) -> None:
+    """A server that never throttles is not re-serialized each run."""
+    gate = _gate(clock)
+    gate.observe(burst_limit=None, burst_remaining=None, saw_headers=False)
+    gate.forget_sustained()
+
+    assert gate._state is GateState.OPEN
+
+
+def test_the_cold_search_reserve_lifts_once_forgotten(clock: _Clock) -> None:
+    gate = _gate(clock)
+    gate.observe(
+        burst_limit=4, burst_remaining=4, sustained_limit=5000, sustained_remaining=40
+    )
+    assert not gate.allow_cold_search()
+    gate.forget_sustained()
+    assert gate.allow_cold_search()
+
+
+def test_a_forgotten_quota_warns_again(clock: _Clock) -> None:
+    """The once-per-figure warnings are part of what is forgotten."""
+    from loguru import logger as loguru_logger
+
+    gate = _gate(clock)
+
+    def run_low() -> None:
+        gate.observe(
+            burst_limit=4,
+            burst_remaining=4,
+            sustained_limit=5000,
+            sustained_remaining=40,
+        )
+        gate.allow_cold_search()
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        run_low()
+        gate.forget_sustained()
+        run_low()
+    finally:
+        loguru_logger.remove(handler_id)
+    assert sum("daily API requests remaining" in m for m in messages) == 2
+    assert sum("not starting new searches" in m for m in messages) == 2
+
+
+def test_within_a_run_the_daily_figure_still_only_falls(clock: _Clock) -> None:
+    """An out-of-order response cannot walk the figure back up."""
+    gate = _gate(clock)
+    gate.observe(
+        burst_limit=4, burst_remaining=4, sustained_limit=5000, sustained_remaining=90
+    )
+    gate.observe(
+        burst_limit=4, burst_remaining=4, sustained_limit=5000, sustained_remaining=4900
+    )
+    assert gate.stats().sustained_remaining == 90
+
+
 def test_a_cancel_inside_the_wait_ends_it(clock: _Clock) -> None:
     """
     A4: a cancel sent while acquire waited for a slot sat the wait out.

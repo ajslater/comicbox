@@ -22,6 +22,7 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from dataclasses import dataclass, replace
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
@@ -65,8 +66,8 @@ from comicbox.online_estimate import (
 from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from pathlib import Path
     from typing import Self
 
     from comicbox.config.settings import ComicboxSettings
@@ -406,6 +407,10 @@ class OnlineSession:
         # prompt's candidate list is ordered differently. Per-session,
         # in-memory only — disk persistence is out of scope for v1.
         self._prompt_cache: dict[str, _CachedResolution] = {}
+        # A "manual" answer names one issue, so it is never cached for
+        # the series: a preloaded one is keyed by the file it is for
+        # as well. Guarded by the same lock.
+        self._manual_preloads: dict[tuple[str, Path], _CachedResolution] = {}
         self._prompt_cache_lock = threading.Lock()
 
         # Defer-prompts queue. When ``defer_prompts`` is set, the bridged
@@ -560,6 +565,7 @@ class OnlineSession:
         action: Literal["choose", "skip", "manual"],
         payload: int | str | None = None,
         chosen_volume_id: int | None = None,
+        path: str | os.PathLike[str] | None = None,
     ) -> None:
         """
         Seed the dedup cache so a re-run auto-resolves the fingerprint.
@@ -573,12 +579,38 @@ class OnlineSession:
         defer_prompts off, a cache MISS (the re-search produced a
         different candidate set than the fingerprint was minted from)
         raises rather than falling back to the interactive CLI prompt.
+
+        ``choose`` and ``skip`` are series decisions: they answer every
+        file whose prompt shares the fingerprint, which is every issue of
+        the series. ``manual`` names one issue, so it answers only the
+        file given as ``path`` and needs one; ``path`` is refused for the
+        series actions. For that file a manual preload wins over a series
+        answer cached for the fingerprint, and the two never overwrite
+        each other.
+
+        ``path`` is matched as ``Path(path) == Path(<path given to tag>)``,
+        with no ``resolve()``: pass the path the file will be tagged
+        under. ``./f`` matches ``f`` and a trailing slash or doubled slash
+        is ignored, but a relative path does not match its absolute form,
+        a symlink does not match its target, ``a/../a/f`` does not match
+        ``a/f``, and on POSIX a different case does not match.
         """
+        if (action == "manual") != (path is not None):
+            msg = (
+                "preload_resolution(action='manual') needs the path of the "
+                "one file it answers"
+                if path is None
+                else "preload_resolution() takes a path for action='manual' only"
+            )
+            raise ValueError(msg)
         entry = _CachedResolution(
             action=action, payload=payload, chosen_volume_id=chosen_volume_id
         )
         with self._prompt_cache_lock:
-            self._prompt_cache[fingerprint] = entry
+            if path is None:
+                self._prompt_cache[fingerprint] = entry
+            else:
+                self._manual_preloads[(fingerprint, Path(path))] = entry
 
     # -- series-first batching ----------------------------------------------
 
@@ -752,6 +784,7 @@ class OnlineSession:
                 self._prompt_handler is not None
                 or self._defer_prompts
                 or self._prompt_cache
+                or self._manual_preloads
             ):
                 cb.set_online_selector(self._bridged_selector())
             if self._on_event is not None:
@@ -801,7 +834,7 @@ class OnlineSession:
         ) -> SelectorResult:
             cand_tuple = tuple(candidates)
             fingerprint = _prompt_fingerprint(ctx.source, profile, cand_tuple)
-            cached = self._lookup_cached_prompt(fingerprint, cand_tuple)
+            cached = self._lookup_cached_prompt(fingerprint, cand_tuple, ctx.file_path)
             if cached is not None:
                 if self._on_event is not None:
                     self._on_event(
@@ -879,17 +912,25 @@ class OnlineSession:
             )
 
     def _lookup_cached_prompt(
-        self, fingerprint: str, candidates: tuple[Candidate, ...]
+        self,
+        fingerprint: str,
+        candidates: tuple[Candidate, ...],
+        file_path: Path | None,
     ) -> SelectorResult | None:
         """
         Match a fingerprint against the cache and re-map the choice.
 
-        For ``choose`` we re-map the cached volume_id to whichever candidate
-        in this prompt's list shares it. If no candidate matches, treat
-        this as a cache miss and let the handler fire fresh.
+        A manual preload for this very file wins. For ``choose`` we
+        re-map the cached volume_id to whichever candidate in this
+        prompt's list shares it. If no candidate matches, treat this as
+        a cache miss and let the handler fire fresh.
         """
         with self._prompt_cache_lock:
-            cached = self._prompt_cache.get(fingerprint)
+            cached = None
+            if file_path is not None:
+                cached = self._manual_preloads.get((fingerprint, file_path))
+            if cached is None:
+                cached = self._prompt_cache.get(fingerprint)
         if cached is None:
             return None
         if cached.action != "choose":
@@ -915,8 +956,10 @@ class OnlineSession:
             except IndexError:
                 chosen_volume_id = None
         # Session-level actions (set_prompts / set_policy / abort) are
-        # not cached: they apply once, not as a deferred decision.
-        if response.action in {"set_prompts", "set_policy", "abort"}:
+        # not cached: they apply once, not as a deferred decision. Nor is
+        # "manual": its issue id belongs to this one issue, and the
+        # fingerprint is shared by every issue of the series.
+        if response.action in {"set_prompts", "set_policy", "abort", "manual"}:
             return
         entry = _CachedResolution(
             action=response.action,

@@ -16,7 +16,9 @@ from comicbox.formats.sources import MetadataSources
 from comicbox.online_session import (
     OnlineConfigurationError,
     OnlineCredentials,
+    OnlinePrompt,
     OnlineSession,
+    PromptResponse,
 )
 from tests.util.online_matcher import make_candidate
 from tests.util.online_session import SkipHandler
@@ -179,7 +181,9 @@ def test_preloaded_resolution_installs_selector(tmp_path, fake_box) -> None:
     session.tag(tmp_path / "f.cbz")
     assert fake_box.last is not None
     assert fake_box.last.selector is None  # nothing to consult — not installed
-    session.preload_resolution("metron|x|2026||(1,)", action="manual", payload="m:1")
+    session.preload_resolution(
+        "metron|x|2026||(1,)", action="manual", payload="m:1", path=tmp_path / "f.cbz"
+    )
     session.tag(tmp_path / "f.cbz")
     assert fake_box.last.selector is not None  # cache non-empty — installed
 
@@ -305,3 +309,107 @@ def test_ask_defers_a_confident_match(tmp_path, confident_metron) -> None:
     (deferred,) = session.deferred_prompts()
     assert deferred.match is MatchMode.ASK
     assert [c.issue_id for c in deferred.candidates] == [101]
+
+
+# --- a manual issue id answers one comic, end to end (A4 / F2) ----------------
+
+
+class _SeriesMetron(_ConfidentMetron):
+    """Offers two volumes' issue of the comic's own number, every time."""
+
+    def search(self, profile) -> list[Candidate]:
+        number = profile.issue
+        return [
+            make_candidate(issue_id=int(number) * 10 + 1, issue=number, volume_id=42),
+            make_candidate(issue_id=int(number) * 10 + 2, issue=number, volume_id=43),
+        ]
+
+
+@pytest.fixture
+def series_metron(monkeypatch) -> list[_SeriesMetron]:
+    instances: list[_SeriesMetron] = []
+
+    def factory(creds, settings):
+        src = _SeriesMetron(creds, settings)
+        instances.append(src)
+        return src
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"metron": factory}),
+    )
+    return instances
+
+
+def _issue(tmp_path, number: int):
+    from tests.util.comics import make_comic
+
+    return make_comic(
+        tmp_path / f"Foo Comics #00{number} (2020).cbz",
+        series="Foo Comics",
+        number=str(number),
+        cover_date="2020-01-01",
+    )
+
+
+class _ManualOnceHandler:
+    """Answers the first prompt with a typed issue id and skips the rest."""
+
+    def __init__(self) -> None:
+        self.asked: list[str | None] = []
+
+    def request(self, prompt: OnlinePrompt) -> PromptResponse:
+        self.asked.append(prompt.profile_summary["issue"])
+        if len(self.asked) == 1:
+            return PromptResponse("manual", "metron:111")
+        return PromptResponse("skip", None)
+
+
+def test_a_manual_id_tags_only_its_own_comic_through_tag_many(
+    tmp_path, series_metron
+) -> None:
+    """
+    Two issues of one series, both prompting with the same volumes.
+
+    The handler types issue 111 for #1. #2 must be asked about itself,
+    not be tagged with #1's issue.
+    """
+    paths = [_issue(tmp_path, 1), _issue(tmp_path, 2)]
+    handler = _ManualOnceHandler()
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        prompt_handler=handler,
+    )
+
+    results = {r.path.name: r for r in session.tag_many(paths)}
+
+    assert handler.asked == ["1", "2"]
+    assert [call for source in series_metron for call in source.get_calls] == [111]
+    assert results["Foo Comics #001 (2020).cbz"].matched is True
+    assert results["Foo Comics #002 (2020).cbz"].matched is False
+
+
+def test_a_manual_preload_takes_a_str_path(tmp_path, series_metron) -> None:
+    """F2: a str path was stored as given and never matched the box's Path."""
+    path = _issue(tmp_path, 1)
+    session = OnlineSession(
+        sources={"metron"},
+        credentials=VALID_METRON,
+        match=MatchMode.ASK,
+        defer_prompts=True,
+    )
+    session.tag(path)
+    (deferred,) = session.deferred_prompts()
+    session.clear_deferred_prompts()
+
+    session.preload_resolution(
+        deferred.fingerprint, action="manual", payload="metron:111", path=str(path)
+    )
+    result = session.tag(path)
+
+    assert session.deferred_prompts() == ()
+    assert [call for source in series_metron for call in source.get_calls] == [111]
+    assert result.matched is True

@@ -146,6 +146,14 @@
 - An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of
   silently never, or always, auto-writing.
 
+- Library: a manual issue id answered in an `OnlineSession` prompt tags only
+  that comic instead of every later issue of its series.
+  `preload_resolution(action='manual')` takes the `path` of the one comic it
+  answers and refuses to run without one.
+- Library: an `OnlineSession` run after one that spent Metron's daily quota
+  looks it up afresh instead of stopping at once, or skipping new searches,
+  until the process restarts.
+
 ### 🔒 Security
 
 - A malformed `--auth` entry's error, in a run or `comicbox doctor`, no longer

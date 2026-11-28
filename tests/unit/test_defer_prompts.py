@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+import pytest
 
 from comicbox.events import PromptDeferred, PromptResolvedFromCache
 from comicbox.formats.base.online.profile import (
@@ -27,12 +30,13 @@ VALID = OnlineCredentials(metron_key="k")
 def _ctx(
     source: str = "metron",
     enrich: Callable[[Sequence[Candidate]], tuple[Candidate, ...]] = tuple,
+    file_path: Path | None = None,
 ):
     from comicbox.config import get_config
     from comicbox.formats.base.online.selector import SelectorContext
 
     return SelectorContext(
-        file_path=None,
+        file_path=file_path,
         source=source,
         settings=get_config(),
         triggered_hashing=False,
@@ -287,3 +291,146 @@ def test_a_prompt_answered_from_cache_spends_nothing_on_enrichment() -> None:
 
     assert result == ("choose", 0)
     assert enrich.calls == 0
+
+
+# --- a manual issue id belongs to one file ------------------------------------
+#
+# Every issue of a series shares a prompt fingerprint, so anything cached
+# under it replays onto the next issue. A volume pick ("choose") and a
+# "skip" are series decisions; a typed issue id is not.
+
+
+class _Recorder:
+    """PromptHandler that answers from a script and records each prompt."""
+
+    def __init__(self, *responses: PromptResponse) -> None:
+        self._responses = list(responses)
+        self.issues: list[str | None] = []
+
+    def request(self, prompt: OnlinePrompt) -> PromptResponse:
+        self.issues.append(prompt.profile_summary["issue"])
+        return self._responses.pop(0)
+
+
+def _series_issue(number: str) -> tuple[ComicProfile, tuple[Candidate, ...]]:
+    """One issue of a series whose prompt offers the same two volumes."""
+    profile = ComicProfile(series="S", issue=number, year=2020, publisher="P")
+    base = int(number) * 10
+    return profile, (_cand(base + 1, 100), _cand(base + 2, 200))
+
+
+def test_a_manual_answer_is_asked_again_for_the_next_issue() -> None:
+    """A manual id typed for #1 is not replayed onto #2 of the same series."""
+    handler = _Recorder(
+        PromptResponse("manual", "metron:111"),
+        PromptResponse("manual", "metron:222"),
+    )
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID, prompt_handler=handler
+    )
+    selector = session._bridged_selector()
+
+    first = selector(*_series_issue("1"), _ctx(file_path=Path("1.cbz")))
+    second = selector(*_series_issue("2"), _ctx(file_path=Path("2.cbz")))
+
+    assert handler.issues == ["1", "2"]
+    assert first == ("manual", "metron:111")
+    assert second == ("manual", "metron:222")
+
+
+def test_a_chosen_volume_replays_onto_the_next_issue() -> None:
+    """A volume pick still answers every later issue of the series."""
+    handler = _Recorder(PromptResponse("choose", 1))
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID, prompt_handler=handler
+    )
+    selector = session._bridged_selector()
+    selector(*_series_issue("1"), _ctx())
+
+    # #2's candidates offer the same volumes in the other order.
+    profile, (vol_100, vol_200) = _series_issue("2")
+    result = selector(profile, (vol_200, vol_100), _ctx())
+
+    assert handler.issues == ["1"]
+    assert result == ("choose", 0)  # volume 200, wherever it now sits
+
+
+def test_a_skip_replays_onto_the_next_issue() -> None:
+    handler = _Recorder(PromptResponse("skip", None))
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID, prompt_handler=handler
+    )
+    selector = session._bridged_selector()
+    selector(*_series_issue("1"), _ctx())
+
+    result = selector(*_series_issue("2"), _ctx())
+
+    assert handler.issues == ["1"]
+    assert result == ("skip", None)
+
+
+def test_a_manual_preload_answers_only_its_own_file() -> None:
+    """A per-file manual preload resolves that file; a sibling is deferred."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
+    selector = session._bridged_selector()
+    selector(*_series_issue("1"), _ctx(file_path=Path("1.cbz")))
+    fingerprint = session.deferred_prompts()[0].fingerprint
+    session.clear_deferred_prompts()
+
+    session.preload_resolution(
+        fingerprint, action="manual", payload="metron:111", path=Path("1.cbz")
+    )
+
+    own = selector(*_series_issue("1"), _ctx(file_path=Path("1.cbz")))
+    sibling = selector(*_series_issue("2"), _ctx(file_path=Path("2.cbz")))
+
+    assert own == ("manual", "metron:111")
+    assert sibling == ("skip", None)
+    assert [d.path for d in session.deferred_prompts()] == [Path("2.cbz")]
+
+
+def test_a_manual_preload_without_a_file_is_refused() -> None:
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
+    with pytest.raises(ValueError, match="path"):
+        session.preload_resolution("fp", action="manual", payload="metron:111")
+
+
+def test_a_series_preload_with_a_file_is_refused() -> None:
+    """A path keys a manual preload only; a series answer takes none."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID, defer_prompts=True)
+    with pytest.raises(ValueError, match="manual"):
+        session.preload_resolution(
+            "fp", action="skip", payload=None, path=Path("1.cbz")
+        )
+
+
+def test_a_series_choice_and_a_files_manual_preload_coexist() -> None:
+    """The per-file manual wins for its file; the series choice answers the rest."""
+    handler = _Recorder(PromptResponse("choose", 1))
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID, prompt_handler=handler
+    )
+    selector = session._bridged_selector()
+    selector(*_series_issue("1"), _ctx(file_path=Path("1.cbz")))
+    fingerprint = _prompt_fingerprint_of("2")
+
+    session.preload_resolution(
+        fingerprint, action="manual", payload="metron:222", path=Path("2.cbz")
+    )
+
+    assert selector(*_series_issue("2"), _ctx(file_path=Path("2.cbz"))) == (
+        "manual",
+        "metron:222",
+    )
+    assert selector(*_series_issue("3"), _ctx(file_path=Path("3.cbz"))) == (
+        "choose",
+        1,
+    )
+    assert handler.issues == ["1"]
+
+
+def _prompt_fingerprint_of(number: str) -> str:
+    from comicbox.online_session import _prompt_fingerprint
+
+    profile, candidates = _series_issue(number)
+    return _prompt_fingerprint("metron", profile, candidates)

@@ -219,8 +219,10 @@ class RateGate:
         """
         started = self._clock()
         with self._cond:
-            self._check_sustained_exhausted()
             while True:
+                # Asked again on every wake: a send queued behind one
+                # whose answer reported the day spent must not go out.
+                self._check_sustained_exhausted()
                 now = self._clock()
                 self._expire(now)
                 wait = self._wait_seconds(now)
@@ -344,7 +346,8 @@ class RateGate:
         if remaining is None:
             return
         # Monotonically non-increasing within a run, so an out-of-order
-        # response cannot walk the figure back up.
+        # response cannot walk the figure back up. The run's end forgets
+        # it (`forget_sustained`).
         if self._sustained_remaining is None or remaining < self._sustained_remaining:
             self._sustained_remaining = remaining
         self._warn_sustained_low()
@@ -420,6 +423,32 @@ class RateGate:
             "stopping. Cached responses make a re-run cheap."
         )
         raise OnlineLookupAbortedError(msg)
+
+    def forget_sustained(self) -> None:
+        """
+        Drop the daily-quota figure at the end of a run.
+
+        Within a run the figure only falls (see `_update_sustained`), and
+        at zero `acquire` sends nothing, so no response could ever report
+        the window refilling. The gate outlives the run, though, cached
+        per token for the process, so a long-lived embedder that spent
+        the day once would refuse every later run. Forgetting the figure
+        lets the next run's first response teach it again.
+
+        The gate goes back to UNKNOWN too, so that first request is sent
+        alone, as in a fresh process: left PACED, every worker of the next
+        run would be admitted before the first answer could say the day
+        is still spent, one 429 each. The learned burst limit and the log
+        are kept, so pacing resumes at the server's pace once it answers.
+        """
+        with self._cond:
+            if self._state is GateState.PACED:
+                self._state = GateState.UNKNOWN
+            self._sustained_limit = None
+            self._sustained_remaining = None
+            self._sustained_reset = None
+            self._sustained_warned = False
+            self._cold_search_warned = False
 
     def allow_cold_search(self) -> bool:
         """
