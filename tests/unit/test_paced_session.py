@@ -606,3 +606,82 @@ def test_a_failing_page_observer_cannot_break_a_send(gate: _RecordingGate) -> No
 
     assert [issue.id for issue in issues] == [1]
     assert gate.observes == 1
+
+
+# ------------------------------------------- a forgotten day still spent (F1)
+
+_WORKERS = 4
+
+
+class _ArrivalGate(RateGate):
+    """A real gate that records each send's arrival before it may wait."""
+
+    def __init__(self) -> None:
+        super().__init__(default_limit=20)
+        self.arrived = threading.Semaphore(0)
+
+    @override
+    def acquire(self, abort: Callable[[], bool] | None = None) -> float:
+        self.arrived.release()
+        return super().acquire(abort)
+
+
+def test_after_a_forget_a_spent_day_costs_one_request() -> None:
+    """
+    F1: a reused gate sent one request per worker into a spent day.
+
+    `forget_sustained` left the gate PACED at its learned burst limit, so
+    every worker of the next run was admitted before the first answer
+    could say the day was still spent: N 429s, enough at -j 30 for
+    Metron's ban. A fresh process's gate is UNKNOWN and sends one. The
+    fake server holds its answer until every worker has reached the gate,
+    so the unfixed gate admits them all deterministically.
+    """
+    from mokkari.exceptions import RateLimitError
+
+    gate = _ArrivalGate()
+    gate.observe(
+        burst_limit=30, burst_remaining=30, sustained_limit=5000, sustained_remaining=0
+    )
+    gate.forget_sustained()
+    spent_day = {
+        "X-RateLimit-Burst-Limit": "30",
+        "X-RateLimit-Burst-Remaining": "29",
+        "X-RateLimit-Sustained-Limit": "5000",
+        "X-RateLimit-Sustained-Remaining": "0",
+        "Retry-After": "3600",
+    }
+
+    first = threading.Lock()
+
+    def answer(_request: Any) -> Reply:
+        if first.acquire(blocking=False):  # hold only the first answer
+            for _ in range(_WORKERS):
+                assert gate.arrived.acquire(timeout=10)
+        return Reply(status_code=429, headers=spent_day)
+
+    session = _session(gate)
+    adapter = install(session, answer)
+    start = threading.Barrier(_WORKERS)
+    outcomes: list[type[BaseException]] = []
+    lock = threading.Lock()
+
+    def worker() -> None:
+        start.wait(timeout=10)
+        try:
+            session.issues_list(params={"series_id": 7})
+        except (OnlineLookupAbortedError, RateLimitError) as exc:
+            with lock:
+                outcomes.append(type(exc))
+
+    threads = [threading.Thread(target=worker, daemon=True) for _ in range(_WORKERS)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=20)
+
+    assert not any(thread.is_alive() for thread in threads)
+    assert len(adapter.urls) == 1
+    # The one sent gets the 429; the rest stop at the gate on the day.
+    assert len(outcomes) == _WORKERS
+    assert outcomes.count(OnlineLookupAbortedError) == _WORKERS - 1
