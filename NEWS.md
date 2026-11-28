@@ -4,10 +4,10 @@
 
 ### ♻️ Changed
 
-- Extracting or reading every page of a CB7 is many times faster.
 - A half issue is .5 in every format: issue `1/2` or `½` is number 0.5 and
   `5 1/2` or `5½` is 5.5, with no suffix, where they were number 1 with suffix
   `/2`, or no number with suffix `½`. This changes how half issues sort.
+- Extracting or reading every page of a CB7 is many times faster.
 
 ### 🐛 Fixed
 
