@@ -22,6 +22,7 @@ from __future__ import annotations
 import threading
 from collections import Counter
 from dataclasses import dataclass, replace
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeAlias, runtime_checkable
 
@@ -65,8 +66,8 @@ from comicbox.online_estimate import (
 from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-    from pathlib import Path
     from typing import Self
 
     from comicbox.config.settings import ComicboxSettings
@@ -564,7 +565,7 @@ class OnlineSession:
         action: Literal["choose", "skip", "manual"],
         payload: int | str | None = None,
         chosen_volume_id: int | None = None,
-        path: Path | None = None,
+        path: str | os.PathLike[str] | None = None,
     ) -> None:
         """
         Seed the dedup cache so a re-run auto-resolves the fingerprint.
@@ -582,8 +583,17 @@ class OnlineSession:
         ``choose`` and ``skip`` are series decisions: they answer every
         file whose prompt shares the fingerprint, which is every issue of
         the series. ``manual`` names one issue, so it answers only the
-        file given as ``path`` (the path that file is tagged under) and
-        needs one; ``path`` is refused for the series actions.
+        file given as ``path`` and needs one; ``path`` is refused for the
+        series actions. For that file a manual preload wins over a series
+        answer cached for the fingerprint, and the two never overwrite
+        each other.
+
+        ``path`` is matched as ``Path(path) == Path(<path given to tag>)``,
+        with no ``resolve()``: pass the path the file will be tagged
+        under. ``./f`` matches ``f`` and a trailing slash or doubled slash
+        is ignored, but a relative path does not match its absolute form,
+        a symlink does not match its target, ``a/../a/f`` does not match
+        ``a/f``, and on POSIX a different case does not match.
         """
         if (action == "manual") != (path is not None):
             msg = (
@@ -600,7 +610,7 @@ class OnlineSession:
             if path is None:
                 self._prompt_cache[fingerprint] = entry
             else:
-                self._manual_preloads[(fingerprint, path)] = entry
+                self._manual_preloads[(fingerprint, Path(path))] = entry
 
     # -- series-first batching ----------------------------------------------
 
