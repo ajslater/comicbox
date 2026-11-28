@@ -44,12 +44,13 @@ class ComicboxDumpToFiles(ComicboxDump):
         if not path.resolve().is_relative_to(dest_path.resolve()):
             reason = f"Unsafe path escapes destination: {path}"
             raise ExportError(reason)
+        schema, denormalized_metadata = self._to_dict(fmt)
         try:
-            schema, denormalized_metadata = self._to_dict(fmt)
             schema.dumpf(denormalized_metadata, path, **kwargs)
-            logger.info(f"Exported {path}")
-        except Exception:
-            logger.exception(f"Could not export {fn}")
+        except OSError as exc:
+            reason = f"Could not export {fn}: {exc}"
+            raise ExportError(reason) from exc
+        logger.info(f"Exported {path}")
 
     def export_files(self, formats: frozenset[MetadataFormats] | None = None) -> None:
         """Export metadata to all supported file formats."""
@@ -61,8 +62,16 @@ class ComicboxDumpToFiles(ComicboxDump):
         if not formats:
             return
 
+        # Every format is tried before the file is failed, so one that
+        # cannot be written costs only itself.
+        failures = []
         for fmt in formats:
-            self.to_file(fmt=fmt)
+            try:
+                self.to_file(fmt=fmt)
+            except ExportError as exc:
+                failures.append(str(exc))
+        if failures:
+            raise ExportError("\n".join(failures))
 
     def predict_filename(self) -> str:
         """

@@ -21,6 +21,23 @@
 
 ### 🐛 Fixed
 
+- `--validate` fails an invalid comic and goes on to the rest of the batch
+  instead of ending the run there. It passes over `-m` metadata, imports of no
+  known format and free-text archive comments instead of failing on them, and
+  counts a malformed JSON or YAML file as invalid, not a crash.
+- A failed export, page extraction or cover extraction fails its file and the
+  run exits 1, instead of logging and exiting 0.
+- `-X -d FILE` fails a comic instead of writing its cover over an archive or PDF
+  comicbox can open (a comic, but also a zip, epub, tar, 7z or rar), or over
+  another comic's cover from the same run. Any other existing file is still
+  replaced.
+- Extracting pages that share a name in two folders of a comic saves every page
+  instead of overwriting: the first keeps its name, and each later one is named
+  by its page index, zero-padded to the page count's digits, a hyphen and the
+  name (`05-01.jpg`, prefixed again if a page has that name), the same on every
+  run.
+- Library: `write_metadata` and `bulk_write` report nothing written, with the
+  dry-run payload, when the config sets `general.dry_run`.
 - A credit, character, tag or other name spelled in two cases, such as
   `Stan Lee` and `STAN LEE`, keeps the roles and ids of both spellings in
   comicbox YAML, JSON and `to_dict()` instead of only one's.
@@ -86,6 +103,8 @@
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
 - `Comicbox.get_pages()` without an end page returns every page, not none.
+- A malformed `-x` page range, such as `1-3`, is a usage error instead of a
+  traceback.
 - `--id` refuses a directory under `-r` that holds more than one comic, with the
   same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,

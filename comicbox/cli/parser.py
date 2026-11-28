@@ -133,19 +133,24 @@ class PageRangeAction(Action):
         option_string: str | None = None,
     ) -> None:
         """Parse page range delimited by :."""
+        raw = values
         if isinstance(values, str):
             values = values.split(":")
         if not values:
             return
 
-        index_from = int(values[0]) if len(values[0]) else None
+        try:
+            index_from = int(values[0]) if len(values[0]) else None
 
-        if len(values) == 1:
-            index_to = index_from
-        elif len(values[1]):
-            index_to = int(values[1])
-        else:
-            index_to = None
+            if len(values) == 1:
+                index_to = index_from
+            elif len(values[1]):
+                index_to = int(values[1])
+            else:
+                index_to = None
+        except ValueError:
+            # argparse makes a usage error only of its own exceptions.
+            parser.error(f"--extract-pages: expected N or N:M, got {raw!r}")
 
         # Dotted keys, matching the confuse template path directly. This
         # action's own dest stays None and is dropped by confuse.

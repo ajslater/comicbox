@@ -2,8 +2,9 @@
 `ComicboxValidate.validate` tests — the `--validate` action.
 
 `validate()` is one of the four `_CONFIG_ACTIONS` `Comicbox.run()`
-dispatches, and it's the only one that ends the process: a failing
-source exits 1 so `comicbox --validate` is usable as a CI gate. These
+dispatches. A failing source raises `ValidationFailedError`, which the
+Runner counts as a failed file, so `comicbox --validate` exits 1 and is
+usable as a CI gate without ending the batch at the first bad comic. These
 tests cover the gate, the per-source loop, and both terminal outcomes.
 
 `tests/test_validate_testfiles.py` exercises `validate_source` against
@@ -20,7 +21,7 @@ from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.box.validate import validate_source
-from comicbox.exceptions import MetadataError
+from comicbox.exceptions import MetadataError, ValidationFailedError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.sources import MetadataSources
 
@@ -104,27 +105,24 @@ def test_format_without_a_validator_passes(records: list[tuple[str, str]]) -> No
 # --- failure ----------------------------------------------------------------
 
 
-def test_invalid_source_exits_one(records: list[tuple[str, str]]) -> None:
-    """The CI-gate contract: a schema violation exits 1."""
+def test_invalid_source_fails(records: list[tuple[str, str]]) -> None:
+    """The CI-gate contract: a schema violation fails the file."""
     cb = _build_cb(INVALID_CIX, MetadataFormats.COMIC_INFO)
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(ValidationFailedError, match="metadata validation failed"):
         cb.validate()
-    assert exc_info.value.code == 1
     warnings = _levels(records, "WARNING")
     assert any("ComicInfo: failed validation" in m for m in warnings)
-    assert _levels(records, "ERROR") == ["Metadata validation failed"]
     assert _levels(records, "SUCCESS") == []
 
 
-def test_one_bad_source_among_good_ones_still_exits(
+def test_one_bad_source_among_good_ones_still_fails(
     records: list[tuple[str, str]],
 ) -> None:
     """`validated &=` accumulates: a later pass can't clear an earlier fail."""
     cb = _build_cb(INVALID_CIX, MetadataFormats.COMIC_INFO)
     cb.add_source(MetadataSources.API, VALID_CIX, fmt=MetadataFormats.COMIC_INFO)
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(ValidationFailedError):
         cb.validate()
-    assert exc_info.value.code == 1
     # Both sources were visited, not just the failing one.
     assert "ComicInfo: data validated" in _levels(records, "INFO")
 
@@ -132,9 +130,8 @@ def test_one_bad_source_among_good_ones_still_exits(
 def test_validate_runs_through_the_run_action_dispatch() -> None:
     """`--validate` reaches `validate()` via `Comicbox.run()`'s action map."""
     cb = _build_cb(INVALID_CIX, MetadataFormats.COMIC_INFO)
-    with pytest.raises(SystemExit) as exc_info:
+    with pytest.raises(ValidationFailedError):
         cb.run()
-    assert exc_info.value.code == 1
 
 
 # --- validate_source edges --------------------------------------------------

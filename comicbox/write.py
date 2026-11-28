@@ -227,7 +227,8 @@ def _write_comic(
             )
             return WriteResult(path=path, error=MetadataError(reason))
         written = _keep_formats(cb, settings) if keep else fmt_set
-        if dry_run:
+        # The config's dry run too: dump() would write nothing under it.
+        if dry_run or settings.general.dry_run:
             payload = {fmt.name: cb.to_string(fmt) for fmt in written or ()}
             return WriteResult(path=path, written=False, dry_run_payload=payload)
         if written is None:
