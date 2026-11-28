@@ -170,11 +170,12 @@ def _make_candidate(issue_id: int, volume_id: int) -> Candidate:
     )
 
 
-def _patch_source(monkeypatch, candidates):
+def _patch_source(monkeypatch, candidates, source_class=None):
     instances: list[_CountingMetron] = []
+    cls = _CountingMetron if source_class is None else source_class
 
     def factory(creds, settings):
-        s = _CountingMetron(creds, settings, candidates)
+        s = cls(creds, settings, candidates)
         instances.append(s)
         return s
 
@@ -407,18 +408,33 @@ class _LeadTogetherCache(SeriesCache):
     def __init__(self, parties: int) -> None:
         super().__init__()
         self._arrived = threading.Barrier(parties, timeout=10)
+        self._first_calls = parties
+        self._calls_lock = threading.Lock()
 
     @override
     def lead(self, key) -> bool:
-        self._arrived.wait()
+        with self._calls_lock:
+            first = self._first_calls > 0
+            self._first_calls -= 1
+        if first:  # only each worker's first try waits for the others
+            self._arrived.wait()
         return super().lead(key)
 
 
-def _run_together(monkeypatch, candidates: list[Candidate]) -> list[_CountingMetron]:
-    """Look up one comic of a series in `_WORKERS` boxes at once."""
-    instances = _patch_source(monkeypatch, candidates)
-    cache = _LeadTogetherCache(_WORKERS)
-    boxes = [_build_cb() for _ in range(_WORKERS)]
+def _run_together(
+    monkeypatch,
+    candidates: list[Candidate],
+    source_class: type[_CountingMetron] | None = None,
+    workers: int = _WORKERS,
+) -> list[_CountingMetron]:
+    """
+    Look up one comic of a series in ``workers`` boxes at once.
+
+    Asserts that no leadership is left behind, however the searches ended.
+    """
+    instances = _patch_source(monkeypatch, candidates, source_class)
+    cache = _LeadTogetherCache(workers)
+    boxes = [_build_cb() for _ in range(workers)]
     for cb in boxes:
         cb.set_series_cache(cache)
     errors: list[BaseException] = []
@@ -436,6 +452,7 @@ def _run_together(monkeypatch, candidates: list[Candidate]) -> list[_CountingMet
         thread.join(timeout=30)
 
     assert not errors
+    assert not cache._leaders
     return instances
 
 
@@ -447,10 +464,68 @@ def test_concurrent_workers_of_one_series_search_once(monkeypatch) -> None:
     assert sum(len(source.lookup_calls) for source in instances) == _WORKERS - 1
 
 
-def test_a_leader_that_resolves_nothing_lets_its_followers_search(
-    monkeypatch,
-) -> None:
-    """No match for the leader: each follower, released, searches itself."""
+class _FailingSearchMetron(_CountingMetron):
+    """
+    A source whose every search fails, recording how many overlap.
+
+    Each search waits a moment for a second one to start beside it, so
+    followers that all search the moment the leader gives up are seen
+    overlapping, while followers that take turns never are.
+    """
+
+    in_flight = 0
+    most_in_flight = 0
+    overlap = threading.Event()
+    lock = threading.Lock()
+
+    @classmethod
+    def reset(cls) -> None:
+        cls.in_flight = cls.most_in_flight = 0
+        cls.overlap = threading.Event()
+
+    @override
+    def search(self, profile):
+        cls = type(self)
+        self.search_calls += 1
+        with cls.lock:
+            cls.in_flight += 1
+            cls.most_in_flight = max(cls.most_in_flight, cls.in_flight)
+            if cls.in_flight > 1:
+                cls.overlap.set()
+        try:
+            cls.overlap.wait(0.2)
+            msg = "502: Bad Gateway"
+            raise RuntimeError(msg)
+        finally:
+            with cls.lock:
+                cls.in_flight -= 1
+
+
+def test_followers_of_a_failing_leader_take_turns(monkeypatch) -> None:
+    """
+    F3: a leader that failed released every follower into its own search.
+
+    The burst came exactly when the source was failing. A follower that
+    wakes to no result goes back to lead-or-wait: one leads the next
+    search and the rest wait for it. Each still gets at most one search
+    of its own, so a series whose every search fails ends.
+    """
+    _FailingSearchMetron.reset()
+    workers = 5
+    instances = _run_together(monkeypatch, [], _FailingSearchMetron, workers)
+
+    assert _FailingSearchMetron.most_in_flight == 1
+    assert sum(source.search_calls for source in instances) == workers
+
+
+def test_a_leader_that_resolves_nothing_hands_the_search_on(monkeypatch) -> None:
+    """
+    No match for the leader: the followers search in turn, one at a time.
+
+    "Nothing" (no candidates, no match, a failed search) leaves the series
+    unresolved, so the next follower leads a search of its own and the
+    rest wait for it; each searches at most once.
+    """
     instances = _run_together(monkeypatch, [])
 
     assert sum(source.search_calls for source in instances) == _WORKERS

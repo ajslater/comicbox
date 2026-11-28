@@ -409,6 +409,28 @@ def test_an_exhausted_quota_admits_again_once_forgotten(clock: _Clock) -> None:
     assert stats.sustained_limit is None
 
 
+def test_a_forget_serializes_the_next_request_again(clock: _Clock) -> None:
+    """F1: a paced gate goes back to UNKNOWN, keeping its burst limit."""
+    gate = _gate(clock)
+    _paced(gate, limit=30)
+    gate.forget_sustained()
+
+    assert gate._state is GateState.UNKNOWN
+    gate.acquire()  # alone: the first answer of the run teaches the gate
+    assert _pending_wait(gate) > 0
+    gate.release()
+    assert gate._limit() == 30
+
+
+def test_a_forget_leaves_an_open_gate_open(clock: _Clock) -> None:
+    """A server that never throttles is not re-serialized each run."""
+    gate = _gate(clock)
+    gate.observe(burst_limit=None, burst_remaining=None, saw_headers=False)
+    gate.forget_sustained()
+
+    assert gate._state is GateState.OPEN
+
+
 def test_the_cold_search_reserve_lifts_once_forgotten(clock: _Clock) -> None:
     gate = _gate(clock)
     gate.observe(

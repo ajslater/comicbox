@@ -35,7 +35,7 @@ import sys
 import threading
 import time
 from contextlib import closing, suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
@@ -346,9 +346,10 @@ class _SearchBudget:
     unbounded amount of wall clock: `_discover_volumes` unions two
     capped result sets, so the volume list can reach 2x the discovery
     cap, and every survivor costs one rate-limited `list_issues` call
-    (two when the cover-date window comes back empty), each capped at one
-    page (`_ISSUE_LIST_MAX_RESULTS`), so a call is one request. At 1/sec
-    that is minutes for one comic, and there was nothing to stop it.
+    (two when the cover-date window comes back empty). Each call asks for
+    one page (`_ISSUE_LIST_MAX_RESULTS`), so a unit is one request, and an
+    unnumbered listing pages on one unit per page while units remain. At
+    1/sec that is minutes for one comic, and there was nothing to stop it.
 
     Both limits gate whether a call is ISSUED. Neither looks at a
     response, so the effort/api-budget contract — pre-call fan-out
@@ -362,6 +363,20 @@ class _SearchBudget:
     deadline: float | None
     spent: int = 0
     dropped: int = 0
+    pages_cut: bool = False
+
+    def take_page(self) -> bool:
+        """
+        Claim one more page of a listing already started.
+
+        A refusal marks the listing as cut short rather than counting a
+        volume as unasked.
+        """
+        if self.take():
+            return True
+        self.dropped -= 1
+        self.pages_cut = True
+        return False
 
     def take(self) -> bool:
         """Claim one call. False when the budget or the clock is out."""
@@ -414,6 +429,16 @@ class _VolumeFacts:
 
 
 _NO_VOLUME_FACTS: Final = _VolumeFacts()
+
+
+@dataclass(frozen=True, slots=True)
+class _Listing:
+    """Where one volume's unnumbered issue list goes on: its next page."""
+
+    volume_id: int
+    volume: _VolumeFacts
+    year: int | None
+    offset: int
 
 
 def _display_text(text: str | None) -> str | None:
@@ -873,12 +898,12 @@ class ComicVineOnlineSource(OnlineSource):
     # that score well on every other signal.
     _COVER_DATE_WINDOW_YEARS: ClassVar[int] = 2
 
-    # The most rows one per-volume issue list asks for: one page of Comic
-    # Vine's offset paginator. simyan's default of 500 is five requests,
-    # and a volume listed without an issue number (an unnumbered comic,
-    # no year window) used them all while the search budget counted one.
-    # Capped, one budget unit is one request. A number filter returns a
-    # row or two anyway.
+    # The most rows one per-volume issue-list request asks for: one page of
+    # Comic Vine's offset paginator. simyan's default of 500 is five
+    # requests, which the search budget counted as one. Capped, one budget
+    # unit is one request; an unnumbered listing pages on, a unit a page,
+    # while the budget lasts (`_page_on`). A number filter returns a row
+    # or two anyway.
     _ISSUE_LIST_MAX_RESULTS: ClassVar[int] = 100
 
     # Maximum number of years a comic may pre-date its volume's start_year
@@ -1050,9 +1075,13 @@ class ComicVineOnlineSource(OnlineSource):
         volume: _VolumeFacts = _NO_VOLUME_FACTS,
         *,
         year: int | None = None,
+        offset: int = 0,
     ) -> list[Candidate]:
         """
         Run a single ``list_issues`` call constrained by volume id.
+
+        One page of at most `_ISSUE_LIST_MAX_RESULTS` rows, from row
+        ``offset``: one request, one budget unit.
 
         Used both by the fast path (`--series-id comicvine:<id>`) and by
         each iteration of the discovery two-step. ``volume`` carries what
@@ -1082,9 +1111,11 @@ class ComicVineOnlineSource(OnlineSource):
             issue_filter.append(
                 f"cover_date:{year - window}-01-01|{year + window}-12-31"
             )
+        params = {"filter": ",".join(issue_filter)}
+        if offset:
+            params["offset"] = str(offset)
         issues = session.list_issues(
-            params={"filter": ",".join(issue_filter)},
-            max_results=self._ISSUE_LIST_MAX_RESULTS,
+            params=params, max_results=self._ISSUE_LIST_MAX_RESULTS
         )
         return [self._to_candidate(i, volume) for i in issues]
 
@@ -1148,9 +1179,17 @@ class ComicVineOnlineSource(OnlineSource):
         # volume id, saving the discovery API call.
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
+            budget = self._new_search_budget()
+            budget.take()  # the first call always goes; pages are budgeted
+            pending: list[_Listing] = []
             try:
-                return self._list_with_year_retry(
-                    session, explicit_sid, issue_number, year=year
+                candidates = self._list_with_year_retry(
+                    session,
+                    explicit_sid,
+                    issue_number,
+                    year=year,
+                    budget=budget,
+                    pending=pending,
                 )
             except Exception as exc:
                 logger.warning(
@@ -1158,6 +1197,14 @@ class ComicVineOnlineSource(OnlineSource):
                     f"failed: {exc}"
                 )
                 raise
+            self._page_on(session, pending, budget, candidates)
+            if budget.pages_cut:
+                logger.info(
+                    f"online {self.name}: {budget.exhausted_reason()} after "
+                    f"{budget.spent} issue-list call(s) for volume "
+                    f"{explicit_sid}; issue list cut short."
+                )
+            return candidates
 
         if not profile.series:
             logger.debug(
@@ -1202,15 +1249,20 @@ class ComicVineOnlineSource(OnlineSource):
             name_threshold=name_threshold,
             budget=budget,
         )
-        if budget.dropped:
+        if budget.dropped or budget.pages_cut:
             # Never truncate silently: a short candidate list has to be
             # distinguishable from a thin one upstream.
+            cut = []
+            if budget.dropped:
+                cut.append(f"{budget.dropped} volume(s) not queried")
+            if budget.pages_cut:
+                cut.append("issue lists cut short")
             logger.info(
                 f"online {self.name}: {budget.exhausted_reason()} after "
                 f"{budget.spent} issue-list call(s) for "
-                f"series={profile.series!r}; {budget.dropped} volume(s) "
-                "not queried. Use `--effort thorough` (config key "
-                "`online.tuning.effort`) to search them all."
+                f"series={profile.series!r}; {', '.join(cut)}. Use "
+                "`--effort thorough` (config key `online.tuning.effort`) "
+                "to search them all."
             )
         if failure is not None:
             raise failure
@@ -1230,15 +1282,21 @@ class ComicVineOnlineSource(OnlineSource):
         """
         List each volume's matching issues, degrading past a failed volume.
 
-        One volume's failure costs only its candidates. When every volume
-        that was asked failed, though -- an outage, a spent pool -- the
-        last failure comes back for the caller to raise, so the lookup
-        reports a failed search rather than a no-match. A volume a filter
-        or the budget skipped was never asked and counts for neither.
+        One volume's failure costs only its candidates while another
+        volume still offers some. When nothing came back and any volume
+        failed -- an outage, a spent pool, or one failure beside volumes
+        without the issue -- the last failure comes back for the caller to
+        raise, so the lookup reports a failed search rather than a
+        no-match: the answer may have been in the volume that failed. A
+        volume a filter or the budget skipped was never asked and counts
+        for neither.
+
+        Every kept volume's first page comes first, in discovery order;
+        unnumbered listings then page on (`_page_on`).
         """
         candidates: list[Candidate] = []
-        queried = failed = 0
         failure: Exception | None = None
+        pending: list[_Listing] = []
         for vol in volumes:
             try:
                 found = self._candidates_for_volume(
@@ -1249,6 +1307,7 @@ class ComicVineOnlineSource(OnlineSource):
                     year=year,
                     name_threshold=name_threshold,
                     budget=budget,
+                    pending=pending,
                 )
             except OnlineLookupAbortedError:
                 # An abort ends the whole lookup; it is not a source-side
@@ -1259,14 +1318,64 @@ class ComicVineOnlineSource(OnlineSource):
                     f"online {self.name}: issue-list for volume {vol.id} "
                     f"({vol.name!r}) failed: {exc}"
                 )
-                queried += 1
-                failed += 1
                 failure = exc
                 continue
-            if found is not None:
-                queried += 1
+            if found:
                 candidates.extend(found)
-        return candidates, failure if failed and failed == queried else None
+        failure = self._page_on(session, pending, budget, candidates) or failure
+        return candidates, None if candidates else failure
+
+    def _page_on(
+        self,
+        session: Any,
+        pending: list[_Listing],
+        budget: _SearchBudget,
+        candidates: list[Candidate],
+    ) -> Exception | None:
+        """
+        Page on through unnumbered listings while the budget lasts.
+
+        Breadth first and deterministic: one more page for each listing
+        in turn, in discovery order, round after round, so when the
+        budget cannot cover them all the earlier volumes are never paged
+        deeper than the later ones by more than a page. Each page costs a
+        unit before it is sent. A listing ends at a short page. A failed
+        page ends its listing and is returned, the last one, for the
+        caller to weigh; what earlier pages found is kept.
+        """
+        page_size = self._ISSUE_LIST_MAX_RESULTS
+        failure: Exception | None = None
+        while pending:
+            next_round: list[_Listing] = []
+            for listing in pending:
+                if not budget.take_page():
+                    return failure
+                try:
+                    page = self._list_issues_by_volume(
+                        session,
+                        listing.volume_id,
+                        None,
+                        listing.volume,
+                        year=listing.year,
+                        offset=listing.offset,
+                    )
+                except OnlineLookupAbortedError:
+                    raise
+                except Exception as exc:
+                    logger.warning(
+                        f"online {self.name}: issue-list page at row "
+                        f"{listing.offset} for volume {listing.volume_id} "
+                        f"failed: {exc}"
+                    )
+                    failure = exc
+                    continue
+                candidates.extend(page)
+                if len(page) >= page_size:
+                    next_round.append(
+                        replace(listing, offset=listing.offset + page_size)
+                    )
+            pending = next_round
+        return failure
 
     def _new_search_budget(self) -> _SearchBudget:
         """Resolve this search's pre-call fan-out limits from the effort knob."""
@@ -1286,6 +1395,7 @@ class ComicVineOnlineSource(OnlineSource):
         year: int | None,
         name_threshold: float,
         budget: _SearchBudget | None = None,
+        pending: list[_Listing] | None = None,
     ) -> list[Candidate] | None:
         """
         Apply pre-call filters and (if kept) fetch the volume's matching issues.
@@ -1336,6 +1446,7 @@ class ComicVineOnlineSource(OnlineSource):
             _VolumeFacts.from_volume(vol, alt_series),
             year=year,
             budget=budget,
+            pending=pending,
         )
 
     def _list_with_year_retry(
@@ -1347,9 +1458,14 @@ class ComicVineOnlineSource(OnlineSource):
         *,
         year: int | None,
         budget: _SearchBudget | None = None,
+        pending: list[_Listing] | None = None,
     ) -> list[Candidate]:
         """
         Per-volume issue lookup with a year-window filter and one fallback.
+
+        The first page only. An unnumbered page that came back full is
+        appended to ``pending`` with the filter that produced it, for
+        `_page_on` to continue.
 
         Tries `cover_date:Y±2` first (cuts out wrong-volume candidates).
         If that returns empty AND a year was supplied, retries without
@@ -1365,10 +1481,19 @@ class ComicVineOnlineSource(OnlineSource):
         candidates = self._list_issues_by_volume(
             session, volume_id, issue_number, volume, year=year
         )
-        if candidates or year is None:
-            return candidates
-        if budget is not None and not budget.take():
-            return candidates
-        return self._list_issues_by_volume(
-            session, volume_id, issue_number, volume, year=None
-        )
+        if not candidates and year is not None:
+            if budget is not None and not budget.take():
+                return candidates
+            year = None
+            candidates = self._list_issues_by_volume(
+                session, volume_id, issue_number, volume, year=None
+            )
+        if (
+            pending is not None
+            and not issue_number
+            and len(candidates) >= self._ISSUE_LIST_MAX_RESULTS
+        ):
+            pending.append(
+                _Listing(volume_id, volume, year, self._ISSUE_LIST_MAX_RESULTS)
+            )
+        return candidates

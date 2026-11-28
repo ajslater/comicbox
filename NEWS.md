@@ -20,8 +20,9 @@
 - `comicbox rl` logs at `general.loglevel` and counts `-Q` as `comicbox` does,
   so each `-Q` count logs one step more than before.
 - Extracting or reading every page of a CB7 is many times faster.
-- A Comic Vine search for an unnumbered comic with no year sends one request per
-  volume instead of up to five, and ranks the first 100 of each volume's issues.
+- A Comic Vine search for an unnumbered comic counts every page of a volume's
+  issues against the effort budget, which caps the requests it sends; before,
+  one counted call could send five.
 - Under `-j N`, comics of one series that start together search once instead of
   once each.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
@@ -160,8 +161,9 @@
 - Library: a process forked after an online lookup builds its own Comic Vine and
   VerseDB connections instead of sharing its parent's, and no longer hangs on a
   Metron lock held at the fork.
-- A Comic Vine search whose every issue list failed, as in an outage or with the
-  hourly budget spent, is reported as a failed search instead of no match.
+- A Comic Vine search that found nothing while an issue list failed, as in an
+  outage or with the hourly budget spent, is reported as a failed search
+  instead of no match.
 - Metron requests stay paced when a proxy error or bot-check page answers first.
 - The end-of-run HTTP summary lists a source whose every request failed to
   connect, as in an IP ban.
