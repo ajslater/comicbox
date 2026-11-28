@@ -17,14 +17,16 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ComicNotFoundError,
-    ConfigurationError,
     DestinationOccupiedError,
+    DuplicateMemberError,
     ExportError,
     OnlineLookupAbortedError,
+    ReadOnlyComicError,
     UnparsedTagFileError,
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
+    UsageError,
 )
 from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
@@ -46,8 +48,9 @@ if TYPE_CHECKING:
 #: names nothing or isn't an archive we can open, a keep write refused a
 #: comic whose tag file did not parse, a write or rename would land on a
 #: file already there, a PDF write would harm another attachment, -w names
-#: no format the archive can hold, or an export or extraction target is
-#: unsafe or not a directory. A traceback tells the user nothing the
+#: no format the archive can hold, the comic is read-only, a conversion
+#: would lose one of two members of one name, or an export or extraction
+#: target is unsafe or not a directory. A traceback tells the user nothing the
 #: message doesn't, so these log one line. Anything else is a bug and earns
 #: the stack.
 _EXPECTED_FILE_ERRORS = (
@@ -57,6 +60,8 @@ _EXPECTED_FILE_ERRORS = (
     DestinationOccupiedError,
     UnsafePdfAttachmentError,
     UnwritableFormatError,
+    ReadOnlyComicError,
+    DuplicateMemberError,
     ExportError,
 )
 
@@ -457,7 +462,7 @@ class Runner:
             # The CLI counts the paths as typed; a directory under -r
             # would otherwise tag every comic in it as the one issue.
             reason = f"--id requires exactly one comic, {len(paths)} found"
-            raise ConfigurationError(reason)
+            raise UsageError(reason)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:

@@ -11,6 +11,8 @@
   formats do: `1/2` is 0.5, `1.5` is 1.5 and `1a` is 1 with suffix `a`, where
   they were dropped or read as 1. A whole issue reads as before.
 - Extracting or reading every page of a CB7 is many times faster.
+- Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
+  of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
 
 ### 🐛 Fixed
 
@@ -33,13 +35,16 @@
   `Bladehawk`.
 - `rl match` lists a comic with the entry's id but a far cover year as refused.
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
-- Numbers with a decimal comma, thousands separator or fraction are dropped with
-  a warning instead of cut to their first digits.
+- Numbers with a decimal comma or thousands separator are dropped with a warning
+  instead of cut to their first digits. A number before a slash is still read: a
+  `4.5/5` rating is 4.5 and a `1999/2000` year is 1999.
 - MetronInfo leaves out zero issue and volume counts and prices with no country,
   which its schema rejects.
 - ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
   instead of writing issue 1.
 - CoMet reads and writes cover credits.
+- A CoMet `<creator>`, or any `Creator` credit, converts to MetronInfo role
+  `Other` instead of `Chief Creative Officer`.
 - CoMet leaves out an issue that is not a whole number and warns when it has no
   title, which its schema requires.
 - PDF author metadata includes Plot, Story, Translator and Author credits.
@@ -53,13 +58,17 @@
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
 - `Comicbox.get_pages()` without an end page returns every page, not none.
-- `--id` refuses a directory under `-r` that holds more than one comic.
+- `--id` refuses a directory under `-r` that holds more than one comic, with the
+  same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
   prompts or searches, and no waiting out rate-limit retries.
 - A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
   looping forever.
 - MetronInfo no longer relabels tag ids as another database's on write, and
   writes Comic Vine tag ids.
+- MetronInfo with no stated primary source flags the source most tag ids use, so
+  a file with Metron and Comic Vine issue ids but Comic Vine tag ids keeps them.
+  A file holds one tag id source; tag ids of the others are left out.
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
 
