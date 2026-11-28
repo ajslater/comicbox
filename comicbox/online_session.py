@@ -469,8 +469,18 @@ class OnlineSession:
         self._state.set_prompts(prompts)
 
     def cancel(self) -> None:
-        """Stop accepting new files. In-flight lookup runs to completion."""
+        """
+        Stop accepting new files, and end this session's waiting lookups.
+
+        A lookup in flight stops at its next wait or step: a retry sleep,
+        a paced Metron wait at the rate gate, its next Metron request, a
+        prompt or the next source; its file comes back cancelled. Only
+        this session's lookups: the cancel marks this session's own
+        state, never the process-wide retry cancel, so another session in
+        the process keeps pacing.
+        """
         self._cancel.set()
+        self._state.abort()
 
     def close(self) -> None:
         """

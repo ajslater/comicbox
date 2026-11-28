@@ -172,6 +172,8 @@
 - The end-of-run summary counts a search that found nothing as a no-match.
 - Library: the run estimate prices a Metron comic at 4 requests, counting the
   cover search and the series detail, instead of 2.
+- Library: `OnlineSession.cancel()` also ends that session's lookups waiting
+  for Metron's pacing, instead of letting them run to completion.
 
 ### 🔒 Security
 
