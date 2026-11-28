@@ -101,7 +101,7 @@ class LazyDescription:
         description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
         if not _pdf.PDF_ENABLED:
             description += (
-                "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
+                " [yellow]Comicbox is not installed with PDF support.[/yellow]"
             )
         return description
 
