@@ -475,21 +475,33 @@ def _notify_rate_limit_listener(
     rate_limit_attempt: int,
     max_retries: int,
 ) -> None:
-    """Invoke ``instance.on_rate_limit`` for rate-limit failures, if defined."""
+    """
+    Invoke ``instance.on_rate_limit`` for rate-limit failures, if defined.
+
+    The delay reported is the wait ahead: the planned sleep, or for a
+    source that paces itself, whose planned sleep is always zero because
+    its gate does the waiting, the server's hint (None without one).
+    """
     if not args or category is not RetryCategory.RATE_LIMIT:
         return
     instance_cb = getattr(args[0], "on_rate_limit", None)
     if instance_cb is None:
         return
+    paced = _paces_itself(args)
     plan = _plan_retry(
         exc,
         category=category,
         attempt=attempt,
         rate_limit_attempt=rate_limit_attempt,
         max_retries=max_retries,
-        paced=_paces_itself(args),
+        paced=paced,
     )
-    delay = plan[0] if plan else None
+    if plan is None:
+        delay = None
+    elif paced:
+        delay = _retry_after(exc)
+    else:
+        delay = plan[0]
     source_name = getattr(args[0], "name", "")
     instance_cb(source_name, delay)
 

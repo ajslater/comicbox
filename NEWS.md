@@ -166,6 +166,8 @@
   first.
 - The end-of-run HTTP summary lists a source whose every request failed to
   connect, as in an IP ban.
+- Library: a Metron `RateLimited` event carries the server's wait instead of
+  0.
 
 ### 🔒 Security
 
