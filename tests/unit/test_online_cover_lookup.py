@@ -546,16 +546,18 @@ def test_a_cold_metron_comic_costs_what_the_estimator_prices(
     D5: the estimator priced a cold Metron comic at the search and fetch.
 
     Since the cover search, a comic whose cover misses asks the cover
-    search, then the name search, then fetches the issue it accepts.
+    search, then the name search, then fetches the issue it accepts; a
+    fetch costs `METRON_FETCH_REQUESTS` (the issue and, once per series,
+    its series detail: `test_get_fetches_each_series_once`).
     """
-    from comicbox.online_estimate import requests_per_comic
+    from comicbox.online_estimate import METRON_FETCH_REQUESTS, requests_per_comic
 
     run = _run(monkeypatch, cover_replies=[[]], name_candidates=[_candidate(3, 30)])
 
     sent = (
         len(run.source.cover_calls)
         + run.source.search_calls
-        + len(run.source.get_calls)
+        + len(run.source.get_calls) * METRON_FETCH_REQUESTS
     )
-    assert sent == 3
+    assert sent == 4
     assert requests_per_comic("metron") == sent

@@ -13,10 +13,11 @@ characteristic number of API requests:
 - Metron asks its cover search first (one ``issues_by_cover_hash`` for a
   normal cover, since v5.6.2), then on a cover miss one ``issues_list``
   name search (no series-discovery step since series ids land directly on
-  issue-list results, v4.0.5 / PR #143), then the final issue fetch: a
-  flat count, priced at the miss as an upper bound, as Comic Vine's is. A
-  cover hit skips the name search. Metron does not fan out, so effort
-  does not move it.
+  issue-list results, v4.0.5 / PR #143), then fetches the issue and, once
+  per series, the series' detail: a flat, typical count read from the
+  code path. A cover hit skips the name search; a wraparound spread can
+  try up to three cover searches. Metron does not fan out, so effort does
+  not move it.
 - Comic Vine discovers volumes, asks each surviving candidate for its
   issues, then fetches the issue it accepts. Only the middle step varies:
   ``Effort`` decides how many candidates are worth a call.
@@ -74,6 +75,8 @@ __all__ = (
     "DEFAULT_RATE_PER_MINUTE",
     "DEFAULT_REQUESTS_PER_COMIC",
     "METRON_COVER_SEARCH_REQUESTS",
+    "METRON_FETCH_REQUESTS",
+    "METRON_NAME_SEARCH_REQUESTS",
     "METRON_REQUESTS_PER_COMIC",
     "METRON_REQUESTS_PER_WARM_COMIC",
     "SOURCE_RATE_PER_MINUTE",
@@ -102,12 +105,22 @@ SOURCE_RATE_PER_MINUTE: Final = MappingProxyType(
 # hash, one for a normal cover (a wraparound spread tries up to three).
 METRON_COVER_SEARCH_REQUESTS: Final[int] = 1
 
-# API requests one comic costs against Metron when it pays full price: the
-# cover search, and on a cover miss the name search, then the issue fetch.
-# Priced at the miss as an upper bound; a cover hit costs one less. Counted
-# from the lookup's code path, not measured by a calibration run. Metron
-# has no fan-out to throttle, so effort does not move it.
-METRON_REQUESTS_PER_COMIC: Final[int] = METRON_COVER_SEARCH_REQUESTS + 2
+# The name search, on a cover miss.
+METRON_NAME_SEARCH_REQUESTS: Final[int] = 1
+
+# The fetch of the issue a cold comic accepts: the issue, and the series'
+# detail, which mokkari's response cache then serves to the rest of the
+# series.
+METRON_FETCH_REQUESTS: Final[int] = 2
+
+# API requests one comic typically costs against Metron when it resolves
+# its own series: one cover search, the name search, and the fetch. A
+# typical count read from the lookup's code path, not measured by a
+# calibration run: a cover hit costs one less, a spread that misses up to
+# two more. Metron has no fan-out to throttle, so effort does not move it.
+METRON_REQUESTS_PER_COMIC: Final[int] = (
+    METRON_COVER_SEARCH_REQUESTS + METRON_NAME_SEARCH_REQUESTS + METRON_FETCH_REQUESTS
+)
 
 # What the comics AFTER the first of a series cost. A batch clustered by
 # series resolves the series once; the rest take the volume-scoped warm

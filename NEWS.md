@@ -170,8 +170,8 @@
 - Library: a Metron `RateLimited` event carries the wait comicbox applies, the
   server's up to 5 minutes or a minute without one, instead of 0.
 - The end-of-run summary counts a search that found nothing as a no-match.
-- Library: the run estimate prices a Metron comic at 3 requests, counting the
-  cover search, instead of 2.
+- Library: the run estimate prices a Metron comic at 4 requests, counting the
+  cover search and the series detail, instead of 2.
 
 ### 🔒 Security
 

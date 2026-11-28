@@ -53,20 +53,20 @@ def test_no_sources_is_empty() -> None:
 
 def test_metron_balanced() -> None:
     """
-    Metron's flat cold comic: cover search, name search, fetch.
+    Metron's typical cold comic: cover search, name search, issue, series.
 
-    10 comics x 3 requests / 20 per minute.
+    10 comics x 4 requests / 20 per minute.
     """
     est = estimate_run(10, ("metron",))
-    assert est.requests == 30
-    assert est.seconds == 90.0
+    assert est.requests == 40
+    assert est.seconds == 120.0
 
 
 def test_metron_requests_are_effort_independent() -> None:
     """Metron does not fan out, so no effort changes its flat count."""
     estimates = [estimate_run(10, ("metron",), effort=e.value) for e in Effort]
     assert len(set(estimates)) == 1
-    assert estimates[0].requests == 30
+    assert estimates[0].requests == 40
 
 
 def test_comicvine_requests_scale_with_effort() -> None:
@@ -123,7 +123,7 @@ def test_slowest_source_binds_the_rate() -> None:
     Comic Vine is slower than Metron and binds the pace.
 
     First-match-wins bills the costliest source's requests
-    (max(metron 3, comicvine 7) = 7) and the slowest source's pace
+    (max(metron 4, comicvine 7) = 7) and the slowest source's pace
     (comicvine: 60s x 3 pool requests / 3-per-minute = 60s/comic).
     """
     est = estimate_run(10, ("metron", "comicvine"))
@@ -134,9 +134,9 @@ def test_slowest_source_binds_the_rate() -> None:
 def test_merge_sums_per_source_requests() -> None:
     """Merging queries every source per comic: requests and paces both sum."""
     est = estimate_run(10, ("metron", "comicvine"), merge_all_sources=True)
-    assert est.requests == 100  # 10 x (metron 3 + comicvine 7)
-    # 10 x (metron 9s + comicvine 60s)
-    assert est.seconds == pytest.approx(690.0)
+    assert est.requests == 110  # 10 x (metron 4 + comicvine 7)
+    # 10 x (metron 12s + comicvine 60s)
+    assert est.seconds == pytest.approx(720.0)
 
 
 def test_merge_single_source_is_noop() -> None:
@@ -187,17 +187,17 @@ def test_batch_pricing_charges_each_series_once() -> None:
     single resolved series.
     """
     # 100 comics, one series: 1 cold comic, then 99 fetches.
-    assert metron_requests_for_batch(100, 1) == 102
+    assert metron_requests_for_batch(100, 1) == 103
     # 100 comics, 100 series: nothing to share, so the flat price.
-    assert metron_requests_for_batch(100, 100) == 300
+    assert metron_requests_for_batch(100, 100) == 400
 
 
 def test_batch_pricing_handles_degenerate_inputs() -> None:
     assert metron_requests_for_batch(0, 5) == 0
     assert metron_requests_for_batch(-1, 5) == 0
     # A batch cannot span more series than it holds comics.
-    assert metron_requests_for_batch(3, 99) == 9
-    assert metron_requests_for_batch(3, 0) == 5
+    assert metron_requests_for_batch(3, 99) == 12
+    assert metron_requests_for_batch(3, 0) == 6
 
 
 def test_rate_falls_back_to_the_documented_limit() -> None:
