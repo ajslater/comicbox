@@ -126,7 +126,9 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         """
         Refuse a file that is a comic, or that another comic's cover took.
 
-        Returns the run's record when this cover claimed the file in it.
+        A cover's path, in a directory or named by -d, is refused when a file
+        there opens as an archive, or when another comic's cover in this run
+        went there. Returns the run's record when this cover claimed the path.
         """
         if path.is_file() and self._is_comic_file(path):
             reason = f"{path} is a comic or PDF: not overwritten with a page."
@@ -142,7 +144,12 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         return path
 
     def _extract_page(
-        self, dest_path: Path, fn: str, names: _PageNames | None = None
+        self,
+        dest_path: Path,
+        fn: str,
+        names: _PageNames | None = None,
+        *,
+        cover: bool = False,
     ) -> None:
         path = self._extract_page_get_path(dest_path, fn)
         props = {}
@@ -156,6 +163,8 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                 path = path.with_name(names.name(fn, path.name))
         else:
             dest_dir = dest_path.parent
+        if cover:
+            # In a directory too: two comics' covers of one name are one file.
             claims = self._refuse_cover_destination(path)
         try:
             _validate_extract_path(path, dest_dir)
@@ -165,7 +174,9 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                 claims.release(path)
             raise
 
-    def _extract_all_pagenames(self, pagenames: Iterable[str], path: Path) -> None:
+    def _extract_all_pagenames(
+        self, pagenames: Iterable[str], path: Path, *, cover: bool = False
+    ) -> None:
         names = None
         if path.is_dir():
             pagenames = tuple(pagenames)
@@ -176,7 +187,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         try:
             # The prefetch reads in the loop, so it is guarded too.
             for fn in pagenames:
-                self._extract_page(path, fn, names)
+                self._extract_page(path, fn, names, cover=cover)
                 success_page_count += 1
                 if not path.is_dir():
                     break
@@ -220,11 +231,11 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         if resolved_path := self._extract_pagenames_get_dir(pagenames, path):
             self._extract_all_pagenames(pagenames, resolved_path)
 
-    def _extract_pagenames(
+    def _extract_cover_pagenames(
         self, pagenames: Sequence[str], path: Path | None = None
     ) -> None:
         if path := self._extract_pagenames_get_path(pagenames, path):
-            self._extract_all_pagenames(pagenames, path)
+            self._extract_all_pagenames(pagenames, path, cover=True)
 
     def _is_pdf_range_mode(self) -> bool:
         """Are pdf pages extracted as pdfs, which merge into one document."""
@@ -281,4 +292,4 @@ class ComicboxExtractPages(ComicboxPagesCovers):
 
     def extract_covers(self, path: Path | None = None) -> None:
         """Extract the cover image to a destination file."""
-        self._extract_pagenames(self.get_cover_paths(), path=path)
+        self._extract_cover_pagenames(self.get_cover_paths(), path=path)

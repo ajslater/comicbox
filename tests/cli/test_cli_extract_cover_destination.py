@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+import zipfile
 from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -100,6 +101,16 @@ def _cover(comic: Path, tmp_path: Path) -> bytes:
     assert code == 0
     (cover,) = out.iterdir()
     return cover.read_bytes()
+
+
+def _cover_name(comic: Path, tmp_path: Path) -> str:
+    """Get the file name `-X` gives a comic's cover in a directory."""
+    out = tmp_path / f"{comic.stem}-name"
+    out.mkdir()
+    code, _ = _run_cli("-X", "-d", str(out), str(comic))
+    assert code == 0
+    (cover,) = out.iterdir()
+    return cover.name
 
 
 def _two_different_comics(tmp_path: Path) -> tuple[Path, Path]:
@@ -209,14 +220,118 @@ def test_an_existing_image_destination_is_still_overwritten(tmp_path: Path) -> N
     assert dest.read_bytes().startswith(_JPEG_MAGIC)
 
 
-def test_two_comics_to_a_directory_still_work(tmp_path: Path) -> None:
-    """Out of scope here: covers of one name in a directory still overwrite."""
-    a, b = _two_comics(tmp_path)
-    out_dir = tmp_path / "out"
+def _same_cover_name(tmp_path: Path) -> tuple[Path, Path]:
+    """Two comics whose covers share a file name but not their bytes."""
+    a = tmp_path / "a.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, a)
+    b = tmp_path / "b.cbz"
+    with zipfile.ZipFile(a) as src, zipfile.ZipFile(b, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info)
+            if info.filename.lower().endswith(".jpg"):
+                data += b"b"
+            dst.writestr(info, data)
+    return a, b
+
+
+def _out_dir(tmp_path: Path) -> Path:
+    out_dir = tmp_path / "covers"
     out_dir.mkdir()
+    return out_dir
+
+
+def test_a_second_cover_of_one_name_in_a_directory_fails_its_comic(
+    tmp_path: Path,
+) -> None:
+    """The first comic's cover keeps the name; the next one fails, not overwrites."""
+    a, b = _same_cover_name(tmp_path)
+    a_cover = _cover(a, tmp_path)
+    out_dir = _out_dir(tmp_path)
+    code, out = _run_cli("-X", "-d", str(out_dir), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (cover,) = out_dir.iterdir()
+    assert cover.read_bytes() == a_cover
+
+
+def test_a_second_cover_of_one_name_in_a_directory_fails_under_jobs(
+    tmp_path: Path,
+) -> None:
+    """Workers race for the name: one cover wins, the other comic fails."""
+    a, b = _same_cover_name(tmp_path)
+    covers = {_cover(a, tmp_path), _cover(b, tmp_path)}
+    out_dir = _out_dir(tmp_path)
+    code, out = _run_cli("-j", "2", "-X", "-d", str(out_dir), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (cover,) = out_dir.iterdir()
+    assert cover.read_bytes() in covers
+
+
+def test_covers_of_different_names_in_a_directory_both_work(tmp_path: Path) -> None:
+    a, b = _two_different_comics(tmp_path)
+    out_dir = _out_dir(tmp_path)
     code, _ = _run_cli("-X", "-d", str(out_dir), str(a), str(b))
     assert code == 0
-    assert len(list(out_dir.iterdir())) == 1
+    assert len(list(out_dir.iterdir())) == 2
+
+
+def test_an_archive_at_the_cover_path_in_a_directory_is_refused(
+    tmp_path: Path,
+) -> None:
+    a, _ = _same_cover_name(tmp_path)
+    out_dir = _out_dir(tmp_path)
+    name = Path(_cover_name(a, tmp_path)).name
+    archive = out_dir / name
+    shutil.copy(CIX_CBZ_SOURCE_PATH, archive)
+    before = archive.read_bytes()
+    code, _ = _run_cli("-X", "-d", str(out_dir), str(a))
+    assert code == 1
+    assert archive.read_bytes() == before
+
+
+def test_an_earlier_runs_cover_in_a_directory_is_replaced(tmp_path: Path) -> None:
+    a, _ = _same_cover_name(tmp_path)
+    a_cover = _cover(a, tmp_path)
+    out_dir = _out_dir(tmp_path)
+    old = out_dir / _cover_name(a, tmp_path)
+    old.write_bytes(b"old cover")
+    code, _ = _run_cli("-X", "-d", str(out_dir), str(a))
+    assert code == 0
+    assert old.read_bytes() == a_cover
+
+
+def test_a_failed_cover_write_in_a_directory_frees_the_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a, b = _same_cover_name(tmp_path)
+    b_cover = _cover(b, tmp_path)
+    out_dir = _out_dir(tmp_path)
+    real_write = Path.write_bytes
+    calls: list[Path] = []
+
+    def _first_fails(self: Path, data: bytes) -> int:
+        calls.append(self)
+        if len(calls) == 1:
+            reason = f"No space left on device: {self}"
+            raise OSError(28, reason)
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", _first_fails)
+    code, out = _run_cli("-X", "-d", str(out_dir), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (cover,) = out_dir.iterdir()
+    assert cover.read_bytes() == b_cover
+
+
+def test_pages_of_two_comics_into_one_directory_are_unchanged(tmp_path: Path) -> None:
+    """Not covers: -x of two comics into one directory still overwrites, exit 0."""
+    a, b = _same_cover_name(tmp_path)
+    out_dir = _out_dir(tmp_path)
+    code, _ = _run_cli("-x", "0:1", "-d", str(out_dir), str(a), str(b))
+    assert code == 0
+    assert len(list(out_dir.iterdir())) == 2
 
 
 def test_a_failed_cover_write_leaves_the_file_to_the_next_comic(

@@ -75,7 +75,7 @@ def _read_comic(path: Path, config: "ComicboxSettings | None") -> Comic:
         return Comic(dict(tags), carried.formats, carried.unreadable)
 
 
-def _init_worker(log_level: str) -> None:
+def _init_worker(log_level: str | int) -> None:
     """Leave Ctrl-C to the parent, and log at its level (in a worker)."""
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     from comicbox.logger import init_logging
@@ -126,7 +126,7 @@ def comic_paths(
 
 
 def _read_all(
-    paths: Sequence[Path], config: "ComicboxSettings | None", log_level: str
+    paths: Sequence[Path], config: "ComicboxSettings | None", log_level: str | int
 ) -> Iterator[tuple[Path, Comic | BaseException]]:
     pool = ProcessPoolExecutor(initializer=_init_worker, initargs=(log_level,))
     try:
@@ -147,7 +147,7 @@ def read_comics(
     config: "ComicboxSettings | None" = None,
     on_error: OnError | None = None,
     *,
-    log_level: str = "INFO",
+    log_level: str | int = "INFO",
 ) -> Library:
     """
     Read every comic under a directory, in path order.

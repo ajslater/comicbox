@@ -56,7 +56,13 @@ def build_parser() -> ArgumentParser:
         "--quiet",
         action="count",
         default=0,
-        help="Log less, as in a comicbox run.",
+        help=(
+            "Log less with each Q, as in a comicbox run: [green]-Q[/green] "
+            "hides info, [green]-QQ[/green] success messages, "
+            "[green]-QQQ[/green] warnings and [green]-QQQQ[/green] errors. "
+            "Never logs more than [green]general.loglevel[/green] would. Any "
+            "-Q also hides fetch progress; lists, tables and reports always show."
+        ),
     )
     # prog given, argparse doesn't render this parser's usage to make the
     # actions' prog, which with rich help writes to stdout before any
@@ -76,8 +82,9 @@ def main(params: Sequence[str]) -> int:
 
     args = build_parser().parse_args(params)
     run = Run(args)
-    init_logging(run.log_level, sink="stderr")
     try:
+        # Reads the config, so a bad one is reported like any other error.
+        init_logging(run.log_level, sink="stderr")
         _ACTIONS[args.action](run)
     except (OSError, ReadingListError, ConfigError, ConfigurationError) as exc:
         run.fail(None, exc)
