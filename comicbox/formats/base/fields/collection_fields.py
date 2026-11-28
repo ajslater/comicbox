@@ -259,10 +259,11 @@ class StringListField(fields.List):
 
     @staticmethod
     def _seq_to_items(seq: Iterable[Any]) -> list[Any]:
-        # A mapping is no name: the item field unwraps an XML element's text
-        # or refuses it, instead of naming an item after the mapping's repr.
+        # A mapping or a nested collection is no name: the item field unwraps
+        # an XML element's text or refuses it, instead of naming an item
+        # after its repr.
         return [
-            item if isinstance(item, Mapping) else str(item)
+            item if isinstance(item, Mapping) or is_collection(item) else str(item)
             for item in seq
             if not is_empty(item)
         ]

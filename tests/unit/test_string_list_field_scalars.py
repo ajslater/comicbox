@@ -90,6 +90,24 @@ def test_a_mapping_item_is_not_a_name(warnings: list[str]) -> None:
     assert "genres" in warnings[0]
 
 
+@pytest.mark.parametrize("item", [["y", "z"], ("y",), {"y"}])
+def test_a_nested_collection_item_is_not_a_name(
+    item: object, warnings: list[str]
+) -> None:
+    """A list inside genres never becomes a genre named after its repr."""
+    loaded = _load("genres", [item])
+    assert "genres" not in loaded
+    assert len(warnings) == 1
+    assert "genres" in warnings[0]
+
+
+def test_a_nested_list_in_a_plain_list_field() -> None:
+    """A plain string list refuses the nested list and keeps the rest."""
+    with pytest.raises(ValidationError) as excinfo:
+        StringListField().deserialize(["a", ["y", "z"]])
+    assert excinfo.value.valid_data == ["a"]
+
+
 def test_a_mapping_item_in_a_plain_set_field(warnings: list[str]) -> None:
     """The set field refuses a mapping item, dropping the field with a warning."""
     with pytest.raises(ValidationError):
