@@ -7,6 +7,7 @@ from loguru import logger
 
 from comicbox.box.init import LoadedMetadata
 from comicbox.box.load import ComicboxLoad
+from comicbox.exceptions import ImportFileError
 from comicbox.formats.sources import MetadataSources
 
 
@@ -65,5 +66,7 @@ class ComicboxNormalize(ComicboxLoad):
             if source not in self._normalized:
                 self._set_normalized_metadata(source)
             return self._normalized.get(source) or None
+        except ImportFileError:
+            raise
         except Exception:
             logger.exception(f"{self._path} Normalizing {source.value.label}")

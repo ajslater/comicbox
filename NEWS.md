@@ -183,6 +183,9 @@
 - `-x` with an empty, reversed, signed or three-part range is a usage error, and
   a range past a comic's last page fails that comic, instead of exiting 0 with
   nothing extracted.
+- An `-i` file that cannot be read, or is not metadata at all, fails the comic
+  instead of a warning and a write without it. One that holds no tags still
+  warns.
 
 ### 🔒 Security
 

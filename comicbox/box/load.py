@@ -3,20 +3,24 @@
 import json
 import os
 from collections.abc import Collection, Mapping
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from traceback import format_exc
 from types import MappingProxyType
 from typing import Any
+from xml.parsers.expat import ExpatError
 
+import xmltodict
 from glom import Assign, glom
 from loguru import logger
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 from simplejson.errors import JSONDecodeError
 
 from comicbox.box.init import LoadedMetadata, SourceData
 from comicbox.box.sources import ComicboxSources
-from comicbox.exceptions import MetadataError
+from comicbox.exceptions import ImportFileError, MetadataError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.base.schemas.error_store import unlogged_drops
@@ -34,6 +38,28 @@ _TAG_SOURCE_NAMES = MappingProxyType(
         MetadataSources.ARCHIVE_PDF: "PDF metadata",
     }
 )
+
+
+def _is_structured(data: str | bytes | Mapping) -> bool:
+    """
+    Whether import data is well formed, whatever its tags.
+
+    Well-formed XML, or a YAML or JSON mapping, reads fine even when no
+    format finds a tag in it. Blank text holds nothing, as does a
+    mapping. Anything else is not metadata at all: YAML reads most text
+    as one scalar, so a document that is no mapping does not count.
+    """
+    if isinstance(data, Mapping):
+        return True
+    text = data.decode(errors="replace") if isinstance(data, bytes) else data
+    if not text.strip():
+        return True
+    with suppress(ExpatError, ValueError):
+        xmltodict.parse(text)
+        return True
+    with suppress(YAMLError, ValueError):
+        return isinstance(YAML(typ="safe").load(text), Mapping)
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,6 +260,11 @@ class ComicboxLoad(ComicboxSources):
             if md and fmt:
                 return MappingProxyType(md), fmt
         except Exception as exc:
+            if source_data.required and not _is_structured(source_data.data):
+                # A file the user named that is no metadata at all: writing
+                # the comic without it is not what was asked for.
+                reason = f"-i {source_data.path}: not metadata comicbox can read: {exc}"
+                raise ImportFileError(reason) from exc
             self._except_on_load(source, fmt, exc)
             self._failed_loads.add((source, str(source_data.path)))
         return None, None
@@ -280,6 +311,8 @@ class ComicboxLoad(ComicboxSources):
             if source not in self._loaded:
                 self._set_loaded_metadata(source)
             return self._loaded.get(source) or None
+        except ImportFileError:
+            raise
         except Exception as exc:
             logger.warning(
                 f"{self._path} Parsing or Loading {source.value.label}: {exc}"
