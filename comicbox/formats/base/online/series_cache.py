@@ -133,14 +133,15 @@ class SeriesCache(MutableMapping[SeriesCacheKey, int]):
         """
         Block until the current leader of `key` releases, or `timeout`.
 
-        Returns True when a leader released within the timeout. Either
-        way the caller must re-read the cache: a leader can finish
-        without resolving anything.
+        Returns False only on timeout. True means the leader released in
+        time, or there was no leader to wait for. Either way the caller
+        must re-read the cache: a leader can finish without resolving
+        anything.
         """
         with self._lock:
             event = self._leaders.get(key)
         if event is None:
-            return False
+            return True
         return event.wait(timeout)
 
     def release(self, key: SeriesCacheKey) -> None:
@@ -235,8 +236,9 @@ def await_series_leader(
     Block while another caller resolves `key`, if one is.
 
     Returns as soon as there is no leader to wait for, which is also the
-    plain-dict case. The caller re-reads the cache either way: a leader
-    can finish without having resolved anything.
+    plain-dict case, and logs only a real timeout. The caller re-reads
+    the cache either way: a leader can finish without having resolved
+    anything.
     """
     wait = getattr(cache, "wait", None)
     if wait is None or wait(key, timeout):

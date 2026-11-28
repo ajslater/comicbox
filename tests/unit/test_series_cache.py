@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+import threading
 from argparse import Namespace
 from types import MappingProxyType
 
@@ -17,6 +18,7 @@ from comicbox.formats.base.online.profile import (
     CandidateSummary,
     ComicProfile,
 )
+from comicbox.formats.base.online.series_cache import SeriesCache
 from comicbox.formats.sources import MetadataSources
 
 if sys.version_info >= (3, 12):
@@ -385,3 +387,71 @@ def test_no_cache_keeps_existing_behavior(monkeypatch) -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     pytest.main([__file__, "-v"])
+
+
+# --- single flight across worker threads (C3) --------------------------------
+
+_WORKERS = 4
+
+
+class _LeadTogetherCache(SeriesCache):
+    """
+    A series cache whose `lead` holds every worker until all have arrived.
+
+    By then each worker has done whatever it does before leading. A box
+    that checked for a leader first found none (nobody could lead yet),
+    so it went on to lose the lead and search; one that leads first lets
+    the losers wait for the winner.
+    """
+
+    def __init__(self, parties: int) -> None:
+        super().__init__()
+        self._arrived = threading.Barrier(parties, timeout=10)
+
+    @override
+    def lead(self, key) -> bool:
+        self._arrived.wait()
+        return super().lead(key)
+
+
+def _run_together(monkeypatch, candidates: list[Candidate]) -> list[_CountingMetron]:
+    """Look up one comic of a series in `_WORKERS` boxes at once."""
+    instances = _patch_source(monkeypatch, candidates)
+    cache = _LeadTogetherCache(_WORKERS)
+    boxes = [_build_cb() for _ in range(_WORKERS)]
+    for cb in boxes:
+        cb.set_series_cache(cache)
+    errors: list[BaseException] = []
+
+    def run(cb: Comicbox) -> None:
+        try:
+            cb.run_online_lookup()
+        except BaseException as exc:  # pragma: no cover - reported below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=run, args=(cb,)) for cb in boxes]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+
+    assert not errors
+    return instances
+
+
+def test_concurrent_workers_of_one_series_search_once(monkeypatch) -> None:
+    """C3: the followers waited before anyone led, then each searched cold."""
+    instances = _run_together(monkeypatch, [_make_candidate(101, volume_id=42)])
+
+    assert sum(source.search_calls for source in instances) == 1
+    assert sum(len(source.lookup_calls) for source in instances) == _WORKERS - 1
+
+
+def test_a_leader_that_resolves_nothing_lets_its_followers_search(
+    monkeypatch,
+) -> None:
+    """No match for the leader: each follower, released, searches itself."""
+    instances = _run_together(monkeypatch, [])
+
+    assert sum(source.search_calls for source in instances) == _WORKERS
+    assert not any(source.lookup_calls for source in instances)

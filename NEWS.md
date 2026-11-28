@@ -23,6 +23,8 @@
 - A Comic Vine search for an unnumbered comic with no year sends one request
   per volume instead of up to five, and ranks the first 100 of each volume's
   issues.
+- Under `-j N`, comics of one series that start together search once instead
+  of once each.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
   of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
 

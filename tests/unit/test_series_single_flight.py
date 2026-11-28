@@ -70,9 +70,31 @@ def test_waiters_block_until_the_leader_releases() -> None:
 
 
 def test_waiting_on_an_unled_key_returns_immediately() -> None:
-    """Nobody is resolving it, so there is nothing to wait for."""
+    """
+    Nobody is resolving it, so there is nothing to wait for.
+
+    True, as for a released leader: False is kept for a real timeout, the
+    one case `await_series_leader` reports.
+    """
     cache = SeriesCache()
-    assert cache.wait(KEY, timeout=5.0) is False
+    assert cache.wait(KEY, timeout=5.0) is True
+
+
+def test_no_leader_is_not_reported_as_a_timeout() -> None:
+    from loguru import logger as loguru_logger
+
+    from comicbox.formats.base.online.series_cache import await_series_leader
+
+    messages: list[str] = []
+    handler_id = loguru_logger.add(messages.append, level="DEBUG", format="{message}")
+    try:
+        await_series_leader(SeriesCache(), KEY, timeout=5.0)
+        cache = SeriesCache()
+        assert cache.lead(KEY) is True
+        await_series_leader(cache, KEY, timeout=0.01)
+    finally:
+        loguru_logger.remove(handler_id)
+    assert sum("gave up waiting" in m for m in messages) == 1
 
 
 def test_wait_times_out_on_a_wedged_leader() -> None:
