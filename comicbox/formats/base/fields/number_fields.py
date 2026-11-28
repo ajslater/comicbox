@@ -22,10 +22,11 @@ else:
 
 NumT = TypeVar("NumT", bound=int | float | Decimal)
 PAGE_COUNT_KEY = "page_count"
-# Digits after a comma or a slash mean the first digit run is only part of
-# the number: a decimal comma, a thousands separator or a fraction. Which
-# one is a guess, so such a value is not read rather than truncated.
-_SEPARATED_DIGITS_RE = re.compile(r"[,/]\d")
+# Digits after a comma mean the first digit run is only part of the number:
+# a decimal comma or a thousands separator. Which one is a guess, so such a
+# value is not read rather than truncated. A slash is not one of these: the
+# number before it is the value ("4.5/5", "1999/2000", "06/2020").
+_SEPARATED_DIGITS_RE = re.compile(r",\d")
 
 
 def _match_is_whole(num_str: str, match: re.Match) -> bool:
