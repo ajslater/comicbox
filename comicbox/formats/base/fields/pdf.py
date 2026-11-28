@@ -3,20 +3,15 @@
 import sys
 from contextlib import suppress
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from comicbox._pdf import PDF_ENABLED
+from comicbox._pdf import get_pdffile
 from comicbox.formats.base.fields.time_fields import DateTimeField
 
 if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
-
-if TYPE_CHECKING:
-    from pdffile import PDFFile
-else:
-    from comicbox._pdf import PDFFile
 
 
 class PdfDateTimeField(DateTimeField):
@@ -29,9 +24,9 @@ class PdfDateTimeField(DateTimeField):
         *args: Any,
         **kwargs: Any,
     ) -> datetime | None:
-        if PDF_ENABLED and isinstance(value, str):
+        if isinstance(value, str) and (pdffile_cls := get_pdffile()):
             with suppress(OSError):
-                if pdf_dttm := PDFFile.to_datetime(value):
+                if pdf_dttm := pdffile_cls.to_datetime(value):
                     return pdf_dttm
         return super()._deserialize(value, *args, **kwargs)
 
@@ -42,7 +37,7 @@ class PdfDateTimeField(DateTimeField):
         *args: Any,
         **kwargs: Any,
     ) -> str | float | datetime | None:
-        if PDF_ENABLED:
+        if pdffile_cls := get_pdffile():
             with suppress(OSError):
-                return PDFFile.to_pdf_date(value)
+                return pdffile_cls.to_pdf_date(value)
         return super()._serialize(value, *args, **kwargs)

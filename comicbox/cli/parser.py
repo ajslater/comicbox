@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 from rich_argparse import RichHelpFormatter
 
-from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_ENABLED
+from comicbox._pdf import PAGE_FORMAT_VALUES, PDF_INSTALLED
 from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     CacheMode,
@@ -84,6 +84,26 @@ class LazyEpilog:
         from comicbox.cli.epilog import build_epilog
 
         return build_epilog()
+
+
+class LazyDescription:
+    """
+    Stand-in for the description that says whether PDFs work only when help renders.
+
+    Asking imports pdffile, and with it pymupdf: half a second that a run
+    which prints no help should not pay. Rendered by rich, as LazyEpilog is.
+    """
+
+    def __rich__(self) -> str:
+        """Assemble the real description. Called by rich while rendering help."""
+        from comicbox import _pdf
+
+        description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
+        if not _pdf.PDF_ENABLED:
+            description += (
+                " [yellow]Comicbox is not installed with PDF support.[/yellow]"
+            )
+        return description
 
 
 class RichArgumentParser(ArgumentParser):
@@ -450,7 +470,7 @@ def _add_convert_group(parser: ArgumentParser) -> None:
         dest="convert.export_formats",
         help="Export metadata as external files to --dest-path. Format keys listed below.",
     )
-    if PDF_ENABLED:
+    if PDF_INSTALLED:
         group.add_argument(
             "--pdf-pages",
             action="store",
@@ -677,13 +697,9 @@ def build_parser(*, prog: str | None = None) -> ArgumentParser:
     ``prog`` overrides the program name in usage lines; ``comicbox doctor``
     passes its own so its ``--help`` doesn't claim to be a normal run.
     """
-    description = "Comic book archive multi format metadata read/write/transform tool and image extractor."
-    if not PDF_ENABLED:
-        description += "\n[yellow]Comicbox is not installed with PDF support.[/yellow]"
-
     parser = RichArgumentParser(
         prog=prog,
-        description=description,
+        description=LazyDescription(),
         epilog=LazyEpilog(),
         add_help=False,
     )
