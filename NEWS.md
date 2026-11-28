@@ -1,5 +1,12 @@
 # 📰 News
 
+## v5.7.2
+
+### 🐛 Fixed
+
+- On Python 3.11, a Metron reading-list fetch error no longer prints a
+  traceback.
+
 ## v5.7.1
 
 ### ✨ Added
