@@ -402,3 +402,35 @@ def test_a_series_preload_with_a_file_is_refused() -> None:
         session.preload_resolution(
             "fp", action="skip", payload=None, path=Path("1.cbz")
         )
+
+
+def test_a_series_choice_and_a_files_manual_preload_coexist() -> None:
+    """The per-file manual wins for its file; the series choice answers the rest."""
+    handler = _Recorder(PromptResponse("choose", 1))
+    session = OnlineSession(
+        sources={"metron"}, credentials=VALID, prompt_handler=handler
+    )
+    selector = session._bridged_selector()
+    selector(*_series_issue("1"), _ctx(file_path=Path("1.cbz")))
+    fingerprint = _prompt_fingerprint_of("2")
+
+    session.preload_resolution(
+        fingerprint, action="manual", payload="metron:222", path=Path("2.cbz")
+    )
+
+    assert selector(*_series_issue("2"), _ctx(file_path=Path("2.cbz"))) == (
+        "manual",
+        "metron:222",
+    )
+    assert selector(*_series_issue("3"), _ctx(file_path=Path("3.cbz"))) == (
+        "choose",
+        1,
+    )
+    assert handler.issues == ["1"]
+
+
+def _prompt_fingerprint_of(number: str) -> str:
+    from comicbox.online_session import _prompt_fingerprint
+
+    profile, candidates = _series_issue(number)
+    return _prompt_fingerprint("metron", profile, candidates)
