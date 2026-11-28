@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 _MAX_DISPLAYED = 9
 
 #: Trim the per-candidate detail lines at this loglevel and above.
-#: `-QQ` resolves to SUCCESS, so two Qs is where trimming starts.
+#: `-Q` resolves to SUCCESS, so one Q is where trimming starts.
 _TERSE_MIN_LEVEL = "SUCCESS"
 
 _POLICY_CHOICES: tuple[tuple[str, str], ...] = (
@@ -240,10 +240,8 @@ def _resolve_terse(settings: ComicboxSettings) -> bool:
 
     `-Q/--quiet` has no setting of its own: `comicbox.config.computed`
     folds it into `general.loglevel`, so that level is the only record of it.
-    Anything above the INFO default trims — `-QQ` and up, or a
-    `loglevel` above INFO in the config file. A single `-Q` maps to
-    INFO, which is already the default, so it changes nothing here
-    either.
+    Anything above the INFO default trims: `-Q` and up, or a
+    `loglevel` above INFO in the config file.
 
     This used to read `settings.quiet`, which `ComicboxSettings` has
     never defined and — being `slots=True` — nothing could attach. The

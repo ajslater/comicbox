@@ -663,6 +663,110 @@ def test_parse_url_path_stops_the_id_at_the_path_segment() -> None:
         assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == expected, url
 
 
+def test_gcd_sub_page_reads_as_its_issue_not_its_cover() -> None:
+    """
+    A GCD sub-page names the issue or series it hangs off.
+
+    The greedy type group swallowed `issue/123/cover`, so the cover
+    number 4 became the issue id and a wrong issue url was synthesized.
+    """
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.GCD]
+    cases = (
+        ("https://www.comics.org/issue/123/cover/4/", ("issue", "123")),
+        ("https://www.comics.org/issue/123/cover/4", ("issue", "123")),
+        ("https://www.comics.org/series/55/covers/", ("series", "55")),
+        ("https://www.comics.org/issue/123/", ("issue", "123")),
+        ("https://www.comics.org/issue/123", ("issue", "123")),
+    )
+    for url, expected in cases:
+        assert id_parts.parse_url_path(url) == expected, url
+
+
+def test_gcd_cover_page_web_link_adds_no_cover_number_id() -> None:
+    """End to end: a ComicInfo Web link to a GCD cover page keeps the issue."""
+    cix = """<?xml version="1.0"?><ComicInfo><Series>S</Series>
+    <Web>https://www.comics.org/issue/123/cover/4/</Web></ComicInfo>"""
+    with Comicbox() as car:
+        car.add_metadata(cix, MetadataFormats.COMIC_INFO)
+        md = car.to_dict()["comicbox"]
+    assert md["identifiers"]["grandcomicsdatabase"]["key"] == "123"
+    assert "https://comics.org/issue/4/" not in md.get("urls", [])
+
+
+def test_unknown_word_type_on_gcd_or_metron_is_no_id() -> None:
+    """
+    A GCD or Metron page of a type comicbox doesn't know names no issue.
+
+    Their type slugs are words, so an unknown one is a publisher, brand,
+    reading list or login page, never an issue. Falling back to the issue
+    type stored those pages' numbers (or 'login') as issue ids.
+    """
+    cases = (
+        (IdSources.GCD, "https://www.comics.org/publisher/54/"),
+        (IdSources.GCD, "https://www.comics.org/brand/12/"),
+        (IdSources.GCD, "https://www.comics.org/brand_group/7/"),
+        (IdSources.METRON, "https://metron.cloud/reading-list/12/"),
+        (IdSources.METRON, "https://metron.cloud/accounts/login/"),
+    )
+    for id_source, url in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == ("", ""), url
+        assert identifier_from_url(url) == ("", {}), url
+
+
+def test_known_word_types_on_gcd_and_metron_still_parse() -> None:
+    """Known GCD and Metron types keep reading as before."""
+    cases = (
+        (IdSources.GCD, "https://www.comics.org/indicia_publisher/54/", "publisher"),
+        (IdSources.GCD, "https://www.comics.org/series/55/", "series"),
+        (IdSources.METRON, "https://metron.cloud/publisher/marvel/", "publisher"),
+        (IdSources.METRON, "https://metron.cloud/series/foo/issue_list/", "series"),
+        (IdSources.METRON, "https://metron.cloud/issue/bladehawk-2016-0/", "issue"),
+    )
+    for id_source, url, id_type in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url)[0] == id_type, url
+
+
+def test_known_word_type_in_another_case_still_parses() -> None:
+    """
+    The url regex ignores case, and so does the word slug lookup.
+
+    With unknown types giving no id, a case-sensitive lookup made
+    comics.org/Issue/123/ an unknown page instead of issue 123.
+    """
+    cases = (
+        (IdSources.GCD, "https://comics.org/Issue/123/", ("issue", "123")),
+        (IdSources.GCD, "https://comics.org/ISSUE/123/", ("issue", "123")),
+        (IdSources.GCD, "https://comics.org/Series/55/", ("series", "55")),
+        (IdSources.METRON, "https://metron.cloud/Issue/123/", ("issue", "123")),
+        (IdSources.METRON, "https://metron.cloud/Reading-List/12/", ("", "")),
+    )
+    for id_source, url, expected in cases:
+        assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == expected, url
+
+
+def test_comicvine_urls_are_unchanged_by_case_folding() -> None:
+    """Comic Vine reads its numeric codes exactly as before, in any case."""
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.COMICVINE]
+    for url in (
+        "https://comicvine.gamespot.com/x/4000-12/",
+        "https://comicvine.gamespot.com/X/4000-12/",
+        "https://comicvine.gamespot.com/foo/4099-12/",
+    ):
+        assert id_parts.parse_url_path(url) == ("issue", "12"), url
+        assert identifier_from_url(url) == ("comicvine", {"key": "12"}), url
+
+
+def test_gcd_publisher_web_link_adds_no_issue_id() -> None:
+    """End to end: a Web link to a GCD publisher page adds no id or url."""
+    cix = """<?xml version="1.0"?><ComicInfo><Series>S</Series>
+    <Web>https://www.comics.org/publisher/54/</Web></ComicInfo>"""
+    with Comicbox() as car:
+        car.add_metadata(cix, MetadataFormats.COMIC_INFO)
+        md = car.to_dict()["comicbox"]
+    assert "grandcomicsdatabase" not in md.get("identifiers", {})
+    assert md["urls"] == ["https://www.comics.org/publisher/54/"]
+
+
 # One sample key per database, shaped the way that database's url path regex
 # accepts: bare numbers, hyphenated barcodes, slugs and uuids.
 _ROUND_TRIP_ID_KEYS: MappingProxyType[IdSources, str] = MappingProxyType(

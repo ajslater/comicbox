@@ -32,8 +32,16 @@ if TYPE_CHECKING:
 _VALID_AUTH_FIELDS = frozenset({"key", "url"})
 
 
-def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
-    """Split an entry's post-source remainder into a field and a value."""
+def _parse_auth_field(label: str, source: str, rest: str) -> tuple[str, str]:
+    """
+    Split an entry's post-source remainder into a field and a value.
+
+    No error here or in `_parse_auth_entry` repeats anything typed after
+    the source name, nor an unknown source name: a user who forgets
+    ``key=`` puts the token where the field name goes, base64-style
+    tokens end in ``=``, and the doctor's report promises never to carry
+    one. They name the entry's position and what is valid instead.
+    """
     cred_field, sep, value = rest.partition("=")
     if not sep:
         # Bare `<source>:<token>` shorthand: the API token is the field
@@ -43,28 +51,29 @@ def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
     cred_field = cred_field.strip().lower()
     if cred_field not in _VALID_AUTH_FIELDS:
         reason = (
-            f"--auth: unknown field {cred_field!r} in {raw!r}; "
+            f"{label}: unknown field for {source}; "
             f"valid: {', '.join(sorted(_VALID_AUTH_FIELDS))}"
         )
         raise ConfigurationError(reason)
     return cred_field, value
 
 
-def _parse_auth_entry(raw: str) -> tuple[str, str, str]:
+def _parse_auth_entry(position: int, raw: str) -> tuple[str, str, str]:
     """Parse a single ``<source>:<token>`` or ``<source>:<field>=<value>`` entry."""
+    label = f"--auth entry {position}"
     source, sep, rest = raw.partition(":")
     if not sep:
         reason = (
-            f"--auth expects <source>:<token> or <source>:<field>=<value>, got {raw!r}"
+            f"{label}: has no source; use <source>:<token> or <source>:<field>=<value>"
         )
         raise ConfigurationError(reason)
     source = source.strip().lower()
     if source not in SOURCE_NAMES:
-        reason = f"--auth: unknown source {source!r}; known: {', '.join(SOURCE_NAMES)}"
+        reason = f"{label}: unknown source; known: {', '.join(SOURCE_NAMES)}"
         raise ConfigurationError(reason)
-    cred_field, value = _parse_auth_field(raw, rest)
+    cred_field, value = _parse_auth_field(label, source, rest)
     if not value:
-        reason = f"--auth: empty value in {raw!r}"
+        reason = f"{label}: empty value for {source} {cred_field}"
         raise ConfigurationError(reason)
     return source, cred_field, value
 
@@ -85,9 +94,9 @@ class CliOverrides:
     def from_auth_list(cls, entries: Iterable[str]) -> Self:
         """Build from a list of parsed ``--auth`` strings."""
         per_source: dict[str, dict[str, str]] = {}
-        for raw in entries or ():
+        for position, raw in enumerate(entries or (), start=1):
             if not raw:
                 continue
-            source, cred_field, value = _parse_auth_entry(raw)
+            source, cred_field, value = _parse_auth_entry(position, raw)
             per_source.setdefault(source, {})[cred_field] = value
         return cls(per_source={k: dict(v) for k, v in per_source.items()})

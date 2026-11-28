@@ -12,6 +12,8 @@ from __future__ import annotations
 from argparse import Namespace
 from typing import TYPE_CHECKING
 
+import pytest
+
 from comicbox.cli.parser import build_parser
 from comicbox.doctor import settings
 from comicbox.doctor.context import DoctorContext
@@ -19,8 +21,6 @@ from comicbox.doctor.result import Status
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    import pytest
 
     from comicbox.doctor.result import CheckResult
 
@@ -222,3 +222,114 @@ def test_reading_list_settings_are_known(tmp_path: Path) -> None:
     )
     rows = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
     assert [row.detail for row in rows] == ["readinglists.catalog_tll is ignored"]
+
+
+def test_values_a_run_warns_about_are_warn_rows(tmp_path: Path) -> None:
+    """
+    A run warns about these, drops or defaults them, and carries on.
+
+    The doctor used to say only "values validated" for them.
+    """
+    _user_config(
+        tmp_path,
+        "comicbox:\n"
+        "  read:\n    merge_order: [metrn]\n"
+        "  write:\n    formats: [cxi]\n"
+        "  print:\n    phases: q\n"
+        "  online:\n    cache:\n      ttl: 7 days\n",
+    )
+    ctx = _ctx()
+    values = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert all(row.status is Status.WARN for row in values), values
+    details = sorted(row.detail for row in values)
+    assert len(details) == 4, details
+    assert any("cxi" in detail for detail in details)
+    assert any("metrn" in detail for detail in details)
+    assert any("cache.ttl" in detail for detail in details)
+    assert any("'q'" in detail for detail in details)
+    assert all(row.fix for row in values)
+    # The run goes on with what it could read, and so does the doctor.
+    assert ctx.settings is not None
+
+
+def test_value_warnings_reported_elsewhere_are_not_repeated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken user config, a legacy env var and an unknown source have rows."""
+    monkeypatch.setenv("COMICBOX_ONLINE_MATCH", "auto")
+    _user_config(
+        tmp_path,
+        "comicbox:\n  online:\n    tuning:\n      per_source:\n"
+        "        comicvin: {effort: minimal}\n",
+    )
+    (values,) = [row for row in _config_rows(_ctx()) if row.name == "values"]
+    assert (values.status, values.detail) == (Status.OK, "validated")
+
+
+@pytest.mark.parametrize("raw", ["LOUD", "-5", "yes", "25.5"])
+def test_unknown_loglevel_is_misconfigured(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    """Every run would die on it; the doctor used to call it validated."""
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    ctx = _ctx()
+    (values,) = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert values.status is Status.MISCONFIGURED
+    assert "general.loglevel" in values.detail
+    assert ctx.settings is None
+
+
+def test_bad_auth_entry_row_carries_no_token() -> None:
+    """The settings never build, so the doctor has no key to redact."""
+    fake = "FAKE-TOKEN-0123456789"
+    ctx = _ctx("--auth", f"comicvine:kye={fake}")
+    (values,) = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert values.status is Status.MISCONFIGURED
+    assert "--auth entry 1: unknown field for comicvine" in values.detail
+    assert "kye" not in values.detail
+    assert fake not in str(values)
+
+
+def test_removed_metron_user_and_pass_warn(tmp_path: Path) -> None:
+    """They went in 5.5.0; a run drops them, so Metron is silently off."""
+    path = _user_config(
+        tmp_path,
+        "comicbox:\n  online:\n    auth:\n"
+        "      metron: {user: someone, pass: FAKE-PASSWORD}\n",
+    )
+    rows = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
+    assert {row.detail for row in rows} == {
+        "online.auth.metron.user is ignored",
+        "online.auth.metron.pass is ignored",
+    }
+    assert all(row.status is Status.WARN and row.found == path for row in rows)
+    assert {row.fix for row in rows} == {"put an API token in online.auth.metron.key"}
+    assert all("FAKE-PASSWORD" not in str(row) for row in rows)
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"), [(0, "ERROR"), (3, "ERROR"), (4, "CRITICAL")]
+)
+def test_doctor_quiet_holds_its_log_as_a_run_would(
+    monkeypatch: pytest.MonkeyPatch, count: int, expected: str
+) -> None:
+    """-Q means what it does in a run: four of them silence errors."""
+    from comicbox import doctor
+
+    levels: list[str] = []
+    monkeypatch.setattr("comicbox.logger.init_logging", levels.append)
+    argv = [f"-{'Q' * count}"] if count else []
+    doctor._hold_logging(build_parser().parse_args(argv))
+    assert levels == [expected]
+
+
+@pytest.mark.parametrize("name", ["USER", "PASS"])
+def test_removed_metron_user_and_pass_env_vars_point_at_key(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    """The env form gets the same hint as the config-file form."""
+    monkeypatch.setenv(f"COMICBOX_ONLINE__AUTH__METRON__{name}", "FAKE-PASSWORD")
+    (row,) = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
+    assert row.found == f"env COMICBOX_ONLINE__AUTH__METRON__{name}"
+    assert row.fix == "put an API token in online.auth.metron.key"
+    assert "FAKE-PASSWORD" not in str(row)

@@ -77,7 +77,9 @@ ONLINE_TEMPLATE = MappingTemplate(
         ),
         "cache": MappingTemplate(
             {
-                "mode": String(),
+                # A bare on or off is a YAML 1.1 boolean, and a number is
+                # let through so the builder can name the valid modes.
+                "mode": OneOf((String(), bool, Number())),
                 "dir": Optional(OneOf((str, Path))),
                 # "7d", or a number of seconds: the docs suggest a bare 0.
                 "ttl": TTL_TEMPLATE,

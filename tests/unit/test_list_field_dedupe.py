@@ -18,6 +18,7 @@ from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.fields.collection_fields import ListField
 from comicbox.formats.comicbox.schema.publishing import ReprintSchema
+from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 
 # The comicbox schema's own reprint sort keys. `name` is deliberately absent:
 # two differently worded citations of the same issue dedupe together.
@@ -113,3 +114,61 @@ def test_colliding_reprints_do_not_write_a_null() -> None:
     assert None not in reprints
     assert all(reprint.get("name") for reprint in reprints)
     assert "- \n" not in yaml
+
+
+def _dump_comicbox(reprints: list[dict]) -> list:
+    dumped = ComicboxYamlSchema().dump({"comicbox": {"reprints": reprints}})
+    assert isinstance(dumped, Mapping)
+    return dumped["comicbox"]["reprints"]
+
+
+def test_name_only_reprints_stay_distinct() -> None:
+    """Reprints with no parsed series, volume or issue keep their own names."""
+    dumped = _dump_comicbox(
+        [
+            {"name": "A", "identifiers": {"metron": {"key": "1"}}},
+            {"name": "B", "identifiers": {"metron": {"key": "2"}}},
+        ]
+    )
+    assert dumped == [
+        {"name": "A", "identifiers": {"metron": {"key": "1"}}},
+        {"name": "B", "identifiers": {"metron": {"key": "2"}}},
+    ]
+
+
+def test_name_only_reprints_with_one_name_still_merge() -> None:
+    """Two sources citing the same unparsed name are one reprint."""
+    dumped = _dump_comicbox(
+        [
+            {"name": "A", "identifiers": {"metron": {"key": "1"}}},
+            {"name": "A"},
+        ]
+    )
+    assert dumped == [{"name": "A", "identifiers": {"metron": {"key": "1"}}}]
+
+
+def test_comicbox_schema_keeps_name_only_reprints() -> None:
+    """The comicbox YAML schema dump keeps a facsimile apart from its original."""
+    dumped = _dump_comicbox([{"name": "X #1"}, {"name": "X #1 Facsimile"}])
+    names = [reprint["name"] for reprint in dumped]
+    assert names == ["X #1", "X #1 Facsimile"]
+
+
+def test_unparsed_metron_reprints_survive_to_dict() -> None:
+    """End to end: MetronInfo reprints that parse to nothing all survive."""
+    xml = """<MetronInfo>
+  <Series><Name>S</Name></Series>
+  <Reprints>
+    <Reprint id="11">#1</Reprint>
+    <Reprint>(2019)</Reprint>
+    <Reprint>(2020)</Reprint>
+  </Reprints>
+</MetronInfo>"""
+    with Comicbox() as car:
+        car.add_metadata(xml, MetadataFormats.METRON_INFO)
+        reprints = car.to_dict()["comicbox"]["reprints"]
+    assert sorted(reprint["name"] for reprint in reprints) == [
+        "#1",
+        "(2019)",
+        "(2020)",
+    ]
