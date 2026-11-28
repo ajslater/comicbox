@@ -168,6 +168,7 @@
   connect, as in an IP ban.
 - Library: a Metron `RateLimited` event carries the server's wait instead of
   0.
+- The end-of-run summary counts a search that found nothing as a no-match.
 
 ### 🔒 Security
 

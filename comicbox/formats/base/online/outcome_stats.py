@@ -121,7 +121,7 @@ class _OutcomeStats:
             self._bucket_for(source_name).skip += 1
 
     def record_no_match(self, source_name: str) -> None:
-        """Record a NO_MATCH (no candidate cleared `min_confidence`)."""
+        """Record a no-match: no candidates, or none cleared `min_confidence`."""
         with self._lock:
             self._counts.no_match += 1
             self._bucket_for(source_name).no_match += 1
@@ -345,7 +345,8 @@ def _format_summary(c: _Counts, per_source: dict[str, _Counts]) -> list[str]:
         lines.append(f"  {c.skip:>4} skipped (matcher declined)")
     if c.no_match:
         lines.append(
-            f"  {c.no_match:>4} no-match (nothing scored above min_confidence)"
+            f"  {c.no_match:>4} no-match (nothing found, or nothing scored "
+            "above min_confidence)"
         )
     if len(per_source) > 1:
         lines.append("  by source:")

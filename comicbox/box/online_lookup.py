@@ -1098,6 +1098,10 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         carrying that reason. An embedding application needs the difference:
         a comic nobody looked at should be tried again, while one the source
         genuinely missed should not.
+
+        A real miss counts as a no-match in the end-of-run summary. It
+        emits no `NoMatch`: the event stream says it with the search's
+        own `SearchCompleted(n_candidates=0)`.
         """
         # Optional capability, read structurally: a source is whatever
         # implements search() and friends, and most never decline to search.
@@ -1106,6 +1110,7 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             outcome_stats.record_skip(source.name)
             self._emit(Skipped(path=path, source=source.name, reason=reason))
             return
+        outcome_stats.record_no_match(source.name)
         logger.info(
             f"online {source.name}: 0 candidates for {criteria_summary} "
             "(no matching issues in the database)"
