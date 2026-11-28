@@ -189,7 +189,10 @@ def _add_general_group(parser: ArgumentParser) -> None:
         default=None,
         dest="general.quiet",
         help=(
-            "Increasingly quiet success messages, warnings, and errors with more Qs."
+            "Log less with each Q: [green]-Q[/green] hides info, "
+            "[green]-QQ[/green] success messages, [green]-QQQ[/green] warnings "
+            "and [green]-QQQQ[/green] errors. Never logs more than "
+            "[green]general.loglevel[/green] would."
         ),
     )
     group.add_argument(

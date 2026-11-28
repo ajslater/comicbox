@@ -15,6 +15,7 @@ instead of going through confuse because:
 
 from __future__ import annotations
 
+import contextlib
 import math
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
@@ -22,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from loguru import logger
@@ -209,6 +211,21 @@ class _RuntimeOnlineInputs:
     cache_mode_cli: CacheMode | None = None
 
 
+def _threshold(raw: Any, label: str) -> float:
+    """
+    Read a score threshold, which must lie in [0, 1].
+
+    95, a percentage, would never auto-write; a negative one would let
+    every match through, and nan compares false to every score. A
+    boolean (YAML's bare ``yes``) is no threshold either.
+    """
+    value = float(raw)
+    if isinstance(raw, bool) or not 0 <= value <= 1:
+        reason = f"{label}: {raw!r} is not a number from 0 to 1"
+        raise ConfigurationError(reason)
+    return value
+
+
 def _build_per_source_tuning(
     online_block: Any,
 ) -> dict[str, OnlineSourceTuning]:
@@ -238,8 +255,14 @@ def _build_per_source_tuning(
             per_hour=rl_raw.get("per_hour"),
         )
         effort_raw = block.get("effort")
+        auto_threshold_raw = block.get("auto_threshold")
         out[source] = OnlineSourceTuning(
-            auto_threshold=block.get("auto_threshold"),
+            auto_threshold=_threshold(
+                auto_threshold_raw,
+                f"online.tuning.per_source.{source}.auto_threshold",
+            )
+            if auto_threshold_raw is not None
+            else None,
             effort=parse_enum(Effort, "--effort", str(effort_raw))
             if effort_raw
             else None,
@@ -324,14 +347,39 @@ def _build_auth_settings(
     return OnlineAuthSettings(sources=resolved)
 
 
+# YAML 1.1, which the env layer speaks too, reads these bare words as
+# booleans; quoted, they mean the same.
+_CACHE_MODE_WORDS: Mapping[str, CacheMode] = MappingProxyType(
+    {
+        "yes": CacheMode.ON,
+        "true": CacheMode.ON,
+        "no": CacheMode.OFF,
+        "false": CacheMode.OFF,
+    }
+)
+
+
+def _config_cache_mode(raw: Any) -> CacheMode:
+    """Read ``online.cache.mode``: a mode, or a YAML boolean, bare or quoted."""
+    if isinstance(raw, bool):
+        return CacheMode.ON if raw else CacheMode.OFF
+    word = str(raw).strip().lower()
+    with contextlib.suppress(ValueError):
+        return _CACHE_MODE_WORDS.get(word) or CacheMode(word)
+    reason = (
+        f"online.cache.mode: unknown value {raw!r}; valid: on, off, refresh "
+        "(yes and true mean on, no and false mean off)"
+    )
+    raise ConfigurationError(reason)
+
+
 def _build_cache(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
     cli: Callable[[str], Any],
 ) -> OnlineCacheSettings:
     """Build `OnlineCacheSettings` from CLI > config."""
-    cache_mode_raw = _coalesce(runtime.cache_mode_cli, online_block.cache.mode)
-    cache_mode = parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
+    cache_mode = runtime.cache_mode_cli or _config_cache_mode(online_block.cache.mode)
     cache_dir_raw = _coalesce(cli("cache_dir"), online_block.cache.dir)
     cache_dir = Path(cache_dir_raw).expanduser() if cache_dir_raw else None
     cache_ttl_raw = _coalesce(cli("cache_ttl"), online_block.cache.ttl)
@@ -347,11 +395,15 @@ def _build_tuning(
     cli: Callable[[str], Any],
 ) -> OnlineTuningSettings:
     """Build `OnlineTuningSettings` from CLI > config."""
-    auto_threshold_raw = _coalesce(
-        cli("auto_threshold"), online_block.tuning.auto_threshold
-    )
+    cli_threshold = cli("auto_threshold")
+    auto_threshold_raw = _coalesce(cli_threshold, online_block.tuning.auto_threshold)
     auto_threshold = (
-        float(auto_threshold_raw)
+        _threshold(
+            auto_threshold_raw,
+            "--auto-threshold"
+            if cli_threshold is not None
+            else "online.tuning.auto_threshold",
+        )
         if auto_threshold_raw is not None
         else DEFAULT_AUTO_THRESHOLD
     )

@@ -12,6 +12,9 @@
 - ComicBookInfo reads a text or fractional issue as an issue name, as other
   formats do: `1/2` is 0.5, `1.5` is 1.5 and `1a` is 1 with suffix `a`, where
   they were dropped or read as 1. A whole issue reads as before.
+- Each `-Q` logs less: `-Q` hides info lines, `-QQ` success lines, `-QQQ`
+  warnings and `-QQQQ` errors, one step earlier than before, and `-Q` no longer
+  logs more than a quieter `general.loglevel`.
 - Extracting or reading every page of a CB7 is many times faster.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
   of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
@@ -34,6 +37,9 @@
   a warning instead of read and written back as No. `y` now reads as Yes.
 - Library: `AdditiveMerger` concatenates tuples and unions frozensets instead of
   dropping one side.
+- `--import` of a file whose name no format claims, such as `tags.xml`, reads
+  its real format instead of writing its text into the series and title as a
+  filename, and an unreadable one is skipped with a warning.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
@@ -93,6 +99,22 @@
   A file holds one tag id source; tag ids of the others are left out.
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
+- `comicbox doctor` warns about each config value a run ignores or defaults,
+  such as an invalid format key, merge order source or cache ttl, and about the
+  removed Metron `user` and `pass` keys.
+- `general.loglevel` takes a level name in any case, such as `debug`; anything
+  but a level name or a whole number 0 or more is a one-line config error, and a
+  doctor failure, instead of a traceback on every run.
+- `online.cache.mode`, in a config file or `COMICBOX_ONLINE__CACHE__MODE`, takes
+  a bare or quoted `on`, `off`, `yes`, `no`, `true` or `false` instead of
+  failing every run on a bare `on` or `off`.
+- An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of
+  silently never, or always, auto-writing.
+
+### 🔒 Security
+
+- A malformed `--auth` entry's error, in a run or `comicbox doctor`, no longer
+  prints the token.
 
 ## v5.7.1
 
