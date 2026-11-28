@@ -42,19 +42,20 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             pagenames = self._iter_prefetched(tuple(pagenames))
         success_page_count = 0
         try:
+            # The prefetch reads in the loop, so it is guarded too.
             for fn in pagenames:
-                try:
-                    self._extract_page(path, fn)
-                    success_page_count += 1
-                    if not path.is_dir():
-                        break
-                except Exception as exc:
-                    logger.warning(f"Could not extract page {fn}: {exc}")
-                    raise
-            plural = "s" if success_page_count > 1 else ""
-            logger.info(f"Saved {success_page_count} page{plural} to {path}")
+                self._extract_page(path, fn)
+                success_page_count += 1
+                if not path.is_dir():
+                    break
         except Exception as exc:
-            logger.warning(f"No pages extracted: {exc}")
+            reason = (
+                f"Could not extract pages to {path}"
+                f" after saving {success_page_count}: {exc}"
+            )
+            raise ExportError(reason) from exc
+        plural = "s" if success_page_count > 1 else ""
+        logger.info(f"Saved {success_page_count} page{plural} to {path}")
 
     def _extract_pagenames_get_path(
         self, pagenames: Sequence[str], path: Path | str | None
@@ -120,9 +121,9 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             _validate_extract_path(page_path, resolved_path)
             page_path.write_bytes(data)
         except Exception as exc:
-            logger.warning(f"No pages extracted: {exc}")
-        else:
-            logger.info(f"Saved {len(pagenames)} pages to {page_path}")
+            reason = f"No pages extracted: {exc}"
+            raise ExportError(reason) from exc
+        logger.info(f"Saved {len(pagenames)} pages to {page_path}")
 
     def extract_pages(
         self,
