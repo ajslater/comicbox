@@ -96,38 +96,66 @@ def test_jobs_clamped_to_minimum_one() -> None:
 # ---------------------------------------------- prompt-lock concurrency
 
 
-def test_prompt_lock_serializes_concurrent_callers() -> None:
-    """At most one selector runs at a time across the process."""
-    from concurrent.futures import ThreadPoolExecutor
+_PROMPT_WORKERS = 3
+# How long a selector waits for a sibling to join it. Serialized
+# prompts pay it once each; unserialized ones are woken at once.
+_OVERLAP_WINDOW = 0.2
 
-    from comicbox.box.online_lookup import ComicboxOnlineLookup
 
-    enter_count = 0
-    max_concurrent = 0
-    lock = threading.Lock()
+def test_concurrent_lookups_prompt_one_at_a_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Boxes tagging at once under -j N never show two prompts together.
 
-    def selector_body() -> None:
-        nonlocal enter_count, max_concurrent
-        with lock:
-            enter_count += 1
-            max_concurrent = max(max_concurrent, enter_count)
-        threading.Event().wait(0.05)
-        with lock:
-            enter_count -= 1
+    Drives the real lookup and prompt path on several boxes from several
+    threads. Each selector call waits briefly for another to start; if
+    one does, two prompts were on screen at the same time.
+    """
+    from tests.unit.test_series_cache import (
+        _build_cb,
+        _CountingMetron,
+        _make_candidate,
+        _patch_source,
+    )
 
-    def worker() -> None:
-        # Use the same lock comicbox does (class-level).
-        with ComicboxOnlineLookup._PROMPT_LOCK:
-            selector_body()
+    # Two close candidates of one volume: the matcher cannot choose, so
+    # every box prompts.
+    close = _make_candidate(102, volume_id=42)
+    close = replace(close, summary=replace(close.summary, year=2021))
+    _patch_source(monkeypatch, [_make_candidate(101, volume_id=42), close])
+    monkeypatch.setattr(
+        _CountingMetron, "enrich_prompt_candidates", tuple, raising=False
+    )
+    boxes = [_build_cb() for _ in range(_PROMPT_WORKERS)]
+    guard = threading.Lock()
+    in_selector = 0
+    calls = 0
+    overlaps = 0
+    entered = threading.Condition(guard)
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futures = [ex.submit(worker) for _ in range(8)]
-        for f in futures:
-            f.result()
+    def selector(*_args: object) -> tuple[str, None]:
+        nonlocal in_selector, calls, overlaps
+        with guard:
+            in_selector += 1
+            calls += 1
+            if in_selector > 1:
+                overlaps += 1
+            entered.notify_all()
+            entered.wait_for(lambda: in_selector > 1, timeout=_OVERLAP_WINDOW)
+            in_selector -= 1
+        return ("skip", None)
 
-    # If the lock works, max_concurrent should be 1 — never two threads in
-    # the selector body at the same time.
-    assert max_concurrent == 1
+    def work(box) -> None:
+        box.set_online_selector(selector)
+        box.run_online_lookup()
+
+    with ThreadPoolExecutor(max_workers=_PROMPT_WORKERS) as pool:
+        for future in [pool.submit(work, box) for box in boxes]:
+            future.result(timeout=30)
+
+    assert calls == _PROMPT_WORKERS
+    assert overlaps == 0
 
 
 # ------------------------------------------------ metron thread-pool cap
