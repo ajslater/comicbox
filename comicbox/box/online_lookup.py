@@ -1232,7 +1232,9 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         step: ``lead_key`` is then the key the caller must release after
         its search. Losing the lead means another worker is resolving
         this very series, so this one WAITS for it instead of racing it,
-        then re-reads the cache. That is the whole value of series
+        then re-reads the cache. Still unresolved (the leader failed, was
+        aborted or matched nothing), it tries to lead again, so followers
+        search one at a time, each at most once. That is the whole value of series
         batching under `-j N`: without it the first N files of a cluster
         all start cold, and "one search per series" collapses back to
         "one search per worker". Checking for a leader before trying to
@@ -1246,15 +1248,20 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         if key is None or cache is None:
             return False, None
         volume_id = cache.get(key)
-        if volume_id is None:
+        while volume_id is None:
             if lead_series(cache, key):
                 return False, key
-            await_series_leader(cache, key)
+            if not await_series_leader(cache, key):
+                # No single-flight API (a plain dict), or the leader is
+                # wedged past the timeout: search independently.
+                return False, None
             # The leader may have been aborted rather than resolved.
             self._raise_if_run_aborted()
+            # A leader that resolved nothing hands the search on: back to
+            # lead-or-wait, so the next search is one follower's, not a
+            # burst of all of them while the source is failing. Each
+            # comic leads at most once, so this ends.
             volume_id = cache.get(key)
-        if volume_id is None:
-            return False, None
         return self._accept_from_series_cache(source, volume_id), None
 
     def _accept_from_series_cache(self, source: OnlineSource, volume_id: int) -> bool:

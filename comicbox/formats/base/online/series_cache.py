@@ -231,22 +231,27 @@ def await_series_leader(
     cache: MutableMapping[SeriesCacheKey, int],
     key: SeriesCacheKey,
     timeout: float = SERIES_LEAD_TIMEOUT_S,
-) -> None:
+) -> bool:
     """
     Block while another caller resolves `key`, if one is.
 
-    Returns as soon as there is no leader to wait for, which is also the
-    plain-dict case, and logs only a real timeout. The caller re-reads
-    the cache either way: a leader can finish without having resolved
-    anything.
+    True when the leader released, or there was none to wait for: the
+    caller re-reads the cache, since a leader can finish without having
+    resolved anything, and may try to lead in turn. False when there is
+    nothing to take turns on (a plain dict, which has no single-flight
+    API) or the wait timed out, which is logged: the caller then
+    searches independently.
     """
     wait = getattr(cache, "wait", None)
-    if wait is None or wait(key, timeout):
-        return
+    if wait is None:
+        return False
+    if wait(key, timeout):
+        return True
     logger.debug(
         f"online: gave up waiting {timeout:.0f}s for the series leader of "
         f"{key[1]!r}; searching independently"
     )
+    return False
 
 
 def claim_series(
