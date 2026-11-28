@@ -98,13 +98,17 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         """
         Name a page no other page of this extraction has: a repeat gets its index.
 
-        Pages in two folders of the archive can share a base name. Names
-        are compared folded, as a case-insensitive disk sees them, so the
-        output is the same on every disk.
+        Pages in two folders of the archive can share a base name. The
+        first page of a name keeps it; each later one is saved as its page
+        index, zero-padded to the digits of the page count as a PDF's page
+        names are, a hyphen and the name (``05-01.jpg``). Pages go in page
+        order, so every run names them alike. Names are compared folded, as
+        a case-insensitive disk sees them, so the output is the same on
+        every disk.
         """
         if _fold(path.name) in taken:
             pagenames = self.get_page_filenames()
-            width = len(str(len(pagenames) - 1))
+            width = len(str(len(pagenames)))
             path = path.with_name(f"{pagenames.index(fn):0{width}}-{path.name}")
             if _fold(path.name) in taken:
                 reason = f"Two pages would be saved as {path}"

@@ -27,9 +27,10 @@
 - `-X -d FILE` fails a comic instead of writing its cover over a comic or PDF,
   or over another comic's cover from the same run. An existing image is still
   replaced.
-- Extracting pages that share a name in two folders of a comic saves every page:
-  a repeated name gets its page number in front, where it replaced the page
-  before.
+- Extracting pages that share a name in two folders of a comic saves every page
+  instead of overwriting: the first keeps its name, and each later one is named
+  by its page index, zero-padded to the page count's digits, a hyphen and the
+  name (`05-01.jpg`), the same on every run.
 - Library: `write_metadata` and `bulk_write` report nothing written, with the
   dry-run payload, when the config sets `general.dry_run`.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
