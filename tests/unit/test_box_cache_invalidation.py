@@ -144,3 +144,22 @@ def test_every_added_api_metadata_survives_a_write(tmp_cbz: Path) -> None:
         after = cb.to_dict()["comicbox"]
     assert after["publisher"]["name"] == "AddedPub"
     assert after["series"]["sort_name"] == "Zed, The"
+
+
+def test_cover_paths_follow_added_metadata(tmp_cbz: Path) -> None:
+    """
+    Covers come from the metadata, so adding metadata finds them again.
+
+    _cover_paths was reset only with the archive, not with the other
+    metadata-derived caches, so get_cover_paths() kept the old answer.
+    """
+    added = {"comicbox": {"pages": {2: {"page_type": "FrontCover"}}}}
+    with Comicbox(tmp_cbz) as cb:
+        before = cb.get_cover_paths()
+        cb.add_metadata(added, MetadataFormats.COMICBOX_JSON)
+        after = cb.get_cover_paths()
+    with Comicbox(tmp_cbz, metadata=added, fmt=MetadataFormats.COMICBOX_JSON) as cb:
+        fresh = cb.get_cover_paths()
+    assert len(before) == 1
+    assert len(fresh) == 2
+    assert after == fresh

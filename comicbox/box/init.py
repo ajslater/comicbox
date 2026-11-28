@@ -119,6 +119,8 @@ class ComicboxInit:
         self._extra_delete_keys: set = set()  # pyright: ignore[reportUninitializedInstanceVariable]
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
+        # Covers come from the metadata's pages and cover_image too.
+        self._cover_paths: tuple[str, ...] | None = None
 
     def _reset_archive(
         self,
