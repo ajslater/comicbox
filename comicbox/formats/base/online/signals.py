@@ -91,7 +91,7 @@ def series_words(name: str) -> frozenset[str]:
     hyphen, slash or apostrophe inside a word joins it. Stop words are
     dropped. Each pair of neighbouring words is also included joined, so
     Metron's "Bladehawk / Sunbolt" (a spaced slash, two words) and a
-    filename's "Bladehawk-Sunbolt" (one word) share "batmansuperman".
+    filename's "Bladehawk-Sunbolt" (one word) share "bladehawksunbolt".
     """
     words = [
         word

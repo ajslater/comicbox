@@ -3,7 +3,7 @@ Pre-call series-name fuzzy filter for online sources.
 
 Each source's volume/series discovery step returns up to N hits for a
 free-text series query. CV's full-text search will return "Lila Lane: A
-Celebration" and "Lila Lane and Friends" alongside the canonical "Lois
+Celebration" and "Lila Lane and Friends" alongside the canonical "Lila
 Lane (2019)" — and the matcher's `s_series` signal would score the
 non-matches near zero anyway. Issuing the per-volume `list_issues` API
 call for those non-matches is wasted budget under CV's 200/hr cap.
@@ -19,16 +19,18 @@ to 90+, including "Lila Lane" vs "Adventures of Lila Lane and Friends"
 (both score 90). That's fine for *scoring* — the matcher's downstream
 signals can still rank candidates — but useless for *filtering*, where
 we need to drop substring-overlapping-but-different volumes before
-issuing an API call for them. Plain `ratio` (Levenshtein) gives:
+issuing an API call for them. Plain `ratio` (Levenshtein), after a
+trailing year in parentheses is stripped from both names, gives:
 
-    Lila Lane vs Lila Lane (1986)              → 78
-    Lila Lane vs Wardens (1986)               → variant year tail OK
-    Lila Lane vs Wardens Annotated            → 62
-    Lila Lane vs Adventures of Lila Lane ...   → 41
+    Lila Lane vs Lila Lane (1986)                      → 100
+    Lila Lane vs Lila Lane Annual                      → 72
+    Lila Lane vs Lila Lane Annotated                   → 64
+    Lila Lane vs Lila Lane and Friends                 → 60
+    Lila Lane vs Adventures of Lila Lane and Friends   → 41
+    Lila Lane vs Wardens (1986)                        → 25
 
-A natural threshold around 0.70 separates "same series, possibly with a
-year/volume suffix" (keep) from "different series that happens to share
-words" (drop). The pre-filter is intentionally STRICTER than the
+A threshold around 0.70 keeps "same series, possibly with a short
+suffix" and drops "different series that happens to share words". The pre-filter is intentionally STRICTER than the
 matcher's `s_series`; the matcher gets to be permissive because it sees
 the full candidate. The pre-filter has to decide before any API call
 goes out.
@@ -87,14 +89,14 @@ def _strip_year_parens(s: str) -> str:
 # experiment data behind each number.
 _THRESHOLDS: Final[MappingProxyType[Effort, float]] = MappingProxyType(
     {
-        # EXHAUSTIVE never filters — semantically off. Spend API budget
+        # THOROUGH never filters — semantically off. Spend API budget
         # freely; recover the very long tail of edge cases.
         Effort.THOROUGH: 0.0,
         # BALANCED at 0.4 (Phase B-validated): zero outcome changes vs
         # 0.0 across the full fixture set, 18% fewer API calls. Strictly
         # better than the previous "today's behavior" of 0.0.
         Effort.BALANCED: 0.4,
-        # FAST at 0.7 (Phase B-validated): 100% accuracy on labeled
+        # MINIMAL at 0.7 (Phase B-validated): 100% accuracy on labeled
         # fixtures, 60.5% fewer API calls than balanced-at-0. Catches
         # the "Moebius Library vs Adventures of Basil & Moebius"-style
         # substring false positives.
@@ -195,8 +197,7 @@ def should_keep_volume_name(
     Returns True (keep, spend the API call) when either:
 
     - `threshold <= 0` — the filter is configured as no-op for the
-      resolved API budget. This is `BALANCED` until Phase B says
-      otherwise.
+      resolved API budget, which only `THOROUGH` is.
     - `profile_series` is missing — we have no comparison anchor; never
       drop on missing data (would risk false-negatives for
       tagged-without-series fixtures).

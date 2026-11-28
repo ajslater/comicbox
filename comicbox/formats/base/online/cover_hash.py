@@ -4,8 +4,8 @@ Cover-hash primitives, cover-search hashes, and the matcher's hashing policy.
 pHash (8x8 = 64 bits), computed in pure Python bit for bit the way
 `imagehash.phash` computes it, because Metron's precomputed hashes
 (`Issue.cover_hash`, returned by Mokkari) come from imagehash and are
-string-compared against ours. ComicVine and GCD candidates require
-downloading the cover image — that's M6's concern.
+string-compared against ours. Candidates from the other databases carry
+no hash, so their cover image is downloaded and hashed here.
 
 The matcher invocation policy decides *when* hashing runs:
 
@@ -255,7 +255,7 @@ class CoverHashUrlCache:
     the old reconnect-per-`get`/`set` cost two fresh connections per
     candidate — pure overhead on the hot path. `check_same_thread=False`
     plus `_lock` keeps that single connection safe for the cover-fetch
-    pool's workers and for `-j N` boxes sharing one cache object.
+    pool's workers.
     """
 
     # SQLite's default SQLITE_MAX_VARIABLE_NUMBER is 999 on older builds;
