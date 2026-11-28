@@ -1,6 +1,9 @@
 """
 `-X -d FILE` never overwrites a comic, nor writes two covers to one file.
 
+A comic is what comicbox opens as one, by its bytes; either refusal fails
+that comic's file (one line, exit 1).
+
 A file destination took the cover whatever it was: a mistyped `-d`
 naming a comic replaced that comic with a JPEG and the run exited 0, and
 with several input comics every cover landed on the one file.
@@ -17,6 +20,7 @@ import pytest
 
 from comicbox import cli, logger
 from tests.const import CIX_CBZ_SOURCE_PATH, PDF_SOURCE_PATH
+from tests.util.comics import make_comic
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -86,30 +90,82 @@ def test_a_comic_cannot_take_its_own_cover(tmp_path: Path) -> None:
     assert code == 1
 
 
-@pytest.mark.parametrize("jobs", ["1", "2"])
-def test_two_comics_to_one_file_is_a_usage_error(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str], jobs: str
-) -> None:
-    """Every cover would land on one file: refused before any is written."""
-    a, b = _two_comics(tmp_path)
+def _cover(comic: Path, tmp_path: Path) -> bytes:
+    """The cover `-X` saves for a comic, extracted on its own."""
+    out = tmp_path / f"{comic.stem}-cover"
+    out.mkdir()
+    code, _ = _run_cli("-X", "-d", str(out), str(comic))
+    assert code == 0
+    (cover,) = out.iterdir()
+    return cover.read_bytes()
+
+
+def _two_different_comics(tmp_path: Path) -> tuple[Path, Path]:
+    a = tmp_path / "a.cbz"
+    shutil.copy(CIX_CBZ_SOURCE_PATH, a)
+    b = make_comic(tmp_path / "b.cbz", series="Other", number="1")
+    return a, b
+
+
+def test_a_second_cover_to_one_file_fails_its_comic(tmp_path: Path) -> None:
+    """The first comic's cover is written; the second is refused, not written."""
+    a, b = _two_different_comics(tmp_path)
+    a_cover = _cover(a, tmp_path)
     dest = tmp_path / "cover.jpg"
-    code, _ = _run_cli("-j", jobs, "-X", "-d", str(dest), str(a), str(b))
-    assert code == 2
-    assert ": error: -X to one file takes one comic, 2 found" in capsys.readouterr().err
-    assert not dest.exists()
+    code, out = _run_cli("-X", "-d", str(dest), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert dest.read_bytes() == a_cover
 
 
-def test_a_directory_of_two_comics_to_one_file_is_a_usage_error(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_a_second_cover_to_one_file_fails_under_jobs(tmp_path: Path) -> None:
+    """Workers race for the file: one cover wins, the other comic fails."""
+    a, b = _two_different_comics(tmp_path)
+    covers = {_cover(a, tmp_path), _cover(b, tmp_path)}
+    dest = tmp_path / "cover.jpg"
+    code, out = _run_cli("-j", "2", "-X", "-d", str(dest), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert dest.read_bytes() in covers
+
+
+def test_a_directory_of_two_comics_to_one_file(tmp_path: Path) -> None:
     comics = tmp_path / "comics"
     comics.mkdir()
-    _two_comics(comics)
+    _two_different_comics(comics)
     dest = tmp_path / "cover.jpg"
-    code, _ = _run_cli("-r", "-X", "-d", str(dest), str(comics))
-    assert code == 2
-    assert "-X to one file takes one comic, 2 found" in capsys.readouterr().err
-    assert not dest.exists()
+    code, out = _run_cli("-r", "-X", "-d", str(dest), str(comics))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert dest.exists()
+
+
+def test_a_comic_suffix_on_a_file_that_is_no_archive_is_overwritten(
+    tmp_path: Path,
+) -> None:
+    """Not a comic by comicbox's own sniff, so it is no comic to protect."""
+    _, b = _two_comics(tmp_path)
+    dest = tmp_path / "junk.cbz"
+    dest.write_bytes(b"not an archive")
+    code, _ = _run_cli("-X", "-d", str(dest), str(b))
+    assert code == 0
+    assert dest.read_bytes().startswith(_JPEG_MAGIC)
+
+
+def test_a_pdf_is_refused_without_pdf_support(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without the pdf extra comicbox cannot open a PDF, but never overwrites one."""
+    import comicbox.box.init
+
+    _, b = _two_comics(tmp_path)
+    dest = tmp_path / "cover.jpg"
+    shutil.copy(PDF_SOURCE_PATH, dest)
+    before = dest.read_bytes()
+    monkeypatch.setattr(comicbox.box.init, "PDF_ENABLED", False)
+    code, _ = _run_cli("-X", "-d", str(dest), str(b))
+    assert code == 1
+    assert dest.read_bytes() == before
 
 
 def test_an_existing_image_destination_is_still_overwritten(tmp_path: Path) -> None:
@@ -123,6 +179,7 @@ def test_an_existing_image_destination_is_still_overwritten(tmp_path: Path) -> N
 
 
 def test_two_comics_to_a_directory_still_work(tmp_path: Path) -> None:
+    """Out of scope here: covers of one name in a directory still overwrite."""
     a, b = _two_comics(tmp_path)
     out_dir = tmp_path / "out"
     out_dir.mkdir()

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 from comicbox.box import Comicbox
+from comicbox.box.pages.extract import CoverDestinations
 from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
@@ -176,6 +177,8 @@ class Runner:
         self._failure_lock = threading.Lock()
         #: A file the run reaches by several paths, processed once.
         self._same_files = _SameFiles()
+        #: The cover files this run wrote: a second comic's is refused.
+        self._cover_destinations = CoverDestinations()
         #: Batch-wide series cache for online tagging (series-first
         #: batching, plan §3.10). `OnlineSession` has always had one; the
         #: CLI did not, so `comicbox --online` re-ran the full candidate
@@ -272,6 +275,8 @@ class Runner:
             path = self._same_files.process_as.get(path, path)
 
         with Comicbox(path, config=self._config) as car:
+            if self._config.convert.extract_covers:
+                car.set_cover_destinations(self._cover_destinations)
             if self._config.online.lookup.enabled:
                 car.set_series_cache(self._series_cache)
                 car.set_online_session_state(self._online_state)
@@ -416,6 +421,7 @@ class Runner:
         """Run actions with config."""
         outcome_stats.reset()
         self.failure_count = 0
+        self._cover_destinations = CoverDestinations()
         try:
             self._run_inner()
         finally:
@@ -444,12 +450,6 @@ class Runner:
             return
         self._config = replace(self._config, online=engaged)
 
-    def _covers_to_one_file(self) -> bool:
-        """Tell whether -X writes every comic's cover to the one -d file."""
-        return bool(self._config.convert.extract_covers) and not (
-            Path(self._config.general.dest_path).is_dir()
-        )
-
     def _run_inner(self) -> None:
         """Dispatch to serial or parallel processing based on `--jobs`."""
         jobs = max(1, self._config.general.jobs)
@@ -470,10 +470,6 @@ class Runner:
             # The CLI counts the paths as typed; a directory under -r
             # would otherwise tag every comic in it as the one issue.
             reason = f"--id requires exactly one comic, {len(paths)} found"
-            raise UsageError(reason)
-        if self._covers_to_one_file() and len(set(paths)) > 1:
-            # Every comic's cover would overwrite the one before it.
-            reason = f"-X to one file takes one comic, {len(set(paths))} found"
             raise UsageError(reason)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.

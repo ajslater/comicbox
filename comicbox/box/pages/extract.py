@@ -1,5 +1,6 @@
 """Methods for extracting files from the archive."""
 
+import threading
 import unicodedata
 from collections.abc import Iterable, Sequence
 from pathlib import Path
@@ -8,33 +9,39 @@ from loguru import logger
 
 from comicbox._pdf import PAGE_FORMAT_PDF
 from comicbox.box.pages.covers import ComicboxPagesCovers
-from comicbox.exceptions import ExportError
+from comicbox.exceptions import ExportError, UnsupportedArchiveTypeError
 
-_COMIC_SUFFIXES = frozenset(
-    (".cbz", ".cbr", ".cb7", ".cbt", ".pdf", ".zip", ".rar", ".7z", ".tar")
-)
-_COMIC_MAGIC = (b"PK", b"Rar!", b"7z\xbc\xaf\x27\x1c", b"%PDF")
-_TAR_MAGIC = b"ustar"
-_TAR_MAGIC_OFFSET = 257
+#: A PDF's leading bytes, for when comicbox runs without PDF support.
+_PDF_MAGIC = b"%PDF"
 
 
-def _is_comic_file(path: Path) -> bool:
-    """Tell a comic archive or PDF by its suffix or its leading bytes."""
-    if path.suffix.lower() in _COMIC_SUFFIXES:
-        return True
+def _is_pdf_by_magic(path: Path) -> bool:
     try:
         with path.open("rb") as file:
-            head = file.read(_TAR_MAGIC_OFFSET + len(_TAR_MAGIC))
+            return file.read(len(_PDF_MAGIC)) == _PDF_MAGIC
     except OSError:
         return False
-    return head.startswith(_COMIC_MAGIC) or head[_TAR_MAGIC_OFFSET:] == _TAR_MAGIC
 
 
-def _refuse_comic_destination(path: Path) -> None:
-    """Refuse to write a page over a file that is a comic or PDF."""
-    if path.is_file() and _is_comic_file(path):
-        reason = f"{path} is a comic or PDF: not overwritten with a page."
-        raise ExportError(reason)
+class CoverDestinations:
+    """The cover files one run has written, shared by its workers."""
+
+    def __init__(self) -> None:
+        """Start with none."""
+        self._paths: set[Path] = set()
+        self._lock = threading.Lock()
+
+    def claim(self, path: Path) -> None:
+        """Take a cover file for this run, refusing one another comic took."""
+        key = path.resolve()
+        with self._lock:
+            if key in self._paths:
+                reason = (
+                    f"{path}: another comic's cover in this run went there:"
+                    " not overwritten."
+                )
+                raise ExportError(reason)
+            self._paths.add(key)
 
 
 def _fold(name: str) -> str:
@@ -51,6 +58,35 @@ def _validate_extract_path(path: Path, dest_dir: Path) -> None:
 
 class ComicboxExtractPages(ComicboxPagesCovers):
     """Methods for extracting files from the archive."""
+
+    #: Set by the Runner, so two comics' covers never share one file.
+    _cover_destinations: CoverDestinations | None = None
+
+    def set_cover_destinations(self, destinations: CoverDestinations | None) -> None:
+        """Register the run's record of the cover files it has written."""
+        self._cover_destinations = destinations
+
+    def _is_comic_file(self, path: Path) -> bool:
+        """
+        Tell a comic as opening one does: by its bytes, not its name.
+
+        Opening sniffs the archive type and reads nothing more. A file
+        with a comic's suffix that is no archive is no comic. A PDF is one
+        even where comicbox runs without PDF support and cannot open it.
+        """
+        try:
+            with type(self)(path, config=self._config):
+                return True
+        except UnsupportedArchiveTypeError:
+            return _is_pdf_by_magic(path)
+
+    def _refuse_cover_destination(self, path: Path) -> None:
+        """Refuse a file that is a comic, or that another comic's cover took."""
+        if path.is_file() and self._is_comic_file(path):
+            reason = f"{path} is a comic or PDF: not overwritten with a page."
+            raise ExportError(reason)
+        if self._cover_destinations is not None:
+            self._cover_destinations.claim(path)
 
     def _extract_page_get_path(self, path: Path, fn: str) -> Path:
         path = path / Path(fn).name if path.is_dir() else path
@@ -90,7 +126,7 @@ class ComicboxExtractPages(ComicboxPagesCovers):
                 path = self._unclaimed_page_path(path, fn, taken)
         else:
             dest_dir = dest_path.parent
-            _refuse_comic_destination(path)
+            self._refuse_cover_destination(path)
         _validate_extract_path(path, dest_dir)
         path.write_bytes(data)
 
