@@ -78,7 +78,8 @@
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
 - `comicbox doctor` warns about each config value a run ignores or defaults,
-  such as an invalid format key, merge order source or cache ttl.
+  such as an invalid format key, merge order source or cache ttl, and about the
+  removed Metron `user` and `pass` keys.
 - `general.loglevel` takes a level name in any case, such as `debug`; an unknown
   name is a one-line config error, and a doctor failure, instead of a traceback
   on every run.

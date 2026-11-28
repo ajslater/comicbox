@@ -284,3 +284,20 @@ def test_bad_auth_entry_row_carries_no_token() -> None:
     assert values.status is Status.MISCONFIGURED
     assert "kye" in values.detail
     assert fake not in str(values)
+
+
+def test_removed_metron_user_and_pass_warn(tmp_path: Path) -> None:
+    """They went in 5.5.0; a run drops them, so Metron is silently off."""
+    path = _user_config(
+        tmp_path,
+        "comicbox:\n  online:\n    auth:\n"
+        "      metron: {user: someone, pass: FAKE-PASSWORD}\n",
+    )
+    rows = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
+    assert {row.detail for row in rows} == {
+        "online.auth.metron.user is ignored",
+        "online.auth.metron.pass is ignored",
+    }
+    assert all(row.status is Status.WARN and row.found == path for row in rows)
+    assert {row.fix for row in rows} == {"put an API token in online.auth.metron.key"}
+    assert all("FAKE-PASSWORD" not in str(row) for row in rows)

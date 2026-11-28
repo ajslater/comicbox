@@ -316,3 +316,46 @@ def test_an_unparsable_catalog_lifetime_keeps_its_own_default() -> None:
     )
     assert parse_ttl(None, default=default) == default
     assert parse_ttl("soon") == timedelta(days=7)
+
+
+# Template keys the YAML must not name, and why.
+_TEMPLATE_ONLY = {
+    "computed": "Computed by compute_config(), never set by a user.",
+    "write.keep_formats": "Runtime-only: set by the keep keyword in write.formats.",
+}
+
+
+def _key_paths(node: Mapping[str, Any], prefix: str = "") -> set[str]:
+    """Every dotted key path in a nested mapping."""
+    out: set[str] = set()
+    for key, value in node.items():
+        path = f"{prefix}{key}"
+        out.add(path)
+        if isinstance(value, Mapping) and value:
+            out |= _key_paths(value, f"{path}.")
+    return out
+
+
+def test_yaml_keys_are_the_template_keys() -> None:
+    """
+    The YAML names exactly the keys a run reads.
+
+    confuse drops a key its template lacks, and the doctor's known keys
+    come from the YAML, so a dead key shipped there (Metron's user and
+    pass after 5.5.0) was dropped silently with no doctor warning either.
+    """
+    from comicbox.config import _TEMPLATE
+    from comicbox.doctor.settings import _template_tree
+
+    template_tree = _template_tree(_TEMPLATE)[PACKAGE_NAME]
+    template_keys = {
+        path
+        for path in _key_paths(template_tree)
+        if not any(
+            path == skip or path.startswith(f"{skip}.") for skip in _TEMPLATE_ONLY
+        )
+    }
+    yaml_keys = _key_paths(_load_yaml_defaults())
+    assert yaml_keys - template_keys == set(), "YAML keys no run reads"
+    assert template_keys - yaml_keys == set(), "template keys missing from the YAML"
+    assert set(_TEMPLATE_ONLY) <= _key_paths(template_tree)

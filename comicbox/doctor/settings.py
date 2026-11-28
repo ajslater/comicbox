@@ -57,6 +57,8 @@ _SOURCE_KEYED: Mapping[str, MappingTemplate[Any, Any]] = MappingProxyType(
 )
 
 _row = partial(CheckResult, SECTION)
+# Removed with basic auth in 5.5.0: every source takes an API token.
+_REMOVED_AUTH_FIELDS = frozenset({"user", "pass"})
 
 # Warnings the settings build logs that other checks here already report:
 # a skipped user config (check_files), a legacy env var (check_env_vars)
@@ -282,7 +284,9 @@ def _unknown_key_row(
     shown = path.removeprefix(f"{PACKAGE_NAME}.")
     parent, _, leaf = shown.rpartition(".")
     fix = ""
-    if match := get_close_matches(leaf, siblings, n=1):
+    if leaf in _REMOVED_AUTH_FIELDS and parent.startswith("online.auth."):
+        fix = f"put an API token in {parent}.key"
+    elif match := get_close_matches(leaf, siblings, n=1):
         fix = f"did you mean {parent + '.' if parent else ''}{match[0]}?"
     return _row(
         "unknown key",
