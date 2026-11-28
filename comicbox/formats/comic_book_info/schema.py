@@ -47,7 +47,8 @@ class ComicBookInfoIssueField(Field):
         self, value: Any, attr: Any, data: Any, **kwargs: Any
     ) -> int | str:
         if isinstance(value, bool):
-            raise self.make_error("invalid")
+            error_key = "invalid"
+            raise self.make_error(error_key)
         if isinstance(value, float | Decimal) and value == int(value):
             value = int(value)
         if isinstance(value, int):

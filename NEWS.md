@@ -7,8 +7,8 @@
 - A half issue is .5 in every format: issue `1/2` or `½` is number 0.5 and
   `5 1/2` or `5½` is 5.5, with no suffix, where they were number 1 with suffix
   `/2`, or no number with suffix `½`. The parsed number of an existing half
-  issue changes from 1 to 0.5, which changes its sort order and the issue
-  number codex stores.
+  issue changes from 1 to 0.5, which changes its sort order and the issue number
+  codex stores.
 - ComicBookInfo reads a text or fractional issue as an issue name, as other
   formats do: `1/2` is 0.5, `1.5` is 1.5 and `1a` is 1 with suffix `a`, where
   they were dropped or read as 1. A whole issue reads as before.

@@ -82,7 +82,7 @@ def test_whole_issue_round_trips_as_an_integer(issue: Any) -> None:
 
 
 @pytest.mark.parametrize("issue", [True, False])
-def test_boolean_issue_is_refused(issue: bool) -> None:  # noqa: FBT001
+def test_boolean_issue_is_refused(issue: bool) -> None:
     """A JSON boolean is not an issue: it is dropped as an invalid integer."""
     from marshmallow import ValidationError
 
