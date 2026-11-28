@@ -174,3 +174,25 @@ def test_api_import_paths_config_fails_as_dash_i_does(tmp_path: Path) -> None:
         pytest.raises(ImportFileError, match=f"Import file {bad}: not metadata"),
     ):
         cb.to_dict()
+
+
+def test_an_import_pattern_that_matches_nothing_fails_the_comic(tmp_path: Path) -> None:
+    """A quoted -i glob comicbox expands itself, and it names no file."""
+    comic = _comic(tmp_path)
+    before = comic.read_bytes()
+    pattern = tmp_path / "*.nothing"
+    code, out = _run_cli("-w", "cix", "-i", str(pattern), str(comic))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (error,) = _errors(out)
+    assert f"Import file pattern {pattern}: matches no file." in error
+    assert comic.read_bytes() == before
+
+
+def test_an_import_pattern_that_matches_still_imports(tmp_path: Path) -> None:
+    comic = _comic(tmp_path)
+    _write(tmp_path, "good.xml", _GOOD)
+    code, _ = _run_cli("-w", "cix", "-i", str(tmp_path / "*.xml"), str(comic))
+    assert code == 0
+    with Comicbox(comic) as cb:
+        assert cb.to_dict()["comicbox"]["series"]["name"] == "Imported"

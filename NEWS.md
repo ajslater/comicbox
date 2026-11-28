@@ -189,7 +189,8 @@
 - An `-i` import file (or `convert.import_paths` from a config file, the
   environment or a library caller) that cannot be read, or is not metadata at
   all, fails the comic instead of a warning and a write without it. One that
-  holds no tags gives one warning naming it.
+  holds no tags gives one warning naming it, and a quoted `-i` pattern that
+  matches no file fails the comic instead of being skipped.
 
 ### 🔒 Security
 

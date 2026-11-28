@@ -81,7 +81,11 @@ class ComicboxSources(ComicboxArchive):
             except (OSError, UnicodeDecodeError) as exc:
                 # A file the user named: the comic fails rather than being
                 # written without it.
-                reason = f"Import file {path_str}: cannot read it: {exc}"
+                if "*" in str(path_str) and not path.exists():
+                    # expand_glob_paths keeps a pattern that matched nothing.
+                    reason = f"Import file pattern {path_str}: matches no file."
+                else:
+                    reason = f"Import file {path_str}: cannot read it: {exc}"
                 raise ImportFileError(reason) from exc
             fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
             if not fmt or fmt in self._config.read.formats:
