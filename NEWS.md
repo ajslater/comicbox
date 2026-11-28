@@ -2,8 +2,20 @@
 
 ## v5.7.2
 
+### ♻️ Changed
+
+- Extracting or reading every page of a CB7 is many times faster.
+
 ### 🐛 Fixed
 
+- Converting two comics whose names differ only by case and suffix at once no
+  longer overwrites one with the other on a case-insensitive disk.
+- A conversion or PDF write keeps the comic's file mode and owner, and a
+  conversion is on disk before `delete_orig` removes the original.
+- A read-only comic is refused, never rewritten, whatever its layout.
+- A CBT holding one page name twice is refused instead of converted with a page
+  lost.
+- `Comicbox.get_pages()` without an end page returns every page, not none.
 - `--id` refuses a directory under `-r` that holds more than one comic.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
   prompts or searches, and no waiting out rate-limit retries.
