@@ -1230,14 +1230,16 @@ class ComicVineOnlineSource(OnlineSource):
         """
         List each volume's matching issues, degrading past a failed volume.
 
-        One volume's failure costs only its candidates. When every volume
-        that was asked failed, though -- an outage, a spent pool -- the
-        last failure comes back for the caller to raise, so the lookup
-        reports a failed search rather than a no-match. A volume a filter
-        or the budget skipped was never asked and counts for neither.
+        One volume's failure costs only its candidates while another
+        volume still offers some. When nothing came back and any volume
+        failed -- an outage, a spent pool, or one failure beside volumes
+        without the issue -- the last failure comes back for the caller to
+        raise, so the lookup reports a failed search rather than a
+        no-match: the answer may have been in the volume that failed. A
+        volume a filter or the budget skipped was never asked and counts
+        for neither.
         """
         candidates: list[Candidate] = []
-        queried = failed = 0
         failure: Exception | None = None
         for vol in volumes:
             try:
@@ -1259,14 +1261,11 @@ class ComicVineOnlineSource(OnlineSource):
                     f"online {self.name}: issue-list for volume {vol.id} "
                     f"({vol.name!r}) failed: {exc}"
                 )
-                queried += 1
-                failed += 1
                 failure = exc
                 continue
-            if found is not None:
-                queried += 1
+            if found:
                 candidates.extend(found)
-        return candidates, failure if failed and failed == queried else None
+        return candidates, None if candidates else failure
 
     def _new_search_budget(self) -> _SearchBudget:
         """Resolve this search's pre-call fan-out limits from the effort knob."""

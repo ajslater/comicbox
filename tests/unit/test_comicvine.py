@@ -1153,6 +1153,24 @@ def test_a_search_with_one_failed_volume_keeps_the_others(
     assert sorted(c.issue_id for c in src.search(profile)) == [10, 30]
 
 
+def test_a_failed_volume_with_no_candidates_elsewhere_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    D-2: one volume failed and the others had nothing: a failed search.
+
+    The missing answer could have been in the volume that failed, so a
+    no-match would be a guess.
+    """
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={2})
+    fake._issues_by_volume = {}  # the volumes that answer have no such issue
+
+    with pytest.raises(ServiceError, match="502"):
+        src.search(ComicProfile(series="Wardens", issue="5", issue_int=5))
+
+
 def test_volumes_the_filters_skip_are_not_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
