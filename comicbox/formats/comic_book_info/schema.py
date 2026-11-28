@@ -6,7 +6,7 @@ from decimal import Decimal
 from types import MappingProxyType
 from typing import Any
 
-from marshmallow import Schema
+from marshmallow import Schema, ValidationError
 from marshmallow.fields import Constant, Field, Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
@@ -35,16 +35,19 @@ class ComicBookInfoIssueField(Field):
     A JSON integer, or a whole float, is that integer. Any other value is
     text the shared issue parse splits as it does every format's, so "1/2"
     is 0.5 and "1.5" is 1.5, not 1. The transform writes a whole integer or
-    nothing, and it is dumped as it comes.
+    nothing, and it is dumped as it comes. A boolean is not an issue.
     """
 
     @override
     def _deserialize(
         self, value: Any, attr: Any, data: Any, **kwargs: Any
     ) -> int | str:
+        if isinstance(value, bool):
+            reason = "Not a valid integer."
+            raise ValidationError(reason)
         if isinstance(value, float | Decimal) and value == int(value):
             value = int(value)
-        if isinstance(value, int) and not isinstance(value, bool):
+        if isinstance(value, int):
             return value
         return StringField().deserialize(value)
 

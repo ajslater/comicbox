@@ -67,7 +67,6 @@ def test_id_with_multiple_paths_errors(
 def test_id_with_directory_of_several_comics_errors(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
     jobs: str,
 ) -> None:
     """
@@ -76,8 +75,6 @@ def test_id_with_directory_of_several_comics_errors(
     It printed a bare yellow line and exited 1, while two typed paths got
     the parser's `comicbox: error:` line and exit 2.
     """
-    # argparse names the program from argv[0], which is pytest's here.
-    monkeypatch.setattr("sys.argv", ["comicbox"])
     comics = tmp_path / "comics"
     comics.mkdir()
     for index in range(2):
@@ -90,7 +87,8 @@ def test_id_with_directory_of_several_comics_errors(
         main(["comicbox", "-r", "-j", jobs, "--id", "metron:123", str(comics)])
     assert exc_info.value.code == 2
     captured = capsys.readouterr()
-    assert "comicbox: error: --id requires exactly one comic, 2 found" in captured.err
+    # The program name in the usage line depends on how pytest was started.
+    assert ": error: --id requires exactly one comic, 2 found" in captured.err
     assert seen == []
 
 
