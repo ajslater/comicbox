@@ -30,7 +30,8 @@
 - Extracting pages that share a name in two folders of a comic saves every page
   instead of overwriting: the first keeps its name, and each later one is named
   by its page index, zero-padded to the page count's digits, a hyphen and the
-  name (`05-01.jpg`), the same on every run.
+  name (`05-01.jpg`, prefixed again if a page has that name), the same on every
+  run.
 - Library: `write_metadata` and `bulk_write` report nothing written, with the
   dry-run payload, when the config sets `general.dry_run`.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no

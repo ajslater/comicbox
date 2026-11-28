@@ -94,3 +94,17 @@ def test_the_index_is_padded_to_the_page_count(tmp_path: Path) -> None:
 def test_the_names_are_the_same_every_run(tmp_path: Path) -> None:
     comic = _comic(tmp_path, _NESTED)
     assert _extract(comic, tmp_path / "one") == _extract(comic, tmp_path / "two")
+
+
+def test_a_real_page_named_like_a_renamed_one_keeps_its_name(tmp_path: Path) -> None:
+    """`b/01.jpg` cannot take `2-01.jpg`, a real page's name: it prefixes again."""
+    members = {"a/01.jpg": b"a01", "a/2-01.jpg": b"a2-01", "b/01.jpg": b"b01"}
+    extracted = _extract(_comic(tmp_path, members), tmp_path / "out")
+    assert extracted == {"01.jpg": b"a01", "2-01.jpg": b"a2-01", "2-2-01.jpg": b"b01"}
+
+
+def test_a_later_real_page_keeps_its_name_too(tmp_path: Path) -> None:
+    """Names are decided before the first write, so `c/1-01.jpg` keeps its own."""
+    members = {"a/01.jpg": b"a", "b/01.jpg": b"b", "c/1-01.jpg": b"c"}
+    extracted = _extract(_comic(tmp_path, members), tmp_path / "out")
+    assert extracted == {"01.jpg": b"a", "1-1-01.jpg": b"b", "1-01.jpg": b"c"}

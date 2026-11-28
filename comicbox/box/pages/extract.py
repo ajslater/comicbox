@@ -56,6 +56,43 @@ def _validate_extract_path(path: Path, dest_dir: Path) -> None:
         raise ExportError(reason)
 
 
+class _PageNames:
+    """
+    The names one extraction to a directory gives its pages, none shared.
+
+    Every page's own base name is reserved, before the first write, for
+    the first page that has it. A later page of that name is saved as its
+    page index, zero-padded to the digits of the page count as a PDF's page
+    names are, a hyphen and the name (``05-01.jpg``); while that is still
+    reserved or given, the prefix is added again (``05-05-01.jpg``), so a
+    real page never loses its name to a made one. Names are compared folded,
+    as a case-insensitive disk sees them, and pages go in page order, so
+    the names are the same on every disk and every run.
+    """
+
+    def __init__(self, pagenames: Sequence[str], all_pagenames: Sequence[str]) -> None:
+        """Reserve each page's own name for the first page that has it."""
+        self._owners: dict[str, str] = {}
+        for fn in pagenames:
+            self._owners.setdefault(_fold(Path(fn).name), fn)
+        self._given: set[str] = set()
+        self._index = {fn: index for index, fn in enumerate(all_pagenames)}
+        self._width = len(str(len(all_pagenames)))
+
+    def _free(self, key: str, fn: str) -> bool:
+        return self._owners.get(key, fn) == fn and key not in self._given
+
+    def name(self, fn: str, name: str) -> str:
+        """Give a page its name, or its index-prefixed name if that is taken."""
+        if not self._free(_fold(name), fn):
+            prefix = f"{self._index[fn]:0{self._width}}-"
+            name = prefix + name
+            while _fold(name) in self._owners or _fold(name) in self._given:
+                name = prefix + name
+        self._given.add(_fold(name))
+        return name
+
+
 class ComicboxExtractPages(ComicboxPagesCovers):
     """Methods for extracting files from the archive."""
 
@@ -94,30 +131,8 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix(self._pdf_suffix)
         return path
 
-    def _unclaimed_page_path(self, path: Path, fn: str, taken: set[str]) -> Path:
-        """
-        Name a page no other page of this extraction has: a repeat gets its index.
-
-        Pages in two folders of the archive can share a base name. The
-        first page of a name keeps it; each later one is saved as its page
-        index, zero-padded to the digits of the page count as a PDF's page
-        names are, a hyphen and the name (``05-01.jpg``). Pages go in page
-        order, so every run names them alike. Names are compared folded, as
-        a case-insensitive disk sees them, so the output is the same on
-        every disk.
-        """
-        if _fold(path.name) in taken:
-            pagenames = self.get_page_filenames()
-            width = len(str(len(pagenames)))
-            path = path.with_name(f"{pagenames.index(fn):0{width}}-{path.name}")
-            if _fold(path.name) in taken:
-                reason = f"Two pages would be saved as {path}"
-                raise ExportError(reason)
-        taken.add(_fold(path.name))
-        return path
-
     def _extract_page(
-        self, dest_path: Path, fn: str, taken: set[str] | None = None
+        self, dest_path: Path, fn: str, names: _PageNames | None = None
     ) -> None:
         path = self._extract_page_get_path(dest_path, fn)
         props = {}
@@ -126,8 +141,8 @@ class ComicboxExtractPages(ComicboxPagesCovers):
             path = path.with_suffix("." + ext)
         if dest_path.is_dir():
             dest_dir = dest_path
-            if taken is not None:
-                path = self._unclaimed_page_path(path, fn, taken)
+            if names is not None:
+                path = path.with_name(names.name(fn, path.name))
         else:
             dest_dir = dest_path.parent
             self._refuse_cover_destination(path)
@@ -135,15 +150,17 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         path.write_bytes(data)
 
     def _extract_all_pagenames(self, pagenames: Iterable[str], path: Path) -> None:
+        names = None
         if path.is_dir():
+            pagenames = tuple(pagenames)
+            names = _PageNames(pagenames, self.get_page_filenames())
             # Every page, so a 7z is decompressed in batches, not once a page.
-            pagenames = self._iter_prefetched(tuple(pagenames))
+            pagenames = self._iter_prefetched(pagenames)
         success_page_count = 0
-        taken: set[str] = set()
         try:
             # The prefetch reads in the loop, so it is guarded too.
             for fn in pagenames:
-                self._extract_page(path, fn, taken)
+                self._extract_page(path, fn, names)
                 success_page_count += 1
                 if not path.is_dir():
                     break
