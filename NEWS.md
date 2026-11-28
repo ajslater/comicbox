@@ -17,6 +17,8 @@
 - Each `-Q` logs less: `-Q` hides info lines, `-QQ` success lines, `-QQQ`
   warnings and `-QQQQ` errors, one step earlier than before, and `-Q` no longer
   logs more than a quieter `general.loglevel`.
+- `comicbox rl` logs at `general.loglevel` and counts `-Q` as `comicbox` does,
+  so each `-Q` count logs one step more than before.
 - Extracting or reading every page of a CB7 is many times faster.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
   of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
