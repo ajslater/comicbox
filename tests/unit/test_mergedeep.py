@@ -42,19 +42,41 @@ def test_additive_extends_list_from_tuple_source() -> None:
     assert dest == {"pages": [1, 2, 3, 4]}
 
 
-def test_additive_tuple_dest_is_silently_unchanged() -> None:
+def test_additive_concatenates_tuples() -> None:
     """
-    A tuple dest is NOT extended by ADDITIVE merge.
+    A tuple dest is extended by ADDITIVE merge.
 
-    # NOTE: This looks like a real bug in the vendored mergedeep:
-    # _merge_tuple does `dest += tuple(...)` which rebinds the local name
-    # (tuples are immutable) and never writes back to dest_parent[key],
-    # so tuple-into-tuple merging is a silent no-op. Pinning current
-    # behavior here; if it gets fixed this should become (1, 2, 3).
+    _merge_tuple did `dest += tuple(...)`, which rebinds the local name
+    (tuples are immutable) and never wrote back to the parent, so the
+    source items were silently discarded.
     """
     dest = {"a": (1, 2)}
     merge(dest, {"a": (3,)}, strategy=Strategy.ADDITIVE)
-    assert dest == {"a": (1, 2)}
+    assert dest == {"a": (1, 2, 3)}
+
+
+def test_additive_extends_tuple_from_list_source() -> None:
+    """A list source may extend a tuple dest, which stays a tuple."""
+    dest = {"a": (1, 2)}
+    merge(dest, {"a": [3, 4]}, strategy=Strategy.ADDITIVE)
+    assert dest == {"a": (1, 2, 3, 4)}
+
+
+@pytest.mark.parametrize("source", [{2, 3}, frozenset({2, 3})])
+def test_additive_unions_into_a_frozenset(source: set | frozenset) -> None:
+    """A frozenset dest is unioned, not replaced by the source."""
+    dest = {"tags": frozenset({1, 2})}
+    merge(dest, {"tags": source}, strategy=Strategy.ADDITIVE)
+    assert dest == {"tags": frozenset({1, 2, 3})}
+    assert isinstance(dest["tags"], frozenset)
+
+
+def test_additive_merger_tuple_and_frozenset() -> None:
+    """The public AdditiveMerger keeps both sides of immutable collections."""
+    merged = AdditiveMerger.merge(
+        {"a": (1, 2), "b": frozenset({1})}, {"a": (3,), "b": {2}}
+    )
+    assert merged == {"a": (1, 2, 3), "b": frozenset({1, 2})}
 
 
 def test_additive_unions_sets() -> None:
