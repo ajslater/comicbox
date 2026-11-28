@@ -120,7 +120,7 @@ class ComicboxInit:
         self._computed_merged_metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         self._metadata: MappingProxyType = MappingProxyType({})  # pyright: ignore[reportUninitializedInstanceVariable]
         # Covers come from the metadata's pages and cover_image too.
-        self._cover_paths: tuple[str, ...] | None = None
+        self._cover_paths = None
         # The tagger stamp's updated_at, read once per metadata state.
         self._stamp_dttm: datetime | None = None  # pyright: ignore[reportUninitializedInstanceVariable]
 

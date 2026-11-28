@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 import threading
 from argparse import Namespace
 from datetime import datetime, tzinfo
@@ -19,6 +20,11 @@ from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 from comicbox.formats.sources import MetadataSources
 from tests.const import CIX_CBZ_SOURCE_PATH
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -174,8 +180,9 @@ class _TickingClock(datetime):
 
     calls = 0
 
+    @override
     @classmethod
-    def now(cls, tz: tzinfo | None = None) -> _TickingClock:  # pyright: ignore[reportIncompatibleMethodOverride]
+    def now(cls, tz: tzinfo | None = None) -> _TickingClock:
         cls.calls += 1
         return cls(2026, 1, 1, 0, 0, cls.calls, tzinfo=tz)
 
