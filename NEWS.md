@@ -18,6 +18,9 @@
 
 ### 🐛 Fixed
 
+- `--import` of a file whose name no format claims, such as `tags.xml`, reads
+  its real format instead of writing its text into the series and title as a
+  filename, and an unreadable one is skipped with a warning.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
