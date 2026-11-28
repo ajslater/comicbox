@@ -67,6 +67,8 @@ class ComicboxMetadata(ComicboxComputed):
         # Wildcard: pinned metadata is never recomputed for a different
         # dict-format context.
         self._metadata_dict_formats = None
+        # Covers come from the metadata's pages and cover_image.
+        self._cover_paths = None
 
     def _to_dict(
         self,

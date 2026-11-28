@@ -63,6 +63,26 @@ def test_deep_online_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.online.tuning.retry_budget == 9
 
 
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("on", CacheMode.ON), ("off", CacheMode.OFF), ("refresh", CacheMode.REFRESH)],
+)
+def test_every_cache_mode_from_env(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: CacheMode
+) -> None:
+    """The env layer reads ``on`` and ``off`` as YAML 1.1 booleans."""
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__MODE", raw)
+    assert get_config().online.cache.mode is expected
+
+
+def test_unquoted_cache_mode_in_a_config_file(tmp_path: Path) -> None:
+    """``COMICBOXDIR`` is this test's ``tmp_path`` (tests/conftest.py)."""
+    (tmp_path / "config.yaml").write_text(
+        "comicbox:\n  online:\n    cache:\n      mode: off\n"
+    )
+    assert get_config({}).online.cache.mode is CacheMode.OFF
+
+
 def test_credentials_arrive_through_the_config_view(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -214,3 +234,54 @@ def test_a_setting_that_takes_a_string_keeps_it(
         "NORMALIZED",
         "SOURCE",
     }
+
+
+_CACHE_WORDS = (
+    ("on", CacheMode.ON),
+    ("yes", CacheMode.ON),
+    ("true", CacheMode.ON),
+    ("off", CacheMode.OFF),
+    ("no", CacheMode.OFF),
+    ("false", CacheMode.OFF),
+    ("refresh", CacheMode.REFRESH),
+)
+
+
+@pytest.mark.parametrize(("word", "expected"), _CACHE_WORDS)
+@pytest.mark.parametrize("spell", [str.lower, str.upper, str.title])
+@pytest.mark.parametrize("quoted", [False, True])
+def test_cache_mode_words_agree_bare_or_quoted(
+    tmp_path: Path,
+    word: str,
+    expected: CacheMode,
+    spell: Callable[[str], str],
+    *,
+    quoted: bool,
+) -> None:
+    """A quoted "yes" means what the bare yes, a YAML boolean, means."""
+    value = f'"{spell(word)}"' if quoted else spell(word)
+    (tmp_path / "config.yaml").write_text(
+        f"comicbox:\n  online:\n    cache:\n      mode: {value}\n"
+    )
+    assert get_config({}).online.cache.mode is expected
+
+
+@pytest.mark.parametrize(("word", "expected"), _CACHE_WORDS)
+def test_cache_mode_words_from_env(
+    monkeypatch: pytest.MonkeyPatch, word: str, expected: CacheMode
+) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__MODE", word)
+    assert get_config().online.cache.mode is expected
+
+
+@pytest.mark.parametrize("raw", ["1", "0", "maybe", "0.5"])
+def test_other_cache_modes_name_the_accepted_values(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    from comicbox.exceptions import ConfigurationError
+
+    monkeypatch.setenv("COMICBOX_ONLINE__CACHE__MODE", raw)
+    with pytest.raises(
+        ConfigurationError, match=r"online\.cache\.mode: .*on, off, refresh"
+    ):
+        get_config()

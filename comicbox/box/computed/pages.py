@@ -85,12 +85,42 @@ class ComicboxComputedPages(ComicboxComputedUrls):
             max_page_index = maxsize
         return max_page_index
 
+    def _log_dropped_pages(
+        self,
+        md: Mapping[str, Any],
+        dropped: Mapping[int, Mapping[str, Any]],
+        max_page_index: int,
+    ) -> None:
+        """Say how many page entries the archive has no page for, and what went."""
+        lost = []
+        bookmark = md.get(BOOKMARK_KEY)
+        if (isinstance(bookmark, int) and bookmark > max_page_index) or any(
+            page.get(PAGE_BOOKMARK_KEY) for page in dropped.values()
+        ):
+            lost.append("the bookmark")
+        page_types = sorted(
+            {
+                str(getattr(page_type, "value", page_type))
+                for page in dropped.values()
+                if (page_type := page.get(PAGE_TYPE_KEY))
+            }
+        )
+        if page_types:
+            lost.append(f"page types {', '.join(page_types)}")
+        detail = f", and with them {' and '.join(lost)}" if lost else ""
+        logger.warning(
+            f"{self._path}: Dropped {len(dropped)} page entries past the last page"
+            f" ({max_page_index + 1} pages){detail}."
+        )
+
     def _get_computed_merged_pages_metadata(
         self, md: dict[str, Any], pages: dict[int, dict[str, Any]]
     ) -> MutableMapping[int, dict[str, Any]]:
         old_pages: dict[int, dict[str, Any]] = md.get(PAGES_KEY, {})
         max_page_index = self._get_max_page_index()
         trimmed_old_pages = {k: v for k, v in old_pages.items() if k <= max_page_index}
+        if dropped := {k: v for k, v in old_pages.items() if k > max_page_index}:
+            self._log_dropped_pages(md, dropped, max_page_index)
         computed_pages: MutableMapping[int, dict[str, Any]] = AdditiveMerger.merge(
             trimmed_old_pages, pages
         )
@@ -106,12 +136,13 @@ class ComicboxComputedPages(ComicboxComputedUrls):
         pages = {}
         bookmark = sub_md.get(BOOKMARK_KEY)
         try:
-            index = 0
-            for info in self.infolist():
-                filename = self._get_info_fn(info)
-                if self.IMAGE_EXT_RE.search(filename) is None:
-                    continue
-                size = self._get_info_size(info)
+            # The pages page_count counts, so resource forks and dotfiles get
+            # no index. PDF pages have no stored image size and get none.
+            page_filenames = () if self._archive_is_pdf else self.get_page_filenames()
+            infos = {self._get_info_fn(info): info for info in self.infolist()}
+            for index, filename in enumerate(page_filenames):
+                info = infos.get(filename)
+                size = None if info is None else self._get_info_size(info)
                 # height & width could go here.
                 if size is not None:
                     computed_page = {}
@@ -119,12 +150,14 @@ class ComicboxComputedPages(ComicboxComputedUrls):
                         computed_page[PAGE_BOOKMARK_KEY] = True
                     computed_page[PAGE_SIZE_KEY] = size
                     pages[index] = computed_page
-                index += 1
+            if not pages:
+                return None
             # Inside the guard with the scan that feeds it: merging consults
             # the archive too, and warn-and-skip is what every sibling action
-            # does with a bad archive.
-            if pages:
-                pages = self._get_computed_merged_pages_metadata(sub_md, pages)
+            # does with a bad archive. The result replaces the old pages
+            # whole (an UpdateMerger action), which is what drops the entries
+            # past the last page; so nothing replaces them on failure.
+            return {PAGES_KEY: self._get_computed_merged_pages_metadata(sub_md, pages)}
         except Exception as exc:
             logger.warning(f"{self._path}: Compute pages metadata: {exc}")
-        return {PAGES_KEY: pages}
+        return None

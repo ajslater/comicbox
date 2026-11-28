@@ -91,10 +91,7 @@ comicbox:
 
     auth:
       metron:
-        # Deprecated, to be removed: use an API token in `key` instead.
-        user: null
-        pass: null
-        # API token from your metron.cloud account page. Wins over user/pass.
+        # API token from your metron.cloud account page.
         key: null
         url: null
       comicvine:
@@ -107,8 +104,8 @@ comicbox:
         url: null
 
     cache:
-      # Tri-state cache mode: on, off, refresh.
-      # Quoted to avoid YAML 1.1 interpreting bare `on`/`off` as booleans.
+      # Tri-state cache mode: on, off, refresh. A bare on or off, which
+      # YAML 1.1 reads as a boolean, means the same.
       mode: "on"
       dir: null
       ttl: 7d
@@ -130,10 +127,11 @@ comicbox:
       # versedb).
       # Each entry may override auto_threshold, effort, min_confidence,
       # disambiguation_margin, or solo_threshold. See settings.py for
-      # shape. rate_limit.* keys (per_minute, per_day, per_second,
-      # per_hour) are accepted but ignored with a warning: mokkari>=4
-      # reads Metron's actual per-user limits from response headers, and
-      # simyan manages ComicVine's internally.
+      # shape. Metron's rate_limit.per_minute caps its burst window: it
+      # can lower the limit Metron reports, never raise it, so processes
+      # sharing one token can each take a share. Metron's per_day (it
+      # reports each user's daily quota) and ComicVine's per_second and
+      # per_hour (simyan sets them) are ignored with a warning.
       per_source: {}
 
   readinglists:

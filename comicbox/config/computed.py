@@ -10,10 +10,12 @@ from loguru import logger
 
 from comicbox.config.formats import _raw_or_empty, transform_keys_to_formats
 from comicbox.config.paths import clean_paths
+from comicbox.exceptions import ConfigurationError
 from comicbox.print import PrintPhases
 from comicbox.version import DEFAULT_TAGGER
 
-_QUIET_LOGLEVEL = MappingProxyType({1: "INFO", 2: "SUCCESS", 3: "WARNING", 4: "ERROR"})
+# Each -Q is one step quieter than the shipped INFO; more than these is CRITICAL.
+_QUIET_LOGLEVEL = MappingProxyType({1: "SUCCESS", 2: "WARNING", 3: "ERROR"})
 
 
 def _optional(view: Subview) -> Any:
@@ -59,15 +61,60 @@ def _deduplicate_delete_keys(config: Subview) -> None:
     config["general"]["delete_keys"].set(delete_keys)
 
 
+def quiet_loglevel(quiet: int) -> str:
+    """Name the loglevel a count of ``-Q`` asks for."""
+    return _QUIET_LOGLEVEL.get(quiet, "CRITICAL")
+
+
+def parse_loglevel(raw: Any) -> str | int:
+    """
+    Read a loglevel: a loguru level name in any case, or a whole number 0 or up.
+
+    loguru's names are case-sensitive, so ``loglevel: debug`` passed
+    validation and then failed every run as it set up logging, as a
+    negative number still did. A boolean (YAML's bare ``yes``) and a
+    fraction are no level either.
+    """
+    if isinstance(raw, int) and not isinstance(raw, bool):
+        if raw >= 0:
+            return raw
+    elif isinstance(raw, str):
+        name = raw.strip().upper()
+        with contextlib.suppress(ValueError):
+            logger.level(name)
+            return name
+    reason = (
+        f"general.loglevel: unknown level {raw!r}; use TRACE, DEBUG, INFO, "
+        "SUCCESS, WARNING, ERROR, CRITICAL or a whole number 0 or more"
+    )
+    raise ConfigurationError(reason)
+
+
+def _level_no(raw: Any) -> int | None:
+    """Return a loglevel's number, or None if it is no level."""
+    try:
+        level = parse_loglevel(raw)
+    except ConfigurationError:
+        return None
+    return level if isinstance(level, int) else logger.level(level).no
+
+
 def _fold_quiet(config: Subview) -> None:
     """
     Fold ``-Q`` counts into a loglevel.
 
     ``-Q`` has no config key of its own; it's shorthand for
-    ``general.loglevel``, and the count picks how quiet.
+    ``general.loglevel``, and the count picks how quiet. It never makes
+    a quieter configured level louder. A level loguru doesn't know is
+    left for validation to report.
     """
-    if quiet := _optional(config["general"]["quiet"]):
-        config["general"]["loglevel"].set(_QUIET_LOGLEVEL.get(quiet, "CRITICAL"))
+    if not (quiet := _optional(config["general"]["quiet"])):
+        return
+    view = config["general"]["loglevel"]
+    configured = _level_no(_optional(view))
+    level = quiet_loglevel(quiet)
+    if configured is not None and logger.level(level).no > configured:
+        view.set(level)
 
 
 def _parse_print(config: Subview) -> None:

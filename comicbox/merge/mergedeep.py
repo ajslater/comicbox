@@ -58,32 +58,45 @@ def _handle_merge_replace(
 ############
 
 
-def _merge_counter(dest, source) -> None:
+# Each merge func returns the merged collection, which is assigned back to
+# the parent: tuples and frozensets are immutable, so merging them in place
+# only rebound a local name and the source items were lost.
+
+
+def _merge_counter(dest: Counter, source: Counter) -> Counter:
     # Update dest if both dest and source are `Counter` type.
     dest.update(deepcopy(source))
+    return dest
 
 
 def _merge_mapping(
     dest: MutableMapping[str, Any],
     source: Mapping[str, Any],
-) -> None:
+) -> MutableMapping[str, Any]:
     # Recurse on mapping
-    _deepmerge(dest, source, Strategy.ADDITIVE)
+    return _deepmerge(dest, source, Strategy.ADDITIVE)
 
 
-def _merge_list(dest: list[dict[str, str]], source: list[dict[str, str]]) -> None:
+def _merge_list(dest: list, source: list | tuple) -> list:
     # Extend dest if both dest and source are `list` type.
     dest.extend(deepcopy(source))
+    return dest
 
 
-def _merge_tuple(dest, source) -> None:
-    # Update dest if both dest and source are `tuple` type.
-    dest += tuple(deepcopy(source))
+def _merge_tuple(dest: tuple, source: list | tuple) -> tuple:
+    # Concatenate if dest is a `tuple`.
+    return dest + tuple(deepcopy(source))
 
 
-def _merge_set(dest, source) -> None:
+def _merge_set(dest: set, source: set | frozenset) -> set:
     # Update dest if both dest and source are `set` type.
     dest.update(deepcopy(source))
+    return dest
+
+
+def _merge_frozenset(dest: frozenset, source: set | frozenset) -> frozenset:
+    # Union if dest is a `frozenset`.
+    return dest | frozenset(deepcopy(source))
 
 
 _MERGE_MAP: MappingProxyType[tuple, Callable] = MappingProxyType(
@@ -93,6 +106,7 @@ _MERGE_MAP: MappingProxyType[tuple, Callable] = MappingProxyType(
         (list, list | tuple): _merge_list,
         (tuple, list | tuple): _merge_tuple,
         (set, set | frozenset): _merge_set,
+        (frozenset, set | frozenset): _merge_frozenset,
     }
 )
 
@@ -109,7 +123,7 @@ def _handle_merge_additive(
     for types, merge_func in _MERGE_MAP.items():
         dest_type, source_type = types
         if isinstance(dest, dest_type) and isinstance(source, source_type):
-            merge_func(dest, source)
+            dest_parent[key] = merge_func(dest, source)
             break
     else:
         _HANDLE_MERGE[Strategy.REPLACE](dest_parent, source_parent, key)

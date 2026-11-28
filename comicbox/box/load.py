@@ -19,6 +19,7 @@ from comicbox.box.sources import ComicboxSources
 from comicbox.exceptions import MetadataError
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
+from comicbox.formats.base.schemas.error_store import unlogged_drops
 from comicbox.formats.sources import MetadataSources
 
 # The sources that are files in, or metadata of, the archive itself.
@@ -197,24 +198,27 @@ class ComicboxLoad(ComicboxSources):
     def _load_unknown_metadata(
         self, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
-        """Parse import data string from file trying many different file schemas."""
-        success_md = None
-        fmt = None
+        """
+        Parse import data string from file trying many different file schemas.
+
+        The filename format reads any string, so it is never guessed: it
+        is used only when the caller names it.
+        """
         for fmt in source.value.formats:
-            if not fmt.value.enabled:
+            if not fmt.value.enabled or fmt == MetadataFormats.FILENAME:
                 continue
             try:
-                if (success_md := self._call_load(source, fmt, data)) and glom(
-                    success_md, fmt.value.schema_class.ROOT_KEYPATH
-                ):
+                # Quietly: a format that does not fit drops everything.
+                with unlogged_drops():
+                    md = self._call_load(source, fmt, data)
+                if md and glom(md, fmt.value.schema_class.ROOT_KEYPATH):
                     logger.debug(f"Parsed {source.value.label} with {fmt.value.label}")
-                    break
+                    # Again, aloud: what the chosen format drops is news.
+                    return self._call_load(source, fmt, data), fmt
             except Exception as exc:
                 self._except_on_load(source, fmt, exc, level="DEBUG")
-        if not success_md:
-            reason = f"Unable to load {source.value.label}."
-            raise MetadataError(reason)
-        return success_md, fmt
+        reason = f"Unable to load {source.value.label}."
+        raise MetadataError(reason)
 
     def _load_metadata(
         self, source: MetadataSources, source_data: SourceData | None
@@ -235,12 +239,9 @@ class ComicboxLoad(ComicboxSources):
         return None, None
 
     def _set_loaded_metadata(self, source: MetadataSources) -> None:
-        source_metadata = self.get_source_metadata(source)
-        if not source_metadata:
-            return
         # Also populate the parsed_list
         loaded_list = []
-        for source_data in source_metadata:
+        for source_data in self.get_source_metadata(source) or ():
             md, fmt = self._load_metadata(source, source_data)
             if md:
                 path = (
@@ -251,10 +252,9 @@ class ComicboxLoad(ComicboxSources):
                 loaded_md = LoadedMetadata(md, path, fmt, source_data.from_archive)
                 loaded_list.append(loaded_md)
 
-        if loaded_list:
-            if source not in self._loaded:
-                self._loaded[source] = ()
-            self._loaded[source] += tuple(loaded_list)
+        # Stored even when nothing loaded, or every later call parses a
+        # broken tag file and warns about it again. _invalidate_source pops it.
+        self._loaded[source] = (*self._loaded.get(source, ()), *loaded_list)
 
     def get_carried_formats(self) -> CarriedFormats:
         """
@@ -279,7 +279,7 @@ class ComicboxLoad(ComicboxSources):
         try:
             if source not in self._loaded:
                 self._set_loaded_metadata(source)
-            return self._loaded.get(source)
+            return self._loaded.get(source) or None
         except Exception as exc:
             logger.warning(
                 f"{self._path} Parsing or Loading {source.value.label}: {exc}"

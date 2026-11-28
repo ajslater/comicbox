@@ -139,6 +139,10 @@ class MetadataError(ComicboxError):
     """Metadata could not be loaded or routed through the source pipeline."""
 
 
+class ValidationFailedError(MetadataError):
+    """A comic's metadata failed --validate against its format's schema."""
+
+
 class ExportError(ComicboxError):
     """A metadata file export failed its preconditions."""
 

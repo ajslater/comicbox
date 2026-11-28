@@ -1,5 +1,6 @@
 """Test getting pages."""
 
+import shutil
 from argparse import Namespace
 from datetime import date, datetime
 from decimal import Decimal
@@ -10,6 +11,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from dateutil.tz import tzutc
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
@@ -456,3 +458,67 @@ def test_compute_pages_without_a_first_page(tmp_path: Path) -> None:
     # The rest of the computed pass ran instead of being aborted by the
     # missing page.
     assert md["page_count"] == 3
+
+
+def test_compute_pages_skips_macos_resource_forks(tmp_path: Path) -> None:
+    """Pages are the comic's pages: __MACOSX resource forks get no entries."""
+    archive_path = tmp_path / "macos_resource_fork.cbz"
+    shutil.copy(TEST_FILES_DIR / "macos_resource_fork.cbz", archive_path)
+    with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+        car._dict_formats = frozenset({MetadataFormats.COMIC_INFO})
+        md = dict(car.get_internal_metadata()[ComicboxSchemaMixin.ROOT_TAG])
+        page_count = car.get_page_count()
+
+    pages = md["pages"]
+    assert page_count == 2
+    assert sorted(pages) == list(range(page_count))
+    assert all(page["size"] > 0 for page in pages.values())
+    assert pages[0]["page_type"] == ComicInfoPageTypeEnum.FRONT_COVER
+
+
+def test_compute_pages_leaves_pdf_pages_alone(tmp_path: Path) -> None:
+    """PDF pages carry no stored image size, so they get no computed entries."""
+    archive_path = tmp_path / "test_pdf.pdf"
+    shutil.copy(TEST_FILES_DIR / "test_pdf.pdf", archive_path)
+    with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+        car._dict_formats = frozenset({MetadataFormats.COMIC_INFO})
+        md = dict(car.get_internal_metadata()[ComicboxSchemaMixin.ROOT_TAG])
+    assert not md.get("pages")
+
+
+def test_compute_pages_drops_entries_past_the_last_page(tmp_path: Path) -> None:
+    """Page entries for pages the archive does not have are not written."""
+    archive_path = _one_image_cbz(tmp_path, 5)
+    with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+        car.add_metadata(
+            {"comicbox": {"pages": {i: {"page_type": "Story"} for i in range(8)}}}
+        )
+        assert car.get_page_count() == 5
+        cix = car.to_string(MetadataFormats.COMIC_INFO)
+        car._dict_formats = frozenset({MetadataFormats.COMIC_INFO})
+        md = dict(car.get_internal_metadata()[ComicboxSchemaMixin.ROOT_TAG])
+    assert cix.count("<Page ") == 5
+    assert sorted(md["pages"]) == list(range(5))
+    # The entries for pages that exist keep what the metadata said.
+    assert md["pages"][4]["page_type"] == ComicInfoPageTypeEnum.STORY
+    assert md["pages"][4]["size"] > 0
+
+
+def test_compute_pages_says_what_it_drops(tmp_path: Path) -> None:
+    """Dropping entries past the last page says how many, and what went."""
+    archive_path = _one_image_cbz(tmp_path, 5)
+    pages: dict[int, dict[str, str]] = {i: {"page_type": "Story"} for i in range(8)}
+    pages[7] = {"page_type": "BackCover"}
+    messages: list[str] = []
+    handler_id = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+            car.add_metadata({"comicbox": {"pages": pages, "bookmark": 6}})
+            car.to_string(MetadataFormats.COMIC_INFO)
+    finally:
+        logger.remove(handler_id)
+    dropped = [message for message in messages if "past the last page" in message]
+    assert len(dropped) == 1, messages
+    assert "3 page entries" in dropped[0]
+    assert "bookmark" in dropped[0]
+    assert "BackCover" in dropped[0]

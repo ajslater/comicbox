@@ -168,7 +168,7 @@ def _build_manga(series: Mapping[str, Any]) -> tuple[str | None, str | None]:
 
     Only a ``manga`` medium is marked. Anything else is left unset rather
     than written as No: VerseDB's other media (manhwa, bande dessinée) are
-    no evidence either way, and MangaField would coerce an unknown to No.
+    no evidence either way, so writing No would assert what isn't known.
     """
     if series.get("medium") != "manga":
         return None, None

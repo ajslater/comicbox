@@ -3,18 +3,29 @@
 from __future__ import annotations
 
 import shutil
+import sys
 import threading
+from argparse import Namespace
+from datetime import datetime, tzinfo
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
 
 import pytest
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
+from comicbox.enums.comicinfo import ComicInfoPageTypeEnum
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.schemas.cache import get_schema
 from comicbox.formats.comicbox.schema.yaml import ComicboxYamlSchema
 from comicbox.formats.sources import MetadataSources
 from tests.const import CIX_CBZ_SOURCE_PATH
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -144,3 +155,131 @@ def test_every_added_api_metadata_survives_a_write(tmp_cbz: Path) -> None:
         after = cb.to_dict()["comicbox"]
     assert after["publisher"]["name"] == "AddedPub"
     assert after["series"]["sort_name"] == "Zed, The"
+
+
+def test_cover_paths_follow_added_metadata(tmp_cbz: Path) -> None:
+    """
+    Covers come from the metadata, so adding metadata finds them again.
+
+    _cover_paths was reset only with the archive, not with the other
+    metadata-derived caches, so get_cover_paths() kept the old answer.
+    """
+    added = {"comicbox": {"pages": {2: {"page_type": "FrontCover"}}}}
+    with Comicbox(tmp_cbz) as cb:
+        before = cb.get_cover_paths()
+        cb.add_metadata(added, MetadataFormats.COMICBOX_JSON)
+        after = cb.get_cover_paths()
+    with Comicbox(tmp_cbz, metadata=added, fmt=MetadataFormats.COMICBOX_JSON) as cb:
+        fresh = cb.get_cover_paths()
+    assert len(before) == 1
+    assert len(fresh) == 2
+    assert after == fresh
+
+
+class _TickingClock(datetime):
+    """A datetime whose now() is a second later on every call."""
+
+    calls = 0
+
+    @override
+    @classmethod
+    def now(cls, tz: tzinfo | None = None) -> _TickingClock:
+        cls.calls += 1
+        return cls(2026, 1, 1, 0, 0, cls.calls, tzinfo=tz)
+
+
+def test_one_instance_stamps_every_format_alike(
+    tmp_cbz: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Every format one Comicbox renders carries the same updated_at.
+
+    Each format switch reruns the computed pass, and the stamp took a fresh
+    clock reading every time, so tag files written together disagreed
+    whenever their writes straddled a second.
+    """
+    monkeypatch.setattr(_TickingClock, "calls", 0)
+    monkeypatch.setattr("comicbox.box.computed.stamp.datetime", _TickingClock)
+    config = get_config(Namespace(comicbox=Namespace(write=Namespace(stamp=True))))
+    stamps = []
+    with Comicbox(tmp_cbz, config=config) as cb:
+        for fmt in (
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_BOOK_INFO,
+        ):
+            cb.to_dict(fmt)
+            stamps.append(cb._metadata["comicbox"]["updated_at"])
+        cb.add_metadata({"comicbox": {"title": "Restamped"}})
+        cb.to_dict(MetadataFormats.COMIC_INFO)
+        restamped = cb._metadata["comicbox"]["updated_at"]
+    assert len(set(stamps)) == 1
+    # New metadata is a new stamp.
+    assert restamped > stamps[0]
+
+
+def _truncated_tag_cbz(tmp_path: Path) -> Path:
+    """Build the test CBZ's pages with one ComicInfo.xml, cut off halfway."""
+    target = tmp_path / "broken.cbz"
+    with ZipFile(CIX_CBZ_SOURCE_PATH) as src, ZipFile(target, "w") as dest:
+        for info in src.infolist():
+            data = src.read(info)
+            if info.filename == "comicinfo.xml":
+                dest.writestr("ComicInfo.xml", data[: len(data) // 2])
+            elif not info.filename.endswith("comicinfo.xml"):
+                dest.writestr(info, data)
+    return target
+
+
+def test_a_broken_tag_file_is_parsed_and_warned_about_once(tmp_path: Path) -> None:
+    """
+    A source that loaded nothing is remembered, not parsed again.
+
+    The load, source and normalize caches stored a key only when they
+    produced something, so every getter call parsed the broken file again
+    and logged the warning again.
+    """
+    path = _truncated_tag_cbz(tmp_path)
+    messages: list[str] = []
+    handler_id = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        with Comicbox(path) as cb:
+            carried = cb.get_carried_formats()
+            cb.to_dict()
+            cb.to_dict(MetadataFormats.COMIC_INFO)
+            assert cb.get_loaded_metadata(MetadataSources.ARCHIVE_FILE) is None
+            assert cb.get_normalized_metadata(MetadataSources.ARCHIVE_FILE) is None
+    finally:
+        logger.remove(handler_id)
+    unable = [message for message in messages if "Unable to load" in message]
+    assert len(unable) == 1, unable
+    assert carried.unreadable == ("ComicInfo.xml",)
+
+
+def test_a_source_added_after_an_empty_load_is_read(tmp_cbz: Path) -> None:
+    """Remembering an empty source must not hide metadata added to it later."""
+    with Comicbox(tmp_cbz) as cb:
+        assert cb.get_source_metadata(MetadataSources.IMPORT_FILE) is None
+        assert cb.get_loaded_metadata(MetadataSources.IMPORT_FILE) is None
+        cb.add_source(
+            MetadataSources.IMPORT_FILE,
+            '{"comicbox": {"title": "Imported"}}',
+            MetadataFormats.COMICBOX_JSON,
+        )
+        md = cb.to_dict()
+    assert md["comicbox"]["title"] == "Imported"
+
+
+def test_cover_paths_follow_set_internal_metadata(tmp_cbz: Path) -> None:
+    """Metadata set directly finds its covers too."""
+    with Comicbox(tmp_cbz) as cb:
+        before = cb.get_cover_paths()
+        sub = dict(cb.get_internal_metadata()["comicbox"])
+        pages = {index: dict(page) for index, page in sub["pages"].items()}
+        pages[2]["page_type"] = ComicInfoPageTypeEnum.FRONT_COVER
+        sub["pages"] = pages
+        cb.set_internal_metadata({"comicbox": sub})
+        after = cb.get_cover_paths()
+    assert len(before) == 1
+    assert len(after) == 2
+    assert after[1].endswith("_03.jpg")
