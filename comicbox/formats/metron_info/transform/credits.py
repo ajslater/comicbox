@@ -34,7 +34,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         MetronRoleEnum.ASSISTANT_EDITOR: (),
         MetronRoleEnum.ASSOCIATE_EDITOR: (),
         MetronRoleEnum.BREAKDOWNS: (),
-        MetronRoleEnum.CHIEF_CREATIVE_OFFICER: (CoMetRoleTagEnum.CREATOR,),
+        MetronRoleEnum.CHIEF_CREATIVE_OFFICER: (),
         MetronRoleEnum.COLLECTION_EDITOR: (),
         MetronRoleEnum.COLORIST: (
             GenericRoleEnum.COLOURIST,
@@ -83,7 +83,7 @@ ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
         ),
         MetronRoleEnum.LOGO_DESIGN: (),
         MetronRoleEnum.MANAGING_EDITOR: (),
-        MetronRoleEnum.OTHER: (ComicBookInfoRoleEnum.OTHER,),
+        MetronRoleEnum.OTHER: (ComicBookInfoRoleEnum.OTHER, CoMetRoleTagEnum.CREATOR),
         MetronRoleEnum.PENCILLER: (
             *GenericRoleAliases.PENCILLER.value,
             *GenericRoleAliases.PAINTER.value,
