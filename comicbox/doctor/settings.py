@@ -5,6 +5,9 @@ A run logs most of these findings once, as a warning, and carries on:
 a broken user config is skipped, a typo'd key is silently dropped, a
 legacy env var is ignored. The doctor turns each into a row, by calling
 the code the warning comes from rather than by capturing log output.
+The one exception is the values a run drops or defaults while it builds
+its settings (an invalid format key, an unparsable ttl): those warnings
+come from deep in the build, so ``check_values`` captures them.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from confuse import ConfigError, ConfigReadError, Configuration, yaml_util
 from confuse.core import DEFAULT_FILENAME
 from confuse.templates import MappingTemplate
 from confuse.templates import Optional as OptionalTemplate
+from loguru import logger
 
 from comicbox.cli.parser import FOLDED_DESTS
 from comicbox.config.online.template import _PER_SOURCE_TUNING_TEMPLATE
@@ -32,6 +36,8 @@ from comicbox.version import PACKAGE_NAME
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from loguru import Record
 
     from comicbox.doctor.context import Check, DoctorContext
 
@@ -51,6 +57,17 @@ _SOURCE_KEYED: Mapping[str, MappingTemplate[Any, Any]] = MappingProxyType(
 )
 
 _row = partial(CheckResult, SECTION)
+
+# Warnings the settings build logs that other checks here already report:
+# a skipped user config (check_files), a legacy env var (check_env_vars)
+# and an unknown per_source name (check_unknown_keys).
+_REPORTED_ELSEWHERE: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("comicbox.config.read", "read_config_sources"),
+        ("comicbox.config.read", "_warn_legacy_env_vars"),
+        ("comicbox.config.online.build", "_build_per_source_tuning"),
+    }
+)
 
 
 def _new_configuration() -> Configuration:
@@ -120,17 +137,42 @@ def check_files(ctx: DoctorContext) -> Iterator[CheckResult]:
     yield _check_user_config()
 
 
+def _value_warning(record: Record) -> bool:
+    """Whether a warning logged while the settings build is a value's own."""
+    return (record["name"], record["function"]) not in _REPORTED_ELSEWHERE
+
+
+def _get_config_warnings(ctx: DoctorContext) -> tuple[str, ...]:
+    """
+    Build the settings into ``ctx`` as a run would; return what it warned.
+
+    Each warning is a value the run drops or defaults and carries on
+    past. The sink takes them at WARNING whatever level the doctor
+    holds its own log at.
+    """
+    from comicbox.config import get_config
+
+    messages: list[str] = []
+    sink = logger.add(
+        messages.append, level="WARNING", format="{message}", filter=_value_warning
+    )
+    try:
+        ctx.settings = get_config(ctx.args)
+    finally:
+        logger.remove(sink)
+    return tuple(message.strip() for message in messages)
+
+
 def check_values(ctx: DoctorContext) -> Iterator[CheckResult]:
     """
     Validate the layered config exactly as a run would.
 
-    A run turns these errors into a one-line exit; the doctor reports them
-    and keeps going. On success the later checks get the settings.
+    A run turns these errors into a one-line exit, and these warnings
+    into a log line; the doctor reports them and keeps going. Once the
+    settings build, the later checks get them.
     """
-    from comicbox.config import get_config
-
     try:
-        ctx.settings = get_config(ctx.args)
+        warnings = _get_config_warnings(ctx)
     except ConfigReadError:
         # Only the --config file raises this here (a broken user config
         # is skipped), and its own row already says why.
@@ -143,7 +185,15 @@ def check_values(ctx: DoctorContext) -> Iterator[CheckResult]:
             fix="fix the setting named above",
         )
         return
-    yield _row("values", Status.OK, detail="validated")
+    for warning in warnings:
+        yield _row(
+            "values",
+            Status.WARN,
+            detail=warning,
+            fix="a run ignores or defaults it: fix the setting named",
+        )
+    if not warnings:
+        yield _row("values", Status.OK, detail="validated")
 
 
 def _merge_path(tree: dict[str, Any], dotted: str) -> None:

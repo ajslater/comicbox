@@ -222,3 +222,45 @@ def test_reading_list_settings_are_known(tmp_path: Path) -> None:
     )
     rows = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
     assert [row.detail for row in rows] == ["readinglists.catalog_tll is ignored"]
+
+
+def test_values_a_run_warns_about_are_warn_rows(tmp_path: Path) -> None:
+    """
+    A run warns about these, drops or defaults them, and carries on.
+
+    The doctor used to say only "values validated" for them.
+    """
+    _user_config(
+        tmp_path,
+        "comicbox:\n"
+        "  read:\n    merge_order: [metrn]\n"
+        "  write:\n    formats: [cxi]\n"
+        "  print:\n    phases: q\n"
+        "  online:\n    cache:\n      ttl: 7 days\n",
+    )
+    ctx = _ctx()
+    values = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert all(row.status is Status.WARN for row in values), values
+    details = sorted(row.detail for row in values)
+    assert len(details) == 4, details
+    assert any("cxi" in detail for detail in details)
+    assert any("metrn" in detail for detail in details)
+    assert any("cache.ttl" in detail for detail in details)
+    assert any("'q'" in detail for detail in details)
+    assert all(row.fix for row in values)
+    # The run goes on with what it could read, and so does the doctor.
+    assert ctx.settings is not None
+
+
+def test_value_warnings_reported_elsewhere_are_not_repeated(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken user config, a legacy env var and an unknown source have rows."""
+    monkeypatch.setenv("COMICBOX_ONLINE_MATCH", "auto")
+    _user_config(
+        tmp_path,
+        "comicbox:\n  online:\n    tuning:\n      per_source:\n"
+        "        comicvin: {effort: minimal}\n",
+    )
+    (values,) = [row for row in _config_rows(_ctx()) if row.name == "values"]
+    assert (values.status, values.detail) == (Status.OK, "validated")
