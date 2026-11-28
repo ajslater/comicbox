@@ -78,6 +78,7 @@
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
 - Tag files written together carry the same `updated_at` and notes stamp.
+- A tag file that does not parse is read and warned about once per comic.
 - Library: `get_cover_paths()` and `extract_covers()` follow metadata added with
   `add_metadata()` or `add_source()`.
 - `compute.pages` gives macOS resource forks no ComicInfo page entries and drops

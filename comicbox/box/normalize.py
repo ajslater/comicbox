@@ -37,11 +37,8 @@ class ComicboxNormalize(ComicboxLoad):
             logger.exception(reason)
 
     def _set_normalized_metadata(self, source: MetadataSources) -> None:
-        loaded_metadata_list = self.get_loaded_metadata(source)
-        if not loaded_metadata_list:
-            return
         normalized_list = []
-        for loaded_data in loaded_metadata_list:
+        for loaded_data in self.get_loaded_metadata(source) or ():
             normalized_md = self._normalize_metadata(source, loaded_data)
             if normalized_md:
                 normalized_md = MappingProxyType(normalized_md)
@@ -53,10 +50,12 @@ class ComicboxNormalize(ComicboxLoad):
                 )
                 normalized_list.append(loaded_md)
 
-        if normalized_list:
-            if source not in self._normalized:
-                self._normalized[source] = ()
-            self._normalized[source] = (*self._normalized[source], *normalized_list)
+        # Stored even when empty, as the loaded cache is: a source that
+        # normalizes to nothing is not normalized again on every call.
+        self._normalized[source] = (
+            *self._normalized.get(source, ()),
+            *normalized_list,
+        )
 
     def get_normalized_metadata(
         self, source: MetadataSources
@@ -65,6 +64,6 @@ class ComicboxNormalize(ComicboxLoad):
         try:
             if source not in self._normalized:
                 self._set_normalized_metadata(source)
-            return self._normalized.get(source)
+            return self._normalized.get(source) or None
         except Exception:
             logger.exception(f"{self._path} Normalizing {source.value.label}")

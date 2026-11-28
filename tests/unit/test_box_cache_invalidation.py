@@ -7,8 +7,10 @@ import threading
 from argparse import Namespace
 from datetime import datetime, tzinfo
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
 
 import pytest
+from loguru import logger
 
 from comicbox.box import Comicbox
 from comicbox.config import get_config
@@ -206,3 +208,55 @@ def test_one_instance_stamps_every_format_alike(
     assert len(set(stamps)) == 1
     # New metadata is a new stamp.
     assert restamped > stamps[0]
+
+
+def _truncated_tag_cbz(tmp_path: Path) -> Path:
+    """Build the test CBZ's pages with one ComicInfo.xml, cut off halfway."""
+    target = tmp_path / "broken.cbz"
+    with ZipFile(CIX_CBZ_SOURCE_PATH) as src, ZipFile(target, "w") as dest:
+        for info in src.infolist():
+            data = src.read(info)
+            if info.filename == "comicinfo.xml":
+                dest.writestr("ComicInfo.xml", data[: len(data) // 2])
+            elif not info.filename.endswith("comicinfo.xml"):
+                dest.writestr(info, data)
+    return target
+
+
+def test_a_broken_tag_file_is_parsed_and_warned_about_once(tmp_path: Path) -> None:
+    """
+    A source that loaded nothing is remembered, not parsed again.
+
+    The load, source and normalize caches stored a key only when they
+    produced something, so every getter call parsed the broken file again
+    and logged the warning again.
+    """
+    path = _truncated_tag_cbz(tmp_path)
+    messages: list[str] = []
+    handler_id = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        with Comicbox(path) as cb:
+            carried = cb.get_carried_formats()
+            cb.to_dict()
+            cb.to_dict(MetadataFormats.COMIC_INFO)
+            assert cb.get_loaded_metadata(MetadataSources.ARCHIVE_FILE) is None
+            assert cb.get_normalized_metadata(MetadataSources.ARCHIVE_FILE) is None
+    finally:
+        logger.remove(handler_id)
+    unable = [message for message in messages if "Unable to load" in message]
+    assert len(unable) == 1, unable
+    assert carried.unreadable == ("ComicInfo.xml",)
+
+
+def test_a_source_added_after_an_empty_load_is_read(tmp_cbz: Path) -> None:
+    """Remembering an empty source must not hide metadata added to it later."""
+    with Comicbox(tmp_cbz) as cb:
+        assert cb.get_source_metadata(MetadataSources.IMPORT_FILE) is None
+        assert cb.get_loaded_metadata(MetadataSources.IMPORT_FILE) is None
+        cb.add_source(
+            MetadataSources.IMPORT_FILE,
+            '{"comicbox": {"title": "Imported"}}',
+            MetadataFormats.COMICBOX_JSON,
+        )
+        md = cb.to_dict()
+    assert md["comicbox"]["title"] == "Imported"
