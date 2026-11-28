@@ -134,7 +134,20 @@ class _Inflater:
         return ReadingListFetchError(reason)
 
     def inflate(self, data: bytes, limit: int) -> bytes:
-        """Inflate up to ``limit`` bytes; input that would pass it waits."""
+        """
+        Inflate up to ``limit`` bytes; input that would pass it waits.
+
+        Input after a stream's end is another member of a gzip body, which
+        RFC 1952 makes a series of members, each inflated in turn. A zlib
+        or raw deflate body is one stream, so anything after it is refused.
+        """
+        if self._zlib.eof:
+            if self._bits != _WINDOW_BITS["gzip"]:
+                reason = (
+                    f"{self._url}: its {self._encoding} body has data after its end."
+                )
+                raise ReadingListFetchError(reason)
+            self._zlib = zlib.decompressobj(self._bits)
         try:
             out = self._zlib.decompress(data, limit)
         except zlib.error as exc:
@@ -149,8 +162,8 @@ class _Inflater:
 
     @property
     def pending(self) -> bytes:
-        """Input not yet inflated because the output reached its limit."""
-        return self._zlib.unconsumed_tail
+        """Input not yet inflated: past the output limit, or past a stream's end."""
+        return self._zlib.unconsumed_tail or self._zlib.unused_data
 
     @property
     def eof(self) -> bool:

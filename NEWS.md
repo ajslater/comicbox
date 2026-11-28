@@ -176,6 +176,8 @@
   Metron's pacing, instead of letting them run to completion.
 - Urls made from ids found in tags or genres are written in the same order on
   every run, and an id in tags wins over one for the same database in genres.
+- A reading list downloaded as several gzip members reads them all instead of
+  only the first, and a compressed download with junk after its end is refused.
 
 ### 🔒 Security
 

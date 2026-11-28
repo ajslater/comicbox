@@ -321,6 +321,45 @@ def test_a_compressed_body_cut_short_is_refused(encoding: str, wbits: int) -> No
         session.fetch_url(f"{_BASE}/list.yaml")
 
 
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+@pytest.mark.parametrize(
+    ("encoding", "wbits", "refusal"),
+    [
+        ("gzip", zlib.MAX_WBITS | 16, "gzip body is corrupt"),
+        ("deflate", zlib.MAX_WBITS, "deflate body has data after its end"),
+        ("deflate", -15, "deflate body has data after its end"),
+    ],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+def test_junk_after_a_whole_compressed_body_is_refused(
+    encoding: str, wbits: int, refusal: str, *, separate: bool
+) -> None:
+    """A stream that ends before its body does was not all the server sent."""
+    whole = _compress(_LIST, wbits)
+    junk = b"<html>proxy error</html>"
+    body = iter([whole, junk]) if separate else whole + junk
+    with (
+        _session_with(_Streamed(body, encoding), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match=refusal),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+def test_gzip_members_are_inflated_one_after_another(*, separate: bool) -> None:
+    """RFC 1952: a gzip body is a series of members, each read in turn."""
+    half = len(_LIST) // 2
+    gzip_bits = zlib.MAX_WBITS | 16
+    members = [_compress(_LIST[:half], gzip_bits), _compress(_LIST[half:], gzip_bits)]
+    body = iter(members) if separate else b"".join(members)
+    with _session_with(_Streamed(body, "gzip"), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    with _session_with(_Streamed(_LIST), 1 << 20) as session:
+        plain = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+
+    assert result.reading_list == plain.reading_list
+
+
 def _drip(seconds: float = 10.0) -> Iterator[bytes]:
     """Send a byte every 50 ms, as a server stalling a client does."""
     for _ in range(int(seconds / 0.05)):
