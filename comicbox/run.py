@@ -370,6 +370,16 @@ class Runner:
         the worker count is free to be whatever the I/O wants again.
         """
         logger.info(f"Running {len(paths)} files with {jobs} workers")
+        try:
+            self._run_pool(paths, jobs)
+        finally:
+            # The pool has joined every worker, so none is left asleep to
+            # wake: end the process-wide cancel with the pool that set it,
+            # or every later retry in the process is refused.
+            retry.clear_cancel()
+
+    def _run_pool(self, paths: list[Path], jobs: int) -> None:
+        """Run files in a pool that an abort or Ctrl-C ends as a whole."""
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
             try:
@@ -399,8 +409,6 @@ class Runner:
         """Run actions with config."""
         outcome_stats.reset()
         self.failure_count = 0
-        # A cancel left from an earlier run would abort this one's retries.
-        retry.clear_cancel()
         try:
             self._run_inner()
         finally:

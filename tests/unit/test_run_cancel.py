@@ -133,18 +133,51 @@ def test_ending_a_run_wakes_retry_sleeps(tmp_path: Path, exc: BaseException) -> 
     assert source.calls == 1
 
 
-def test_a_run_starts_with_retries_allowed(tmp_path: Path) -> None:
-    """A cancel left over from an earlier run does not abort the next one."""
-    retry.request_cancel()
-    cancelled: list[bool] = []
-    runner = _runner(tmp_path, count=1, jobs=1)
-    with patch.object(
-        Runner,
-        "run_on_file",
-        lambda _self, _path: cancelled.append(retry.is_cancelled()),
-    ):
-        runner.run()
-    assert cancelled == [False]
+class _RefusedOnceSource:
+    """A source whose first call is refused for its rate limit, briefly."""
+
+    name = "fake"
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    @staticmethod
+    def classify_retry_exception(_exc: BaseException) -> retry.RetryCategory:
+        return retry.RetryCategory.RATE_LIMIT
+
+    @retry.with_retry()
+    def fetch(self) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            exc = _RateLimitedError()
+            exc.retry_after = 0.01
+            raise exc
+        return "ok"
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [OnlineLookupAbortedError("aborted at the prompt"), KeyboardInterrupt()],
+    ids=["abort", "ctrl-c"],
+)
+def test_the_cancel_ends_with_the_pool(tmp_path: Path, exc: BaseException) -> None:
+    """
+    Once an ended run's pool has shut down, later retries sleep normally.
+
+    The cancel signal is process-wide and nothing cleared it on the way
+    out, so every later retry in the process -- the next run, or
+    another library call -- was refused on its first wait.
+    """
+    runner = _runner(tmp_path, count=4)
+    seen: list[Path] = []
+    fake = _interrupting_run_on_file(seen, exc)
+    paths = runner._expand_paths()
+    with patch.object(Runner, "run_on_file", fake), pytest.raises(type(exc)):
+        runner._run_parallel(paths, 2)
+    assert not retry.is_cancelled()
+    source = _RefusedOnceSource()
+    assert source.fetch() == "ok"
+    assert source.calls == 2
 
 
 def test_an_abort_from_any_worker_marks_the_run_aborted(tmp_path: Path) -> None:
