@@ -86,8 +86,9 @@
 - `general.loglevel` takes a level name in any case, such as `debug`; anything
   but a level name or a whole number 0 or more is a one-line config error, and a
   doctor failure, instead of a traceback on every run.
-- `COMICBOX_ONLINE__CACHE__MODE=on` or `off`, and an unquoted `mode: off` in a
-  config file, work instead of failing every run.
+- `online.cache.mode`, in a config file or `COMICBOX_ONLINE__CACHE__MODE`, takes
+  a bare or quoted `on`, `off`, `yes`, `no`, `true` or `false` instead of
+  failing every run on a bare `on` or `off`.
 - An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of
   silently never, or always, auto-writing.
 

@@ -15,6 +15,7 @@ instead of going through confuse because:
 
 from __future__ import annotations
 
+import contextlib
 import math
 from argparse import Namespace
 from collections.abc import Callable, Iterable, Mapping
@@ -22,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any
 
 from loguru import logger
@@ -344,19 +346,39 @@ def _build_auth_settings(
     return OnlineAuthSettings(sources=resolved)
 
 
+# YAML 1.1, which the env layer speaks too, reads these bare words as
+# booleans; quoted, they mean the same.
+_CACHE_MODE_WORDS: Mapping[str, CacheMode] = MappingProxyType(
+    {
+        "yes": CacheMode.ON,
+        "true": CacheMode.ON,
+        "no": CacheMode.OFF,
+        "false": CacheMode.OFF,
+    }
+)
+
+
+def _config_cache_mode(raw: Any) -> CacheMode:
+    """Read ``online.cache.mode``: a mode, or a YAML boolean, bare or quoted."""
+    if isinstance(raw, bool):
+        return CacheMode.ON if raw else CacheMode.OFF
+    word = str(raw).strip().lower()
+    with contextlib.suppress(ValueError):
+        return _CACHE_MODE_WORDS.get(word) or CacheMode(word)
+    reason = (
+        f"online.cache.mode: unknown value {raw!r}; valid: on, off, refresh "
+        "(yes and true mean on, no and false mean off)"
+    )
+    raise ConfigurationError(reason)
+
+
 def _build_cache(
     online_block: Any,
     runtime: _RuntimeOnlineInputs,
     cli: Callable[[str], Any],
 ) -> OnlineCacheSettings:
     """Build `OnlineCacheSettings` from CLI > config."""
-    config_mode = online_block.cache.mode
-    if isinstance(config_mode, bool):
-        # YAML 1.1, which the env layer speaks too, reads a bare on or off
-        # as a boolean.
-        config_mode = CacheMode.ON if config_mode else CacheMode.OFF
-    cache_mode_raw = _coalesce(runtime.cache_mode_cli, config_mode)
-    cache_mode = parse_enum(CacheMode, "--cache", str(cache_mode_raw), noun="value")
+    cache_mode = runtime.cache_mode_cli or _config_cache_mode(online_block.cache.mode)
     cache_dir_raw = _coalesce(cli("cache_dir"), online_block.cache.dir)
     cache_dir = Path(cache_dir_raw).expanduser() if cache_dir_raw else None
     cache_ttl_raw = _coalesce(cli("cache_ttl"), online_block.cache.ttl)
