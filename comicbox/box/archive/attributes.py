@@ -46,10 +46,15 @@ def _keep_xattrs(source: Path, copy: Path) -> None:
             os.setxattr(copy, name, os.getxattr(source, name))
 
 
+def keep_stat(source_stat: os.stat_result, copy: Path) -> None:
+    """Give a copy the owner, group and mode a comic had when it was stat()ed."""
+    _keep_owner(source_stat, copy)
+    # After the owner: a change of owner can clear the set-id bits.
+    copy.chmod(stat.S_IMODE(source_stat.st_mode))
+
+
 def keep_attributes(source: Path, copy: Path) -> None:
     """Give a copy the comic's extended attributes, owner, group and mode."""
     source_stat = source.stat()
     _keep_xattrs(source, copy)
-    _keep_owner(source_stat, copy)
-    # After the owner: a change of owner can clear the set-id bits.
-    copy.chmod(stat.S_IMODE(source_stat.st_mode))
+    keep_stat(source_stat, copy)

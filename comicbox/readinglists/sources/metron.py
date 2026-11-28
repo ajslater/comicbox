@@ -149,7 +149,10 @@ def _describe(exc: Exception) -> str:
     if response is None or response.status_code is None:
         return " ".join(str(exc).split())
     status = response.status_code
-    phrase = HTTPStatus(status).phrase if status in HTTPStatus else ""
+    try:
+        phrase = HTTPStatus(status).phrase
+    except ValueError:
+        phrase = ""
     message = f"HTTP {status} {phrase}".rstrip()
     detail = _detail(response)
     if detail and detail.rstrip(".").casefold() != phrase.casefold():

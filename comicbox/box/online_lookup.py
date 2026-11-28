@@ -399,6 +399,12 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             )
         return self._online_session_state
 
+    def _raise_if_run_aborted(self) -> None:
+        """End this lookup when another box of the run has aborted it."""
+        if self._get_online_session_state().is_aborted():
+            reason = "online: run aborted"
+            raise OnlineLookupAbortedError(reason)
+
     def _session_online(self) -> OnlineSettings:
         """Read the live lookup policy onto this box's online settings."""
         return self._get_online_session_state().overlay(self._config.online)
@@ -756,7 +762,14 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             enrich_candidates=source.enrich_prompt_candidates,
         )
         with type(self)._PROMPT_LOCK:  # noqa: SLF001 — class-level lock by design
-            return selector(self._build_profile(), candidates, ctx)
+            # A sibling may have answered abort while this one waited.
+            self._raise_if_run_aborted()
+            result = selector(self._build_profile(), candidates, ctx)
+            if result[0] == "abort":
+                # Marked inside the lock, so no sibling's prompt slips in
+                # before the abort is raised.
+                self._get_online_session_state().abort()
+            return result
 
     def _apply_session_action(
         self, source_name: str, action: str, payload: int | str | None
@@ -1246,6 +1259,8 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             # Another worker may be resolving this very series; waiting
             # for it is the whole value of batching under `-j N`.
             await_series_leader(self._series_cache, key)
+            # The leader may have been aborted rather than resolved.
+            self._raise_if_run_aborted()
             volume_id = self._series_cache.get(key)
         if volume_id is None:
             return False
@@ -1346,6 +1361,7 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         applied_any = False
         satisfied = False
         for source in active_sources:
+            self._raise_if_run_aborted()
             if self._should_skip_first_wins(source, online, satisfied=satisfied):
                 logger.info(
                     f"online {source.name}: skipped (first-wins satisfied; "

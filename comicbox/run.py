@@ -17,6 +17,7 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ComicNotFoundError,
+    ConfigurationError,
     DestinationOccupiedError,
     ExportError,
     OnlineLookupAbortedError,
@@ -25,7 +26,7 @@ from comicbox.exceptions import (
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
 )
-from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
 from comicbox.formats.base.online.series_cache import (
     SeriesCache,
@@ -369,6 +370,16 @@ class Runner:
         the worker count is free to be whatever the I/O wants again.
         """
         logger.info(f"Running {len(paths)} files with {jobs} workers")
+        try:
+            self._run_pool(paths, jobs)
+        finally:
+            # The pool has joined every worker, so none is left asleep to
+            # wake: end the process-wide cancel with the pool that set it,
+            # or every later retry in the process is refused.
+            retry.clear_cancel()
+
+    def _run_pool(self, paths: list[Path], jobs: int) -> None:
+        """Run files in a pool that an abort or Ctrl-C ends as a whole."""
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             futures = {executor.submit(self._run_one, p): p for p in paths}
             try:
@@ -380,14 +391,19 @@ class Runner:
                         raise
                     except Exception:
                         logger.exception(path)
-            except OnlineLookupAbortedError:
-                # Drop every file still queued so the abort actually ends
-                # the batch. Workers already in flight can't be
-                # interrupted from here -- the pool joins them on the way
-                # out -- but no further file is started.
-                for pending in futures:
-                    pending.cancel()
+            except (OnlineLookupAbortedError, KeyboardInterrupt):
+                # Wake the workers in flight from their retry sleeps, or
+                # the join below waits them out, up to an hour each, and
+                # stop them before their next prompt or source.
+                retry.request_cancel()
+                self._online_state.abort()
                 raise
+            finally:
+                # Any way out -- an abort, Ctrl-C -- drops every file
+                # still queued, so it actually ends the batch. Workers
+                # already in flight finish: the pool joins them on the
+                # way out.
+                executor.shutdown(wait=False, cancel_futures=True)
 
     def run(self) -> None:
         """Run actions with config."""
@@ -431,15 +447,20 @@ class Runner:
         # a burst came from one process's thread pool rather than from
         # several processes sharing a token.
         set_user_agent_context("cli", jobs=jobs)
+        # Expand paths up-front so we know the batch size for
+        # auto-engagement, and how many comics an `--id` would reach.
+        # Serial offline dispatch still calls `run_on_file`, which handles
+        # directory expansion under `--recurse`, so its processing is
+        # unchanged.
+        paths = self._expand_paths()
+        if self._config.online.lookup.ids and len(paths) > 1:
+            # The CLI counts the paths as typed; a directory under -r
+            # would otherwise tag every comic in it as the one issue.
+            reason = f"--id requires exactly one comic, {len(paths)} found"
+            raise ConfigurationError(reason)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:
-            # Expand paths up-front so we know the batch size for
-            # auto-engagement. Reuse `_expand_paths` for parity with the
-            # parallel branch; serial dispatch still calls `run_on_file`
-            # which handles directory expansion under `--recurse`, so the
-            # actual processing is unchanged.
-            paths = self._expand_paths()
             self._same_files = _same_files(paths)
             self._maybe_auto_engage_effort(len(paths))
             self._note_series_clusters(paths)
@@ -456,9 +477,7 @@ class Runner:
                 self._run_one(raw)
             return
 
-        # Parallel path: expand directories first so the thread pool sees
-        # a flat path list.
-        paths = self._expand_paths()
+        # Parallel path: the thread pool sees the flat path list.
         if not paths:
             logger.warning("No files to process")
             return

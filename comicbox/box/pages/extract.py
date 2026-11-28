@@ -37,6 +37,9 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         path.write_bytes(data)
 
     def _extract_all_pagenames(self, pagenames: Iterable[str], path: Path) -> None:
+        if path.is_dir():
+            # Every page, so a 7z is decompressed in batches, not once a page.
+            pagenames = self._iter_prefetched(tuple(pagenames))
         success_page_count = 0
         try:
             for fn in pagenames:

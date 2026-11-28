@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Self
 from unittest.mock import patch
 
+import pytest
 from loguru import logger as loguru_logger
 
 from comicbox.config import get_config
@@ -22,8 +23,6 @@ from tests.const import CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-
-    import pytest
 
     from comicbox.config.settings import ComicboxSettings
 
@@ -537,3 +536,50 @@ def test_offline_batch_keeps_user_order(tmp_path: Path) -> None:
     paths = [tmp_path / name for name in names]
     runner = Runner(get_config(Namespace(comicbox=Namespace())))
     assert runner._order_for_series_batching(paths) == paths
+
+
+# ------------------------------------------- --id is one comic, after -r
+
+
+def _id_runner(tmp_path: Path, count: int, jobs: int) -> Runner:
+    """Build a Runner from `comicbox -r --id metron:123 DIR` over `count` comics."""
+    from comicbox.cli import get_args
+
+    comics = tmp_path / "comics"
+    comics.mkdir()
+    for i in range(count):
+        shutil.copy(CIX_CBZ_SOURCE_PATH, comics / f"comic_{i}.cbz")
+    cns = get_args(
+        ["comicbox", "-r", "-j", str(jobs), "--id", "metron:123", str(comics)]
+    )
+    return Runner(Namespace(comicbox=cns))
+
+
+@pytest.mark.parametrize("jobs", [1, 2])
+def test_id_refuses_a_directory_of_several_comics(tmp_path: Path, jobs: int) -> None:
+    """
+    `--id` names one issue, so it must reach exactly one comic.
+
+    The CLI counted the paths as typed, so one directory under `-r`
+    passed and every comic in it was tagged as the same issue.
+    """
+    from comicbox.exceptions import ConfigurationError
+
+    runner = _id_runner(tmp_path, 2, jobs)
+    assert runner._config.online.lookup.ids
+    seen: list[Any] = []
+    with (
+        patch.object(Runner, "run_on_file", lambda _self, path: seen.append(path)),
+        pytest.raises(ConfigurationError, match="--id"),
+    ):
+        runner.run()
+    assert seen == []
+
+
+@pytest.mark.parametrize("jobs", [1, 2])
+def test_id_accepts_a_directory_of_one_comic(tmp_path: Path, jobs: int) -> None:
+    runner = _id_runner(tmp_path, 1, jobs)
+    seen: list[Any] = []
+    with patch.object(Runner, "run_on_file", lambda _self, path: seen.append(path)):
+        runner.run()
+    assert [Path(path).name for path in seen] == ["comic_0.cbz"]

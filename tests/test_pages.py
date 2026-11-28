@@ -1,10 +1,14 @@
 """Test getting pages."""
 
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
+import pytest
+
 from comicbox.box import Comicbox
-from tests.const import TEST_FILES_DIR
+from comicbox.box.archive.archive import Archive
+from tests.const import CB7_SOURCE_PATH, TEST_FILES_DIR
 
 ARCHIVE_PATH = TEST_FILES_DIR / "Captain Science #001.cbz"
 IMAGE_DIR = TEST_FILES_DIR / "Captain Science 001"
@@ -63,16 +67,29 @@ def test_get_page_by_index_out_of_range() -> None:
 
 
 def test_get_pages_after() -> None:
-    """Test getting many pages."""
-    page_num = 3
+    """
+    Test getting many pages.
+
+    B1: consumed after the archive closed, and with every assertion inside
+    the loop, an empty generator passed.
+    """
+    page_from = 3
     with Comicbox(ARCHIVE_PATH) as car:
-        pages = car.get_pages(page_num)
-    for page in pages:
-        path = Path(PAGE_TMPL.format(page_num=f"{page_num + 1:02d}"))
-        with path.open("rb") as cif:
-            image = cif.read()
-        assert image == page
-        page_num += 1
+        pages = list(car.get_pages(page_from))
+        page_count = car.get_page_count()
+    assert len(pages) == page_count - page_from
+    for page_num, page in enumerate(pages, start=page_from + 1):
+        path = Path(PAGE_TMPL.format(page_num=f"{page_num:02d}"))
+        assert path.read_bytes() == page
+
+
+def test_get_pages_reads_every_page_by_default() -> None:
+    """B1: the default ``page_to`` of -1 read as ``[0:0]``, no pages."""
+    with Comicbox(ARCHIVE_PATH) as car:
+        pages = list(car.get_pages())
+        assert len(pages) == car.get_page_count()
+        assert list(car.get_pages(0, -1)) == pages
+        assert list(car.get_pages(1, 2)) == pages[1:3]
 
 
 def test_ignore_macos_resource_forks() -> None:
@@ -80,3 +97,40 @@ def test_ignore_macos_resource_forks() -> None:
     with Comicbox(RESOURCE_FORK_ARCHIVE) as car:
         page_count = car.get_page_count()
     assert page_count == RESOURCE_FORK_ARCHIVE_PAGE_COUNT
+
+
+@pytest.mark.parametrize("archive_path", [CB7_SOURCE_PATH, ARCHIVE_PATH])
+def test_all_page_reads_match_page_by_page_reads(
+    archive_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    C4: an all-pages read of a solid 7z decodes it once, not once a page.
+
+    Read one by one, each page re-decoded the solid block from its start,
+    so reading every page cost the square of the page count. The pages
+    are byte for byte what a single-page read returns.
+    """
+    with Comicbox(archive_path) as car:
+        count = car.get_page_count()
+        expected = [car.get_page_by_index(index) for index in range(count)]
+    assert count > 1
+    calls: list[int] = []
+    real = Archive.extract_7zipfile
+
+    def counting(archive: Any, factory: Any, filenames: Any) -> None:
+        calls.append(len(filenames))
+        real(archive, factory, filenames)
+
+    monkeypatch.setattr(Archive, "extract_7zipfile", staticmethod(counting))
+    out = tmp_path / "pages"
+    out.mkdir()
+
+    with Comicbox(archive_path) as car:
+        pages = list(car.get_pages())
+        car.extract_pages(0, None, out)
+
+    assert pages == expected
+    names = sorted(out.iterdir())
+    assert [path.read_bytes() for path in names] == expected
+    if archive_path.suffix == ".cb7":
+        assert calls == [count, count]

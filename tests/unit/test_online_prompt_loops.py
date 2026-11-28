@@ -57,7 +57,7 @@ def test_prompt_line_falls_back_to_input_off_tty(
     seen: list[str] = []
     monkeypatch.setattr(prompt, "_is_tty", lambda: False)
     monkeypatch.setattr(
-        prompt, "_read_input", lambda message: seen.append(message) or "s"
+        prompt, "_read_line", lambda message: seen.append(message) or "s"
     )
     assert prompt._prompt_line("Choose:") == "s"
     assert seen == ["Choose: "]
@@ -417,3 +417,54 @@ def test_cli_selector_verbose_by_default(
     out = capsys.readouterr().out
     assert "publisher=" in out
     assert "example.test" in out
+
+
+# --- stdin at end of input --------------------------------------------------
+
+_EOF_READ_LIMIT = 50
+
+
+def _stdin_at_eof(monkeypatch: pytest.MonkeyPatch, *replies: str) -> list[str]:
+    """
+    Answer `replies` off a TTY, then hit end of input on every read.
+
+    Fails the test once stdin has been read far more often than any
+    terminating prompt needs, instead of spinning forever.
+    """
+    reads: list[str] = []
+    pending = list(replies)
+
+    def fake_input(message: str = "") -> str:
+        reads.append(message)
+        assert len(reads) < _EOF_READ_LIMIT, "prompt keeps reading at EOF"
+        if pending:
+            return pending.pop(0)
+        raise EOFError
+
+    monkeypatch.setattr(prompt, "_is_tty", lambda: False)
+    monkeypatch.setattr("builtins.input", fake_input)
+    return reads
+
+
+@pytest.mark.parametrize(
+    "replies",
+    [(), ("m",), ("o",), ("o", "p")],
+    ids=["top", "manual-id", "options", "policy"],
+)
+def test_cli_selector_aborts_at_eof(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    replies: tuple[str, ...],
+) -> None:
+    """
+    Stdin at EOF (`< /dev/null`, cron) aborts instead of re-prompting forever.
+
+    EOF read as an empty reply, which the top-level loop treats as
+    unrecognized, so it reprinted the candidates and read again at 100%
+    CPU without end.
+    """
+    reads = _stdin_at_eof(monkeypatch, *replies)
+    result = prompt.cli_selector(ComicProfile(), [make_candidate()], make_context())
+    assert result == ("abort", None)
+    assert len(reads) <= len(replies) + 2
+    capsys.readouterr()
