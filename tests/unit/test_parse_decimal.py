@@ -115,10 +115,10 @@ def test_comic_info_reads_number_before_slash() -> None:
         car.add_metadata(xml, MetadataFormats.COMIC_INFO)
         md = car.to_dict()["comicbox"]
     assert md["community_rating"]["average_rating"] == Decimal("4.5")
-    assert md["date"]["year"] == 1999  # noqa: PLR2004
-    assert md["date"]["month"] == 6  # noqa: PLR2004
-    assert md["volume"]["number"] == 2019  # noqa: PLR2004
-    assert md["volume"]["issue_count"] == 12  # noqa: PLR2004
+    assert md["date"]["year"] == 1999
+    assert md["date"]["month"] == 6
+    assert md["volume"]["number"] == 2019
+    assert md["volume"]["issue_count"] == 12
 
 
 def test_comet_volume_reads_number_before_slash() -> None:
@@ -127,7 +127,7 @@ def test_comet_volume_reads_number_before_slash() -> None:
     with Comicbox() as car:
         car.add_metadata(xml, MetadataFormats.COMET)
         md = car.to_dict()["comicbox"]
-    assert md["volume"]["number"] == 2019  # noqa: PLR2004
+    assert md["volume"]["number"] == 2019
 
 
 def test_separator_value_is_dropped() -> None:

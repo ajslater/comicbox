@@ -17,7 +17,6 @@ from comicbox.config import get_config
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import (
     ComicNotFoundError,
-    ConfigurationError,
     DestinationOccupiedError,
     DuplicateMemberError,
     ExportError,

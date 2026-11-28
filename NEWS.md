@@ -5,8 +5,8 @@
 ### ♻️ Changed
 
 - Extracting or reading every page of a CB7 is many times faster.
-- Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds of
-  `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
+- Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
+  of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
 
 ### 🐛 Fixed
 
@@ -30,8 +30,8 @@
 - `rl match` lists a comic with the entry's id but a far cover year as refused.
 - ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
 - Numbers with a decimal comma or thousands separator are dropped with a warning
-  instead of cut to their first digits. A number before a slash is still read:
-  a `4.5/5` rating is 4.5 and a `1999/2000` year is 1999.
+  instead of cut to their first digits. A number before a slash is still read: a
+  `4.5/5` rating is 4.5 and a `1999/2000` year is 1999.
 - MetronInfo leaves out zero issue and volume counts and prices with no country,
   which its schema rejects.
 - ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
@@ -59,9 +59,9 @@
   looping forever.
 - MetronInfo no longer relabels tag ids as another database's on write, and
   writes Comic Vine tag ids.
-- MetronInfo with no stated primary source flags the source most tag ids use,
-  so a file with Metron and Comic Vine issue ids but Comic Vine tag ids keeps
-  them. A file holds one tag id source; tag ids of the others are left out.
+- MetronInfo with no stated primary source flags the source most tag ids use, so
+  a file with Metron and Comic Vine issue ids but Comic Vine tag ids keeps them.
+  A file holds one tag id source; tag ids of the others are left out.
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
 

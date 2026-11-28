@@ -88,7 +88,7 @@ def test_id_with_directory_of_several_comics_errors(
         pytest.raises(SystemExit) as exc_info,
     ):
         main(["comicbox", "-r", "-j", jobs, "--id", "metron:123", str(comics)])
-    assert exc_info.value.code == 2  # noqa: PLR2004
+    assert exc_info.value.code == 2
     captured = capsys.readouterr()
     assert "comicbox: error: --id requires exactly one comic, 2 found" in captured.err
     assert seen == []
