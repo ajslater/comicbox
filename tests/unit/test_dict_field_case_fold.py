@@ -10,6 +10,8 @@ metadata held both spellings; the loss happened in the final dump that
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from comicbox.box import Comicbox
 from comicbox.formats import MetadataFormats
 from comicbox.formats.base.fields.collection_fields import case_insensitive_dict
@@ -84,6 +86,7 @@ def test_schema_load_keeps_both_roles() -> None:
             }
         }
     )
+    assert isinstance(loaded, Mapping)
     people = loaded["comicbox"]["credits"]
     assert len(people) == 1
     (credit,) = people.values()
