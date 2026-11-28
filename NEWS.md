@@ -85,6 +85,11 @@
 - `COMICBOX_ONLINE__CACHE__MODE=on` or `off`, and an unquoted `mode: off` in a
   config file, work instead of failing every run.
 
+### 🔒 Security
+
+- A malformed `--auth` entry's error, in a run or `comicbox doctor`, no longer
+  prints the token.
+
 ## v5.7.1
 
 ### ✨ Added

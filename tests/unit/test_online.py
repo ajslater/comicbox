@@ -47,6 +47,27 @@ def test_cli_overrides_bad_syntax_errors() -> None:
         CliOverrides.from_auth_list(["nodelimiter"])
 
 
+_FAKE_TOKEN = "FAKE-TOKEN-0123456789"
+
+
+@pytest.mark.parametrize(
+    ("entry", "named"),
+    [
+        (f"comicvine:kye={_FAKE_TOKEN}", ("'kye'", "comicvine")),
+        (_FAKE_TOKEN, ()),
+    ],
+)
+def test_cli_overrides_errors_never_echo_the_value(
+    entry: str, named: tuple[str, ...]
+) -> None:
+    """The value is a token: an error must not print it, in a run or the doctor."""
+    with pytest.raises(ValueError, match="--auth") as exc_info:
+        CliOverrides.from_auth_list([entry])
+    message = str(exc_info.value)
+    assert _FAKE_TOKEN not in message
+    assert all(word in message for word in named)
+
+
 def test_cli_overrides_bare_value_is_the_api_token() -> None:
     """`<source>:<token>` needs no field name — the token is the common case."""
     overrides = CliOverrides.from_auth_list(["metron:token123", "comicvine:ABCD1234"])

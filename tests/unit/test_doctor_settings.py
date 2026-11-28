@@ -274,3 +274,13 @@ def test_unknown_loglevel_is_misconfigured(monkeypatch: pytest.MonkeyPatch) -> N
     assert values.status is Status.MISCONFIGURED
     assert "general.loglevel" in values.detail
     assert ctx.settings is None
+
+
+def test_bad_auth_entry_row_carries_no_token() -> None:
+    """The settings never build, so the doctor has no key to redact."""
+    fake = "FAKE-TOKEN-0123456789"
+    ctx = _ctx("--auth", f"comicvine:kye={fake}")
+    (values,) = [row for row in _config_rows(ctx) if row.name == "values"]
+    assert values.status is Status.MISCONFIGURED
+    assert "kye" in values.detail
+    assert fake not in str(values)

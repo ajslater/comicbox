@@ -32,8 +32,13 @@ if TYPE_CHECKING:
 _VALID_AUTH_FIELDS = frozenset({"key", "url"})
 
 
-def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
-    """Split an entry's post-source remainder into a field and a value."""
+def _parse_auth_field(source: str, rest: str) -> tuple[str, str]:
+    """
+    Split an entry's post-source remainder into a field and a value.
+
+    No error here or in `_parse_auth_entry` echoes the entry: its value
+    is a token, and the doctor's report promises never to carry one.
+    """
     cred_field, sep, value = rest.partition("=")
     if not sep:
         # Bare `<source>:<token>` shorthand: the API token is the field
@@ -43,7 +48,7 @@ def _parse_auth_field(raw: str, rest: str) -> tuple[str, str]:
     cred_field = cred_field.strip().lower()
     if cred_field not in _VALID_AUTH_FIELDS:
         reason = (
-            f"--auth: unknown field {cred_field!r} in {raw!r}; "
+            f"--auth: unknown field {cred_field!r} for {source}; "
             f"valid: {', '.join(sorted(_VALID_AUTH_FIELDS))}"
         )
         raise ConfigurationError(reason)
@@ -55,16 +60,17 @@ def _parse_auth_entry(raw: str) -> tuple[str, str, str]:
     source, sep, rest = raw.partition(":")
     if not sep:
         reason = (
-            f"--auth expects <source>:<token> or <source>:<field>=<value>, got {raw!r}"
+            "--auth expects <source>:<token> or <source>:<field>=<value>; "
+            "an entry has no source"
         )
         raise ConfigurationError(reason)
     source = source.strip().lower()
     if source not in SOURCE_NAMES:
         reason = f"--auth: unknown source {source!r}; known: {', '.join(SOURCE_NAMES)}"
         raise ConfigurationError(reason)
-    cred_field, value = _parse_auth_field(raw, rest)
+    cred_field, value = _parse_auth_field(source, rest)
     if not value:
-        reason = f"--auth: empty value in {raw!r}"
+        reason = f"--auth: empty value for {source} {cred_field}"
         raise ConfigurationError(reason)
     return source, cred_field, value
 
