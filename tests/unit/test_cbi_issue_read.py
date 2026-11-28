@@ -79,3 +79,20 @@ def test_non_whole_issue_round_trips_without_issue(issue: Any) -> None:
 def test_whole_issue_round_trips_as_an_integer(issue: Any) -> None:
     """A whole issue is written back as a JSON integer."""
     assert _round_trip(issue)["issue"] == int(float(issue))
+
+
+@pytest.mark.parametrize("issue", [True, False])
+def test_boolean_issue_is_refused(issue: bool) -> None:  # noqa: FBT001
+    """A JSON boolean is not an issue: it is dropped as an invalid integer."""
+    from marshmallow import ValidationError
+
+    from comicbox.formats.comic_book_info.schema import ComicBookInfoIssueField
+
+    with pytest.raises(ValidationError, match="Not a valid integer"):
+        ComicBookInfoIssueField().deserialize(issue)
+    assert "issue" not in _read(issue)
+
+
+def test_null_issue_is_no_issue() -> None:
+    """A JSON null reads as no issue."""
+    assert "issue" not in _read(None)
