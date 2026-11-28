@@ -228,9 +228,10 @@ list and a report. It is pure: no files, no network.
 - **Matches issues by id, then by name.** Two rows are the same issue when they
   share an issue id from the same database, or the same series name, start year
   (or volume), issue number and suffix, or, weakest of all, the same series
-  name, cover year, issue number and suffix. Stronger matches are made first.
-  Matches chain: a ComicVine id joining A and B and a Metron id joining B and C
-  put all three together.
+  name, cover year, issue number and suffix. Stronger matches are made first:
+  ids before names, and among ids, a row's ids by database rank, Metron's first,
+  then Comic Vine's, and so on. Matches chain: a ComicVine id joining A and B
+  and a Metron id joining B and C put all three together.
 - **Keeps the primary order.** The first ordered list is the backbone and none
   of its entries ever moves. An issue only another list has goes after the
   nearest entry the two lists agree on. A list marked `ordered: false`, such as
@@ -261,7 +262,8 @@ list and a report. It is pure: no files, no network.
   candidates are the rows of other lists with its series, cover year, issue
   number and suffix, the same time in their list as it is in its own, that are
   not of another volume than it. It always joins a candidate that tells its
-  volume exactly as it does, as its own copy does. It joins one that tells it
+  volume exactly as it does, as its own copy does, and every such join on the
+  cover year is made before any other on it. It joins one that tells it
   otherwise, such as a start year against no year, or against volume 2, only
   when that is its one such candidate in that list, neither has an exact
   candidate there, and no list leaves either of them between two volumes: two
@@ -269,8 +271,8 @@ list and a report. It is pure: no files, no network.
   counting every row of each list, whatever time it comes there. So the cover
   year will not join:
     - rows of two volumes, even through a third row that has only the cover
-      year: no entry it joins holds rows of two volumes, however its other rows
-      were joined, by id included;
+      year: no entry a cover-year join makes holds rows of two volumes, however
+      its other rows were joined, by id included;
     - a row that fits two rows of one list, such as Ardent #1 of 2016 with no
       start year against the 2011 and 2016 volumes, or against X (1999) #1 and X
       volume 2 #1: it stays an entry of its own, every time a list reads it,
@@ -299,10 +301,15 @@ list and a report. It is pure: no files, no network.
   number, issue number and suffix in place of the cover year: a row with no
   year, such as Z-Men volume 1 #1, joins its exact copy first, and stays an
   entry of its own beside Z-Men (1963) and Z-Men (1991) volume 1 #1, in one list
-  or in two. The two keys are judged apart, the volume number first: a row that
-  a list leaves between two volumes on one key may still join on the other, as
-  Z-Men volume 1 #1 of 2015 joins Z-Men (1963) volume 1 #1 of 2015 by the cover
-  year when the other volume 1 is Z-Men (1991) of 2016.
+  or in two. Only the entry check differs: a volume-number join is refused when
+  the entry would hold two start years, not two volume numbers, so an entry can
+  hold two volume numbers of one start year. `[Z-Men (1991) volume 1 #1]`,
+  `[Z-Men (1991) volume 2 #1]` and `[Z-Men volume 1 #1]` give one entry: the
+  first two join by start year, and the third joins the first by volume number.
+  The two keys are judged apart, the volume number first: a row that a list
+  leaves between two volumes on one key may still join on the other, as Z-Men
+  volume 1 #1 of 2015 joins Z-Men (1963) volume 1 #1 of 2015 by the cover year
+  when the other volume 1 is Z-Men (1991) of 2016.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what

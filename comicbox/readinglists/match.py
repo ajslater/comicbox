@@ -476,9 +476,10 @@ def match_comics(
     comic one entry is strictly is never another entry's variant. A comic
     of one issue in several files is found in all, and an issue the list
     holds twice is found in the same comics both times. A loose match, on
-    the volume or cover-year key, is refused beside strong matches of
-    another volume, and is ambiguous beside loose matches of another
-    volume; see ``_Index``. Each
+    the volume or cover-year key, is refused beside a strong match of
+    another volume or with another id from one database, and is ambiguous
+    beside a loose match of another issue, by volume or by id; see
+    ``_Index``. Each
     missing entry reports the comics ``_Index.refused`` finds for it that
     no entry found.
     """

@@ -20,8 +20,9 @@
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
 - `rl write-arcs` no longer tags two comics with different ids from one database
-  for one entry that finds them by cover year or volume, and `combine` keeps a
-  repeated row with no start year apart from two volumes it fits.
+  for one entry that finds them by cover year or volume, and names the ids; its
+  summary says the entry "fits more than one issue". `combine` keeps a repeated
+  row with no start year apart from two volumes it fits.
 - `rl match` and `write-arcs` find variant covers and printings whose barcode
   differs from the list's.
 - `rl from-arcs` reads every tag format, as `match` and `write-arcs` do,
