@@ -92,3 +92,154 @@ def test_per_source_null_block_is_skipped() -> None:
 def test_per_source_unknown_source_warns(warnings: list[str]) -> None:
     assert _per_source({"metorn": {"auto_threshold": 0.9}}) == {}
     assert any("unknown source 'metorn'" in msg for msg in warnings)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("debug", "DEBUG"), (" Warning ", "WARNING"), ("INFO", "INFO"), (10, 10)],
+)
+def test_loglevel_names_any_case(
+    tmp_path: Path, raw: str | int, expected: str | int
+) -> None:
+    """Level names are case-sensitive in loguru; a run used to die on ``debug``."""
+    value = f'"{raw}"' if isinstance(raw, str) else raw
+    (tmp_path / "config.yaml").write_text(
+        f"comicbox:\n  general:\n    loglevel: {value}\n"
+    )
+    assert get_config({}).general.loglevel == expected
+
+
+def test_loglevel_from_env_any_case(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "info")
+    assert get_config({}).general.loglevel == "INFO"
+
+
+def test_unknown_loglevel_is_a_configuration_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "LOUD")
+    with pytest.raises(ConfigurationError, match=r"general\.loglevel.*LOUD"):
+        get_config({})
+
+
+def test_unknown_loglevel_exits_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from comicbox import cli
+
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", "LOUD")
+    with pytest.raises(SystemExit) as exc_info:
+        cli.main(("comicbox", "-p", str(tmp_path / "x.cbz")))
+    assert exc_info.value.code == 1
+    assert "general.loglevel" in capsys.readouterr().out
+
+
+def _cli_threshold(value: str) -> float:
+    from argparse import Namespace
+
+    from comicbox.cli import get_args
+
+    cns = get_args(["comicbox", "--auto-threshold", value, "x.cbz"])
+    return get_config(Namespace(comicbox=cns)).online.tuning.auto_threshold
+
+
+@pytest.mark.parametrize("value", ["95", "-1", "1.01", "nan", "inf"])
+def test_auto_threshold_out_of_range_is_an_error(value: str) -> None:
+    """95 (a percentage) never auto-writes; nan compares false to every score."""
+    with pytest.raises(ConfigurationError, match="--auto-threshold"):
+        _cli_threshold(value)
+
+
+@pytest.mark.parametrize("value", ["0", "1", "0.85"])
+def test_auto_threshold_in_range(value: str) -> None:
+    assert _cli_threshold(value) == float(value)
+
+
+def test_auto_threshold_out_of_range_from_a_config_file(tmp_path: Path) -> None:
+    (tmp_path / "config.yaml").write_text(
+        "comicbox:\n  online:\n    tuning:\n      auto_threshold: 95\n"
+    )
+    with pytest.raises(ConfigurationError, match=r"online\.tuning\.auto_threshold"):
+        get_config({})
+
+
+@pytest.mark.parametrize("value", [95, -1, float("nan")])
+def test_per_source_auto_threshold_out_of_range_is_an_error(value: float) -> None:
+    with pytest.raises(ConfigurationError, match=r"per_source\.metron\.auto_threshold"):
+        _per_source({"metron": {"auto_threshold": value}})
+
+
+@pytest.mark.parametrize("value", [0, 1, 0.85])
+def test_per_source_auto_threshold_in_range(value: float) -> None:
+    assert (
+        _per_source({"metron": {"auto_threshold": value}})["metron"].auto_threshold
+        == value
+    )
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "true", "25.5", "25.0", "[1]"])
+def test_a_loglevel_that_is_no_level_is_a_configuration_error(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    """A level is a known name or a whole number 0 or more; nothing else runs."""
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    with pytest.raises((ConfigurationError, ConfigTypeError), match="loglevel"):
+        get_config({})
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "25.5"])
+def test_a_loglevel_that_is_no_level_in_a_config_file(tmp_path: Path, raw: str) -> None:
+    (tmp_path / "config.yaml").write_text(
+        f"comicbox:\n  general:\n    loglevel: {raw}\n"
+    )
+    with pytest.raises(ConfigurationError, match=r"general\.loglevel"):
+        get_config({})
+
+
+@pytest.mark.parametrize(("raw", "expected"), [("0", 0), ("25", 25), ("60", 60)])
+def test_a_whole_number_loglevel_is_kept(
+    monkeypatch: pytest.MonkeyPatch, raw: str, expected: int
+) -> None:
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    assert get_config({}).general.loglevel == expected
+
+
+@pytest.mark.parametrize("raw", ["-5", "yes", "25.5"])
+def test_a_loglevel_that_is_no_level_exits_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    raw: str,
+) -> None:
+    from comicbox import cli
+
+    monkeypatch.setenv("COMICBOX_GENERAL__LOGLEVEL", raw)
+    for flags in ((), ("-Q",)):
+        with pytest.raises(SystemExit) as exc_info:
+            cli.main(("comicbox", *flags, "-p", str(tmp_path / "x.cbz")))
+        assert exc_info.value.code == 1
+        assert "general.loglevel" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_per_source_auto_threshold_is_no_boolean(*, value: bool) -> None:
+    """A YAML ``yes`` was read as a threshold of 1.0."""
+    with pytest.raises(ConfigurationError, match=r"per_source\.metron\.auto_threshold"):
+        _per_source({"metron": {"auto_threshold": value}})
+
+
+@pytest.mark.parametrize("raw", ["yes", "no", "true"])
+def test_auto_threshold_from_env_is_no_boolean(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE__TUNING__AUTO_THRESHOLD", raw)
+    with pytest.raises(ConfigurationError, match=r"online\.tuning\.auto_threshold"):
+        get_config({})
+
+
+def test_a_whole_number_threshold_is_a_float() -> None:
+    assert (
+        _per_source({"metron": {"auto_threshold": 1}})["metron"].auto_threshold == 1.0
+    )

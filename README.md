@@ -407,10 +407,11 @@ optional config file, in that order of precedence.
     (`COMICBOX_WRITE__FORMATS=cix,mi`), whole for `-m` and `-i` values. The
     indexed form (`COMICBOX_READ__FORMATS__0=cix`) works for any list.
 
-- **Log level** is set with the `LOGLEVEL` environment variable:
+- **Log level** is `general.loglevel`, so its environment variable is
+  `COMICBOX_GENERAL__LOGLEVEL`:
 
 ```sh
-LOGLEVEL=ERROR comicbox -p "comic.cbz"
+COMICBOX_GENERAL__LOGLEVEL=ERROR comicbox -p "comic.cbz"
 ```
 
 ## 🩺 Troubleshooting
