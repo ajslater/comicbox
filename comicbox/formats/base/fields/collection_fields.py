@@ -79,7 +79,7 @@ def _ids_conflict(left: Mapping, right: Mapping) -> bool:
 
 
 def _merge_elements(old: Mapping, new: Mapping) -> dict:
-    """The later element wins its fields, but both sides' ids are kept."""
+    """Merge two elements: the later wins its fields, both sides' ids are kept."""
     merged = {**old, **new}
     if (old_ids := _ids(old)) and (new_ids := _ids(new)):
         merged[_IDENTIFIERS_KEY] = {**old_ids, **new_ids}
