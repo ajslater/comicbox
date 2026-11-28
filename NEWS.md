@@ -84,6 +84,8 @@
   on every run.
 - `COMICBOX_ONLINE__CACHE__MODE=on` or `off`, and an unquoted `mode: off` in a
   config file, work instead of failing every run.
+- An `auto_threshold` outside 0 to 1, such as 95, is a config error instead of
+  silently never, or always, auto-writing.
 
 ### 🔒 Security
 

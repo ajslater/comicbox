@@ -209,6 +209,20 @@ class _RuntimeOnlineInputs:
     cache_mode_cli: CacheMode | None = None
 
 
+def _threshold(raw: Any, label: str) -> float:
+    """
+    Read a score threshold, which must lie in [0, 1].
+
+    95, a percentage, would never auto-write; a negative one would let
+    every match through, and nan compares false to every score.
+    """
+    value = float(raw)
+    if not 0 <= value <= 1:
+        reason = f"{label}: {raw!r} is not between 0 and 1"
+        raise ConfigurationError(reason)
+    return value
+
+
 def _build_per_source_tuning(
     online_block: Any,
 ) -> dict[str, OnlineSourceTuning]:
@@ -238,8 +252,14 @@ def _build_per_source_tuning(
             per_hour=rl_raw.get("per_hour"),
         )
         effort_raw = block.get("effort")
+        auto_threshold_raw = block.get("auto_threshold")
         out[source] = OnlineSourceTuning(
-            auto_threshold=block.get("auto_threshold"),
+            auto_threshold=_threshold(
+                auto_threshold_raw,
+                f"online.tuning.per_source.{source}.auto_threshold",
+            )
+            if auto_threshold_raw is not None
+            else None,
             effort=parse_enum(Effort, "--effort", str(effort_raw))
             if effort_raw
             else None,
@@ -352,11 +372,15 @@ def _build_tuning(
     cli: Callable[[str], Any],
 ) -> OnlineTuningSettings:
     """Build `OnlineTuningSettings` from CLI > config."""
-    auto_threshold_raw = _coalesce(
-        cli("auto_threshold"), online_block.tuning.auto_threshold
-    )
+    cli_threshold = cli("auto_threshold")
+    auto_threshold_raw = _coalesce(cli_threshold, online_block.tuning.auto_threshold)
     auto_threshold = (
-        float(auto_threshold_raw)
+        _threshold(
+            auto_threshold_raw,
+            "--auto-threshold"
+            if cli_threshold is not None
+            else "online.tuning.auto_threshold",
+        )
         if auto_threshold_raw is not None
         else DEFAULT_AUTO_THRESHOLD
     )

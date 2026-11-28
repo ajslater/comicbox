@@ -134,3 +134,46 @@ def test_unknown_loglevel_exits_without_a_traceback(
         cli.main(("comicbox", "-p", str(tmp_path / "x.cbz")))
     assert exc_info.value.code == 1
     assert "general.loglevel" in capsys.readouterr().out
+
+
+def _cli_threshold(value: str) -> float:
+    from argparse import Namespace
+
+    from comicbox.cli import get_args
+
+    cns = get_args(["comicbox", "--auto-threshold", value, "x.cbz"])
+    return get_config(Namespace(comicbox=cns)).online.tuning.auto_threshold
+
+
+@pytest.mark.parametrize("value", ["95", "-1", "1.01", "nan", "inf"])
+def test_auto_threshold_out_of_range_is_an_error(value: str) -> None:
+    """95 (a percentage) never auto-writes; nan compares false to every score."""
+    with pytest.raises(ConfigurationError, match="--auto-threshold"):
+        _cli_threshold(value)
+
+
+@pytest.mark.parametrize("value", ["0", "1", "0.85"])
+def test_auto_threshold_in_range(value: str) -> None:
+    assert _cli_threshold(value) == float(value)
+
+
+def test_auto_threshold_out_of_range_from_a_config_file(tmp_path: Path) -> None:
+    (tmp_path / "config.yaml").write_text(
+        "comicbox:\n  online:\n    tuning:\n      auto_threshold: 95\n"
+    )
+    with pytest.raises(ConfigurationError, match=r"online\.tuning\.auto_threshold"):
+        get_config({})
+
+
+@pytest.mark.parametrize("value", [95, -1, float("nan")])
+def test_per_source_auto_threshold_out_of_range_is_an_error(value: float) -> None:
+    with pytest.raises(ConfigurationError, match=r"per_source\.metron\.auto_threshold"):
+        _per_source({"metron": {"auto_threshold": value}})
+
+
+@pytest.mark.parametrize("value", [0, 1, 0.85])
+def test_per_source_auto_threshold_in_range(value: float) -> None:
+    assert (
+        _per_source({"metron": {"auto_threshold": value}})["metron"].auto_threshold
+        == value
+    )
