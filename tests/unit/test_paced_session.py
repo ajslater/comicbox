@@ -311,7 +311,7 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
 
 
 def _bare_response(status: int, content_type: str | None) -> Any:
-    """A response with no rate-limit headers, as a proxy or Anubis sends."""
+    """Build a response with no rate-limit headers, as a proxy or Anubis sends."""
     import requests
 
     response = requests.Response()
