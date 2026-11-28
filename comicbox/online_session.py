@@ -19,6 +19,7 @@ this module is a façade.
 
 from __future__ import annotations
 
+import os
 import threading
 from collections import Counter
 from dataclasses import dataclass, replace
@@ -66,7 +67,6 @@ from comicbox.online_estimate import (
 from comicbox.version import set_user_agent_context
 
 if TYPE_CHECKING:
-    import os
     from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
     from typing import Self
 
@@ -615,6 +615,10 @@ class OnlineSession:
                 else "preload_resolution() takes a path for action='manual' only"
             )
             raise ValueError(msg)
+        if path is not None and not os.fspath(path):
+            # Path("") is ".", which no comic is tagged under.
+            msg = "preload_resolution(action='manual') needs a path, not ''"
+            raise ValueError(msg)
         entry = _CachedResolution(
             action=action, payload=payload, chosen_volume_id=chosen_volume_id
         )
@@ -723,8 +727,9 @@ class OnlineSession:
 
     # -- per-file tagging ---------------------------------------------------
 
-    def tag(self, path: Path) -> OnlineResult:
+    def tag(self, path: str | os.PathLike[str]) -> OnlineResult:
         """Tag one file synchronously."""
+        path = Path(path)
         if self._cancel.is_set():
             return OnlineResult(path=path, cancelled=True)
         try:
@@ -751,7 +756,9 @@ class OnlineSession:
             return OnlineResult(path=path, error=exc)
         return OnlineResult(path=path, tags=tags, matched=matched)
 
-    def tag_many(self, paths: Iterable[Path]) -> Iterator[OnlineResult]:
+    def tag_many(
+        self, paths: Iterable[str | os.PathLike[str]]
+    ) -> Iterator[OnlineResult]:
         """
         Tag many files sequentially. Stops accepting new ones on cancel.
 
@@ -770,7 +777,7 @@ class OnlineSession:
         where the run is sequential and every saved request is saved wall
         clock too.
         """
-        path_list = list(paths)
+        path_list = [Path(path) for path in paths]
         if self._series_batching:
             path_list = sorted(path_list, key=filename_series_fingerprint)
             self._series_cluster_sizes = Counter(

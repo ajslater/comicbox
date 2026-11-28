@@ -178,6 +178,8 @@
   every run, and an id in tags wins over one for the same database in genres.
 - A reading list downloaded as several gzip members reads them all instead of
   only the first, and a compressed download with junk after its end is refused.
+- Library: `OnlineSession.tag()` and `tag_many()` take `str` paths, and
+  `preload_resolution(action="manual")` refuses an empty path.
 
 ### 🔒 Security
 

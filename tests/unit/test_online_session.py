@@ -356,6 +356,34 @@ def test_a_cancel_that_ends_a_waiting_lookup_names_the_wait(
     assert session.abort_reason == "online: session cancelled during retry wait"
 
 
+def test_tag_takes_a_str_path(tmp_path, monkeypatch) -> None:
+    """tag() and tag_many() take a str as preload_resolution does."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    seen = []
+
+    def run_one(self, path):
+        seen.append(path)
+        return {}, False
+
+    monkeypatch.setattr(OnlineSession, "_run_one", run_one)
+    name = str(tmp_path / "Foo 001.cbz")
+    one = session.tag(name)
+    (many,) = session.tag_many([name])
+
+    assert seen == [Path(name), Path(name)]
+    assert all(isinstance(path, Path) for path in seen)
+    assert one.path == many.path == Path(name)
+    assert one.error is None
+    assert many.error is None
+
+
+def test_a_manual_preload_refuses_an_empty_path() -> None:
+    """An empty path is the current directory, which no comic is tagged as."""
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    with pytest.raises(ValueError, match="path"):
+        session.preload_resolution("fp", action="manual", payload=1, path="")
+
+
 def test_retry_sleep_wait_aborts_when_cancelled() -> None:
     """The wired retry sleep aborts the in-flight lookup on cancel()."""
     from comicbox.box.online_lookup import OnlineLookupAbortedError
