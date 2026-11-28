@@ -35,7 +35,7 @@ import sys
 import threading
 import time
 from contextlib import closing, suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Final
@@ -56,6 +56,7 @@ from comicbox.formats.base.online.series_filter import (
     max_calls_for,
     should_keep_volume_name,
 )
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
     resolve_cache_db_path,
@@ -112,27 +113,19 @@ _VOLUMES_POOL: Final = "volumes"
 # In milliseconds to match pyrate-limiter's `item_timestamp` stamps.
 _RATE_LIMIT_WINDOW_MS: Final[int] = 3600 * 1000
 
-# Clients are shared process-wide across the credential set that built
-# them (see `_get_session`), keyed by (api_key, base_url). Sources are
-# rebuilt per file by `_build_active_online_sources`
-# (comicbox/box/online_lookup.py), so without sharing, every file of a
-# batch paid for a fresh `Comicvine`: a new requests session (no
-# connection reuse across files), a new requests_cache sqlite handle, a
-# new ratelimit-bucket file handle, and a re-run of the cache
-# maintenance path. simyan keeps its rate-limit state in a sqlite
-# bucket file rather than in memory, so sharing is about connection and
-# handle reuse rather than about rate-limit visibility — that part
-# already worked across instances.
-#
-# Contract: FIRST BUILD WINS, matching `metron_api`'s session cache. The
-# client (and the response cache baked into it) is constructed from the
-# settings of whichever source instance hits the cache miss; later
-# same-credential sources reuse it even if their own cache settings
-# differ, and we warn once when they do. Entries are deliberately never
-# evicted: the cache is bounded by distinct credential sets used in one
-# process.
-_session_cache: dict[tuple[str, str], tuple[Any, tuple]] = {}
-_session_cache_lock = threading.Lock()
+# Clients are shared by the credential set that built them, keyed by
+# (api_key, base_url), under the first-build-wins contract in
+# `base/online/shared_clients`. Without sharing, every file of a batch
+# paid for a fresh `Comicvine`: a new requests session (no connection
+# reuse across files), a new requests_cache sqlite handle, a new
+# ratelimit-bucket file handle, and a re-run of the cache maintenance
+# path. simyan keeps its rate-limit state in a sqlite bucket file rather
+# than in memory, so sharing is about connection and handle reuse
+# rather than about rate-limit visibility -- that part already worked
+# across instances.
+_sessions: SharedClients[tuple[str, str], Comicvine] = SharedClients(
+    "comicvine", "simyan client"
+)
 
 
 def reset_shared_sessions() -> None:
@@ -143,8 +136,7 @@ def reset_shared_sessions() -> None:
     tmp_path cache dirs; without this the first test's client would be
     handed to every later test that reuses a credential set.
     """
-    with _session_cache_lock:
-        _session_cache.clear()
+    _sessions.drain()
 
 
 def close_shared_sessions() -> None:
@@ -155,11 +147,9 @@ def close_shared_sessions() -> None:
     of reopening what it needs on its next request. The response cache
     reopens lazily and the hourly budget lives in the rate-limit bucket
     *file* rather than in the bucket object, so nothing a run has spent
-    is forgotten by closing. Mirrors `metron_api`'s `close_shared_sessions`.
+    is forgotten by closing. The entries stay, as Metron's do.
     """
-    with _session_cache_lock:
-        entries = list(_session_cache.values())
-    for client, _signature in entries:
+    for client in _sessions.clients():
         close_client(client)
 
 
@@ -350,14 +340,16 @@ def _drop_v2_cache_table(cache_path: Path) -> None:
 @dataclass
 class _SearchBudget:
     """
-    Pre-call spend limit for one `search()`: N issue-list calls, T seconds.
+    Pre-call spend limit for one `search()`: N issue-list requests, T seconds.
 
     ComicVine's fan-out is the one place a single comic can cost an
     unbounded amount of wall clock: `_discover_volumes` unions two
     capped result sets, so the volume list can reach 2x the discovery
     cap, and every survivor costs one rate-limited `list_issues` call
-    (two when the cover-date window comes back empty). At 1/sec that is
-    minutes for one comic, and there was nothing to stop it.
+    (two when the cover-date window comes back empty). Each call asks for
+    one page (`_ISSUE_LIST_MAX_RESULTS`), so a unit is one request, and an
+    unnumbered listing pages on one unit per page while units remain. At
+    1/sec that is minutes for one comic, and there was nothing to stop it.
 
     Both limits gate whether a call is ISSUED. Neither looks at a
     response, so the effort/api-budget contract — pre-call fan-out
@@ -371,6 +363,20 @@ class _SearchBudget:
     deadline: float | None
     spent: int = 0
     dropped: int = 0
+    pages_cut: bool = False
+
+    def take_page(self) -> bool:
+        """
+        Claim one more page of a listing already started.
+
+        A refusal marks the listing as cut short rather than counting a
+        volume as unasked.
+        """
+        if self.take():
+            return True
+        self.dropped -= 1
+        self.pages_cut = True
+        return False
 
     def take(self) -> bool:
         """Claim one call. False when the budget or the clock is out."""
@@ -423,6 +429,16 @@ class _VolumeFacts:
 
 
 _NO_VOLUME_FACTS: Final = _VolumeFacts()
+
+
+@dataclass(frozen=True, slots=True)
+class _Listing:
+    """Where one volume's unnumbered issue list goes on: its next page."""
+
+    volume_id: int
+    volume: _VolumeFacts
+    year: int | None
+    offset: int
 
 
 def _display_text(text: str | None) -> str | None:
@@ -564,7 +580,7 @@ class ComicVineOnlineSource(OnlineSource):
         pool, response-cache handle and ratelimit-bucket handle per
         comic. Memoizing by (api_key, base_url) at module scope lets
         every file, and every thread in `Runner._run_parallel`'s pool,
-        reuse one. See `_session_cache` for the first-build-wins
+        reuse one. See `_sessions` for the first-build-wins
         contract.
         """
         if self._client is None:
@@ -582,25 +598,9 @@ class ComicVineOnlineSource(OnlineSource):
 
     def _get_or_build_shared_session(self) -> Comicvine:
         key = (self._credentials.key or "", self._credentials.url or "")
-        signature = self._session_config_signature()
-        with _session_cache_lock:
-            entry = _session_cache.get(key)
-            if entry is None:
-                client = self._build_session()
-                _session_cache[key] = (client, signature)
-                return client
-        client, built_signature = entry
-        if built_signature != signature:
-            # First build wins (see the _session_cache comment); tell the
-            # user their differing cache config is not taking effect.
-            warn_once(
-                f"{self.name}:session-config-mismatch",
-                f"online {self.name}: reusing the existing shared simyan "
-                "client; this instance's differing cache settings "
-                f"{signature} are ignored in favor of the client's "
-                f"{built_signature}",
-            )
-        return client
+        return _sessions.get_or_build(
+            key, self._session_config_signature(), self._build_session
+        )
 
     def _new_client(self, cache_expiry: Any) -> Comicvine:
         from simyan.comicvine import Comicvine
@@ -898,6 +898,14 @@ class ComicVineOnlineSource(OnlineSource):
     # that score well on every other signal.
     _COVER_DATE_WINDOW_YEARS: ClassVar[int] = 2
 
+    # The most rows one per-volume issue-list request asks for: one page of
+    # Comic Vine's offset paginator. simyan's default of 500 is five
+    # requests, which the search budget counted as one. Capped, one budget
+    # unit is one request; an unnumbered listing pages on, a unit a page,
+    # while the budget lasts (`_page_on`). A number filter returns a row
+    # or two anyway.
+    _ISSUE_LIST_MAX_RESULTS: ClassVar[int] = 100
+
     # Maximum number of years a comic may pre-date its volume's start_year
     # before we treat the volume as causally impossible and skip the
     # per-volume issue lookup. A 1987 Wardens issue with profile.year=1987
@@ -1067,9 +1075,13 @@ class ComicVineOnlineSource(OnlineSource):
         volume: _VolumeFacts = _NO_VOLUME_FACTS,
         *,
         year: int | None = None,
+        offset: int = 0,
     ) -> list[Candidate]:
         """
         Run a single ``list_issues`` call constrained by volume id.
+
+        One page of at most `_ISSUE_LIST_MAX_RESULTS` rows, from row
+        ``offset``: one request, one budget unit.
 
         Used both by the fast path (`--series-id comicvine:<id>`) and by
         each iteration of the discovery two-step. ``volume`` carries what
@@ -1099,7 +1111,12 @@ class ComicVineOnlineSource(OnlineSource):
             issue_filter.append(
                 f"cover_date:{year - window}-01-01|{year + window}-12-31"
             )
-        issues = session.list_issues(params={"filter": ",".join(issue_filter)})
+        params = {"filter": ",".join(issue_filter)}
+        if offset:
+            params["offset"] = str(offset)
+        issues = session.list_issues(
+            params=params, max_results=self._ISSUE_LIST_MAX_RESULTS
+        )
         return [self._to_candidate(i, volume) for i in issues]
 
     def _volume_predates_comic(
@@ -1162,9 +1179,17 @@ class ComicVineOnlineSource(OnlineSource):
         # volume id, saving the discovery API call.
         explicit_sid = self._settings.lookup.series_ids.get(self.name)
         if explicit_sid is not None:
+            budget = self._new_search_budget()
+            budget.take()  # the first call always goes; pages are budgeted
+            pending: list[_Listing] = []
             try:
-                return self._list_with_year_retry(
-                    session, explicit_sid, issue_number, year=year
+                candidates = self._list_with_year_retry(
+                    session,
+                    explicit_sid,
+                    issue_number,
+                    year=year,
+                    budget=budget,
+                    pending=pending,
                 )
             except Exception as exc:
                 logger.warning(
@@ -1172,6 +1197,14 @@ class ComicVineOnlineSource(OnlineSource):
                     f"failed: {exc}"
                 )
                 raise
+            self._page_on(session, pending, budget, candidates)
+            if budget.pages_cut:
+                logger.info(
+                    f"online {self.name}: {budget.exhausted_reason()} after "
+                    f"{budget.spent} issue-list call(s) for volume "
+                    f"{explicit_sid}; issue list cut short."
+                )
+            return candidates
 
         if not profile.series:
             logger.debug(
@@ -1207,10 +1240,66 @@ class ComicVineOnlineSource(OnlineSource):
         name_threshold = self._effort_name_threshold()
 
         budget = self._new_search_budget()
+        candidates, failure = self._fan_out(
+            session,
+            volumes,
+            profile=profile,
+            issue_number=issue_number,
+            year=year,
+            name_threshold=name_threshold,
+            budget=budget,
+        )
+        if budget.dropped or budget.pages_cut:
+            # Never truncate silently: a short candidate list has to be
+            # distinguishable from a thin one upstream.
+            cut = []
+            if budget.dropped:
+                cut.append(f"{budget.dropped} volume(s) not queried")
+            if budget.pages_cut:
+                cut.append("issue lists cut short")
+            logger.info(
+                f"online {self.name}: {budget.exhausted_reason()} after "
+                f"{budget.spent} issue-list call(s) for "
+                f"series={profile.series!r}; {', '.join(cut)}. Use "
+                "`--effort thorough` (config key `online.tuning.effort`) "
+                "to search them all."
+            )
+        if failure is not None:
+            raise failure
+        return candidates
+
+    def _fan_out(
+        self,
+        session: Any,
+        volumes: Sequence[Any],
+        *,
+        profile: ComicProfile,
+        issue_number: str | None,
+        year: int | None,
+        name_threshold: float,
+        budget: _SearchBudget,
+    ) -> tuple[list[Candidate], Exception | None]:
+        """
+        List each volume's matching issues, degrading past a failed volume.
+
+        One volume's failure costs only its candidates while another
+        volume still offers some. When nothing came back and any volume
+        failed -- an outage, a spent pool, or one failure beside volumes
+        without the issue -- the last failure comes back for the caller to
+        raise, so the lookup reports a failed search rather than a
+        no-match: the answer may have been in the volume that failed. A
+        volume a filter or the budget skipped was never asked and counts
+        for neither.
+
+        Every kept volume's first page comes first, in discovery order;
+        unnumbered listings then page on (`_page_on`).
+        """
         candidates: list[Candidate] = []
+        failure: Exception | None = None
+        pending: list[_Listing] = []
         for vol in volumes:
-            candidates.extend(
-                self._candidates_for_volume(
+            try:
+                found = self._candidates_for_volume(
                     session,
                     vol,
                     profile=profile,
@@ -1218,19 +1307,75 @@ class ComicVineOnlineSource(OnlineSource):
                     year=year,
                     name_threshold=name_threshold,
                     budget=budget,
+                    pending=pending,
                 )
-            )
-        if budget.dropped:
-            # Never truncate silently: a short candidate list has to be
-            # distinguishable from a thin one upstream.
-            logger.info(
-                f"online {self.name}: {budget.exhausted_reason()} after "
-                f"{budget.spent} issue-list call(s) for "
-                f"series={profile.series!r}; {budget.dropped} volume(s) "
-                "not queried. Use `--effort thorough` (config key "
-                "`online.tuning.effort`) to search them all."
-            )
-        return candidates
+            except OnlineLookupAbortedError:
+                # An abort ends the whole lookup; it is not a source-side
+                # failure to degrade past. Mirrors OnlineSource.lookup_issue.
+                raise
+            except Exception as exc:
+                logger.warning(
+                    f"online {self.name}: issue-list for volume {vol.id} "
+                    f"({vol.name!r}) failed: {exc}"
+                )
+                failure = exc
+                continue
+            if found:
+                candidates.extend(found)
+        failure = self._page_on(session, pending, budget, candidates) or failure
+        return candidates, None if candidates else failure
+
+    def _page_on(
+        self,
+        session: Any,
+        pending: list[_Listing],
+        budget: _SearchBudget,
+        candidates: list[Candidate],
+    ) -> Exception | None:
+        """
+        Page on through unnumbered listings while the budget lasts.
+
+        Breadth first and deterministic: one more page for each listing
+        in turn, in discovery order, round after round, so when the
+        budget cannot cover them all the earlier volumes are never paged
+        deeper than the later ones by more than a page. Each page costs a
+        unit before it is sent. A listing ends at a short page. A failed
+        page ends its listing and is returned, the last one, for the
+        caller to weigh; what earlier pages found is kept.
+        """
+        page_size = self._ISSUE_LIST_MAX_RESULTS
+        failure: Exception | None = None
+        while pending:
+            next_round: list[_Listing] = []
+            for listing in pending:
+                if not budget.take_page():
+                    return failure
+                try:
+                    page = self._list_issues_by_volume(
+                        session,
+                        listing.volume_id,
+                        None,
+                        listing.volume,
+                        year=listing.year,
+                        offset=listing.offset,
+                    )
+                except OnlineLookupAbortedError:
+                    raise
+                except Exception as exc:
+                    logger.warning(
+                        f"online {self.name}: issue-list page at row "
+                        f"{listing.offset} for volume {listing.volume_id} "
+                        f"failed: {exc}"
+                    )
+                    failure = exc
+                    continue
+                candidates.extend(page)
+                if len(page) >= page_size:
+                    next_round.append(
+                        replace(listing, offset=listing.offset + page_size)
+                    )
+            pending = next_round
+        return failure
 
     def _new_search_budget(self) -> _SearchBudget:
         """Resolve this search's pre-call fan-out limits from the effort knob."""
@@ -1250,9 +1395,13 @@ class ComicVineOnlineSource(OnlineSource):
         year: int | None,
         name_threshold: float,
         budget: _SearchBudget | None = None,
-    ) -> list[Candidate]:
+        pending: list[_Listing] | None = None,
+    ) -> list[Candidate] | None:
         """
         Apply pre-call filters and (if kept) fetch the volume's matching issues.
+
+        Returns None when a filter or the budget skipped the volume, so no
+        request was made; the caller handles a failed request.
 
         Pre-filters in order: start_year causality (skip volumes that
         started after the comic), then series-name fuzzy match (skip
@@ -1276,7 +1425,7 @@ class ComicVineOnlineSource(OnlineSource):
                 f"year={year} predates the volume — issue cannot "
                 f"originate here."
             )
-            return []
+            return None
         alt_series = tuple(split_aliases(getattr(vol, "aliases", None)))
         if not should_keep_volume_name(
             profile.series, vol.name, name_threshold, alt_names=alt_series
@@ -1287,28 +1436,18 @@ class ComicVineOnlineSource(OnlineSource):
                 f"profile.series={profile.series!r} (threshold="
                 f"{name_threshold:.2f}, effort pre-filter)."
             )
-            return []
+            return None
         if budget is not None and not budget.take():
-            return []
-        try:
-            return self._list_with_year_retry(
-                session,
-                vol.id,
-                issue_number,
-                _VolumeFacts.from_volume(vol, alt_series),
-                year=year,
-                budget=budget,
-            )
-        except OnlineLookupAbortedError:
-            # An abort ends the whole lookup; it is not a source-side
-            # failure to degrade past. Mirrors OnlineSource.lookup_issue.
-            raise
-        except Exception as exc:
-            logger.warning(
-                f"online {self.name}: issue-list for volume {vol.id} "
-                f"({vol.name!r}) failed: {exc}"
-            )
-            return []
+            return None
+        return self._list_with_year_retry(
+            session,
+            vol.id,
+            issue_number,
+            _VolumeFacts.from_volume(vol, alt_series),
+            year=year,
+            budget=budget,
+            pending=pending,
+        )
 
     def _list_with_year_retry(
         self,
@@ -1319,9 +1458,14 @@ class ComicVineOnlineSource(OnlineSource):
         *,
         year: int | None,
         budget: _SearchBudget | None = None,
+        pending: list[_Listing] | None = None,
     ) -> list[Candidate]:
         """
         Per-volume issue lookup with a year-window filter and one fallback.
+
+        The first page only. An unnumbered page that came back full is
+        appended to ``pending`` with the filter that produced it, for
+        `_page_on` to continue.
 
         Tries `cover_date:Y±2` first (cuts out wrong-volume candidates).
         If that returns empty AND a year was supplied, retries without
@@ -1337,10 +1481,19 @@ class ComicVineOnlineSource(OnlineSource):
         candidates = self._list_issues_by_volume(
             session, volume_id, issue_number, volume, year=year
         )
-        if candidates or year is None:
-            return candidates
-        if budget is not None and not budget.take():
-            return candidates
-        return self._list_issues_by_volume(
-            session, volume_id, issue_number, volume, year=None
-        )
+        if not candidates and year is not None:
+            if budget is not None and not budget.take():
+                return candidates
+            year = None
+            candidates = self._list_issues_by_volume(
+                session, volume_id, issue_number, volume, year=None
+            )
+        if (
+            pending is not None
+            and not issue_number
+            and len(candidates) >= self._ISSUE_LIST_MAX_RESULTS
+        ):
+            pending.append(
+                _Listing(volume_id, volume, year, self._ISSUE_LIST_MAX_RESULTS)
+            )
+        return candidates

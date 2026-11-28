@@ -208,47 +208,55 @@ def _cv_profile() -> ComicProfile:
     return ComicProfile(series="Foo Comics", issue="5", year=2020)
 
 
+class _OneVolumeCV:
+    """A Comic Vine session double whose search finds one volume."""
+
+    def search_volumes(self, query, max_results=500):
+        return [_FakeVolume()]
+
+    def list_volumes(self, params=None, max_results=500):
+        return []
+
+
+def _cv_search_source(monkeypatch, list_issues) -> ComicVineOnlineSource:
+    src = _cv_source()
+    monkeypatch.setattr(src, "_get_session", _OneVolumeCV)
+    monkeypatch.setattr(src, "_list_with_year_retry", list_issues)
+    return src
+
+
 def test_comicvine_per_volume_loop_propagates_abort(monkeypatch) -> None:
     """A cancelled retry sleep inside one volume aborts the whole search."""
-    src = _cv_source()
 
     def boom(*args, **kwargs):
         raise _abort()
 
-    monkeypatch.setattr(src, "_list_with_year_retry", boom)
+    src = _cv_search_source(monkeypatch, boom)
 
     with pytest.raises(OnlineLookupAbortedError):
-        src._candidates_for_volume(
-            _NO_SESSION,
-            _FakeVolume(),
-            profile=_cv_profile(),
-            issue_number="5",
-            year=2020,
-            name_threshold=0.0,
-        )
+        src.search(_cv_profile())
 
 
 def test_comicvine_per_volume_loop_still_degrades_on_api_error(monkeypatch) -> None:
-    """An ordinary source-side failure still drops just that volume."""
-    src = _cv_source()
+    """An ordinary source-side failure drops just that volume."""
 
-    def boom(*args, **kwargs):
-        msg = "comicvine 500"
-        raise RuntimeError(msg)
+    class _OtherVolume(_FakeVolume):
+        id = 78
 
-    monkeypatch.setattr(src, "_list_with_year_retry", boom)
+    def flaky(_session, volume_id, *args, **kwargs):
+        if volume_id == _FakeVolume.id:
+            msg = "comicvine 500"
+            raise RuntimeError(msg)
+        return [volume_id]
 
-    assert (
-        src._candidates_for_volume(
-            _NO_SESSION,
-            _FakeVolume(),
-            profile=_cv_profile(),
-            issue_number="5",
-            year=2020,
-            name_threshold=0.0,
-        )
-        == []
+    src = _cv_search_source(monkeypatch, flaky)
+    monkeypatch.setattr(
+        _OneVolumeCV,
+        "search_volumes",
+        lambda *_a, **_k: [_FakeVolume(), _OtherVolume()],
     )
+
+    assert src.search(_cv_profile()) == [78]
 
 
 # --- Metron: the wide fallback ----------------------------------------------

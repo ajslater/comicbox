@@ -5,8 +5,8 @@ from __future__ import annotations
 import sys
 import time
 from types import SimpleNamespace
-from typing import TYPE_CHECKING
 
+import pytest
 from simyan.errors import RateLimitError
 
 from comicbox.config.online.settings import (
@@ -27,9 +27,6 @@ if sys.version_info >= (3, 12):
     from typing import override  # pyright: ignore[reportUnreachable]
 else:
     from typing_extensions import override
-
-if TYPE_CHECKING:
-    import pytest
 
 
 class _HintedRateLimitError(RateLimitError):
@@ -1085,3 +1082,357 @@ def test_lookup_issue_in_volume_without_number_makes_no_request(
 
         assert src.lookup_issue(500, issue_number) is None, issue_number
         assert fake_cv.list_issues_calls == [], issue_number
+
+
+# ------------------------------------------- per-volume failures (A15)
+
+
+class _FailingCV(_FakeCV):
+    """A Comic Vine whose issue list fails for the volumes it is told to."""
+
+    def __init__(self, *args: object, failing: set[int], **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # pyright: ignore[reportArgumentType], # ty: ignore[invalid-argument-type]
+        self._failing = failing
+
+    @override
+    def list_issues(self, params=None, max_results=500):
+        from simyan.errors import ServiceError
+
+        filter_str = (params or {}).get("filter", "")
+        vid = int(filter_str.split(",")[0].split(":", 1)[1])
+        if vid in self._failing:
+            self.list_issues_calls.append(dict(params or {}))
+            msg = "502: Bad Gateway"
+            raise ServiceError(msg)
+        return super().list_issues(params, max_results)
+
+
+def _three_volume_source(
+    monkeypatch: pytest.MonkeyPatch, failing: set[int]
+) -> tuple[ComicVineOnlineSource, _FailingCV]:
+    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2, 3)]
+    issues = {
+        i: [_FakeBasicIssue(iid=i * 10, number="5", volume_name="Wardens")]
+        for i in (1, 2, 3)
+    }
+    fake = _FailingCV(volumes=volumes, issues_by_volume=issues, failing=failing)
+    src = _make_cv_source(monkeypatch, fake)
+    src.retry_sleep = lambda _delay: None
+    return src, fake
+
+
+def test_a_search_whose_every_volume_failed_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    An outage is a failed search, not a clean no-match.
+
+    Every per-volume issue list failing used to return [], which the
+    lookup reported as searched-and-missed.
+    """
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={1, 2, 3})
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    with pytest.raises(ServiceError, match="502"):
+        src.search(profile)
+    assert {c["filter"].split(",")[0] for c in fake.list_issues_calls} == {
+        "volume:1",
+        "volume:2",
+        "volume:3",
+    }
+
+
+def test_a_search_with_one_failed_volume_keeps_the_others(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    src, _ = _three_volume_source(monkeypatch, failing={2})
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    assert sorted(c.issue_id for c in src.search(profile)) == [10, 30]
+
+
+def test_a_failed_volume_with_no_candidates_elsewhere_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    D-2: one volume failed and the others had nothing: a failed search.
+
+    The missing answer could have been in the volume that failed, so a
+    no-match would be a guess.
+    """
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={2})
+    fake._issues_by_volume = {}  # the volumes that answer have no such issue
+
+    with pytest.raises(ServiceError, match="502"):
+        src.search(ComicProfile(series="Wardens", issue="5", issue_int=5))
+
+
+def test_volumes_the_filters_skip_are_not_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """No volume queried is a no-match, even when the issue list would fail."""
+    src, fake = _three_volume_source(monkeypatch, failing={1, 2, 3})
+    # Every volume started after the comic: the causality filter skips them.
+    for vol in fake._volumes:
+        vol.start_year = 2020
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5, year=1987)
+
+    assert src.search(profile) == []
+    assert fake.list_issues_calls == []
+
+
+def test_a_failed_volume_with_the_rest_out_of_budget_still_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Volumes the budget dropped were never asked, so they are not answers."""
+    from simyan.errors import ServiceError
+
+    src, fake = _three_volume_source(monkeypatch, failing={1})
+    monkeypatch.setattr(
+        src,
+        "_new_search_budget",
+        lambda: _SearchBudget(max_calls=1, deadline=None),
+    )
+    profile = ComicProfile(series="Wardens", issue="5", issue_int=5)
+
+    with pytest.raises(ServiceError):
+        src.search(profile)
+    assert {c["filter"].split(",")[0] for c in fake.list_issues_calls} == {"volume:1"}
+
+
+def test_a_lookup_whose_every_volume_failed_reports_a_failed_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Through the box: no SearchCompleted(n_candidates=0), so no no-match."""
+    from argparse import Namespace
+    from types import MappingProxyType
+
+    from comicbox.box import Comicbox
+    from comicbox.box.online_lookup import ComicboxOnlineLookup
+    from comicbox.events import Event, NoMatch, SearchCompleted
+
+    volumes = [_FakeBasicVolume(vid=i, name="Wardens") for i in (1, 2)]
+    fake = _FailingCV(volumes=volumes, issues_by_volume={}, failing={1, 2})
+
+    def factory(creds, settings) -> ComicVineOnlineSource:
+        src = ComicVineOnlineSource(creds, settings)
+        monkeypatch.setattr(src, "_get_session", lambda: fake)
+        return src
+
+    monkeypatch.setattr(
+        ComicboxOnlineLookup,
+        "_ONLINE_SOURCE_FACTORIES",
+        MappingProxyType({"comicvine": factory}),
+    )
+    metadata = {"comicbox": {"series": {"name": "Wardens"}, "issue": {"name": "5"}}}
+    args = Namespace(
+        comicbox=Namespace(
+            online_sources=["comicvine"],
+            general=Namespace(metadata=metadata),
+            auth=["comicvine:key=k"],
+        )
+    )
+    events: list[Event] = []
+    cb = Comicbox(config=args)
+    cb.set_event_handler(events.append)
+    cb.set_retry_sleep(lambda _delay: None)
+
+    assert cb.run_online_lookup() is False
+    assert not any(isinstance(e, SearchCompleted | NoMatch) for e in events)
+
+
+# ------------------------------- budget units are requests (C2, D-1)
+
+_ROWS_PER_VOLUME = 450
+
+
+def _paged_client(
+    monkeypatch: pytest.MonkeyPatch,
+    client,
+    requests: list[dict],
+    *,
+    volumes: int = 4,
+    rows_in_year_window: int | None = None,
+):
+    """
+    Serve a real `Comicvine` from fakes below its paginator.
+
+    `_request` answers `/issues/` with offset/limit pages of a 450-issue
+    volume, one row when an issue number is in the filter, or
+    ``rows_in_year_window`` rows under a cover-date filter, and records
+    every page asked for; rows convert to the module's issue fakes, with
+    ids unique per volume (volume * 1000 + row).
+    """
+    found = [_FakeBasicVolume(vid=i, name="Wardens") for i in range(1, volumes + 1)]
+
+    def request(method, endpoint, params=None):
+        params = dict(params or {})
+        requests.append(params)
+        issue_filter = params.get("filter", "")
+        total = _ROWS_PER_VOLUME
+        if "issue_number:" in issue_filter:
+            total = 1
+        elif "cover_date:" in issue_filter and rows_in_year_window is not None:
+            total = rows_in_year_window
+        volume_id = int(issue_filter.split(",")[0].split(":")[1])
+        offset, limit = int(params["offset"]), int(params["limit"])
+        rows = [
+            {"id": volume_id * 1000 + i, "number": str(i)}
+            for i in range(offset, min(total, offset + limit))
+        ]
+        return {"status_code": 1, "results": rows, "number_of_total_results": total}
+
+    def convert(data, **_kwargs):
+        return _FakeBasicIssue(
+            iid=data["id"], number=data["number"], volume_name="Wardens"
+        )
+
+    monkeypatch.setattr(client, "_request", request)
+    monkeypatch.setattr(client, "_convert", convert)
+    monkeypatch.setattr(client, "search_volumes", lambda *_a, **_k: list(found))
+    monkeypatch.setattr(client, "list_volumes", lambda *_a, **_k: [])
+
+
+def _paged_search(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path,
+    profile: ComicProfile,
+    effort: Effort = Effort.BALANCED,
+    **client_options,
+) -> tuple[list[dict], _SearchBudget, list]:
+    """Search a paged fake; return the requests, the budget and the result."""
+    from tests.util.online_client import comicvine_client
+
+    requests: list[dict] = []
+    budgets: list[_SearchBudget] = []
+    tuning = OnlineTuningSettings(
+        per_source={"comicvine": OnlineSourceTuning(effort=effort)}
+    )
+    with comicvine_client(tmp_path) as client:
+        _paged_client(monkeypatch, client, requests, **client_options)
+        src = ComicVineOnlineSource(
+            OnlineSourceCredentials(key="test-key"), OnlineSettings(tuning=tuning)
+        )
+        monkeypatch.setattr(src, "_get_session", lambda: client)
+        new_budget = src._new_search_budget
+
+        def spy() -> _SearchBudget:
+            budgets.append(new_budget())
+            return budgets[-1]
+
+        monkeypatch.setattr(src, "_new_search_budget", spy)
+        candidates = src.search(profile)
+    return requests, budgets[0], candidates
+
+
+@pytest.mark.parametrize(
+    ("issue", "effort", "volumes", "expected_requests"),
+    [
+        # 4 volumes x 450 issues, no year: every page fits the budget.
+        (None, Effort.BALANCED, 4, 20),
+        (None, Effort.MINIMAL, 4, 10),
+        (None, Effort.THOROUGH, 4, 20),
+        # 25 matching volumes: discovery keeps 20 (5 at minimal).
+        (None, Effort.BALANCED, 25, 20),
+        (None, Effort.MINIMAL, 25, 10),
+        (None, Effort.THOROUGH, 25, 125),
+        # A number filter is one page a volume, at any effort.
+        ("5", Effort.BALANCED, 4, 4),
+        ("5", Effort.BALANCED, 25, 20),
+    ],
+    ids=[
+        "unnumbered-4-balanced",
+        "unnumbered-4-minimal",
+        "unnumbered-4-thorough",
+        "unnumbered-25-balanced",
+        "unnumbered-25-minimal",
+        "unnumbered-25-thorough",
+        "numbered-4",
+        "numbered-25",
+    ],
+)
+def test_every_issue_list_request_is_a_budget_unit(
+    monkeypatch: pytest.MonkeyPatch, tmp_path, issue, effort, volumes, expected_requests
+) -> None:
+    """
+    C2: one unit was charged per call while simyan paged up to five.
+
+    D-1: an unnumbered listing pages on while units remain, a unit a page,
+    so the requests sent always equal the units charged.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens", issue=issue),
+        effort,
+        volumes=volumes,
+    )
+
+    assert len(requests) == expected_requests
+    assert budget.spent == len(requests)
+
+
+def test_pages_are_shared_out_one_round_at_a_time(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """
+    D-1: when the budget can't cover every page, volumes take turns.
+
+    Minimal effort has 10 units for 4 volumes of 5 pages: every volume's
+    first page, then every volume's second, then the first two volumes'
+    third, in discovery order.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens"),
+        Effort.MINIMAL,
+    )
+
+    asked = [(r["filter"], int(r["offset"])) for r in requests]
+    assert asked == [
+        *((f"volume:{v}", 0) for v in (1, 2, 3, 4)),
+        *((f"volume:{v}", 100) for v in (1, 2, 3, 4)),
+        *((f"volume:{v}", 200) for v in (1, 2)),
+    ]
+    assert budget.pages_cut
+    assert budget.dropped == 0
+
+
+def test_an_issue_past_the_first_page_is_found_again(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """D-1: after C2 an unnumbered listing stopped at row 100."""
+    _, _, candidates = _paged_search(
+        monkeypatch, tmp_path, ComicProfile(series="Wardens"), volumes=1
+    )
+
+    ids = {c.issue_id for c in candidates}
+    assert 1250 in ids  # row 250 of volume 1
+    assert len(ids) == _ROWS_PER_VOLUME
+
+
+def test_a_year_window_that_falls_back_pages_on_unfiltered(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """
+    An empty year window costs its unit, then the unfiltered list pages.
+
+    4 volumes: 4 empty windows, 4 unfiltered first pages, then 12 more
+    pages until balanced's 20 units are spent.
+    """
+    requests, budget, _ = _paged_search(
+        monkeypatch,
+        tmp_path,
+        ComicProfile(series="Wardens", year=2020),
+        rows_in_year_window=0,
+    )
+
+    windowed = [r for r in requests if "cover_date:" in r["filter"]]
+    assert len(windowed) == 4
+    assert len(requests) == budget.spent == 20
+    assert all(int(r["offset"]) == 0 for r in windowed)

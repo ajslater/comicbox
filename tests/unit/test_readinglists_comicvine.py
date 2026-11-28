@@ -365,7 +365,7 @@ def test_no_key_fails_before_any_call(cv: FakeComicvine) -> None:
         " COMICBOX_ONLINE__AUTH__COMICVINE__KEY in the environment."
     )
     assert cv.built == 0
-    assert comicvine._session_cache == {}
+    assert comicvine._sessions.keys() == ()
     assert events == []
 
 

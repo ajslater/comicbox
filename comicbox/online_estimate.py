@@ -218,13 +218,9 @@ def _metron_gate_limit() -> int | None:
 
 def _metron_gate_keys() -> tuple[str, ...]:
     """Return the API tokens with a gate in this process."""
-    from comicbox.formats.metron_api.online_source import (
-        _gate_cache,
-        _session_cache_lock,
-    )
+    from comicbox.formats.metron_api.online_source import _gates
 
-    with _session_cache_lock:
-        return tuple(_gate_cache)
+    return _gates.keys()
 
 
 def requests_per_comic(source: str, effort: str = Effort.BALANCED.value) -> int:

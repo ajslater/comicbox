@@ -6,6 +6,7 @@ import pytest
 
 from comicbox.config.online.settings import Effort
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.online_estimate import (
     COMICVINE_ISSUE_LIST_REQUESTS_BY_EFFORT,
     METRON_REQUESTS_PER_COMIC,
@@ -215,6 +216,8 @@ def test_rate_prefers_what_the_server_reported(
 
     gate = RateGate(default_limit=METRON_DEFAULT_PER_MINUTE)
     gate.observe(burst_limit=60, burst_remaining=60)
-    monkeypatch.setattr(metron_online_source, "_gate_cache", {("u", "p", ""): gate})
+    gates = SharedClients("metron", "gate")
+    gates.get_or_build("token", (), lambda: gate)
+    monkeypatch.setattr(metron_online_source, "_gates", gates)
 
     assert source_rate_per_minute("metron") == 60

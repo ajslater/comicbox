@@ -10,7 +10,6 @@ and merge. M3 adds search.
 from __future__ import annotations
 
 import math
-import os
 import sqlite3
 import sys
 import threading
@@ -36,6 +35,7 @@ from comicbox.formats.base.online.profile import (
 from comicbox.formats.base.online.rate_gate import RateGate
 from comicbox.formats.base.online.rate_limits import METRON_DEFAULT_PER_MINUTE
 from comicbox.formats.base.online.retry import RetryCategory, with_retry
+from comicbox.formats.base.online.shared_clients import SharedClients, on_fork_in_child
 from comicbox.formats.base.online.sources.base import (
     OnlineSource,
     claim_cache_refresh,
@@ -63,38 +63,26 @@ if TYPE_CHECKING:
 
     from comicbox.formats.base.online.profile import ComicProfile
 
-# Sessions are shared across the API token that built them (see
-# `_get_session`) — not `db_path` like the old pyrate_limiter override
-# cache, since there's no bucket to key by anymore.
-# A shared `Session` gives `Runner._run_parallel`'s thread pool
-# (comicbox/run.py) one response cache and one consistent
-# `rate_limit_status` instead of each file's source starting cold;
-# mokkari>=4.0.1 makes this safe (thread-safe `SqliteCache`,
-# `rate_limit_status` lock). Sharing the observation was never enough to
-# stay inside the window, though — `_gate_cache` below is what enforces
-# it.
-#
-# Contract: FIRST BUILD WINS. The Session (and the response cache baked
-# into it) is constructed from the settings of whichever source instance
-# hits the cache miss; later same-credential sources reuse it even if
-# their own cache settings differ (we warn once when they do — see
-# `_get_or_build_shared_session`). Keying by cache config instead would
-# split `rate_limit_status` across sessions and defeat the sharing.
-# Entries are deliberately never evicted: the cache is bounded by the
-# distinct tokens used in one process. They are closed, though. A Session
-# holds a pooled `requests.Session` and its `SqliteCache` a sqlite
-# connection, and `close_shared_sessions()` releases both at the end of a
-# run; the entry stays, because both reopen on demand and the gate and
+# Sessions are shared by the API token that built them, under the
+# first-build-wins contract in `base/online/shared_clients`. A shared
+# `Session` gives `Runner._run_parallel`'s thread pool (comicbox/run.py)
+# one response cache and one consistent `rate_limit_status` instead of
+# each file's source starting cold; mokkari>=4.0.1 makes this safe
+# (thread-safe `SqliteCache`, `rate_limit_status` lock). Sharing the
+# observation was never enough to stay inside the window, though --
+# `_gates` below is what enforces it. A Session holds a pooled
+# `requests.Session` and its `SqliteCache` a sqlite connection, and
+# `close_shared_sessions()` releases both at the end of a run; the entry
+# stays, because both reopen on demand and the gate and
 # `rate_limit_status` the Session carries stay valid.
-_session_cache: dict[str, tuple[Any, tuple]] = {}
-_session_cache_lock = threading.Lock()
+_sessions: SharedClients[str, Any] = SharedClients("metron", "mokkari session")
 
-# One `RateGate` per token, built alongside that token's Session and
-# under the same lock. The gate is what actually keeps comicbox inside
-# Metron's 20/min window (see `comicbox/formats/base/online/
+# One `RateGate` per token, built alongside that token's Session (while
+# its registry lock is held). The gate is what actually keeps comicbox
+# inside Metron's burst window (see `comicbox/formats/base/online/
 # rate_gate.py`); sharing the Session was only ever enough to share
 # mokkari's *observation* of the limit, not to enforce it.
-_gate_cache: dict[str, RateGate] = {}
+_gates: SharedClients[str, RateGate] = SharedClients("metron", "rate gate")
 
 # The longest an empty search result is kept. mokkari would otherwise not
 # cache one at all, and comicbox keeps no memo of name searches, so a
@@ -117,7 +105,7 @@ _SERIES_DETAIL_KEYS: Final[tuple[str, ...]] = (
 # holds many comics from, so the rest of that cluster answers "issue N in
 # volume V" from memory instead of one `issues_list` each.
 #
-# Bounded, unlike `_session_cache`: this holds real payloads, and a big
+# Bounded, unlike `_sessions`: this holds real payloads, and a big
 # library run touches many series. Oldest-first eviction is right here —
 # a batch is ordered by series, so the series that filled the oldest
 # entry is the one the run has finished with.
@@ -192,12 +180,9 @@ def close_shared_sessions() -> None:
     reports it afresh, so a day spent once does not refuse every later
     run in a long-lived process.
     """
-    with _session_cache_lock:
-        entries = list(_session_cache.values())
-        gates = list(_gate_cache.values())
-    for gate in gates:
+    for gate in _gates.clients():
         gate.forget_sustained()
-    for session, _signature in entries:
+    for session in _sessions.clients():
         # Tests seed fakes that are not real Sessions.
         for closeable in (session, getattr(session, "cache", None)):
             if (close := getattr(closeable, "close", None)) is not None:
@@ -208,40 +193,26 @@ def reset_shared_sessions() -> None:
     """
     Drop every shared session and gate, and forget a cover-search refusal.
 
-    The test seam, and what the at-fork handler calls in a child. Mirrors
-    the ComicVine source's `reset_shared_sessions`.
+    The test seam. Mirrors the other sources' `reset_shared_sessions`.
     """
-    with _session_cache_lock:
-        _session_cache.clear()
-        _gate_cache.clear()
+    _sessions.drain()
+    _gates.drain()
     _cover_search_unsupported.clear()
 
 
-def _after_fork_in_child() -> None:
+def _rebind_prefetch_lock() -> None:
     """
-    Drop the inherited sessions and gates in a forked child.
+    Give a forked child a prefetch lock of its own.
 
-    A pooled `requests.Session` must not be shared across a fork
-    (mokkari's README says so): parent and child would write into the
-    same sockets. `comicbox/process.py`'s `ProcessPoolExecutor` and
-    codex's `multiprocessing.Process` librarian are the forks this
-    protects.
-
-    The lock is rebound rather than taken: another thread may have held
-    it at the instant of the fork, and that thread does not exist in the
-    child, so acquiring it here would deadlock forever. The inherited
-    sockets are not closed, only dropped -- closing a socket the parent
-    is still using would break the parent. The prefetch cache holds plain
-    dicts and is safe to inherit.
+    The prefetch cache holds plain dicts and is safe to inherit; its lock
+    is not, as a thread may have held it at the instant of the fork (see
+    `shared_clients`, which drops the sessions and gates).
     """
-    global _session_cache_lock  # noqa: PLW0603
-    _session_cache_lock = threading.Lock()
-    _session_cache.clear()
-    _gate_cache.clear()
+    global _prefetch_lock  # noqa: PLW0603
+    _prefetch_lock = threading.Lock()
 
 
-if hasattr(os, "register_at_fork"):  # POSIX only
-    os.register_at_fork(after_in_child=_after_fork_in_child)
+on_fork_in_child(_rebind_prefetch_lock)
 
 
 def shared_gate(key: str | None) -> RateGate | None:
@@ -251,8 +222,7 @@ def shared_gate(key: str | None) -> RateGate | None:
     Read-only accessor for callers that want the pacing counters without
     holding a source instance (the end-of-run summary, tests).
     """
-    with _session_cache_lock:
-        return _gate_cache.get(key or "")
+    return _gates.get(key or "")
 
 
 def shared_session_rate_limit_status(key: str | None) -> RateLimitStatus | None:
@@ -264,12 +234,8 @@ def shared_session_rate_limit_status(key: str | None) -> RateLimitStatus | None:
     this token in this process yet (nothing has hit the network).
     Window fields are None until Metron reports them.
     """
-    with _session_cache_lock:
-        entry = _session_cache.get(key or "")
-    if entry is None:
-        return None
-    session, _ = entry
-    return session.rate_limit_status
+    session = _sessions.get(key or "")
+    return None if session is None else session.rate_limit_status
 
 
 def _window(window: RateLimitWindow) -> dict[str, Any]:
@@ -702,29 +668,11 @@ class MetronOnlineSource(OnlineSource):
 
     def _get_or_build_shared_session(self) -> Session:
         key = self._credential_key()
-        signature = self._session_config_signature()
-        with _session_cache_lock:
-            entry = _session_cache.get(key)
-            if entry is None:
-                gate = _gate_cache.get(key)
-                if gate is None:
-                    gate = self._build_gate()
-                    _gate_cache[key] = gate
-                session = self._build_session(gate)
-                _session_cache[key] = (session, signature)
-                return session
-        session, built_signature = entry
-        if built_signature != signature:
-            # First build wins (see the _session_cache comment); tell the
-            # user their differing cache config is not taking effect.
-            warn_once(
-                f"{self.name}:session-config-mismatch",
-                f"online {self.name}: reusing the existing shared mokkari "
-                "session; this instance's differing cache settings "
-                f"{signature} are ignored in favor of the session's "
-                f"{built_signature}",
-            )
-        return session
+        return _sessions.get_or_build(
+            key,
+            self._session_config_signature(),
+            lambda: self._build_session(_gates.get_or_build(key, (), self._build_gate)),
+        )
 
     def _build_gate(self) -> RateGate:
         """
@@ -765,8 +713,7 @@ class MetronOnlineSource(OnlineSource):
 
     def _gate(self) -> RateGate | None:
         """Return the shared rate gate, once a session has been built."""
-        with _session_cache_lock:
-            return _gate_cache.get(self._credential_key())
+        return _gates.get(self._credential_key())
 
     def _warn_ignored_url(self) -> None:
         if self._credentials.url:

@@ -33,6 +33,7 @@ from comicbox.formats.base.online.retry import (
     RetryCategory,
     with_retry,
 )
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.metron_api.online_source import MetronOnlineSource
 
 if sys.version_info >= (3, 12):
@@ -1106,8 +1107,10 @@ def test_get_session_memoizes_client(monkeypatch: pytest.MonkeyPatch) -> None:
 
     # Isolate the process-wide per-credential session cache so this test
     # neither sees nor leaves behind entries for ("u", "p").
-    monkeypatch.setattr(metron_online_source, "_session_cache", {})
-    monkeypatch.setattr(metron_online_source, "_gate_cache", {})
+    monkeypatch.setattr(
+        metron_online_source, "_sessions", SharedClients("metron", "session")
+    )
+    monkeypatch.setattr(metron_online_source, "_gates", SharedClients("metron", "gate"))
     creds = OnlineSourceCredentials(key="k")
     settings = OnlineSettings()
     src = MetronOnlineSource(creds, settings)

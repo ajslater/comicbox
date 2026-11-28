@@ -1180,18 +1180,19 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
         # directly for "issue N in volume V." --rematch bypasses this
         # path too (consistent with its "don't trust prior verdict"
         # intent).
-        if not online.lookup.rematch and self._try_series_cache_lookup(source):
-            return _SourceOutcome(applied=True)
-
-        # Single-flight the cold search. Under `-j N` the first N files of
-        # a cluster start together, all miss the cache and all pay for the
-        # same search; whoever leads releases the rest, which then find
-        # the resolved id waiting for them.
-        key = self._series_lead_key(source, online)
+        # The same step single-flights the cold search: under `-j N` the
+        # first N files of a cluster start together and all miss the
+        # cache; one leads the search and the rest wait for it, then find
+        # the resolved id. A leader releases however its search ended.
+        lead_key = None
+        if not online.lookup.rematch:
+            hit, lead_key = self._try_series_cache_lookup(source)
+            if hit:
+                return _SourceOutcome(applied=True)
         try:
             return _SourceOutcome(applied=self._search_path(source, online))
         finally:
-            self._release_series_lead(key)
+            self._release_series_lead(lead_key)
 
     def _series_cache_key(self, source: OnlineSource) -> tuple[str, str] | None:
         """
@@ -1209,61 +1210,62 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             return None
         return (source.name, _series_fingerprint(profile))
 
-    def _series_lead_key(
-        self, source: OnlineSource, online: OnlineSettings
-    ) -> tuple[str, str] | None:
-        """
-        Take leadership of this comic's series before a cold search, if free.
-
-        Returns the key to release afterwards, or None when there is
-        nothing to lead — no cache, no usable key, `--rematch` (every file
-        re-searches by definition), a plain dict (a sequential caller
-        cannot race anyway), or another worker already leading. That last
-        case is not a problem: the other worker holds a *different*
-        series, or this comic already waited for it in
-        `_try_series_cache_lookup` and came back unresolved.
-        """
-        cache = self._series_cache
-        if cache is None or online.lookup.rematch:
-            return None
-        key = self._series_cache_key(source)
-        if key is None or not lead_series(cache, key):
-            return None
-        return key
-
     def _release_series_lead(self, key: tuple[str, str] | None) -> None:
         """Hand leadership back after a cold search, however it ended."""
         if key is not None and self._series_cache is not None:
             release_series(self._series_cache, key)
 
-    def _try_series_cache_lookup(self, source: OnlineSource) -> bool:
+    def _try_series_cache_lookup(
+        self, source: OnlineSource
+    ) -> tuple[bool, tuple[str, str] | None]:
         """
-        Attempt the volume-scoped issue lookup; return True on hit + accept.
+        Attempt the volume-scoped issue lookup, or lead the series' search.
 
-        Cache miss, missing issue number, source-side failure, or a
-        stale-cache "issue not in this volume" response → return False so
-        the caller falls through to the cold-path search. The cache entry
-        is left alone in that case (first-writer-wins).
+        Returns ``(accepted, lead_key)``. ``accepted`` is True on a hit
+        that was accepted. Cache miss, missing issue number, source-side
+        failure, or a stale-cache "issue not in this volume" response
+        leave it False so the caller falls through to the cold-path
+        search. The cache entry is left alone in that case
+        (first-writer-wins).
 
-        A miss with another worker already resolving this same series
-        WAITS for it instead of racing it. That is the whole value of
-        series batching under `-j N`: without it the first N files of a
-        cluster all start cold, and the plan's measured "one search per
-        series" collapses back to "one search per worker".
+        On a miss this comic tries to lead its series first, in the same
+        step: ``lead_key`` is then the key the caller must release after
+        its search. Losing the lead means another worker is resolving
+        this very series, so this one WAITS for it instead of racing it,
+        then re-reads the cache. Still unresolved (the leader failed, was
+        aborted or matched nothing), it tries to lead again, so followers
+        search one at a time, each at most once. That is the whole value of series
+        batching under `-j N`: without it the first N files of a cluster
+        all start cold, and "one search per series" collapses back to
+        "one search per worker". Checking for a leader before trying to
+        lead let a follower pass the wait before the leader had led.
+
+        Nothing is led without a cache, a usable key or the single-flight
+        API (a plain dict from a sequential caller cannot race).
         """
         key = self._series_cache_key(source)
-        if key is None or self._series_cache is None:
-            return False
-        volume_id = self._series_cache.get(key)
-        if volume_id is None:
-            # Another worker may be resolving this very series; waiting
-            # for it is the whole value of batching under `-j N`.
-            await_series_leader(self._series_cache, key)
+        cache = self._series_cache
+        if key is None or cache is None:
+            return False, None
+        volume_id = cache.get(key)
+        while volume_id is None:
+            if lead_series(cache, key):
+                return False, key
+            if not await_series_leader(cache, key):
+                # No single-flight API (a plain dict), or the leader is
+                # wedged past the timeout: search independently.
+                return False, None
             # The leader may have been aborted rather than resolved.
             self._raise_if_run_aborted()
-            volume_id = self._series_cache.get(key)
-        if volume_id is None:
-            return False
+            # A leader that resolved nothing hands the search on: back to
+            # lead-or-wait, so the next search is one follower's, not a
+            # burst of all of them while the source is failing. Each
+            # comic leads at most once, so this ends.
+            volume_id = cache.get(key)
+        return self._accept_from_series_cache(source, volume_id), None
+
+    def _accept_from_series_cache(self, source: OnlineSource, volume_id: int) -> bool:
+        """Ask the source for this issue in the cached volume; accept a hit."""
         profile = self._build_profile()
         try:
             candidate = source.lookup_issue(volume_id, profile.issue)

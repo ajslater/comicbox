@@ -189,8 +189,8 @@ def test_the_probe_is_uncached_and_unshared(
     _report("all")
     _report("all")
     assert len(transport.sent) == 4
-    assert metron._session_cache == {}
-    assert comicvine._session_cache == {}
+    assert metron._sessions.keys() == ()
+    assert comicvine._sessions.keys() == ()
     assert not (tmp_path / "online-cache" / "metron_cache.sqlite").exists()
 
 

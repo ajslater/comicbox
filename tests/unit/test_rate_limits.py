@@ -27,6 +27,7 @@ from comicbox.formats.base.online.rate_limits import (
     VERSEDB_DEFAULT_PER_DAY,
     VERSEDB_DEFAULT_PER_HOUR,
 )
+from comicbox.formats.base.online.shared_clients import SharedClients
 from comicbox.formats.metron_api import online_source as metron_online_source
 from comicbox.formats.metron_api.online_source import (
     MetronOnlineSource,
@@ -80,8 +81,10 @@ class _FakeMokkariSession:
 @pytest.fixture(autouse=True)
 def clear_session_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     """Every test gets its own empty module-level session and gate caches."""
-    monkeypatch.setattr(metron_online_source, "_session_cache", {})
-    monkeypatch.setattr(metron_online_source, "_gate_cache", {})
+    monkeypatch.setattr(
+        metron_online_source, "_sessions", SharedClients("metron", "session")
+    )
+    monkeypatch.setattr(metron_online_source, "_gates", SharedClients("metron", "gate"))
 
 
 @pytest.fixture(autouse=True)
@@ -175,7 +178,7 @@ def _seed_shared_session(
     """Plant a shared session as if a run had already talked to Metron."""
     fake = _FakeMokkariSession()
     fake.rate_limit_status = status
-    metron_online_source._session_cache[key] = (fake, ())
+    metron_online_source._sessions.get_or_build(key, (), lambda: fake)
     return fake
 
 
