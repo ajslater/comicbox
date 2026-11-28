@@ -179,3 +179,53 @@ def test_enum_spellings_are_untouched() -> None:
     field = ComicInfoMangaField()
     for member in ComicInfoMangaEnum:
         assert field.deserialize(member.value) == member
+
+
+_YES_RTL_SPELLINGS = (
+    "YesAndRightToLeft",
+    "yesandrighttoleft",
+    "YES AND RIGHT TO LEFT",
+    "yes_and_right_to_left",
+    " YesAndRightToLeft ",
+)
+
+
+@pytest.mark.parametrize("value", _YES_RTL_SPELLINGS)
+def test_comicbox_manga_yes_and_right_to_left_is_yes(
+    value: str, warnings: list[str]
+) -> None:
+    """ComicInfo's compound value is a yes in comicbox's plain manga field."""
+    assert _load_manga(value)["manga"] == MangaEnum.YES
+    assert not warnings
+
+
+@pytest.mark.parametrize("value", _YES_RTL_SPELLINGS)
+def test_comicinfo_black_and_white_yes_and_right_to_left_is_yes(
+    value: str, warnings: list[str]
+) -> None:
+    """BlackAndWhite reads the compound value as yes and writes a plain Yes."""
+    md, written = _read_cix("BlackAndWhite", value)
+    assert md["monochrome"] is True
+    assert "<BlackAndWhite>Yes</BlackAndWhite>" in written
+    assert not warnings
+
+
+def test_comicbox_manga_yes_and_right_to_left_writes_plain_yes() -> None:
+    """The plain field can't hold the direction, so a write stores Yes."""
+    md = {"comicbox": {"series": {"name": "S"}, "manga": "YesAndRightToLeft"}}
+    with Comicbox(metadata=md) as car:
+        xml = car.to_string(MetadataFormats.COMIC_INFO)
+        yaml = car.to_string(MetadataFormats.COMICBOX_YAML)
+    assert "<Manga>Yes</Manga>" in xml
+    assert "manga: Yes" in yaml
+    assert YesNoField()._serialize("YesAndRightToLeft", None, None) == "Yes"
+    assert MangaField()._serialize("YesAndRightToLeft", None, None) == "Yes"
+
+
+def test_yes_and_right_to_left_near_misses_are_still_dropped(
+    warnings: list[str],
+) -> None:
+    """Only the compound value itself reads as yes, not a near miss."""
+    for value in ("YesAndLeftToRight", "YesRightToLeft", "RightToLeft"):
+        assert "manga" not in _load_manga(value), value
+    assert len(warnings) == 3

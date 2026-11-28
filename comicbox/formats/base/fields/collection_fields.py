@@ -5,6 +5,7 @@ import sys
 from collections.abc import Iterable, Mapping
 from copy import deepcopy
 from decimal import Decimal
+from operator import itemgetter
 from typing import Any
 
 from glom import glom
@@ -14,6 +15,7 @@ from marshmallow.utils import is_collection
 from comicbox.empty import filter_list_empty, is_empty
 from comicbox.formats.base.fields.fields import StringField
 from comicbox.formats.base.fields.number_fields import IntegerField
+from comicbox.identifiers import ID_KEY_KEY
 from comicbox.merge import AdditiveMerger
 
 if sys.version_info >= (3, 12):
@@ -31,6 +33,9 @@ _NUMBER_RANK = 1
 _STRING_RANK = 2
 _OTHER_RANK = 3
 _NUMBER_TYPES = (int, float, Decimal)
+# The comicbox schema's identifiers key. The schema package imports this
+# module, so its constant would be a cycle.
+_IDENTIFIERS_KEY = "identifiers"
 
 
 def _comparable(value: Any) -> tuple[int, Any]:
@@ -46,6 +51,39 @@ def _comparable(value: Any) -> tuple[int, Any]:
         return (_NUMBER_RANK, value)
     # Dates, and anything else unhashable or unorderable against its own kind.
     return (_OTHER_RANK, str(value))
+
+
+def _ids(element: Mapping) -> Mapping:
+    ids = element.get(_IDENTIFIERS_KEY)
+    return ids if isinstance(ids, Mapping) else {}
+
+
+def _id_key(identifier: Any) -> Any:
+    return identifier.get(ID_KEY_KEY) if isinstance(identifier, Mapping) else None
+
+
+def _ids_conflict(left: Mapping, right: Mapping) -> bool:
+    """
+    Whether two elements hold different ids from one database.
+
+    Two ids from one database name two things, however alike the rest of
+    them reads. An id beside no id, or ids from different databases, say
+    nothing about it.
+    """
+    left_ids, right_ids = _ids(left), _ids(right)
+    for source in left_ids.keys() & right_ids.keys():
+        left_key, right_key = _id_key(left_ids[source]), _id_key(right_ids[source])
+        if left_key and right_key and left_key != right_key:
+            return True
+    return False
+
+
+def _merge_elements(old: Mapping, new: Mapping) -> dict:
+    """Merge two elements: the later wins its fields, both sides' ids are kept."""
+    merged = {**old, **new}
+    if (old_ids := _ids(old)) and (new_ids := _ids(new)):
+        merged[_IDENTIFIERS_KEY] = {**old_ids, **new_ids}
+    return merged
 
 
 def case_insensitive_dict(d: dict) -> dict:
@@ -133,30 +171,34 @@ class ListField(fields.List):
             key = (_comparable(self.get_tag_value(value)),)
         key = tuple(key)
 
-        # Combine elements that dedupe to the same key. dict.update() returns
-        # None, so assigning its result dropped the merged element and left a
-        # null in the serialized list. Merge into a new dict instead of
-        # mutating in place so the caller's data is never modified.
-        old_value = sort_dict.get(key)
-        if isinstance(old_value, Mapping) and isinstance(value, Mapping):
-            new_value = {**old_value, **value}
-        else:
-            # Non mappings (and first sightings) can't merge: the later
-            # element wins, which is what update() would have done anyway.
-            new_value = value
-
-        sort_dict[key] = new_value
+        # Combine elements that dedupe to the same key, unless their ids say
+        # they are different things. Each key holds the distinct elements
+        # that share it, in the order first seen. Merging builds a new dict
+        # so the caller's data is never modified.
+        group = sort_dict.setdefault(key, [])
+        for index, old_value in enumerate(group):
+            if not isinstance(old_value, Mapping) or not isinstance(value, Mapping):
+                # Non mappings can't merge: the later element wins.
+                group[index] = value
+                return
+            if not _ids_conflict(old_value, value):
+                group[index] = _merge_elements(old_value, value)
+                return
+        group.append(value)
 
     def _sorted(self, values: list[Any]) -> list:
         """Create a dict of ordered keys to deduplicate and sort on."""
         if not self._sort:
             return values
 
-        # If dedupe ever needs to be decoupled, add an index to the key.
-        sort_dict = {}
+        sort_dict: dict[tuple, list] = {}
         for value in values:
             self._sort_value(value, sort_dict)
-        return [item[1] for item in sorted(sort_dict.items())]
+        return [
+            value
+            for _key, group in sorted(sort_dict.items(), key=itemgetter(0))
+            for value in group
+        ]
 
     @override
     def _serialize(self, value: Any, *args: Any, **kwargs: Any) -> list | None:
