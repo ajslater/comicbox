@@ -33,7 +33,10 @@ from comicbox.exceptions import (
 if TYPE_CHECKING:
     from pdffile import PDFFile
 
-FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | str | Path
+FileKey: TypeAlias = tuple[int, int] | tuple[int, int, str] | Path
+# What an in-flight claim holds: a file's key, or for a name with nothing
+# there yet its directory's key and its folded name.
+ClaimKey: TypeAlias = FileKey | tuple[FileKey, str]
 
 # A conversion's temporary archive: a dot name ending in .tmp, never a comic
 # suffix, so a library watcher skips its creation and its replace alike.
@@ -55,7 +58,7 @@ _ARCHIVE_KINDS = MappingProxyType(
 # one archive's contents gone for good. Claiming the destination turns the
 # loser into an ordinary per-file error instead. Each claim is held under
 # the path it was taken by, mapped to the file that path named then.
-_INFLIGHT_DESTINATIONS: dict[Path, FileKey] = {}
+_INFLIGHT_DESTINATIONS: dict[Path, ClaimKey] = {}
 _INFLIGHT_GUARD = Lock()
 
 
@@ -71,16 +74,12 @@ def file_key(path: Path) -> FileKey:
     name on a case-insensitive disk, or its NFC and NFD forms on one that
     normalizes names, as macOS does. An inode alone is not trusted, as some network
     and FUSE filesystems give every file the same one. A path with nothing
-    there yet, such as a conversion's destination, is its resolved spelling
-    case-folded and Unicode-normalized: ``issue.cbz`` and ``ISSUE.cbz`` are
-    one file once either is written to a case-insensitive disk, so two
-    conversions must not both claim them. On a case-sensitive disk that
-    refuses one of two concurrent writes to names differing only by case.
+    there yet, such as a conversion's destination, is its resolved spelling.
     """
     try:
         stat = path.stat()
     except OSError:
-        return unicodedata.normalize("NFC", str(path.resolve()).casefold())
+        return path.resolve()
     if not stat.st_ino:
         return path.resolve()
     if stat.st_nlink > 1:
@@ -109,15 +108,35 @@ def tmp_archive_path(path: Path) -> Path:
     return path.with_name(_hidden_name(path.name, _TMP_ARCHIVE_SUFFIX))
 
 
+def _claim_key(destination: Path) -> ClaimKey:
+    """
+    Key an in-flight claim: the file, or a new name in its directory.
+
+    A name with nothing there yet is its directory's key and its name,
+    case-folded and Unicode-normalized: ``issue.cbz`` and ``ISSUE.cbz``
+    become one file once either is written to a case-insensitive disk, so
+    two conversions writing at once must not both claim them. The directory
+    is never folded, so names in two directories never meet. Only this
+    claim folds; the run-wide claim maps key a new name by its spelling.
+    """
+    try:
+        destination.stat()
+    except OSError:
+        name = unicodedata.normalize("NFC", destination.name).casefold()
+        return (file_key(destination.parent), name)
+    return file_key(destination)
+
+
 def _claim_destination(destination: Path, source: Path) -> None:
     """
     Take a write destination, refusing one already in flight.
 
     The claim is on the file, not the spelling: ``lib/link.cbz``, a link to
     ``cw1.cbz``, is refused while ``cw1.cbz`` is being written, and
-    ``ISSUE.cbz`` while a conversion to ``issue.cbz`` is.
+    ``ISSUE.cbz`` while a conversion to ``issue.cbz`` in the same directory
+    is, on any disk.
     """
-    key = file_key(destination)
+    key = _claim_key(destination)
     with _INFLIGHT_GUARD:
         if key in _INFLIGHT_DESTINATIONS.values():
             raise DestinationOccupiedError(source, destination, "inflight")
