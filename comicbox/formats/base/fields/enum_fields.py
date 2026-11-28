@@ -141,6 +141,20 @@ class SeriesStatusField(EnumField):
     ENUM = SeriesStatusEnum  # pyright: ignore[reportIncompatibleUnannotatedOverride]
 
 
+class ComicInfoMangaEnum(Enum):
+    """Manga enum for ComicInfo."""
+
+    UNKNOWN = "Unknown"
+    YES = "Yes"
+    YES_RTL = "YesAndRightToLeft"
+    NO = "No"
+
+
+# ComicInfo's compound manga value, in every spelling the fuzzy enum lookup
+# accepts. It says yes to a plain yes/no field, which can't hold the direction.
+_YES_RTL_KEYS = FuzzyEnumMixin.get_key_variations(ComicInfoMangaEnum.YES_RTL)
+
+
 class EnumBooleanField(EnumField):
     """An Enum Field that also accepts boolean values."""
 
@@ -155,9 +169,9 @@ class EnumBooleanField(EnumField):
 
         The enum vocabulary wins first so multi valued enums keep their extra
         members. Then only known boolean spellings map, ignoring case and
-        surrounding whitespace. Anything else is returned unchanged for the
-        enum field to refuse, so an unrecognised value is dropped with a
-        warning instead of read as no.
+        surrounding whitespace, and ComicInfo's YesAndRightToLeft is a yes.
+        Anything else is returned unchanged for the enum field to refuse, so
+        an unrecognised value is dropped with a warning instead of read as no.
         """
         if self.get_enum(value):
             return value
@@ -166,6 +180,8 @@ class EnumBooleanField(EnumField):
             return self.YES
         if key in self.FALSY:
             return self.NO
+        if _YES_RTL_KEYS.intersection(self.get_ordered_key_variations(key)):
+            return self.YES
         return value
 
     @override
@@ -182,15 +198,6 @@ class EnumBooleanField(EnumField):
                 # Nothing to write for a value no spelling matches.
                 return None
         return super()._serialize(value, *args, **kwargs)
-
-
-class ComicInfoMangaEnum(Enum):
-    """Manga enum for ComicInfo."""
-
-    UNKNOWN = "Unknown"
-    YES = "Yes"
-    YES_RTL = "YesAndRightToLeft"
-    NO = "No"
 
 
 class ComicInfoMangaField(EnumBooleanField):

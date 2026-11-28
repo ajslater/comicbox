@@ -53,7 +53,8 @@
   reads as issue 123 instead of issue 4. A GCD or Metron link to a page comicbox
   doesn't know, such as a publisher, brand or reading list, adds no issue id.
 - An unrecognised Manga or BlackAndWhite value, such as `maybe`, is dropped with
-  a warning instead of read and written back as No. `y` now reads as Yes.
+  a warning instead of read and written back as No. `y`, and
+  `YesAndRightToLeft` in BlackAndWhite or comicbox `manga`, now read as Yes.
 - Library: `AdditiveMerger` concatenates tuples and unions frozensets instead of
   dropping one side.
 - `--import` of a file whose name no format claims, such as `tags.xml`, reads
