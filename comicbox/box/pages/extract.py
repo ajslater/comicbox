@@ -43,6 +43,11 @@ class CoverDestinations:
                 raise ExportError(reason)
             self._paths.add(key)
 
+    def release(self, path: Path) -> None:
+        """Give a cover file back: nothing was written to it after all."""
+        with self._lock:
+            self._paths.discard(path.resolve())
+
 
 def _fold(name: str) -> str:
     """Fold a name as a case-insensitive, normalizing disk does."""
@@ -117,13 +122,18 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         except UnsupportedArchiveTypeError:
             return _is_pdf_by_magic(path)
 
-    def _refuse_cover_destination(self, path: Path) -> None:
-        """Refuse a file that is a comic, or that another comic's cover took."""
+    def _refuse_cover_destination(self, path: Path) -> CoverDestinations | None:
+        """
+        Refuse a file that is a comic, or that another comic's cover took.
+
+        Returns the run's record when this cover claimed the file in it.
+        """
         if path.is_file() and self._is_comic_file(path):
             reason = f"{path} is a comic or PDF: not overwritten with a page."
             raise ExportError(reason)
-        if self._cover_destinations is not None:
-            self._cover_destinations.claim(path)
+        if claims := self._cover_destinations:
+            claims.claim(path)
+        return claims
 
     def _extract_page_get_path(self, path: Path, fn: str) -> Path:
         path = path / Path(fn).name if path.is_dir() else path
@@ -139,15 +149,21 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         data = self._archive_readfile(fn, props=props)
         if ext := props.get("ext", ""):
             path = path.with_suffix("." + ext)
+        claims = None
         if dest_path.is_dir():
             dest_dir = dest_path
             if names is not None:
                 path = path.with_name(names.name(fn, path.name))
         else:
             dest_dir = dest_path.parent
-            self._refuse_cover_destination(path)
-        _validate_extract_path(path, dest_dir)
-        path.write_bytes(data)
+            claims = self._refuse_cover_destination(path)
+        try:
+            _validate_extract_path(path, dest_dir)
+            path.write_bytes(data)
+        except BaseException:
+            if claims:
+                claims.release(path)
+            raise
 
     def _extract_all_pagenames(self, pagenames: Iterable[str], path: Path) -> None:
         names = None

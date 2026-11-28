@@ -14,6 +14,7 @@ from __future__ import annotations
 import shutil
 import sys
 from io import StringIO
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -24,7 +25,6 @@ from tests.util.comics import make_comic
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 _JPEG_MAGIC = b"\xff\xd8\xff"
 
@@ -186,3 +186,27 @@ def test_two_comics_to_a_directory_still_work(tmp_path: Path) -> None:
     code, _ = _run_cli("-X", "-d", str(out_dir), str(a), str(b))
     assert code == 0
     assert len(list(out_dir.iterdir())) == 1
+
+
+def test_a_failed_cover_write_leaves_the_file_to_the_next_comic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Nothing went to the file, so the next comic's cover may."""
+    a, b = _two_different_comics(tmp_path)
+    b_cover = _cover(b, tmp_path)
+    dest = tmp_path / "cover.jpg"
+    real_write = Path.write_bytes
+    calls: list[Path] = []
+
+    def _first_fails(self: Path, data: bytes) -> int:
+        calls.append(self)
+        if len(calls) == 1:
+            reason = f"No space left on device: {self}"
+            raise OSError(28, reason)
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", _first_fails)
+    code, out = _run_cli("-X", "-d", str(dest), str(a), str(b))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    assert dest.read_bytes() == b_cover
