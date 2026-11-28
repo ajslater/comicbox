@@ -18,6 +18,9 @@ else:
 _STRING_EMPTY_VALUES = (None, "")
 _LEADING_ZERO_RE = re.compile(r"^(0+)(\w)")
 _HALF_RE = re.compile(r"(½|1/2)")
+# A half where an issue's number goes: "½", "1/2", "5½", "5 1/2", "1/2 AU".
+# Not "1/2/3", "11/2" or "1/23", which are other fractions, not halves.
+_ISSUE_HALF_RE = re.compile(r"^(-?\d*)\s*(?:½|(?<!\d)1/2(?![/\d]))")
 # Always matches: a leading number, possibly empty, then the rest.
 # The leading number and the rest. A minus sign belongs to the number when a
 # digit, or a point and a digit, follows it: issue -1 is a real issue number.
@@ -63,6 +66,11 @@ def half_replace(num: str) -> str:
     return _HALF_RE.sub(".5", num)
 
 
+def issue_half_replace(name: str, half: str = ".5") -> str:
+    """Spell the half in an issue's number position as `half`."""
+    return _ISSUE_HALF_RE.sub(rf"\g<1>{half}", name, count=1)
+
+
 class IssueField(StringField):
     """Issue Field."""
 
@@ -71,11 +79,12 @@ class IssueField(StringField):
         """Parse issues."""
         if not num:
             return ""
-        num = num.replace(" ", "")
-        num = num.lstrip("#")
+        num = num.strip().lstrip("#")
         num = _LEADING_ZERO_RE.sub(r"\2", num)
-        num = num.rstrip(".")
-        return half_replace(num)
+        # Before the spaces go: "5 1/2" is a half, "51/2" is not.
+        num = issue_half_replace(num)
+        num = num.replace(" ", "")
+        return num.rstrip(".")
 
     @staticmethod
     def split_issue(name: str) -> tuple[str, str]:
@@ -83,9 +92,10 @@ class IssueField(StringField):
         Split an issue name into its leading number and its suffix.
 
         ``-1AU`` is ``-1`` and ``AU``; a minus with no number after it, as in
-        ``-AU``, is part of the suffix.
+        ``-AU``, is part of the suffix. A half is ``.5``: ``5 1/2`` and
+        ``5½`` are ``5.5``, ``1/2 AU`` is ``.5`` and `` AU``.
         """
-        match = _SPLIT_ISSUE_RE.match(name)
+        match = _SPLIT_ISSUE_RE.match(issue_half_replace(name))
         if match is None:  # pragma: no cover - the pattern matches any string
             return "", name
         number, suffix = match.groups()

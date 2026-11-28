@@ -1,10 +1,13 @@
 """A class to encapsulate the ComicBookInfo data."""
 
 # https://code.google.com/archive/p/comicbookinfo/wikis/Example.wiki
+import sys
+from decimal import Decimal
 from types import MappingProxyType
+from typing import Any
 
 from marshmallow import Schema
-from marshmallow.fields import Constant, Nested
+from marshmallow.fields import Constant, Field, Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
 from comicbox.formats.base.fields.fields import StringField
@@ -13,11 +16,37 @@ from comicbox.formats.base.fields.pycountry import CountryField, LanguageField
 from comicbox.formats.base.fields.time_fields import DateTimeField
 from comicbox.formats.base.schemas.json_schemas import JsonSchema, JsonSubSchema
 
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
+
 LAST_MODIFIED_TAG = "lastModified"
 ROLE_TAG = "role"
 PERSON_TAG = "person"
 CREDITS_TAG = "credits"
 PRIMARY_TAG = "primary"
+
+
+class ComicBookInfoIssueField(Field):
+    """
+    CBI's issue: an integer, read liberally.
+
+    A JSON integer, or a whole float, is that integer. Any other value is
+    text the shared issue parse splits as it does every format's, so "1/2"
+    is 0.5 and "1.5" is 1.5, not 1. The transform writes a whole integer or
+    nothing, and it is dumped as it comes.
+    """
+
+    @override
+    def _deserialize(
+        self, value: Any, attr: Any, data: Any, **kwargs: Any
+    ) -> int | str:
+        if isinstance(value, float | Decimal) and value == int(value):
+            value = int(value)
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        return StringField().deserialize(value)
 
 
 class ComicBookInfoCreditSchema(Schema):
@@ -34,7 +63,7 @@ class ComicBookInfoSubSchema(JsonSubSchema):
     comments = StringField()
     country = CountryField(serialize_name=True)
     genre = StringSetField(as_string=True)
-    issue = IntegerField()
+    issue = ComicBookInfoIssueField()
     language = LanguageField(serialize_name=True)
     numberOfVolumes = IntegerField(minimum=0)  # noqa: N815
     numberOfIssues = IntegerField(minimum=0)  # noqa: N815

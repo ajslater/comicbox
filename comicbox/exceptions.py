@@ -49,11 +49,11 @@ class UnwritableFormatError(ArchiveWriteError):
     """A write refused: -w names no format this archive can hold."""
 
 
-class ReadOnlyComicError(UnwritableFormatError):
+class ReadOnlyComicError(ArchiveWriteError):
     """A write refused: the comic file is read-only."""
 
 
-class DuplicateMemberError(UnwritableFormatError):
+class DuplicateMemberError(ArchiveWriteError):
     """A conversion refused: the archive holds two members of one name."""
 
 
@@ -113,6 +113,16 @@ class ConfigurationError(ComicboxError, ValueError):
 
     Also a ValueError, which is what these sites raised before this class
     existed, so callers catching that keep working.
+    """
+
+
+class UsageError(ConfigurationError):
+    """
+    Arguments that are each valid but cannot be used together.
+
+    Found only once the run starts, such as ``--id`` with a directory that
+    holds several comics. The CLI reports it as a usage error, as it does
+    the ones its parser finds.
     """
 
 

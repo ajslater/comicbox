@@ -156,3 +156,72 @@ def test_explicit_primary_id_source_wins() -> None:
     written = _write(yaml, MetadataFormats.COMICBOX_YAML)
     assert '<ID primary="true" source="Comic Vine">1</ID>' in written
     assert '<Publisher id="11">' in written
+
+
+BOTH_ISSUE_IDS = (
+    "comicbox:\n  identifiers:\n"
+    '    comicvine:\n      key: "1"\n    metron:\n      key: "2"\n'
+)
+
+
+def test_most_tag_ids_source_is_primary() -> None:
+    """
+    With Metron and Comic Vine issue ids and only Comic Vine tag ids, Comic Vine wins.
+
+    Ranking alone picked Metron, so the Comic Vine tag ids were dropped.
+    """
+    yaml = (
+        BOTH_ISSUE_IDS + "  publisher:\n    name: P\n    identifiers:\n"
+        '      comicvine:\n        key: "11"\n'
+        "  series:\n    name: S\n    identifiers:\n"
+        '      comicvine:\n        key: "22"\n'
+    )
+    written = _write(yaml, MetadataFormats.COMICBOX_YAML)
+    assert '<ID primary="true" source="Comic Vine">1</ID>' in written
+    assert '<Publisher id="11">' in written
+    assert '<Series id="22"' in written
+    assert validate_source(written, MetadataFormats.METRON_INFO)
+    after = _read(written, MetadataFormats.METRON_INFO)
+    assert after["publisher"]["identifiers"] == {"comicvine": {"key": "11"}}
+    assert after["series"]["identifiers"] == {"comicvine": {"key": "22"}}
+
+
+def test_most_tag_ids_majority_beats_rank() -> None:
+    """Two Comic Vine tag ids beat one Metron tag id; the Metron one is lost."""
+    yaml = (
+        BOTH_ISSUE_IDS + "  publisher:\n    name: P\n    identifiers:\n"
+        '      comicvine:\n        key: "11"\n'
+        "  series:\n    name: S\n    identifiers:\n"
+        '      comicvine:\n        key: "22"\n'
+        "  characters:\n    C:\n      identifiers:\n"
+        '        metron:\n          key: "33"\n'
+    )
+    written = _write(yaml, MetadataFormats.COMICBOX_YAML)
+    assert '<ID primary="true" source="Comic Vine">1</ID>' in written
+    assert '<Publisher id="11">' in written
+    assert '<Character id="33">' not in written
+    assert validate_source(written, MetadataFormats.METRON_INFO)
+
+
+def test_most_tag_ids_tie_goes_to_rank() -> None:
+    """One Metron and one Comic Vine tag id: the better ranked Metron wins."""
+    yaml = (
+        BOTH_ISSUE_IDS + "  publisher:\n    name: P\n    identifiers:\n"
+        '      comicvine:\n        key: "11"\n'
+        "  series:\n    name: S\n    identifiers:\n"
+        '      metron:\n        key: "22"\n'
+    )
+    written = _write(yaml, MetadataFormats.COMICBOX_YAML)
+    assert '<ID primary="true" source="Metron">2</ID>' in written
+    assert '<Series id="22"' in written
+    assert '<Publisher id="11">' not in written
+    assert validate_source(written, MetadataFormats.METRON_INFO)
+
+
+def test_no_tag_ids_best_ranked_is_primary() -> None:
+    """With no tag ids, the best ranked issue id source is primary."""
+    written = _write(
+        BOTH_ISSUE_IDS + "  series:\n    name: S\n", MetadataFormats.COMICBOX_YAML
+    )
+    assert '<ID primary="true" source="Metron">2</ID>' in written
+    assert validate_source(written, MetadataFormats.METRON_INFO)

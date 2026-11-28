@@ -27,7 +27,7 @@ def _read_filename(filename: str) -> dict:
 
 
 @pytest.mark.parametrize(
-    ("issue", "number"), [("1/2", Decimal(0)), ("5 1/2", Decimal(5))]
+    ("issue", "number"), [("1/2", Decimal("0.5")), ("5 1/2", Decimal("5.5"))]
 )
 def test_half_issue_round_trips_without_a_title(issue: str, number: Decimal) -> None:
     """The half stays in the issue token and invents no title or story."""
@@ -37,9 +37,8 @@ def test_half_issue_round_trips_without_a_title(issue: str, number: Decimal) -> 
     md = _read_filename(filename)
     assert "title" not in md
     assert "stories" not in md
-    # comicbox's issue parse reads "½" as a suffix, not as a half.
     assert md["issue"]["number"] == number
-    assert md["issue"]["suffix"] == "½"
+    assert "suffix" not in md["issue"]
 
 
 def test_slash_in_series_still_sanitizes() -> None:

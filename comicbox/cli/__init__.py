@@ -10,7 +10,11 @@ from rich.markup import escape
 
 from comicbox.box.online_lookup import OnlineLookupAbortedError
 from comicbox.cli.parser import build_parser
-from comicbox.exceptions import ConfigurationError, UnsupportedArchiveTypeError
+from comicbox.exceptions import (
+    ConfigurationError,
+    UnsupportedArchiveTypeError,
+    UsageError,
+)
 from comicbox.run import Runner
 
 # Each is a complete message for the user; a traceback adds nothing.
@@ -71,6 +75,10 @@ def main(params: Sequence[str] | None = None) -> None:
         # Building the runner resolves the config, so it's guarded too.
         runner = Runner(args)
         runner.run()
+    except UsageError as exc:
+        # The parser's own error style and exit status: the arguments are
+        # wrong, which only the run could tell.
+        build_parser().error(str(exc))
     except _HANDLED_EXCEPTIONS as exc:
         # Escaped: comic paths carry brackets ("[digital]") that rich
         # would otherwise swallow as markup, or reject outright.
