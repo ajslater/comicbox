@@ -1,5 +1,6 @@
 """MetronInfo.xml Identifiers & URLs Transform."""
 
+from collections import Counter
 from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from types import MappingProxyType
@@ -244,7 +245,9 @@ def metron_primary_id_source_from_cb(comicbox: Mapping) -> str:
     flagged <URL>, else Metron. So the source chosen here has to be one a
     flag can name, or Metron, and every writer has to use it: the <IDS> and
     <URLs> flags and each tag `id`. A stated primary_id_source wins. Without
-    one, the best ranked source among all the ids present.
+    one, the source most tag ids use, so the fewest are lost, with rank
+    breaking ties; with no tag ids, the best ranked source present. Tag ids
+    of the other sources are not written: one file names one tag id source.
     """
     comicbox_identifiers = comicbox.get(IDENTIFIERS_KEY) or {}
     ids_sources = [
@@ -257,8 +260,15 @@ def metron_primary_id_source_from_cb(comicbox: Mapping) -> str:
     if explicit in expressible:
         return explicit
     tags = {key: value for key, value in comicbox.items() if key != IDENTIFIERS_KEY}
-    present = {*flaggable, *_nested_id_sources(tags)}
-    return next(ranked_id_sources(present & expressible), DEFAULT_ID_SOURCE_STR)
+    tag_counts = Counter(
+        source for source in _nested_id_sources(tags) if source in expressible
+    )
+    candidates = tag_counts or flaggable
+    return max(
+        ranked_id_sources(candidates),
+        key=lambda source: tag_counts[source],
+        default=DEFAULT_ID_SOURCE_STR,
+    )
 
 
 def _flag_primary(
