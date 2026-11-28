@@ -56,7 +56,10 @@ def _run_cli(*argv: str) -> tuple[int, str]:
 @pytest.mark.parametrize("jobs", ["1", "2"])
 def test_an_invalid_comic_does_not_end_the_batch(tmp_path: Path, jobs: str) -> None:
     bad = make_comic(
-        tmp_path / "a_bad.cbz", files={"ComicInfo.xml": _BOGUS_CIX}, series="Bad", number="1"
+        tmp_path / "a_bad.cbz",
+        files={"ComicInfo.xml": _BOGUS_CIX},
+        series="Bad",
+        number="1",
     )
     good = make_comic(tmp_path / "b_good.cbz", series="Good", number="1")
     code, out = _run_cli("-j", jobs, "--validate", str(bad), str(good))

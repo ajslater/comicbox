@@ -10,7 +10,6 @@ from comicbox._pdf import PAGE_FORMAT_PDF
 from comicbox.box.pages.covers import ComicboxPagesCovers
 from comicbox.exceptions import ExportError
 
-
 _COMIC_SUFFIXES = frozenset(
     (".cbz", ".cbr", ".cb7", ".cbt", ".pdf", ".zip", ".rar", ".7z", ".tar")
 )
