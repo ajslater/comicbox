@@ -23,6 +23,14 @@ FILENAME_FORMAT_MAP = MappingProxyType(
         for fmt in MetadataSources.ARCHIVE_FILE.value.formats
     }
 )
+#: The filename format is never guessed, so an import is read as one only
+#: under the name it exports to.
+IMPORT_FILENAME_FORMAT_MAP = MappingProxyType(
+    {
+        **FILENAME_FORMAT_MAP,
+        MetadataFormats.FILENAME.value.filename.lower(): MetadataFormats.FILENAME,
+    }
+)
 
 
 class ComicboxSources(ComicboxArchive):
@@ -70,7 +78,7 @@ class ComicboxSources(ComicboxArchive):
                 path = Path(path_str)
                 with path.open("r") as f:
                     source_string = f.read()
-                fmt = FILENAME_FORMAT_MAP.get(path.name.lower())
+                fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
                 if not fmt or fmt in self._config.read.formats:
                     sd = SourceData(source_string, path, fmt)
                     source_data_list.append(sd)
@@ -286,4 +294,7 @@ class ComicboxSources(ComicboxArchive):
         path = Path(path)
         with path.open("r") as f:
             string = f.read()
+        if fmt is None:
+            # Named by its file name, as -i names it.
+            fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
         self.add_source(MetadataSources.IMPORT_FILE, string, fmt, path)
