@@ -324,9 +324,10 @@ def test_pairing_a_long_list_with_drops_stays_linear() -> None:
         "x" if position % 2 else f"{{kind: url, key: k{position}, bogus: 1}}"
         for position in range(4000)
     )
-    started = time.monotonic()
+    # CPU time, not wall time, so a loaded machine cannot fail it.
+    started = time.process_time()
     warnings = _yaml(f"  sources: [{items}]\n")
-    assert time.monotonic() - started < 5
+    assert time.process_time() - started < 5
     assert warnings[0] == "sources: 2000 of 4000 items dropped"
     assert "sources #4.bogus: 1 dropped" not in warnings  # #4 was "x"
     assert "sources #3.bogus: 1 dropped" in warnings
