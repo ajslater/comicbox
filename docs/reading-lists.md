@@ -243,9 +243,11 @@ list and a report. It is pure: no files, no network.
   one list gives an issue twice with a different id each time, its rows cannot
   both join another list's one row.
 - **Lines up repeated issues.** A list may read an issue twice; the first time
-  lines up with the first time in another list, the second with the second. The
-  times are counted among rows that tell their volume alike, so a row of one
-  volume is not the second time of a row of another.
+  lines up with the first time in another list, the second with the second. On
+  the volume number and the cover year alone, the times are counted among rows
+  that tell their volume alike, so a row of one volume is not the second time of
+  a row of another there. An id and the start year count every row that has
+  them.
 
 **What it does not do:**
 
@@ -267,7 +269,8 @@ list and a report. It is pure: no files, no network.
   counting every row of each list, whatever time it comes there. So the cover
   year will not join:
     - rows of two volumes, even through a third row that has only the cover
-      year;
+      year: no entry it joins holds rows of two volumes, however its other rows
+      were joined, by id included;
     - a row that fits two rows of one list, such as Ardent #1 of 2016 with no
       start year against the 2011 and 2016 volumes, or against X (1999) #1 and X
       volume 2 #1: it stays an entry of its own, every time a list reads it,
