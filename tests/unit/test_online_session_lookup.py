@@ -179,7 +179,9 @@ def test_preloaded_resolution_installs_selector(tmp_path, fake_box) -> None:
     session.tag(tmp_path / "f.cbz")
     assert fake_box.last is not None
     assert fake_box.last.selector is None  # nothing to consult — not installed
-    session.preload_resolution("metron|x|2026||(1,)", action="manual", payload="m:1")
+    session.preload_resolution(
+        "metron|x|2026||(1,)", action="manual", payload="m:1", path=tmp_path / "f.cbz"
+    )
     session.tag(tmp_path / "f.cbz")
     assert fake_box.last.selector is not None  # cache non-empty — installed
 
