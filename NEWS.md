@@ -162,8 +162,8 @@
   VerseDB connections instead of sharing its parent's, and no longer hangs on a
   Metron lock held at the fork.
 - A Comic Vine search that found nothing while an issue list failed, as in an
-  outage or with the hourly budget spent, is reported as a failed search
-  instead of no match.
+  outage or with the hourly budget spent, is reported as a failed search instead
+  of no match.
 - Metron requests stay paced when a proxy error or bot-check page answers first.
 - The end-of-run HTTP summary lists a source whose every request failed to
   connect, as in an IP ban.
