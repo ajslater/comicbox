@@ -53,7 +53,7 @@ _FAKE_TOKEN = "FAKE-TOKEN-0123456789"
 @pytest.mark.parametrize(
     ("entry", "named"),
     [
-        (f"comicvine:kye={_FAKE_TOKEN}", ("'kye'", "comicvine")),
+        (f"comicvine:kye={_FAKE_TOKEN}", ("unknown field for comicvine",)),
         (_FAKE_TOKEN, ()),
     ],
 )
@@ -66,6 +66,33 @@ def test_cli_overrides_errors_never_echo_the_value(
     message = str(exc_info.value)
     assert _FAKE_TOKEN not in message
     assert all(word in message for word in named)
+
+
+# Every place a token lands when an --auth entry is mistyped.
+_MISTYPED_AUTH = (
+    ("comicvine:FAKE-TOKEN-0000==", "unknown field for comicvine; valid: key, url"),
+    ("comicvine:kye=FAKE-TOKEN-0000", "unknown field for comicvine; valid: key, url"),
+    ("FAKE-TOKEN-0000:x", "unknown source; known: metron, comicvine, versedb"),
+    ("metorn:FAKE-TOKEN-0000", "unknown source; known: metron, comicvine, versedb"),
+    ("FAKE-TOKEN-0000", "has no source"),
+)
+
+
+@pytest.mark.parametrize(("entry", "says"), _MISTYPED_AUTH)
+def test_cli_overrides_errors_echo_nothing_typed(entry: str, says: str) -> None:
+    """
+    Name the entry's position and what is valid, never what was typed.
+
+    A user who forgets ``key=`` puts the token where the field name goes,
+    and a base64-style token ends in ``=``.
+    """
+    with pytest.raises(ValueError, match="--auth") as exc_info:
+        CliOverrides.from_auth_list(["metron:GOOD-FAKE-1111", entry])
+    message = str(exc_info.value)
+    assert "fake-token" not in message.lower()
+    assert "metorn" not in message
+    assert message.startswith("--auth entry 2: ")
+    assert says in message
 
 
 def test_cli_overrides_bare_value_is_the_api_token() -> None:

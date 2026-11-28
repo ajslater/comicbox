@@ -285,7 +285,8 @@ def test_bad_auth_entry_row_carries_no_token() -> None:
     ctx = _ctx("--auth", f"comicvine:kye={fake}")
     (values,) = [row for row in _config_rows(ctx) if row.name == "values"]
     assert values.status is Status.MISCONFIGURED
-    assert "kye" in values.detail
+    assert "--auth entry 1: unknown field for comicvine" in values.detail
+    assert "kye" not in values.detail
     assert fake not in str(values)
 
 
