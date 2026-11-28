@@ -216,11 +216,12 @@ def _threshold(raw: Any, label: str) -> float:
     Read a score threshold, which must lie in [0, 1].
 
     95, a percentage, would never auto-write; a negative one would let
-    every match through, and nan compares false to every score.
+    every match through, and nan compares false to every score. A
+    boolean (YAML's bare ``yes``) is no threshold either.
     """
     value = float(raw)
-    if not 0 <= value <= 1:
-        reason = f"{label}: {raw!r} is not between 0 and 1"
+    if isinstance(raw, bool) or not 0 <= value <= 1:
+        reason = f"{label}: {raw!r} is not a number from 0 to 1"
         raise ConfigurationError(reason)
     return value
 

@@ -221,3 +221,25 @@ def test_a_loglevel_that_is_no_level_exits_without_a_traceback(
             cli.main(("comicbox", *flags, "-p", str(tmp_path / "x.cbz")))
         assert exc_info.value.code == 1
         assert "general.loglevel" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_per_source_auto_threshold_is_no_boolean(*, value: bool) -> None:
+    """A YAML ``yes`` was read as a threshold of 1.0."""
+    with pytest.raises(ConfigurationError, match=r"per_source\.metron\.auto_threshold"):
+        _per_source({"metron": {"auto_threshold": value}})
+
+
+@pytest.mark.parametrize("raw", ["yes", "no", "true"])
+def test_auto_threshold_from_env_is_no_boolean(
+    monkeypatch: pytest.MonkeyPatch, raw: str
+) -> None:
+    monkeypatch.setenv("COMICBOX_ONLINE__TUNING__AUTO_THRESHOLD", raw)
+    with pytest.raises(ConfigurationError, match=r"online\.tuning\.auto_threshold"):
+        get_config({})
+
+
+def test_a_whole_number_threshold_is_a_float() -> None:
+    assert (
+        _per_source({"metron": {"auto_threshold": 1}})["metron"].auto_threshold == 1.0
+    )
