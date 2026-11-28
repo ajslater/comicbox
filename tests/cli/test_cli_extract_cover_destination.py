@@ -11,7 +11,9 @@ with several input comics every cover landed on the one file.
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
 import sys
 from io import StringIO
 from pathlib import Path
@@ -152,19 +154,48 @@ def test_a_comic_suffix_on_a_file_that_is_no_archive_is_overwritten(
     assert dest.read_bytes().startswith(_JPEG_MAGIC)
 
 
-def test_a_pdf_is_refused_without_pdf_support(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """Without the pdf extra comicbox cannot open a PDF, but never overwrites one."""
-    import comicbox.box.init
+#: Takes pdffile away before comicbox is imported, as a missing extra would,
+#: so the test holds however comicbox stores the flag. Exits 3 if PDF
+#: support survived, which would test the wrong path.
+_WITHOUT_PDFFILE = """
+import sys
+sys.modules["pdffile"] = None
+from comicbox.box import Comicbox
+if Comicbox.is_pdf_supported():
+    sys.exit(3)
+from comicbox import cli
+cli.main(["comicbox", *sys.argv[1:]])
+"""
 
+
+def test_a_pdf_is_refused_without_pdf_support(tmp_path: Path) -> None:
+    """Without the pdf extra comicbox cannot open a PDF, but never overwrites one."""
     _, b = _two_comics(tmp_path)
     dest = tmp_path / "cover.jpg"
     shutil.copy(PDF_SOURCE_PATH, dest)
     before = dest.read_bytes()
-    monkeypatch.setattr(comicbox.box.init, "PDF_ENABLED", False)
-    code, _ = _run_cli("-X", "-d", str(dest), str(b))
-    assert code == 1
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    offline = "http://127.0.0.1:9"
+    env = {
+        **os.environ,
+        "COMICBOXDIR": str(config_dir),
+        "COMICBOX_ONLINE__CACHE__DIR": str(tmp_path / "cache"),
+        "HTTPS_PROXY": offline,
+        "HTTP_PROXY": offline,
+        "ALL_PROXY": offline,
+    }
+    result = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _WITHOUT_PDFFILE, "-X", "-d", str(dest), str(b)],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=120,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "is a comic or PDF" in result.stdout
     assert dest.read_bytes() == before
 
 
