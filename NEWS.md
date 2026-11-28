@@ -25,8 +25,8 @@
 - A failed export, page extraction or cover extraction fails its file and the
   run exits 1, instead of logging and exiting 0.
 - `-X -d FILE` fails a comic instead of writing its cover over a comic or PDF,
-  or over another comic's cover from the same run. An existing image is still
-  replaced.
+  or over another comic's cover from the same run. Any other existing file is
+  still replaced.
 - Extracting pages that share a name in two folders of a comic saves every page
   instead of overwriting: the first keeps its name, and each later one is named
   by its page index, zero-padded to the page count's digits, a hyphen and the
