@@ -10,6 +10,7 @@ item was `str()`ed, so a mapping inside `genres` became a genre named
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 import pytest
@@ -40,6 +41,7 @@ def warnings() -> Iterator[list[str]]:
 
 def _load(key: str, value: object) -> dict:
     loaded = ComicboxYamlSchema().load({"comicbox": {key: value}})
+    assert isinstance(loaded, Mapping)
     return dict(loaded.get("comicbox", {}))
 
 
@@ -88,12 +90,13 @@ def test_a_mapping_item_is_not_a_name(warnings: list[str]) -> None:
     assert "genres" in warnings[0]
 
 
-def test_a_mapping_item_in_a_plain_set_field() -> None:
-    """The set field refuses the mapping item and keeps the rest as a set."""
-    field = StringSetField()
-    with pytest.raises(ValidationError) as excinfo:
-        field.deserialize([1, {"x": 1}])
-    assert excinfo.value.valid_data == {"1"}
+def test_a_mapping_item_in_a_plain_set_field(warnings: list[str]) -> None:
+    """The set field refuses a mapping item, dropping the field with a warning."""
+    with pytest.raises(ValidationError):
+        StringSetField().deserialize([1, {"x": 1}])
+    assert "series_groups" not in _load("series_groups", [1, {"x": 1}])
+    assert len(warnings) == 1
+    assert "series_groups" in warnings[0]
 
 
 def test_a_string_still_splits() -> None:

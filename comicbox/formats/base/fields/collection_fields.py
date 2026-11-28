@@ -251,7 +251,11 @@ class StringListField(fields.List):
             self._join_separator = self.DEFAULT_SEPARATORS[0]
 
     @staticmethod
-    def _seq_to_str_seq(seq: Iterable[Any]) -> list[Any]:
+    def _seq_to_str_seq(seq: Iterable[Any]) -> list[str]:
+        return [str(item) for item in seq if not is_empty(item)]
+
+    @staticmethod
+    def _seq_to_items(seq: Iterable[Any]) -> list[Any]:
         # A mapping is no name: the item field unwraps an XML element's text
         # or refuses it, instead of naming an item after the mapping's repr.
         return [
@@ -261,9 +265,7 @@ class StringListField(fields.List):
         ]
 
     @override
-    def _deserialize(
-        self, value: list[str] | set[str] | str, *args: Any, **kwargs: Any
-    ) -> list[str | None]:
+    def _deserialize(self, value: Any, *args: Any, **kwargs: Any) -> list[str | None]:
         """Deserialize CSV encodings of lists."""
         result = []
         if is_empty(value):
@@ -284,7 +286,7 @@ class StringListField(fields.List):
             reason = f"{type(value).__name__} is not a list of names"
             raise ValidationError(reason)
         # Already deserialized.
-        value = self._seq_to_str_seq(value)
+        value = self._seq_to_items(value)
         return super()._deserialize(value, *args, **kwargs)
 
     @override
@@ -312,10 +314,9 @@ class StringSetField(StringListField):
         try:
             str_list = super()._deserialize(*args, **kwargs)
         except ValidationError as exc:
-            # Keep the items that did read, as a set like a clean load.
-            if exc.valid_data is not None:
-                exc.valid_data = set(exc.valid_data)
-            raise
+            # A partial load's valid_data is a list, not a set: drop the
+            # field whole instead, as SimpleNamedDictField's union does.
+            raise ValidationError(exc.messages) from exc
         if not str_list:
             return None
         return set(str_list)
