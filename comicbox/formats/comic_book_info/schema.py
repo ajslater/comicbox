@@ -4,9 +4,9 @@
 import sys
 from decimal import Decimal
 from types import MappingProxyType
-from typing import Any, ClassVar
+from typing import Any
 
-from marshmallow import Schema
+from marshmallow import Schema, ValidationError
 from marshmallow.fields import Constant, Field, Nested
 
 from comicbox.formats.base.fields.collection_fields import ListField, StringSetField
@@ -38,17 +38,13 @@ class ComicBookInfoIssueField(Field):
     nothing, and it is dumped as it comes. A boolean is not an issue.
     """
 
-    default_error_messages: ClassVar[dict[str, str]] = {
-        "invalid": "Not a valid integer."
-    }
-
     @override
     def _deserialize(
         self, value: Any, attr: Any, data: Any, **kwargs: Any
     ) -> int | str:
         if isinstance(value, bool):
-            error_key = "invalid"
-            raise self.make_error(error_key)
+            reason = "Not a valid integer."
+            raise ValidationError(reason)
         if isinstance(value, float | Decimal) and value == int(value):
             value = int(value)
         if isinstance(value, int):
