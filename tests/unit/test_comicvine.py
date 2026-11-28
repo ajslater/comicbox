@@ -1117,7 +1117,7 @@ def _three_volume_source(
     }
     fake = _FailingCV(volumes=volumes, issues_by_volume=issues, failing=failing)
     src = _make_cv_source(monkeypatch, fake)
-    src.retry_sleep = lambda _delay: None  # pyright: ignore[reportAttributeAccessIssue]
+    src.retry_sleep = lambda _delay: None
     return src, fake
 
 
@@ -1253,7 +1253,7 @@ def _paged_client(monkeypatch: pytest.MonkeyPatch, client, requests: list[dict])
         ]
         return {"status_code": 1, "results": rows, "number_of_total_results": total}
 
-    def convert(data, type_):
+    def convert(data, **_kwargs):
         return _FakeBasicIssue(
             iid=data["id"], number=data["number"], volume_name="Wardens"
         )
