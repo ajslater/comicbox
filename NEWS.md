@@ -45,8 +45,8 @@
   comicbox YAML, JSON and `to_dict()` instead of only one's.
 - Reprints with no series or issue that the name can be read as, such as
   `(2019)` and `(2020)`, are all kept instead of only the last. Reprints of one
-  issue with different ids from one database are kept apart, and merged
-  reprints keep every database's id.
+  issue with different ids from one database are kept apart, and merged reprints
+  keep every database's id.
 - A bare number for tags, genres, stories or series groups, such as
   `tags: 1984`, is read as one name instead of dropped silently. A mapping, a
   nested list or `true` there is dropped with a warning instead of read as a
@@ -55,8 +55,8 @@
   reads as issue 123 instead of issue 4. A GCD or Metron link to a page comicbox
   doesn't know, such as a publisher, brand or reading list, adds no issue id.
 - An unrecognised Manga or BlackAndWhite value, such as `maybe`, is dropped with
-  a warning instead of read and written back as No. `y`, and
-  `YesAndRightToLeft` in BlackAndWhite or comicbox `manga`, now read as Yes.
+  a warning instead of read and written back as No. `y`, and `YesAndRightToLeft`
+  in BlackAndWhite or comicbox `manga`, now read as Yes.
 - Library: `AdditiveMerger` concatenates tuples and unions frozensets instead of
   dropping one side.
 - `--import` of a file whose name no format claims, such as `tags.xml`, reads
