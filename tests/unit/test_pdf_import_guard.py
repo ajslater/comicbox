@@ -179,6 +179,40 @@ def test_help_with_pdffile_offers_pdf_pages(tmp_path: Path) -> None:
     assert "--pdf-pages MODE" in out
 
 
+_RACE = (
+    "import sys, threading\n"
+    "sys.path.insert(0, {path!r})\n"
+    "{setup}\n"
+    "from loguru import logger\n"
+    "warnings = []\n"
+    "logger.remove()\n"
+    "logger.add(warnings.append, level='WARNING', format='{{message}}')\n"
+    "from comicbox import _pdf\n"
+    "barrier = threading.Barrier(16)\n"
+    "def ask():\n"
+    "    barrier.wait()\n"
+    "    _pdf.get_pdffile()\n"
+    "threads = [threading.Thread(target=ask) for _ in range(16)]\n"
+    "for thread in threads:\n"
+    "    thread.start()\n"
+    "for thread in threads:\n"
+    "    thread.join()\n"
+    "print('WARNINGS', sum('PDF support disabled' in w for w in warnings))\n"
+)
+
+
+def test_a_broken_pdffile_warns_once_however_many_threads_ask(tmp_path: Path) -> None:
+    """The first question is answered once, not once per thread that asks it."""
+    (tmp_path / "pdffile.py").write_text(
+        "import time\ntime.sleep(0.05)\nraise AssertionError('libmupdf 1.26 != 1.28')\n"
+    )
+    code = _RACE.format(path=str(tmp_path), setup="")
+    proc = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", code], capture_output=True, check=False, text=True
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "WARNINGS 1\n" in proc.stdout, proc.stdout
+
 
 def test_a_pdffile_module_without_a_spec_does_not_break_the_import(
     tmp_path: Path,

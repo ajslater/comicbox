@@ -15,6 +15,7 @@ from __future__ import annotations
 import sys
 from functools import cache
 from importlib.util import find_spec
+from threading import Lock
 from typing import TYPE_CHECKING, Any, TypeGuard
 
 if TYPE_CHECKING:
@@ -72,9 +73,21 @@ PAGE_FORMAT_VALUES: tuple[str, ...] = (
 )
 
 
+_IMPORT_LOCK = Lock()
+
+
 @cache
 def get_pdffile() -> type[PDFFile] | None:
     """Import pdffile once, on first use. None when it does not import."""
+    # Threads asking at once all miss this cache. The lock and the inner
+    # cache let the first one import, and warn; a failed import is not
+    # kept in sys.modules, so each would otherwise try again and warn again.
+    with _IMPORT_LOCK:
+        return _import_pdffile()
+
+
+@cache
+def _import_pdffile() -> type[PDFFile] | None:
     try:
         # PageFormat too: comicbox's page formats need a pdffile that has it.
         from pdffile import PageFormat, PDFFile  # noqa: F401 # pyright: ignore[reportUnusedImport]
