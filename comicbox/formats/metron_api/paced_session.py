@@ -151,11 +151,13 @@ def endpoint_from_url(url: str) -> str:
     return endpoint if is_detail else f"{endpoint}_list"
 
 
-# Hooks a reading-list fetch sets around one mokkari call (see fetch_hooks).
-# mokkari fetches every page of a list inside that one blocking call, and it
-# is synchronous, so its rate-limiter and response hooks run on the calling
-# thread and see these. Unset by default: tagging neither cancels inside a
-# call nor counts pages, and behaves exactly as it did without them.
+# Hooks a caller sets around its mokkari calls (see fetch_hooks): a
+# reading-list fetch, for its abort and page counter, and tagging, for its
+# abort, which `MetronOnlineSource.cancellable` sets for each source's
+# lookup. mokkari is synchronous and fetches every page of a list inside
+# one blocking call, so its rate-limiter and response hooks run on the
+# calling thread and see these. Unset, a call is neither cancelled inside
+# nor counted by page.
 
 
 @dataclass(frozen=True, slots=True)
