@@ -23,6 +23,10 @@
   comicbox YAML, JSON and `to_dict()` instead of only one's.
 - Reprints with no series or issue that the name can be read as, such as
   `(2019)` and `(2020)`, are all kept instead of only the last.
+- A bare number for tags, genres, stories or series groups, such as
+  `tags: 1984`, is read as one name instead of dropped silently. A mapping or
+  `true` there is dropped with a warning instead of read as a name or not at
+  all.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.

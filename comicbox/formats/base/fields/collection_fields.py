@@ -8,7 +8,7 @@ from decimal import Decimal
 from typing import Any
 
 from glom import glom
-from marshmallow import fields
+from marshmallow import ValidationError, fields
 from marshmallow.utils import is_collection
 
 from comicbox.empty import filter_list_empty, is_empty
@@ -251,8 +251,14 @@ class StringListField(fields.List):
             self._join_separator = self.DEFAULT_SEPARATORS[0]
 
     @staticmethod
-    def _seq_to_str_seq(seq: Iterable[Any]) -> list[str]:
-        return [str(item) for item in seq if not is_empty(item)]
+    def _seq_to_str_seq(seq: Iterable[Any]) -> list[Any]:
+        # A mapping is no name: the item field unwraps an XML element's text
+        # or refuses it, instead of naming an item after the mapping's repr.
+        return [
+            item if isinstance(item, Mapping) else str(item)
+            for item in seq
+            if not is_empty(item)
+        ]
 
     @override
     def _deserialize(
@@ -260,16 +266,26 @@ class StringListField(fields.List):
     ) -> list[str | None]:
         """Deserialize CSV encodings of lists."""
         result = []
-        if not value:
+        if is_empty(value):
             return result
+        if isinstance(value, bool):
+            reason = f"{value!r} is not a list of names"
+            raise ValidationError(reason)
+        if isinstance(value, (*_NUMBER_TYPES, Mapping)):
+            # A bare number is one name. A lone mapping is one item for the
+            # item field to read or refuse.
+            value = [value]
         # CSV encoding.
         if isinstance(value, str) and (value := StringField().deserialize(value)):
             value = self._split_regex.split(value)
-        if value and is_collection(value):
-            # Already deserialized.
-            value = self._seq_to_str_seq(value)
-            result = super()._deserialize(value, *args, **kwargs)
-        return result
+        if not value:
+            return result
+        if not is_collection(value):
+            reason = f"{type(value).__name__} is not a list of names"
+            raise ValidationError(reason)
+        # Already deserialized.
+        value = self._seq_to_str_seq(value)
+        return super()._deserialize(value, *args, **kwargs)
 
     @override
     def _serialize(  # pyright: ignore[reportIncompatibleMethodOverride]  # ty: ignore[incompatible-method-override]
@@ -293,7 +309,13 @@ class StringSetField(StringListField):
     @override
     def _deserialize(self, *args: Any, **kwargs: Any) -> set[str | None] | str | None:  # pyright: ignore[reportIncompatibleMethodOverride], # ty: ignore[incompatible-method-override]
         """Cast to a set."""
-        str_list = super()._deserialize(*args, **kwargs)
+        try:
+            str_list = super()._deserialize(*args, **kwargs)
+        except ValidationError as exc:
+            # Keep the items that did read, as a set like a clean load.
+            if exc.valid_data is not None:
+                exc.valid_data = set(exc.valid_data)
+            raise
         if not str_list:
             return None
         return set(str_list)
