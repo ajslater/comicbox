@@ -581,6 +581,23 @@ def test_a_refused_token_says_why(session: ReadingListSession) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [(520, "HTTP 520."), (404, "HTTP 404 Not Found.")],
+)
+def test_a_status_with_or_without_a_phrase_is_one_fetch_error(
+    session: ReadingListSession, status: int, message: str
+) -> None:
+    # 520 is no HTTPStatus member; ``status in HTTPStatus`` raised TypeError
+    # on Python 3.11 instead of giving the fetch error.
+    _serve(session, {"/reading_list/1/": Reply({}, status_code=status)})
+
+    with pytest.raises(ReadingListFetchError) as caught:
+        session.fetch_metron_list(1)
+
+    assert str(caught.value) == f"Metron reading list 1: {message}"
+
+
 def test_a_connection_failure_is_one_fetch_error(session: ReadingListSession) -> None:
     install(_shared_source(session).session(), [connection_error("refused")])
 
