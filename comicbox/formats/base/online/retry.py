@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING, Any, Final, TypeVar
 from loguru import logger
 
 from comicbox.exceptions import OnlineLookupAbortedError
+from comicbox.formats.base.online.rate_gate import cooldown_wait
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -480,7 +481,9 @@ def _notify_rate_limit_listener(
 
     The delay reported is the wait ahead: the planned sleep, or for a
     source that paces itself, whose planned sleep is always zero because
-    its gate does the waiting, the server's hint (None without one).
+    its gate does the waiting, the wait the gate's cooldown applies to
+    this refusal (`rate_gate.cooldown_wait`). None once the retry budget
+    is spent, as nothing will be waited out.
     """
     if not args or category is not RetryCategory.RATE_LIMIT:
         return
@@ -499,7 +502,7 @@ def _notify_rate_limit_listener(
     if plan is None:
         delay = None
     elif paced:
-        delay = _retry_after(exc)
+        delay = cooldown_wait(_retry_after(exc))
     else:
         delay = plan[0]
     source_name = getattr(args[0], "name", "")

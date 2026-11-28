@@ -116,6 +116,18 @@ class GateStats:
     sustained_limit: int | None
 
 
+def cooldown_wait(retry_after: float | None) -> float:
+    """
+    Return how long a rejection's cooldown holds the next send back.
+
+    The server's hint, capped at `_MAX_WAIT_S`. Without a usable hint
+    (none, or not positive), the whole window is assumed spent: every
+    slot ages out one window from now.
+    """
+    delay = retry_after if retry_after and retry_after > 0 else _WINDOW_S
+    return min(delay, _MAX_WAIT_S)
+
+
 class RateGate:
     """
     Admission control for one credential set's requests to one API.
@@ -395,10 +407,7 @@ class RateGate:
             now = self._clock()
             self._expire(now)
             limit = self._limit()
-            # Without a usable hint, assume the whole window is spent:
-            # every slot ages out one window from now.
-            delay = retry_after if retry_after and retry_after > 0 else _WINDOW_S
-            delay = min(delay, _MAX_WAIT_S)
+            delay = cooldown_wait(retry_after)
             # The oldest slot must have been stamped `_WINDOW_S` before it
             # frees; the rest follow at the steady-state pace.
             oldest = now + delay - (_WINDOW_S + _SLACK_S)

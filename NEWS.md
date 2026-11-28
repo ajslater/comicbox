@@ -167,7 +167,8 @@
 - Metron requests stay paced when a proxy error or bot-check page answers first.
 - The end-of-run HTTP summary lists a source whose every request failed to
   connect, as in an IP ban.
-- Library: a Metron `RateLimited` event carries the server's wait instead of 0.
+- Library: a Metron `RateLimited` event carries the wait comicbox applies, the
+  server's up to 5 minutes or a minute without one, instead of 0.
 - The end-of-run summary counts a search that found nothing as a no-match.
 - Library: the run estimate prices a Metron comic at 3 requests, counting the
   cover search, instead of 2.
