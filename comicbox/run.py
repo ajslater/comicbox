@@ -25,6 +25,7 @@ from comicbox.exceptions import (
     UnsafePdfAttachmentError,
     UnsupportedArchiveTypeError,
     UnwritableFormatError,
+    UsageError,
 )
 from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.auto_engage import resolve_auto_engaged_budget
@@ -457,7 +458,7 @@ class Runner:
             # The CLI counts the paths as typed; a directory under -r
             # would otherwise tag every comic in it as the one issue.
             reason = f"--id requires exactly one comic, {len(paths)} found"
-            raise ConfigurationError(reason)
+            raise UsageError(reason)
         # Fast path: single file or no parallelism. Preserves the original
         # one-call-per-path control flow including its recurse handling.
         if jobs <= 1:

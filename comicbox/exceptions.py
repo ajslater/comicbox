@@ -116,6 +116,16 @@ class ConfigurationError(ComicboxError, ValueError):
     """
 
 
+class UsageError(ConfigurationError):
+    """
+    Arguments that are each valid but cannot be used together.
+
+    Found only once the run starts, such as ``--id`` with a directory that
+    holds several comics. The CLI reports it as a usage error, as it does
+    the ones its parser finds.
+    """
+
+
 class ComicNotFoundError(ComicboxError, FileNotFoundError):
     """
     A comic path names nothing on disk.

@@ -49,7 +49,8 @@
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
 - `Comicbox.get_pages()` without an end page returns every page, not none.
-- `--id` refuses a directory under `-r` that holds more than one comic.
+- `--id` refuses a directory under `-r` that holds more than one comic, with the
+  same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
   prompts or searches, and no waiting out rate-limit retries.
 - A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
