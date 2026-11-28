@@ -164,6 +164,8 @@
   hourly budget spent, is reported as a failed search instead of no match.
 - Metron requests stay paced when a proxy error or bot-check page answers
   first.
+- The end-of-run HTTP summary lists a source whose every request failed to
+  connect, as in an IP ban.
 
 ### 🔒 Security
 

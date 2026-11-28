@@ -241,13 +241,16 @@ def _format_api_lines(per_source: dict[str, _ApiCounts]) -> list[str]:
 def _format_source_api_lines(src: str, api: _ApiCounts) -> list[str]:
     """Format one source's block: the header row and whichever rows apply."""
     total = sum(api.requests.values())
-    if not total and not api.rejections:
+    # Connection failures alone are a block of their own: that is what a
+    # run started inside an IP ban records, and why the counter exists.
+    if not total and not api.rejections and not api.connection_failures:
         return []
     breakdown = ", ".join(
         f"{count} {endpoint}" for endpoint, count in sorted(api.requests.items())
     )
     rows = (_format_detail(api), _format_unthrottled(api), _format_budget_row(api))
-    lines = [f"  {src} API: {total} requests ({breakdown})"]
+    header = f"  {src} API: {total} requests"
+    lines = [f"{header} ({breakdown})" if breakdown else header]
     lines.extend(f"    {row}" for row in rows if row)
     return lines
 
