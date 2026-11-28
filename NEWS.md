@@ -6,6 +6,8 @@
 
 - MetronInfo no longer relabels tag ids as another database's on write, and
   writes Comic Vine tag ids.
+- On Python 3.11, a Metron reading-list fetch error no longer prints a
+  traceback.
 
 ## v5.7.1
 
