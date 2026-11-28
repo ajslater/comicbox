@@ -328,6 +328,8 @@ class ComicboxSubSchemaMixin(IdentifiedSchema):
             "volume.number_to",
             "issue",
         ),
+        # Without parsed fields, the name is all that tells reprints apart.
+        fallback_sort_keys=("name",),
     )
     review = StringField()  # CIX ONLY
     rights = StringField()  # Comet ONLY

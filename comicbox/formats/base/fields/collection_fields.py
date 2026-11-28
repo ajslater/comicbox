@@ -79,6 +79,7 @@ class ListField(fields.List):
         # Sorting also does deduplication
         sort: bool = True,
         sort_keys: tuple[str, ...] | list[str] = (),
+        fallback_sort_keys: tuple[str, ...] | list[str] = (),
         allow_empty: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -86,6 +87,9 @@ class ListField(fields.List):
         self._sort = sort
         # A tuple of dot delimited keys becomes a tuple of tuples.
         self._sort_keys = tuple(sort_keys)
+        # Keys only for elements whose sort_keys are all empty, so elements
+        # with no structured data don't all dedupe into one.
+        self._fallback_sort_keys = tuple(fallback_sort_keys)
         self._allow_empty = allow_empty
         super().__init__(*args, **kwargs)
 
@@ -107,15 +111,21 @@ class ListField(fields.List):
         """Override in XmlListField."""
         return value
 
+    def _key_values(self, value: Any, key_paths: tuple[str, ...]) -> list:
+        key = []
+        for key_path in key_paths:
+            sort_value = glom(value, key_path, default=None)
+            sort_value = self.get_tag_value(sort_value)
+            key.append(_comparable(sort_value))
+        return key
+
     def _sort_value(self, value: Any, sort_dict: dict[Any, Any]) -> None:
         if is_empty(value):
             return
-        key = []
         if self._sort_keys:
-            for key_path in self._sort_keys:
-                sort_value = glom(value, key_path, default=None)
-                sort_value = self.get_tag_value(sort_value)
-                key.append(_comparable(sort_value))
+            key = self._key_values(value, self._sort_keys)
+            if self._fallback_sort_keys and all(rank == _EMPTY_RANK for rank, _ in key):
+                key += self._key_values(value, self._fallback_sort_keys)
         else:
             key = (_comparable(self.get_tag_value(value)),)
         key = tuple(key)

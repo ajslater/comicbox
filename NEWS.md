@@ -21,6 +21,8 @@
 - A credit, character, tag or other name spelled in two cases, such as
   `Stan Lee` and `STAN LEE`, keeps the roles and ids of both spellings in
   comicbox YAML, JSON and `to_dict()` instead of only one's.
+- Reprints with no series or issue that the name can be read as, such as
+  `(2019)` and `(2020)`, are all kept instead of only the last.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
