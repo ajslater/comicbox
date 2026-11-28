@@ -77,7 +77,13 @@ def test_issue_parse(
 
 @pytest.mark.parametrize(
     ("issue", "name"),
-    [("1/2", ".5"), ("½", ".5"), ("5 1/2", "5.5"), ("1/2/3", "1/2/3"), ("11/2", "11/2")],
+    [
+        ("1/2", ".5"),
+        ("½", ".5"),
+        ("5 1/2", "5.5"),
+        ("1/2/3", "1/2/3"),
+        ("11/2", "11/2"),
+    ],
 )
 def test_comet_issue_name(issue: str, name: str) -> None:
     """CoMet's issue field spells a half .5, and only a half."""

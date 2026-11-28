@@ -77,7 +77,9 @@ class FilenameRenderModule(BaseRenderModule):
         """Dump dict to filename string."""
         data: dict = obj.get(FilenameSchema.ROOT_TAG, {})
         if issue := data.get(ISSUE_TAG):
-            issue = issue_half_replace(issue, "½").replace("/", _ISSUE_SLASH_REPLACEMENT)
+            issue = issue_half_replace(issue, "½").replace(
+                "/", _ISSUE_SLASH_REPLACEMENT
+            )
             data = {**data, ISSUE_TAG: issue}
         fn = dict2comicfn(data, *args, **kwargs)
         return cls._sanitize(fn)
