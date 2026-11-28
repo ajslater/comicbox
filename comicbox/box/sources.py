@@ -231,9 +231,9 @@ class ComicboxSources(ComicboxArchive):
             reason = f"{source} not a valid source metadata key."
             raise MetadataError(reason)
 
-        if source_data_list:
-            source_data_list = tuple(source_data_list)
-            self._sources[source] = source_data_list
+        # Stored even when empty, so an absent or unreadable source is
+        # looked for once. add_source appends to it.
+        self._sources[source] = tuple(source_data_list or ())
 
     def get_source_metadata(
         self, source: MetadataSources
@@ -242,7 +242,7 @@ class ComicboxSources(ComicboxArchive):
         try:
             if source not in self._sources:
                 self._set_source_metadata(source)
-            return self._sources.get(source)
+            return self._sources.get(source) or None
         except Exception as exc:
             logger.warning(
                 f"{self._path} reading source metadata from {source.value.label}: {exc}"

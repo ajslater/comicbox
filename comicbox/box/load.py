@@ -239,12 +239,9 @@ class ComicboxLoad(ComicboxSources):
         return None, None
 
     def _set_loaded_metadata(self, source: MetadataSources) -> None:
-        source_metadata = self.get_source_metadata(source)
-        if not source_metadata:
-            return
         # Also populate the parsed_list
         loaded_list = []
-        for source_data in source_metadata:
+        for source_data in self.get_source_metadata(source) or ():
             md, fmt = self._load_metadata(source, source_data)
             if md:
                 path = (
@@ -255,10 +252,9 @@ class ComicboxLoad(ComicboxSources):
                 loaded_md = LoadedMetadata(md, path, fmt, source_data.from_archive)
                 loaded_list.append(loaded_md)
 
-        if loaded_list:
-            if source not in self._loaded:
-                self._loaded[source] = ()
-            self._loaded[source] += tuple(loaded_list)
+        # Stored even when nothing loaded, or every later call parses a
+        # broken tag file and warns about it again. _invalidate_source pops it.
+        self._loaded[source] = (*self._loaded.get(source, ()), *loaded_list)
 
     def get_carried_formats(self) -> CarriedFormats:
         """
@@ -283,7 +279,7 @@ class ComicboxLoad(ComicboxSources):
         try:
             if source not in self._loaded:
                 self._set_loaded_metadata(source)
-            return self._loaded.get(source)
+            return self._loaded.get(source) or None
         except Exception as exc:
             logger.warning(
                 f"{self._path} Parsing or Loading {source.value.label}: {exc}"
