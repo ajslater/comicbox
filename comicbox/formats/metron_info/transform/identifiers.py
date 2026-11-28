@@ -1,6 +1,6 @@
 """MetronInfo.xml Identifiers & URLs Transform."""
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from contextlib import suppress
 from types import MappingProxyType
 from typing import Any
@@ -176,29 +176,9 @@ def _metron_id_source(id_source_str: str) -> MetronSourceEnum | None:
     return None
 
 
-def _primary_index(candidates: list[str], primary_id_source_str: str) -> int:
-    """
-    Find which entry to flag primary.
-
-    MetronInfo allows at most one primary. When nothing names a source,
-    fall back to the best ranked source rather than whichever happened to be
-    first, so repeated writes of the same book agree.
-    """
-    if primary_id_source_str in candidates:
-        return candidates.index(primary_id_source_str)
-    if best_id_source_str := next(ranked_id_sources(candidates), ""):
-        return candidates.index(best_id_source_str)
-    return 0
-
-
-def identifiers_from_cb(values: dict[str, Any]) -> list:
-    """Unparse comicbox identifiers to metron ID tags."""
-    comicbox_identifiers = values.get(IDENTIFIERS_KEY)
-    if not comicbox_identifiers:
-        return []
-    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
+def _ids_from_cb(comicbox_identifiers: Mapping) -> list[tuple[str, dict]]:
+    """Return (id source, metron <ID>) for each issue id <IDS> can hold."""
     metron_identifiers = []
-    id_sources = []
     for id_source_str, comicbox_identifier in comicbox_identifiers.items():
         if id_source_str in GTIN_SUBTAG_ID_SOURCE_MAP.values():
             continue
@@ -214,12 +194,99 @@ def identifiers_from_cb(values: dict[str, Any]) -> list:
             continue
         if id_key := comicbox_identifier.get(ID_KEY_KEY):
             metron_identifiers.append(
-                {SOURCE_ATTRIBUTE: metron_id_source, "#text": id_key}
+                (id_source_str, {SOURCE_ATTRIBUTE: metron_id_source, "#text": id_key})
             )
-            id_sources.append(id_source_str)
-    if metron_identifiers:
-        index = _primary_index(id_sources, primary_id_source_str)
-        metron_identifiers[index][PRIMARY_ATTRIBUTE] = True
+    return metron_identifiers
+
+
+def _url_sources_from_cb(
+    comicbox_urls: Any, comicbox_identifiers: Mapping
+) -> tuple[list[str], list[str]]:
+    """
+    Return the urls to write and the id source of each.
+
+    A stored url always wins: it came from the file, while a derived one is
+    comicbox's best guess from the id.
+    """
+    urls: dict[str, None] = {}
+    for url in comicbox_urls or ():
+        urls[str(url)] = None
+    id_source_by_url: dict[str, str] = {}
+    for id_source_str, comicbox_identifier in comicbox_identifiers.items():
+        if url := get_url_from_identifier(id_source_str, comicbox_identifier):
+            urls.setdefault(url, None)
+            id_source_by_url.setdefault(url, id_source_str)
+    url_list = list(urls)
+    url_sources = [
+        id_source_by_url.get(url) or get_id_source_from_url(url) for url in url_list
+    ]
+    return url_list, url_sources
+
+
+def _nested_id_sources(node: Any) -> Iterator[str]:
+    """Yield the id sources of every identifiers dict below the top level."""
+    if isinstance(node, Mapping):
+        for key, value in node.items():
+            if key == IDENTIFIERS_KEY and isinstance(value, Mapping):
+                yield from value
+            else:
+                yield from _nested_id_sources(value)
+    elif isinstance(node, list | tuple):
+        for item in node:
+            yield from _nested_id_sources(item)
+
+
+def metron_primary_id_source_from_cb(comicbox: Mapping) -> str:
+    """
+    Choose the one id source the written file names primary.
+
+    A reader files every bare tag `id` under the flagged <ID>, else the
+    flagged <URL>, else Metron. So the source chosen here has to be one a
+    flag can name, or Metron, and every writer has to use it: the <IDS> and
+    <URLs> flags and each tag `id`. A stated primary_id_source wins. Without
+    one, the best ranked source among all the ids present.
+    """
+    comicbox_identifiers = comicbox.get(IDENTIFIERS_KEY) or {}
+    ids_sources = [
+        id_source_str for id_source_str, _ in _ids_from_cb(comicbox_identifiers)
+    ]
+    _, url_sources = _url_sources_from_cb(comicbox.get(URLS_KEY), comicbox_identifiers)
+    flaggable = {*ids_sources, *filter(None, url_sources)}
+    expressible = {DEFAULT_ID_SOURCE_STR, *flaggable}
+    explicit = comicbox.get(PRIMARY_ID_SOURCE_KEY)
+    if explicit in expressible:
+        return explicit
+    tags = {key: value for key, value in comicbox.items() if key != IDENTIFIERS_KEY}
+    present = {*flaggable, *_nested_id_sources(tags)}
+    return next(ranked_id_sources(present & expressible), DEFAULT_ID_SOURCE_STR)
+
+
+def _flag_primary(
+    metron_objs: list[dict[str, Any]],
+    id_sources: list[str],
+    primary_id_source_str: str,
+) -> None:
+    """
+    Flag the entry of the primary source, or none.
+
+    No flag when the primary source has no entry: the reader then falls
+    back to Metron, which metron_primary_id_source_from_cb only allows when
+    Metron is the primary.
+    """
+    if primary_id_source_str in id_sources:
+        metron_objs[id_sources.index(primary_id_source_str)][PRIMARY_ATTRIBUTE] = True
+
+
+def identifiers_from_cb(values: dict[str, Any]) -> list:
+    """Unparse comicbox identifiers to metron ID tags."""
+    comicbox_identifiers = values.get(IDENTIFIERS_KEY)
+    if not comicbox_identifiers:
+        return []
+    primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
+    pairs = _ids_from_cb(comicbox_identifiers)
+    metron_identifiers = [metron_identifier for _, metron_identifier in pairs]
+    id_sources = [id_source_str for id_source_str, _ in pairs]
+    _flag_primary(metron_identifiers, id_sources, primary_id_source_str)
     return metron_identifiers
 
 
@@ -246,32 +313,15 @@ METRON_GTIN_TRANSFORM_FROM_CB = MetaSpec(
 
 
 def _urls_from_cb(values: dict[str, Any]) -> list:
-    """
-    Write the verbatim urls, plus a derived one for any id lacking one.
-
-    A stored url always wins: it came from the file, while a derived one is
-    comicbox's best guess from the id.
-    """
-    urls: dict[str, None] = {}
-    for url in values.get(URLS_KEY) or ():
-        urls[str(url)] = None
-    comicbox_identifiers = values.get(IDENTIFIERS_KEY) or {}
-    id_source_by_url: dict[str, str] = {}
-    for id_source_str, comicbox_identifier in comicbox_identifiers.items():
-        if url := get_url_from_identifier(id_source_str, comicbox_identifier):
-            urls.setdefault(url, None)
-            id_source_by_url.setdefault(url, id_source_str)
-    if not urls:
+    """Write the verbatim urls, plus a derived one for any id lacking one."""
+    url_list, url_sources = _url_sources_from_cb(
+        values.get(URLS_KEY), values.get(IDENTIFIERS_KEY) or {}
+    )
+    if not url_list:
         return []
-
     primary_id_source_str = values.get(PRIMARY_ID_SOURCE_KEYPATH, DEFAULT_ID_SOURCE_STR)
-    url_list = list(urls)
-    url_sources = [
-        id_source_by_url.get(url) or get_id_source_from_url(url) for url in url_list
-    ]
-    index = _primary_index(url_sources, primary_id_source_str)
     metron_urls: list[dict[str, Any]] = [{"#text": url} for url in url_list]
-    metron_urls[index][PRIMARY_ATTRIBUTE] = True
+    _flag_primary(metron_urls, url_sources, primary_id_source_str)
     return metron_urls
 
 

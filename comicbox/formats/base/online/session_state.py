@@ -13,6 +13,10 @@ and threads that frozen view down its call chain, so a file resolves
 under a single consistent policy generation even while a sibling
 ``-j N`` worker is changing it; the change lands on the next file.
 
+It also carries the one run-wide fact every box must see at once: that
+the run was aborted. A ``-j N`` sibling already in flight checks it
+before it prompts or queries another source.
+
 Deliberately a dumb holder: payload validation and the operator-facing
 logging live in ``ComicboxOnlineLookup._apply_session_action``, which
 has the source name for its messages.
@@ -44,13 +48,14 @@ class LookupPolicy:
 
 
 class OnlineSessionState:
-    """Thread-safe owner of the two session-mutable lookup settings."""
+    """Thread-safe owner of the session-mutable lookup settings and abort."""
 
     def __init__(self, match: MatchMode, prompts: Prompts) -> None:
         """Seed the policy from resolved config values."""
         self._lock = threading.Lock()
         self._match = match
         self._prompts = prompts
+        self._aborted = threading.Event()
 
     @classmethod
     def from_lookup(cls, lookup: OnlineLookupSettings) -> Self:
@@ -71,6 +76,14 @@ class OnlineSessionState:
         """Change the prompting policy for the rest of the run."""
         with self._lock:
             self._prompts = prompts
+
+    def abort(self) -> None:
+        """Mark the whole run aborted."""
+        self._aborted.set()
+
+    def is_aborted(self) -> bool:
+        """Whether any box of the run has aborted it."""
+        return self._aborted.is_set()
 
     def overlay(self, online: OnlineSettings) -> OnlineSettings:
         """Project the live policy onto otherwise static online settings."""
