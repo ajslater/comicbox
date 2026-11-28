@@ -129,7 +129,7 @@ def test_an_entry_that_fits_two_volumes_is_listed_and_never_tagged(
         assert all(f"{path} {reason}" in flat(text) for path in paths)
     assert code == 1
     assert digests(comics) == before
-    assert "2 comics not written, for an entry that fits more than one volume." in err
+    assert "2 comics not written, for an entry that fits more than one issue." in err
     assert "Dry run: 0 of 0 matched comics would change" in dry_err
 
 

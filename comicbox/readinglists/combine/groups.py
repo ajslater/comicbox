@@ -21,21 +21,29 @@ refused, so a name match never takes a row an id match wanted, nor a
 cover-year match one a name match wanted, and nothing is cut apart
 afterwards.
 
-Each loose key, the volume key first, then the cover-year key, links a row
-to its candidates: rows of other inputs with the same key and occurrence
-whose signatures do not conflict with its own.
-An exact candidate has the same signature, a loose one another. Every exact
-pair is linked, so a list combines with itself unchanged. A loose pair is
-linked only when neither row has an exact candidate in the other's input,
-each is the other's only loose candidate there, and neither has two
-candidates that conflict over all the other inputs: a row that cannot tell
-which volume it is stays its own entry. No group formed through cover-year
-links holds two rows whose signatures conflict, nor through volume links two
-years.
+Each loose key, the volume key first, then the cover-year key, is judged
+on its own. It links a row to its candidates: rows of other inputs with the
+same key and occurrence whose signatures do not conflict with its own. An
+exact candidate has the same signature, a loose one another. Every exact
+pair is linked, so an ordered list combines with itself unchanged. A loose
+pair is linked only when neither row has an exact candidate in the other's
+input, each is the other's only loose candidate there, and neither is torn:
+a row is torn when two rows of other inputs that hold the key, whatever
+their occurrence, and do not conflict with it, conflict with each other. A
+row that cannot tell which volume it is stays its own entry, however often
+either list repeats it. No group formed through cover-year links holds two
+rows whose signatures conflict, nor through volume links two years.
 """
 
 from collections import Counter
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from dataclasses import dataclass
 from typing import Any
 
@@ -203,13 +211,14 @@ def _strength(key: EntryKey) -> tuple[int, int]:
 class _Loose:
     """The rows holding one qualified loose key, and their candidates."""
 
-    __slots__ = ("candidates", "exact", "loose", "values")
+    __slots__ = ("candidates", "exact", "loose", "torn", "values")
 
     def __init__(
         self,
         key: EntryKey,
         nodes: Sequence[Node],
         values: Mapping[Node, Discriminators],
+        torn: Collection[Node],
     ) -> None:
         self.exact, self.loose = (
             (_VOLUME_EXACT_STRENGTH, _VOLUME_LOOSE_STRENGTH)
@@ -217,6 +226,7 @@ class _Loose:
             else (_EXACT_STRENGTH, _LOOSE_STRENGTH)
         )
         self.values = values
+        self.torn = torn
         # A row's candidates: rows of other inputs whose signatures do not
         # conflict with its own.
         self.candidates = {
@@ -233,12 +243,10 @@ class _Loose:
         Tell whether ``one`` lets a loose link to ``other`` be made.
 
         It has no exact candidate in ``other``'s input, ``other`` is its only
-        loose one there, and no two of its candidates conflict.
+        loose one there, and it is not ``torn``.
         """
         there = [node for node in self.candidates[one] if node[0] == other[0]]
-        return there == [other] and not any_conflict(
-            self.values[node] for node in self.candidates[one]
-        )
+        return there == [other] and one not in self.torn
 
     def links(self) -> Iterator[_Link]:
         """Yield every exact pair, and the loose pairs both rows allow."""
@@ -254,15 +262,39 @@ class _Loose:
                     yield (self.loose, one, other)
 
 
+def _torn(nodes: Sequence[Node], values: Mapping[Node, Discriminators]) -> set[Node]:
+    """
+    Find the rows holding a loose key that two conflicting rows fit.
+
+    ``nodes`` are every row with the key, whatever its occurrence: a row is
+    torn when two rows of other inputs whose signatures do not conflict with
+    its own conflict with each other.
+    """
+    return {
+        node
+        for node in nodes
+        if any_conflict(
+            values[other]
+            for other in nodes
+            if other[0] != node[0] and not values[node].conflicts(values[other])
+        )
+    }
+
+
 def _links(
     holders: Mapping[QualifiedKey, Sequence[Node]],
     values: Mapping[Node, Discriminators],
 ) -> list[_Link]:
     """List every pair of rows to link, strongest first."""
+    every: dict[EntryKey, list[Node]] = {}
+    for (key, _), nodes in holders.items():
+        if _is_loose(key):
+            every.setdefault(key, []).extend(nodes)
+    torn = {key: _torn(nodes, values) for key, nodes in every.items()}
     links: list[_Link] = []
     for (key, _), nodes in holders.items():
         if _is_loose(key):
-            links.extend(_Loose(key, nodes, values).links())
+            links.extend(_Loose(key, nodes, values, torn[key]).links())
             continue
         strength = _strength(key)
         links.extend(

@@ -5,8 +5,8 @@ Pure: no files, no network. The inputs are in rank order, the first being
 primary. Guarantees:
 
 - The same inputs in the same order give the same output.
-- Combining a list with itself returns it unchanged, when every entry has
-  a key.
+- Combining an ordered list with itself returns it unchanged, when every
+  entry has a key; an unordered one comes back sorted by cover date.
 - Adding an input never reorders the backbone's own entries.
 - A caller that wants to keep an existing order passes it first.
 

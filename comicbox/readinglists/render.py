@@ -401,7 +401,7 @@ def _comic_cell(
     shown = Text(printable(_shown_path(comic.path, directory)))
     notes = [note] if note else []
     if comic.ambiguous:
-        notes.append(f"ambiguous: {volumes_text(match.volumes)}")
+        notes.append(f"ambiguous: {ambiguity_text(match.volumes, match.ids)}")
     for text in notes:
         shown.append(f" ({printable(text)})", style=_WARN)
     return shown
@@ -425,6 +425,20 @@ def volumes_text(volumes: Sequence[int]) -> str:
         parts.append(f"the {_and(years)} volume{'s' if len(years) > 1 else ''}")
     if numbers:
         parts.append(f"volume{'s' if len(numbers) > 1 else ''} {_and(numbers)}")
+    return " and ".join(parts)
+
+
+def ambiguity_text(volumes: Sequence[int], ids: Sequence[tuple[str, str]]) -> str:
+    """
+    Name the volumes and ids an ambiguous entry fits.
+
+    ``the 2011 and 2016 volumes``, ``metron ids 101 and 107``, or both.
+    """
+    by_source: dict[str, list[str]] = {}
+    for source, key in ids:
+        by_source.setdefault(source, []).append(key)
+    parts = [volumes_text(volumes)] if volumes else []
+    parts.extend(f"{source} ids {_and(keys)}" for source, keys in by_source.items())
     return " and ".join(parts)
 
 
@@ -550,19 +564,26 @@ def _print_same_file(
 
 
 def print_ambiguous(
-    out: Console, path: Path, position: int, volumes: Sequence[int]
+    out: Console,
+    path: Path,
+    position: int,
+    volumes: Sequence[int],
+    ids: Sequence[tuple[str, str]] = (),
 ) -> None:
-    """Say a comic is not tagged: its entry fits it and a comic of another volume."""
+    """Say a comic is not tagged: its entry fits it and a comic of another issue."""
     kinds = []
+    if ids:
+        kinds.append("id")
     if any(value >= YEAR_LIKE_VOLUME for value in volumes):
         kinds.append("start year")
     if any(value < YEAR_LIKE_VOLUME for value in volumes):
         kinds.append("volume number")
+    article = "an" if kinds[0] == "id" else "a"
     _failed_line(
         out,
         path,
-        f"not written: entry #{position + 1} fits {volumes_text(volumes)}"
-        f" alike; a {' or '.join(kinds)} on the entry settles it",
+        f"not written: entry #{position + 1} fits {ambiguity_text(volumes, ids)}"
+        f" alike; {article} {' or '.join(kinds)} on the entry settles it",
     )
 
 

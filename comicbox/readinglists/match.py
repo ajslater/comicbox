@@ -11,11 +11,14 @@ database the entry has a different id from (a barcode excepted: it names a
 cover or printing), or a cover year more than a year off the entry's.
 
 The volume key and the cover-year key are loose: two volumes may share
-either. A comic that shares only a loose key with an entry is refused when
-it is of another volume than the entry or than any strong match (by id or
+either, and two issues may share the cover-year key. A comic that shares
+only a loose key with an entry is refused when it is of another volume than
+the entry, or has another id from one database than a strong match (by id or
 start year); when one comic found has the entry's own signature, only such
-loose comics are found; otherwise the loose comics left are ambiguous when
-any two are of two volumes: listed, never tagged. An entry with no key
+loose comics are found, and otherwise one of another volume than a strong
+match is refused; the loose comics left are ambiguous when any two are two
+issues, of two volumes or with two ids from one database: listed, never
+tagged. An entry with no key
 matches nothing. A missing entry reports the comics refused that a person
 may want to see (``Refused``). The matching is pure; reading the directory
 is separate.
@@ -73,8 +76,8 @@ class FoundComic:
     One comic an entry was found in, and how.
 
     ``ambiguous`` marks a loose match, on the volume or cover-year key,
-    beside others of another volume: ``match`` lists it, and does not
-    choose between them.
+    beside others of another issue, by volume or by id: ``match`` lists
+    it, and does not choose between them.
     """
 
     path: Path
@@ -87,18 +90,20 @@ class Found:
     """
     The comics that are entry ``position`` (from 0), in path order.
 
-    ``volumes`` holds the discriminators its ambiguous loose matches carry,
-    start years or volume numbers, when it has any.
+    When some are ambiguous, ``volumes`` holds the discriminators they
+    differ in, start years or volume numbers, and ``ids`` the ids they
+    differ in, as ``(source, id)`` pairs; either may be empty.
     """
 
     position: int
     comics: tuple[FoundComic, ...]
     volumes: tuple[int, ...] = ()
+    ids: tuple[tuple[str, str], ...] = ()
 
     @property
     def ambiguous(self) -> bool:
-        """Whether some of the entry's comics are of volumes it cannot tell apart."""
-        return bool(self.volumes)
+        """Whether some of the entry's comics are of issues it cannot tell apart."""
+        return bool(self.volumes or self.ids)
 
     @property
     def paths(self) -> tuple[Path, ...]:
@@ -219,6 +224,22 @@ def _differing(values: Collection[Discriminators]) -> tuple[int, ...]:
     return tuple(sorted(differing))
 
 
+def _differing_ids(facts: Collection[_Facts]) -> tuple[tuple[str, str], ...]:
+    """Get the ids some rows differ in, from one database, as ``(source, id)``."""
+    by_source: defaultdict[str, set[str]] = defaultdict(set)
+    for one in facts:
+        for source, key in one.ids.items():
+            by_source[source].add(key)
+    return tuple(
+        sorted(
+            (source, key)
+            for source, keys in by_source.items()
+            if len(keys) > 1
+            for key in keys
+        )
+    )
+
+
 def _is_loose(key: EntryKey) -> bool:
     """
     Tell whether a key leaves a discriminator unsaid: the volume or cover-year key.
@@ -296,7 +317,7 @@ class _Index:
                 if path not in strong and not facts.refuses(self.facts[path], key):
                     strong[path] = by
         by_key = self._loose_candidates(keys, facts, strong)
-        loose, unsure, volumes = self._loose_matches(facts, strong, by_key)
+        loose, unsure = self._loose_matches(facts, strong, by_key)
         comics = [
             *(FoundComic(path, by) for path, by in strong.items()),
             *_loose_found(loose, by_key, ambiguous=False),
@@ -304,40 +325,51 @@ class _Index:
         ]
         if not comics:
             return None
-        return Found(-1, tuple(sorted(comics, key=lambda comic: comic.path)), volumes)
+        unsure_facts = [self.facts[path] for path in unsure]
+        return Found(
+            -1,
+            tuple(sorted(comics, key=lambda comic: comic.path)),
+            _differing([one.discriminators for one in unsure_facts]),
+            _differing_ids(unsure_facts),
+        )
 
     def _loose_matches(
         self,
         facts: "_Facts",
         strong: Collection[Path],
         candidates: Collection[Path],
-    ) -> tuple[list[Path], list[Path], tuple[int, ...]]:
+    ) -> tuple[list[Path], list[Path]]:
         """
         Judge the comics that share only a loose key with an entry, together.
 
-        Each ``candidate`` has passed the vetoes and does not conflict with
-        the entry (``Discriminators.conflicts``). When some comic found for
-        the entry, by any key, has the entry's own signature, only such
-        comics are found: no looser one is. Otherwise one of another volume
-        than any strong match is refused, and the rest are judged together:
-        if any two conflict, they are all ambiguous. Returns the comics
-        found, those ambiguous, and the discriminators they differ in.
+        Each ``candidate`` has passed the vetoes and is not of another volume
+        than the entry (``Discriminators.conflicts``). One with another id
+        from one database than a strong match is refused. When some comic
+        found for the entry, by any key, has the entry's own signature, only
+        such comics are kept: no looser one is. Otherwise one of another
+        volume than any strong match is refused. The comics kept are judged
+        together: if any two are two issues, of two volumes or with two ids
+        from one database, they are all ambiguous. Returns the comics found
+        and those ambiguous.
         """
-        if (exact := self._exact_only(facts, strong, candidates)) is not None:
-            return exact, [], ()
-        strong_values = [self.facts[path].discriminators for path in strong]
-        kept = [
+        strong_facts = [self.facts[path] for path in strong]
+        candidates = [
             path
             for path in candidates
-            if not any(
-                self.facts[path].discriminators.conflicts(value)
-                for value in strong_values
-            )
+            if not any(self.facts[path].ids_differ(one) for one in strong_facts)
         ]
-        values = [self.facts[path].discriminators for path in kept]
-        if any_conflict(values):
-            return [], kept, _differing(values)
-        return kept, [], ()
+        if (kept := self._exact_only(facts, strong, candidates)) is None:
+            kept = [
+                path
+                for path in candidates
+                if not any(self.facts[path].other_volume(one) for one in strong_facts)
+            ]
+        kept_facts = [self.facts[path] for path in kept]
+        if any_conflict(one.discriminators for one in kept_facts) or _differing_ids(
+            kept_facts
+        ):
+            return [], kept
+        return kept, []
 
     def _exact_only(
         self, facts: "_Facts", strong: Collection[Path], candidates: Collection[Path]
