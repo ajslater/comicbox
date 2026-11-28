@@ -5,9 +5,21 @@
 ### ♻️ Changed
 
 - Extracting or reading every page of a CB7 is many times faster.
-
+ 
 ### 🐛 Fixed
 
+- ComicInfo `-1` counts, volumes and dates read as unset, not as 1.
+- Numbers with a decimal comma, thousands separator or fraction are dropped with
+  a warning instead of cut to their first digits.
+- MetronInfo leaves out zero issue and volume counts and prices with no country,
+  which its schema rejects.
+- ComicBookInfo leaves out an issue that is not a whole number, such as `1.5`,
+  instead of writing issue 1.
+- CoMet reads and writes cover credits.
+- CoMet leaves out an issue that is not a whole number and warns when it has no
+  title, which its schema requires.
+- PDF author metadata includes Plot, Story, Translator and Author credits.
+- Filenames write issue `1/2` as `½` instead of inventing a title from the `2`.
 - Converting two comics whose names differ only by case and suffix at once no
   longer overwrites one with the other on a case-insensitive disk.
 - A conversion or PDF write keeps the comic's file mode and owner, and a

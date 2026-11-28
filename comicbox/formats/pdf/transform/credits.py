@@ -12,9 +12,10 @@ from comicbox.formats.comicbox.schema import (
     ROLES_KEY,
 )
 
+# Lowercased: role names are compared lowercased.
 _AUTHOR_VALUES = frozenset(
     {
-        enum.value
+        enum.value.lower()
         for enum in (
             GenericRoleEnum.AUTHOR,
             MetronRoleEnum.WRITER,
@@ -28,7 +29,7 @@ _AUTHOR_VALUES = frozenset(
             ComicInfoRoleTagEnum.TRANSLATOR,
         )
     }
-    | {*GenericRoleAliases.WRITER.value}
+    | {alias.lower() for alias in GenericRoleAliases.WRITER.value}
 )
 
 

@@ -1,9 +1,13 @@
 """CoMet transforms."""
 
+import re
+import sys
+from collections.abc import Mapping
 from enum import Enum
 from types import MappingProxyType
 
 from bidict import frozenbidict
+from loguru import logger
 
 from comicbox.enums.comet import CoMetRoleTagEnum
 from comicbox.enums.comicbookinfo import ComicBookInfoRoleEnum
@@ -58,6 +62,11 @@ from comicbox.formats.comicbox.transform.name_objs import (
     name_obj_to_cb,
 )
 from comicbox.identifiers import DEFAULT_ID_SOURCE
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 ROLE_ALIASES: MappingProxyType[Enum, tuple[Enum | str, ...]] = MappingProxyType(
     {
@@ -139,7 +148,6 @@ SIMPLE_KEYMAP = frozenbidict(
         "date": COVER_DATE_KEYPATH,
         "description": SUMMARY_KEY,
         "format": ORIGINAL_FORMAT_KEY,
-        "issue": ISSUE_NAME_KEYPATH,
         "language": LANGUAGE_KEY,
         "lastMark": BOOKMARK_KEY,
         "pages": PAGE_COUNT_KEY,
@@ -153,6 +161,35 @@ SIMPLE_KEYMAP = frozenbidict(
     }
 )
 NAME_OBJ_KEY_MAP = frozenbidict({"character": CHARACTERS_KEY, "genre": GENRES_KEY})
+ISSUE_TAG = "issue"
+TITLE_TAG = "title"
+_WHOLE_NUMBER_RE = re.compile(r"\d+")
+
+
+def _issue_from_cb(issue_name: str) -> str | None:
+    """Write a whole issue number, the XSD's xs:nonNegativeInteger, or nothing."""
+    return issue_name if _WHOLE_NUMBER_RE.fullmatch(issue_name) else None
+
+
+def _first_name(names: set[str]) -> set[str]:
+    """
+    Keep one name, the first in sort order.
+
+    The CoMet XSD allows one coverDesigner, so several cover credits cannot
+    all be written. Sort order keeps repeated writes of a book agreeing.
+    """
+    return {min(names)} if names else names
+
+
+def _comet_credits_transform_from_cb() -> tuple[MetaSpec, ...]:
+    """Write each CoMet credit tag, with a single coverDesigner."""
+    cover_designer_tag = CoMetRoleTagEnum.COVER_DESIGNER.value
+    return tuple(
+        MetaSpec(key_map=metaspec.key_map, spec=(metaspec.spec, _first_name))
+        if cover_designer_tag in metaspec.key_map
+        else metaspec
+        for metaspec in xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES)
+    )
 
 
 class CoMetTransform(BaseTransform):
@@ -161,7 +198,7 @@ class CoMetTransform(BaseTransform):
     SCHEMA_CLASS = CoMetSchema
     SPECS_TO = create_specs_to_comicbox(
         MetaSpec(
-            key_map=SIMPLE_KEYMAP.inverse,
+            key_map={**SIMPLE_KEYMAP.inverse, ISSUE_NAME_KEYPATH: ISSUE_TAG},
         ),
         name_obj_to_cb(NAME_OBJ_KEY_MAP.inverse),
         xml_credits_transform_to_cb(CoMetRoleTagEnum),
@@ -172,10 +209,19 @@ class CoMetTransform(BaseTransform):
     )
     SPECS_FROM = create_specs_from_comicbox(
         MetaSpec(key_map=SIMPLE_KEYMAP),
+        MetaSpec(key_map={ISSUE_TAG: ISSUE_NAME_KEYPATH}, spec=_issue_from_cb),
         name_obj_from_cb(NAME_OBJ_KEY_MAP),
-        *xml_credits_transform_from_cb(CoMetRoleTagEnum, ROLE_ALIASES),
+        *_comet_credits_transform_from_cb(),
         identifier_transform_from_cb("identifier"),
         price_transform_from_cb("price"),
         comet_reprints_transform_from_cb("isVersionOf"),
         format_root_keypath=CoMetSchema.ROOT_KEYPATH,
     )
+
+    @override
+    def from_comicbox(self, data: Mapping) -> MappingProxyType:
+        """Warn when the written CoMet lacks the title its XSD requires."""
+        comet = super().from_comicbox(data)
+        if not comet.get(CoMetSchema.ROOT_TAG, {}).get(TITLE_TAG):
+            logger.warning("Writing CoMet without the title its schema requires.")
+        return comet

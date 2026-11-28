@@ -22,7 +22,7 @@ _METRON_ROLE_MAP = _create_role_variations_to_enum_map(ROLE_ALIASES)
         # Spellings that used to survive as separate roles after a merge.
         ("Cover Artist", "Cover"),
         ("CoverArtist", "Cover"),
-        ("colorDesigner", "Cover"),
+        ("coverDesigner", "Cover"),
         ("covers", "Cover"),
         ("Colourist", "Colorist"),
         ("Colorer", "Colorist"),

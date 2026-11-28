@@ -7,6 +7,7 @@ from types import MappingProxyType
 from typing import Any
 
 from bidict import frozenbidict
+from loguru import logger
 
 from comicbox.formats.base.fields.xml_fields import get_cdata
 from comicbox.formats.base.transforms.identifiers import PRIMARY_ID_SOURCE_KEYPATH
@@ -200,10 +201,11 @@ def _prices_to_cb(metron_prices: list[dict[str, Decimal | str]]) -> dict:
 def _prices_from_cb(comicbox_prices: dict[str, Decimal]) -> list:
     metron_prices = []
     for country, price in comicbox_prices.items():
-        metron_price: dict[str, Any] = {"#text": price}
-        if country:
-            metron_price[COUNTRY_ATTR] = country
-        metron_prices.append(metron_price)
+        if not country:
+            # The MetronInfo XSD requires a Price's country.
+            logger.debug(f"Not writing MetronInfo price {price} with no country.")
+            continue
+        metron_prices.append({"#text": price, COUNTRY_ATTR: country})
     return metron_prices
 
 

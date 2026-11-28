@@ -69,11 +69,23 @@ SERIES_KEY_MAP_TO = frozenbidict(
     }
 )
 ISSUE_COUNT_TAGPATH = f"{SERIES_TAG}.IssueCount"
+VOLUME_COUNT_TAGPATH = f"{SERIES_TAG}.VolumeCount"
 VOLUME_TAGPATH = f"{SERIES_TAG}.{VOLUME_TAG}"
+# The counts are xs:positiveInteger, so they are written by
+# METRON_SERIES_COUNTS_TRANSFORM_FROM_CB, which leaves out a zero.
+SERIES_COUNTS_KEY_MAP_FROM = MappingProxyType(
+    {
+        ISSUE_COUNT_TAGPATH: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
+        VOLUME_COUNT_TAGPATH: f"{SERIES_KEY}.{VOLUME_COUNT_KEY}",
+    }
+)
 SERIES_KEY_MAP_FROM = MappingProxyType(
     {
-        **SERIES_KEY_MAP_TO.inverse,
-        ISSUE_COUNT_TAGPATH: f"{VOLUME_KEY}.{VOLUME_ISSUE_COUNT_KEY}",
+        **{
+            tagpath: keypath
+            for tagpath, keypath in SERIES_KEY_MAP_TO.inverse.items()
+            if tagpath not in SERIES_COUNTS_KEY_MAP_FROM
+        },
         VOLUME_TAGPATH: f"{VOLUME_KEY}.{VOLUME_NUMBER_KEY}",
     }
 )
@@ -158,6 +170,15 @@ METRON_SERIES_TRANSFORM_TO_CB = MetaSpec(
     )
 )
 METRON_SERIES_TRANSFORM_FROM_CB = MetaSpec(key_map=SERIES_KEY_MAP_FROM)
+
+
+def _positive_count_from_cb(count: int) -> int | None:
+    return count if count > 0 else None
+
+
+METRON_SERIES_COUNTS_TRANSFORM_FROM_CB = MetaSpec(
+    key_map=SERIES_COUNTS_KEY_MAP_FROM, spec=_positive_count_from_cb
+)
 
 
 def _end_year_from_cb(values: dict[str, Any]) -> int | None:
