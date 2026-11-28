@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING
@@ -22,6 +23,11 @@ from comicbox.online_session import (
 )
 from tests.util.online_matcher import make_candidate
 from tests.util.online_session import SkipHandler
+
+if sys.version_info >= (3, 12):
+    from typing import override  # pyright: ignore[reportUnreachable]
+else:
+    from typing_extensions import override
 
 if TYPE_CHECKING:
     from comicbox.formats.base.online.profile import Candidate
@@ -317,6 +323,7 @@ def test_ask_defers_a_confident_match(tmp_path, confident_metron) -> None:
 class _SeriesMetron(_ConfidentMetron):
     """Offers two volumes' issue of the comic's own number, every time."""
 
+    @override
     def search(self, profile) -> list[Candidate]:
         number = profile.issue
         return [
