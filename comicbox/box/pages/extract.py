@@ -10,6 +10,33 @@ from comicbox.box.pages.covers import ComicboxPagesCovers
 from comicbox.exceptions import ExportError
 
 
+_COMIC_SUFFIXES = frozenset(
+    (".cbz", ".cbr", ".cb7", ".cbt", ".pdf", ".zip", ".rar", ".7z", ".tar")
+)
+_COMIC_MAGIC = (b"PK", b"Rar!", b"7z\xbc\xaf\x27\x1c", b"%PDF")
+_TAR_MAGIC = b"ustar"
+_TAR_MAGIC_OFFSET = 257
+
+
+def _is_comic_file(path: Path) -> bool:
+    """Tell a comic archive or PDF by its suffix or its leading bytes."""
+    if path.suffix.lower() in _COMIC_SUFFIXES:
+        return True
+    try:
+        with path.open("rb") as file:
+            head = file.read(_TAR_MAGIC_OFFSET + len(_TAR_MAGIC))
+    except OSError:
+        return False
+    return head.startswith(_COMIC_MAGIC) or head[_TAR_MAGIC_OFFSET:] == _TAR_MAGIC
+
+
+def _refuse_comic_destination(path: Path) -> None:
+    """Refuse to write a page over a file that is a comic or PDF."""
+    if path.is_file() and _is_comic_file(path):
+        reason = f"{path} is a comic or PDF: not overwritten with a page."
+        raise ExportError(reason)
+
+
 def _validate_extract_path(path: Path, dest_dir: Path) -> None:
     """Validate that the extract path doesn't escape the destination directory."""
     if not path.resolve().is_relative_to(dest_dir.resolve()):
@@ -32,7 +59,11 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         data = self._archive_readfile(fn, props=props)
         if ext := props.get("ext", ""):
             path = path.with_suffix("." + ext)
-        dest_dir = dest_path if dest_path.is_dir() else dest_path.parent
+        if dest_path.is_dir():
+            dest_dir = dest_path
+        else:
+            dest_dir = dest_path.parent
+            _refuse_comic_destination(path)
         _validate_extract_path(path, dest_dir)
         path.write_bytes(data)
 

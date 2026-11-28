@@ -20,6 +20,9 @@
 
 - A failed export, page extraction or cover extraction fails its file and the
   run exits 1, instead of logging and exiting 0.
+- `-X -d FILE` refuses to overwrite a comic or PDF with the cover, and more
+  than one comic to one file is a usage error, instead of every cover
+  replacing the one before.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.
