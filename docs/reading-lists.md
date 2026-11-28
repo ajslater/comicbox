@@ -228,9 +228,10 @@ list and a report. It is pure: no files, no network.
 - **Matches issues by id, then by name.** Two rows are the same issue when they
   share an issue id from the same database, or the same series name, start year
   (or volume), issue number and suffix, or, weakest of all, the same series
-  name, cover year, issue number and suffix. Stronger matches are made first.
-  Matches chain: a ComicVine id joining A and B and a Metron id joining B and C
-  put all three together.
+  name, cover year, issue number and suffix. Stronger matches are made first:
+  ids before names, and among ids, a row's ids by database rank, Metron's first,
+  then Comic Vine's, and so on. Matches chain: a ComicVine id joining A and B
+  and a Metron id joining B and C put all three together.
 - **Keeps the primary order.** The first ordered list is the backbone and none
   of its entries ever moves. An issue only another list has goes after the
   nearest entry the two lists agree on. A list marked `ordered: false`, such as
@@ -243,7 +244,11 @@ list and a report. It is pure: no files, no network.
   one list gives an issue twice with a different id each time, its rows cannot
   both join another list's one row.
 - **Lines up repeated issues.** A list may read an issue twice; the first time
-  lines up with the first time in another list, the second with the second.
+  lines up with the first time in another list, the second with the second. On
+  the volume number and the cover year alone, the times are counted among rows
+  that tell their volume alike, so a row of one volume is not the second time of
+  a row of another there. An id and the start year count every row that has
+  them.
 
 **What it does not do:**
 
@@ -253,17 +258,25 @@ list and a report. It is pure: no files, no network.
   A row tells its volume by up to two things: a year, its start year or else a
   volume number of 1900 or more, and a small volume number. Z-Men (1991) volume
   2 has both. Two rows are of two volumes when they have the same kind and it
-  differs: two start years, or volumes 1 and 2. On the cover year, a row always
-  joins a row of another list that tells its volume exactly as it does, as its
-  own copy does. It joins one that tells it otherwise, such as a start year
-  against no year, or against volume 2, only when that is its one such row in
-  that list, neither has an exact match there, and no list leaves either of them
-  between two volumes. So the cover year will not join:
+  differs: two start years, or volumes 1 and 2. On the cover year, a row's
+  candidates are the rows of other lists with its series, cover year, issue
+  number and suffix, the same time in their list as it is in its own, that are
+  not of another volume than it. It always joins a candidate that tells its
+  volume exactly as it does, as its own copy does, and every such join on the
+  cover year is made before any other on it. It joins one that tells it
+  otherwise, such as a start year against no year, or against volume 2, only
+  when that is its one such candidate in that list, neither has an exact
+  candidate there, and no list leaves either of them between two volumes: two
+  rows of one list, or of two, that fit it on the cover year, of two volumes,
+  counting every row of each list, whatever time it comes there. So the cover
+  year will not join:
     - rows of two volumes, even through a third row that has only the cover
-      year;
+      year: no entry a cover-year join makes holds rows of two volumes, however
+      its other rows were joined, by id included;
     - a row that fits two rows of one list, such as Ardent #1 of 2016 with no
       start year against the 2011 and 2016 volumes, or against X (1999) #1 and X
-      volume 2 #1: it stays an entry of its own;
+      volume 2 #1: it stays an entry of its own, every time a list reads it,
+      however often the other list reads either volume;
     - a row that another list leaves between two volumes, even where this list
       has only one of them;
     - a row with no year to a row that has one, when the first has its exact
@@ -284,19 +297,30 @@ list and a report. It is pure: no files, no network.
   one series, volume number and issue join by name too, as Bladehawk volume 2 #1
   and Bladehawk (2011) volume 2 #1 do, but not when their years differ: Z-Men
   (1963) volume 1 #1 and Z-Men (1991) volume 1 #1 stay apart. The volume number
-  is joined as the cover year is, by the rule above: a row with no year, such as
-  Z-Men volume 1 #1, joins its exact copy first, and stays an entry of its own
-  beside Z-Men (1963) and Z-Men (1991) volume 1 #1, in one list or in two.
+  is joined as the cover year is, by the rule above, with the series, volume
+  number, issue number and suffix in place of the cover year: a row with no
+  year, such as Z-Men volume 1 #1, joins its exact copy first, and stays an
+  entry of its own beside Z-Men (1963) and Z-Men (1991) volume 1 #1, in one list
+  or in two. Only the entry check differs: a volume-number join is refused when
+  the entry would hold two start years, not two volume numbers, so an entry can
+  hold two volume numbers of one start year. `[Z-Men (1991) volume 1 #1]`,
+  `[Z-Men (1991) volume 2 #1]` and `[Z-Men volume 1 #1]` give one entry: the
+  first two join by start year, and the third joins the first by volume number.
+  The two keys are judged apart, the volume number first: a row that a list
+  leaves between two volumes on one key may still join on the other, as Z-Men
+  volume 1 #1 of 2015 joins Z-Men (1963) volume 1 #1 of 2015 by the cover year
+  when the other volume 1 is Z-Men (1991) of 2016.
 - It does not reorder the primary list, even where another list disagrees. To
   keep an order you edited, pass it first.
 - It does not decide that two lists describe the same order. That is what
   `compare` is for.
 - It does not fix bad ids. It reports them and keeps the primary's.
 
-The same lists in the same order always give the same result. Combining a list
-with itself returns it unchanged when every entry has a key; an entry without
-one matches nothing, not even its own copy, so it comes out twice. `combine` and
-`compare` say how many entries of each input have no key.
+The same lists in the same order always give the same result. Combining an
+ordered list with itself returns it unchanged when every entry has a key; an
+`ordered: false` list comes back with the same entries, sorted by cover date. An
+entry without a key matches nothing, not even its own copy, so it comes out
+twice. `combine` and `compare` say how many entries of each input have no key.
 
 ## Comparing
 
@@ -351,43 +375,52 @@ of an issue, so a shared one finds a comic and a differing one never refuses
 one, as in `combine`.
 
 The volume number and the cover year are loose keys: a comic that shares only
-one of them with an entry may be of another volume than a comic that shares it
-too, so such comics are judged together, by volume as `combine` tells them
-apart:
+one of them with an entry may be another issue than a comic that shares it too.
+Two comics are two issues when they are of two volumes, as `combine` tells them
+apart, or have two different ids from one database. Ids from two databases are
+never compared, a comic with no id from a database differs from none there, and
+a barcode never counts. The comics an entry matched by id or by the series,
+start year and issue are its strong matches, found as ever and never judged by
+each other. The loose comics are judged together, in this order:
 
 1. A comic of another volume than the entry is refused: Z-Men (1963) volume 1 #1
    for a Z-Men (1991) volume 1 #1 entry.
-2. When some comic found for the entry, by any key, tells its volume exactly as
+2. A comic with another id from one database than a strong match is refused:
+   Ardent #1 of 2016 with a Comic Vine id finds its comic, which has Metron id
+   101, and not an Ardent #1 of 2016 with Metron id 107.
+3. When some comic found for the entry, by any key, tells its volume exactly as
    the entry does, a loose key finds only such comics: every copy of it, and no
-   comic that fits the entry more loosely; comics found by id or by the series,
-   start year and issue are found as ever. An entry with no year over a comic
+   comic that fits the entry more loosely. An entry with no year over a comic
    with no year and a 2011 comic finds the first alone; over the 2011 comic
-   alone it finds that.
-3. Otherwise a loose comic of another volume than any comic the entry matched by
-   id or by start year is refused: Z-Men volume 1 #1 with the 1963 comic's id
-   does not find Z-Men (1991) volume 1 #1.
-4. When any two of the loose comics left are of two volumes, they are all
-   ambiguous: `match` marks them, and `write-arcs` exits 1 without tagging any
-   of them. Ardent #1 of 2016 with no start year against the 2011 and 2016
-   volumes, or against volumes 1 and 2, is ambiguous, and so is Z-Men volume 1
-   #1 against Z-Men (1963) and Z-Men (1991) volume 1 #1. A start year or volume
+   alone it finds that. Otherwise a loose comic of another volume than any
+   strong match is refused: Z-Men volume 1 #1 with the 1963 comic's id does not
+   find Z-Men (1991) volume 1 #1.
+4. When any two of the loose comics left are two issues, they are all ambiguous:
+   `match` marks them, and `write-arcs` exits 1 without tagging any of them.
+   Ardent #1 of 2016 with no start year against the 2011 and 2016 volumes, or
+   against volumes 1 and 2, is ambiguous, and so is Z-Men volume 1 #1 against
+   Z-Men (1963) and Z-Men (1991) volume 1 #1. So is Ardent #1 of 2016 against
+   two comics of it with Metron ids 101 and 107, and against those two and a
+   third with no id, even when the entry is made from the third comic's own
+   tags: nothing on it says which of the two it is. A start year, volume or id
    on the entry settles it.
 
 An entry with no year beside X (1999) #1 and X volume 2 #1, which cannot be
-compared, still finds both. A refused comic is not listed under an entry that
-was found. Under a missing entry, `match` lists, marked `refused`, each comic
-that has its series, issue and cover year but is of another volume
-(`other-volume`), and each that has the entry's id, or its series, start year or
-volume and issue, but a cover year more than a year off (`cover-year`). A comic
-another entry found is not listed, and neither is one whose id from some
-database differs from the entry's, nor one that only shares the issue number
-with another volume and year. An entry with no id, start year, volume or cover
-year matches nothing, as in `combine`. `match` prints each entry with each comic
-that is it on a row of its own, and how it matched (`id`, `name`, `name-year` or
-`variant`), or `missing`; a comic with a tag file comicbox could not read is
-marked. The count goes to stderr. Linked directories are not searched, as with
-comicbox's `--recurse`, and a directory that cannot be read is a warning: the
-command then exits 1.
+compared, still finds both, and so does one beside two comics with a Metron id
+and a Comic Vine id. A refused comic is not listed under an entry that was
+found. Under a missing entry, `match` lists, marked `refused`, each comic that
+has its series, issue and cover year but is of another volume (`other-volume`),
+and each that has the entry's id, or its series, start year or volume and issue,
+but a cover year more than a year off (`cover-year`). A comic another entry
+found is not listed, and neither is one whose id from some database differs from
+the entry's, nor one that only shares the issue number with another volume and
+year. An entry with no id, start year, volume or cover year matches nothing, as
+in `combine`. `match` prints each entry with each comic that is it on a row of
+its own, and how it matched (`id`, `name`, `name-year` or `variant`), or
+`missing`; a comic with a tag file comicbox could not read is marked. The count
+goes to stderr. Linked directories are not searched, as with comicbox's
+`--recurse`, and a directory that cannot be read is a warning: the command then
+exits 1.
 
 `write-arcs` tags each comic matched by id or name with the list's name as a
 story arc, numbered by its place when the list is ordered. `--variants` also
