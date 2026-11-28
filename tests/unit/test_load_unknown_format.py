@@ -101,3 +101,53 @@ def test_unknown_named_import_reads_its_real_format(tmp_path: Path) -> None:
         md = cb.to_dict()["comicbox"]
     assert md["series"]["name"] == "Bladehawk"
     assert md["issue"]["name"] == "3"
+
+
+@pytest.fixture
+def warnings() -> Iterator[list[str]]:
+    """Capture the WARNING messages a library load logs."""
+    from loguru import logger as loguru_logger
+
+    captured: list[str] = []
+    handler_id = loguru_logger.add(
+        lambda m: captured.append(m.record["message"]), level="WARNING"
+    )
+    try:
+        yield captured
+    finally:
+        loguru_logger.remove(handler_id)
+
+
+def test_library_import_of_the_filename_export_parses(tmp_path: Path) -> None:
+    """`add_metadata_file` names a format by file name, as `-i` does."""
+    meta = tmp_path / "comicbox-filename.txt"
+    meta.write_text("Captain Science #002 (1951).cbz")
+    with Comicbox() as cb:
+        cb.add_metadata_file(meta)
+        md = cb.to_dict()["comicbox"]
+    assert md["series"]["name"] == "Captain Science"
+
+
+def test_an_unreadable_import_warns_once(
+    tmp_path: Path, warnings: list[str]
+) -> None:
+    """Formats that do not fit drop everything: that is no news."""
+    meta = tmp_path / "notes.txt"
+    meta.write_text("just some text\n")
+    with Comicbox() as cb:
+        cb.add_metadata_file(meta)
+        assert cb.to_dict() == {}
+    assert len(warnings) == 1
+    assert "Unable to load" in warnings[0]
+
+
+def test_the_chosen_format_still_warns_of_its_drops(
+    tmp_path: Path, warnings: list[str]
+) -> None:
+    meta = tmp_path / "meta.json"
+    meta.write_text('{"comicbox": {"series": {"name": "Foo"}, "page_count": "many"}}')
+    with Comicbox() as cb:
+        cb.add_metadata_file(meta)
+        md = cb.to_dict()["comicbox"]
+    assert md["series"]["name"] == "Foo"
+    assert any("Dropped invalid metadata" in w and "page_count" in w for w in warnings)

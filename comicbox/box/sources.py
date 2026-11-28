@@ -294,4 +294,7 @@ class ComicboxSources(ComicboxArchive):
         path = Path(path)
         with path.open("r") as f:
             string = f.read()
+        if fmt is None:
+            # Named by its file name, as -i names it.
+            fmt = IMPORT_FILENAME_FORMAT_MAP.get(path.name.lower())
         self.add_source(MetadataSources.IMPORT_FILE, string, fmt, path)
