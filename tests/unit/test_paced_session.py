@@ -287,11 +287,14 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
     nginx or from Anubis — whose challenge and deny pages are both HTTP
     200 HTML. The gate's own handling of a header-less response is
     unchanged: it still opens, because a server that never throttles is
-    the other thing this looks like.
+    the other thing this looks like, as long as the answer is JSON.
     """
     from loguru import logger as loguru_logger
 
-    session, _adapter = _paged(gate, [Reply(issue_page([issue_row(1)]), headers={})])
+    json_only = {"Content-Type": "application/json"}
+    session, _adapter = _paged(
+        gate, [Reply(issue_page([issue_row(1)]), headers=json_only)]
+    )
 
     messages, handler_id = _warnings()
     try:
@@ -305,6 +308,70 @@ def test_a_response_without_rate_limit_headers_is_bucketed_by_status(
     assert gate.observes == 1
     assert gate._state is GateState.OPEN
     assert sum("no X-RateLimit-* headers" in m for m in messages) == 1
+
+
+def _bare_response(status: int, content_type: str | None) -> Any:
+    """A response with no rate-limit headers, as a proxy or Anubis sends."""
+    import requests
+
+    response = requests.Response()
+    response.status_code = status
+    if content_type is not None:
+        response.headers["Content-Type"] = content_type
+    response.request = requests.Request(
+        "GET", "https://metron.cloud/api/issue/"
+    ).prepare()
+    return response
+
+
+@pytest.mark.parametrize(
+    ("status", "content_type"),
+    [
+        (200, "text/html; charset=utf-8"),
+        (502, "text/html"),
+        (503, None),
+        (500, "application/json"),
+    ],
+    ids=["challenge-page", "proxy-error", "bare-503", "json-5xx"],
+)
+def test_a_bare_answer_that_is_not_the_api_leaves_the_gate_unknown(
+    status: int, content_type: str | None
+) -> None:
+    """
+    B16: one bot-check page as the first response unpaced every worker.
+
+    A header-less answer turns pacing off only when it looks like the API
+    answering: a 2xx with a JSON body. Anything else leaves the gate
+    UNKNOWN, which keeps serializing until a real answer arrives.
+    """
+    gate = RateGate(default_limit=20)
+
+    paced_session._feed_gate(gate, _bare_response(status, content_type))
+
+    assert gate._state is GateState.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    "content_type",
+    ["application/json", "application/json; charset=utf-8", "application/vnd.api+json"],
+)
+def test_a_bare_json_answer_still_opens_the_gate(content_type: str) -> None:
+    """A server that never throttles answers JSON without the headers."""
+    gate = RateGate(default_limit=20)
+
+    paced_session._feed_gate(gate, _bare_response(200, content_type))
+
+    assert gate._state is GateState.OPEN
+
+
+def test_a_bare_answer_is_still_counted_when_it_teaches_nothing() -> None:
+    gate = RateGate(default_limit=20)
+
+    paced_session._feed_gate(gate, _bare_response(200, "text/html"))
+
+    api = outcome_stats.api_snapshot()["metron"]
+    assert api.unthrottled == {200: 1}
+    assert sum(api.requests.values()) == 1
 
 
 def test_a_header_less_429_cools_down_without_teaching_the_gate(

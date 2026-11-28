@@ -162,6 +162,8 @@
   Metron lock held at the fork.
 - A Comic Vine search whose every issue list failed, as in an outage or with the
   hourly budget spent, is reported as a failed search instead of no match.
+- Metron requests stay paced when a proxy error or bot-check page answers
+  first.
 
 ### 🔒 Security
 
