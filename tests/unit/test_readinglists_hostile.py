@@ -291,3 +291,28 @@ def test_many_doctypes_before_the_root_are_linear() -> None:
     text = "<!DOCTYPE x>" * 20000 + "!"
     with _quickly():
         assert xml_root(text) is None
+
+
+def _yaml_loads(monkeypatch: pytest.MonkeyPatch, **kwargs: str) -> int:
+    """Count the times a YAML document is built while one list is read."""
+    from ruamel.yaml import YAML
+
+    calls = []
+    load = YAML.load
+
+    def counting(self: YAML, stream: object) -> object:
+        calls.append(stream)
+        return load(self, stream)
+
+    monkeypatch.setattr(YAML, "load", counting)
+    text = "reading_list:\n  name: X\n  entries:\n    - series: {name: A}\n"
+    assert loads(text, **kwargs).reading_list["name"] == "X"
+    monkeypatch.undo()
+    return len(calls)
+
+
+def test_detecting_yaml_builds_no_document(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Detection built the whole document once only to read its top keys."""
+    detected = _yaml_loads(monkeypatch)
+    given = _yaml_loads(monkeypatch, fmt="yaml")
+    assert detected == given

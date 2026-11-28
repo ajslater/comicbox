@@ -220,7 +220,7 @@ def resolve_format(
     Name the format given, else detect it, else raise with the reason.
 
     A YAML document that uses an alias is refused here, before anything
-    parses or validates it whole.
+    builds or validates it: detection reads only the parser's events.
     """
     with readable_depth():
         resolved = get_format(fmt) if fmt else detect_format(text)
