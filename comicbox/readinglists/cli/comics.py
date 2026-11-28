@@ -30,6 +30,7 @@ from comicbox.readinglists.library import TAG_FORMATS, Library
 from comicbox.readinglists.match import (
     ArcAction,
     ArcChange,
+    Found,
     MatchResult,
     find_arc,
     match_comics,
@@ -167,8 +168,8 @@ class _Plan:
     writes: tuple[ArcWrite, ...]
     variant_only: tuple[Path, ...]
     # Comics not written because their entry fits them and comics of other
-    # volumes alike: each with the entry's position and the volumes.
-    ambiguous: tuple[tuple[Path, int, tuple[int, ...]], ...]
+    # issues alike, by volume or by id: each with what was found for it.
+    ambiguous: tuple[tuple[Path, Found], ...]
 
     @property
     def todo(self) -> tuple[ArcWrite, ...]:
@@ -280,7 +281,7 @@ def _one_per_destination(writes: Sequence[ArcWrite]) -> tuple[ArcWrite, ...]:
 
 def _left_out(
     result: MatchResult, planned: Collection[Path]
-) -> tuple[tuple[Path, ...], tuple[tuple[Path, int, tuple[int, ...]], ...]]:
+) -> tuple[tuple[Path, ...], tuple[tuple[Path, Found], ...]]:
     """List the found comics not planned: by a variant only, and ambiguous."""
     variant_only = sorted(
         {
@@ -291,7 +292,7 @@ def _left_out(
         }
     )
     ambiguous = tuple(
-        (comic.path, found.position, found.volumes)
+        (comic.path, found)
         for found in result.found
         for comic in found.comics
         if comic.ambiguous and comic.path not in planned
@@ -426,7 +427,7 @@ def _summary(
             len(plan.ambiguous),
             (
                 f"{_count(len(plan.ambiguous), 'comic')} not written, for an entry"
-                " that fits more than one volume."
+                " that fits more than one issue."
             ),
         ),
         (
@@ -521,8 +522,8 @@ def _print_plan(run: Run, plan: _Plan, *, applying: bool) -> None:
             print_arc_write(run.out, write, done=False)
     for path in plan.variant_only:
         print_variant_only(run.out, path)
-    for path, position, volumes in plan.ambiguous:
-        print_ambiguous(run.out, path, position, volumes)
+    for path, found in plan.ambiguous:
+        print_ambiguous(run.out, path, found.position, found.volumes, found.ids)
 
 
 def _write_arcs(run: Run) -> None:

@@ -5,15 +5,19 @@ Each is worked out from the generated fields, never by asking the code under
 test what it thinks: every row lands once, no entry holds two rows of one
 list, the first list's order is kept, a keyed list combines with itself
 unchanged, compare is symmetric, no group holds two volumes, and permuting a
-list that repeats no issue changes no group. Matching a list against comics
-never tags two volumes for one entry, and a comic is always found, and
-taggable, by the entry made from its own tags.
+list that repeats no issue changes no group, and a bare row that another
+list leaves between two volumes joins none of that list's rows of a volume.
+Matching a list against comics never tags two volumes for one entry, nor
+two loose comics with differing ids, and a comic is always found by the
+entry made from its own tags: taggable, unless it has no id from a database
+in which two comics it fits differ.
 """
 
 import random
 from collections import Counter
 from dataclasses import dataclass, replace
 from datetime import date
+from itertools import combinations
 from pathlib import Path
 from typing import Any
 
@@ -25,7 +29,7 @@ from comicbox.readinglists import (
     combine,
     compare,
 )
-from comicbox.readinglists.match import match_comics, plan_arcs
+from comicbox.readinglists.match import FoundBy, match_comics, plan_arcs
 from comicbox.readinglists.serialize import load_model
 
 
@@ -76,6 +80,15 @@ _DENSE_ID_ODDS = 0.7
 # guard keeps apart when an exact pair of rows with no year would join them.
 _DENSE_LISTS = (8, 10)
 _DENSE_ROWS = (1, 2)
+# How often a row is repeated as it is, beside the repeats drawn afresh.
+_IDENTICAL_ODDS = 0.1
+# One seed in four: a few lists of one issue in three volumes, often
+# repeating a row as it is, its rows seldom with ids.
+_REPEATING_SEEDS = 3
+_REPEATING_LISTS = (2, 3)
+_REPEATING_ROWS = (2, 3)
+_REPEATING_ID_ODDS = 0.2
+_REPEATING_IDENTICAL_ODDS = 0.5
 # The invariant tests run over this many seeds: even ones draw from the whole
 # pool, odd ones densely from a few issues in two volumes (``_dense_inputs``).
 SEEDS = range(80)
@@ -110,9 +123,12 @@ def _random_inputs(seed: int) -> list[dict[str, Any]]:
     ids of its own, as a reprint has: rows a name key cannot tell apart.
     Some issues come in volumes 1 and 2, with one cover year: their rows
     have a start year and a volume number, one of them, or neither. An odd
-    seed draws its lists from those alone, densely.
+    seed draws its lists from those alone, densely, and one in four from
+    one issue in three volumes, repeating rows.
     """
     rng = random.Random(seed)  # noqa: S311 - a test fixture, not a secret
+    if seed % 4 == _REPEATING_SEEDS:
+        return _repeating_inputs(rng)
     if seed % 2:
         return _dense_inputs(rng)
     pool = [
@@ -145,12 +161,32 @@ def _dense_inputs(rng: random.Random) -> list[dict[str, Any]]:
     return _lists(rng, issues, rng.randint(*_DENSE_LISTS), _DENSE_ROWS, _DENSE_ID_ODDS)
 
 
+def _repeating_inputs(rng: random.Random) -> list[dict[str, Any]]:
+    """
+    Build two or three short lists of one issue in three volumes, with repeats.
+
+    A list reads a row with no year twice beside another list's rows of two
+    volumes, some of them twice: occurrences counted by signature split the
+    other list's rows, and only counting all of them keeps the row apart.
+    """
+    issues = _volume_issues(range(30, 31))
+    return _lists(
+        rng,
+        issues,
+        rng.randint(*_REPEATING_LISTS),
+        _REPEATING_ROWS,
+        _REPEATING_ID_ODDS,
+        _REPEATING_IDENTICAL_ODDS,
+    )
+
+
 def _lists(
     rng: random.Random,
     pool: list[_Issue],
     count: int,
     size: tuple[int, int],
     odds: float,
+    identical: float = _IDENTICAL_ODDS,
 ) -> list[dict[str, Any]]:
     inputs = []
     for _ in range(count):
@@ -161,6 +197,9 @@ def _lists(
                 # The issue again, with its ids drawn afresh: B=[X{gcd},
                 # X{cv}] beside A=[X{cv, gcd}] leaves one id on two entries.
                 rows.append(_random_row(rng, issue, odds))
+            elif rng.random() < identical:
+                # The same row again, as a list that reads an issue twice.
+                rows.append(dict(rows[-1]))
         inputs.append(_list(rows))
     return inputs
 
@@ -404,6 +443,64 @@ def test_the_grouping_survives_permuting_an_inputs_rows(seed: int) -> None:
     assert _rows(combine(permuted), moves) == _rows(combine(inputs))
 
 
+def _bare(entry: dict[str, Any]) -> bool:
+    """Tell whether a generated row has only its cover year: no id, start year or volume."""
+    return bool(
+        entry.get("date")
+        and not entry.get("identifiers")
+        and _signature(entry) == (None, None)
+    )
+
+
+def _cover_mates(
+    entry: dict[str, Any], entries: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """List the rows sharing a row's series, issue and cover date: its cover-year key."""
+    return [
+        other
+        for other in entries
+        if other.get("date")
+        and other.get("date") == entry.get("date")
+        and other["series"]["name"] == entry["series"]["name"]
+        and other["issue"]["name"] == entry["issue"]["name"]
+    ]
+
+
+def _of_two_volumes(rows: list[dict[str, Any]]) -> bool:
+    years = {row["series"].get("start_year") for row in rows} - {None}
+    volumes = {(row.get("volume") or {}).get("number") for row in rows} - {None}
+    return len(years) > 1 or len(volumes) > 1
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_a_bare_row_another_list_leaves_between_two_volumes_joins_neither(
+    seed: int,
+) -> None:
+    """
+    Combining two lists, such a row never joins a row of a volume.
+
+    A bare row of the first list whose cover-year key rows of two volumes in
+    the second share, whichever time each comes in that list, has only that
+    key, so nothing else could join it: it joins a bare row there or none.
+    """
+    inputs = _random_inputs(seed)
+    for one, other in ((0, 1), (1, 0)):
+        lists = [inputs[one], inputs[other]]
+        result = combine(lists)
+        rows, theirs = lists[0][ENTRIES_KEY], lists[1][ENTRIES_KEY]
+        for members in _rows(result):
+            mine = [row for index, row in members if index == 0]
+            if not mine or not _bare(rows[mine[0]]):
+                continue
+            if not _of_two_volumes(_cover_mates(rows[mine[0]], theirs)):
+                continue
+            joined = [theirs[row] for index, row in members if index == 1]
+            assert all(_signature(row) == (None, None) for row in joined), (
+                one,
+                mine[0],
+            )
+
+
 def _forms(entries: list[dict[str, Any]]) -> set[tuple[bool, bool]]:
     """Name which discriminators the dated rows carry: start year, volume, both, none."""
     return {
@@ -428,6 +525,21 @@ def test_the_generator_draws_every_form_in_one_list_and_rows_that_conflict() -> 
         for kept in [_without_repeats(rl[ENTRIES_KEY])]
         for one in range(len(kept))
         for other in range(one)
+    )
+
+
+def test_the_generator_repeats_a_bare_row_beside_two_volumes() -> None:
+    """The bare-row invariant needs a list reading such a row twice."""
+    assert any(
+        rows.count(row) > 1 and _of_two_volumes(_cover_mates(row, other[ENTRIES_KEY]))
+        for seed in SEEDS
+        for inputs in [_random_inputs(seed)]
+        for rows, other in (
+            (inputs[0][ENTRIES_KEY], inputs[1]),
+            (inputs[1][ENTRIES_KEY], inputs[0]),
+        )
+        for row in rows
+        if _bare(row)
     )
 
 
@@ -483,9 +595,73 @@ def test_matching_never_tags_two_volumes_for_one_entry(seed: int) -> None:
         }
 
 
+def _ids(entry: dict[str, Any]) -> dict[str, str]:
+    return {
+        source: identifier["key"]
+        for source, identifier in (entry.get("identifiers") or {}).items()
+    }
+
+
+def _ids_differ(one: dict[str, Any], other: dict[str, Any]) -> bool:
+    """Tell whether two generated rows have two ids from one database."""
+    theirs = _ids(other)
+    return any(theirs.get(source, key) != key for source, key in _ids(one).items())
+
+
+def _loose(entry: dict[str, Any], row: dict[str, Any], by: FoundBy) -> bool:
+    """
+    Tell whether a comic was found by a loose key: the cover year or the volume.
+
+    The generator's volume numbers are all under 1900, so a name match is by
+    the year key only when both sides have a start year.
+    """
+    return by is FoundBy.NAME_YEAR or (
+        by is FoundBy.NAME
+        and None in {entry["series"].get("start_year"), row["series"].get("start_year")}
+    )
+
+
+@pytest.mark.parametrize("seed", SEEDS)
+def test_matching_never_tags_two_issues_by_id_on_a_loose_key(seed: int) -> None:
+    """
+    No two comics planned for an entry, one of them loose, have two ids.
+
+    From one database: two loose comics, or a loose comic and a strong one.
+    Two strong matches, by id or the year key, are not judged by each other.
+    """
+    inputs = _random_inputs(seed)
+    for reading_list in inputs:
+        comics = _comics(
+            [
+                row
+                for other in inputs
+                if other is not reading_list
+                for row in other[ENTRIES_KEY]
+            ]
+        )
+        result = match_comics(reading_list, comics)
+        for found in result.found:
+            entry = reading_list[ENTRIES_KEY][found.position]
+            planned = [
+                (comics[comic.path], _loose(entry, comics[comic.path], comic.by))
+                for comic in found.comics
+                if comic.by.strict and not comic.ambiguous
+            ]
+            assert not any(
+                _ids_differ(row, other)
+                for (row, loose), (other, other_loose) in combinations(planned, 2)
+                if loose or other_loose
+            ), found.position
+
+
 @pytest.mark.parametrize("seed", SEEDS)
 def test_a_comic_is_found_by_the_entry_made_from_its_own_tags(seed: int) -> None:
-    """A thing compared with itself: found, and never ambiguous."""
+    """
+    A thing compared with itself: found, and ambiguous only by an id it lacks.
+
+    A comic with no id from a database, beside two comics it fits that have
+    two ids from it, cannot tell which of them it is.
+    """
     for generated in _random_inputs(seed):
         rows = [entry for entry in generated[ENTRIES_KEY] if _has_key(entry)]
         comics = _comics(rows)
@@ -495,7 +671,31 @@ def test_a_comic_is_found_by_the_entry_made_from_its_own_tags(seed: int) -> None
             assert position in found, position
             own = [comic for comic in found[position].comics if comic.path == path]
             assert own, position
-            assert not own[0].ambiguous, position
+            if not own[0].ambiguous:
+                continue
+            fits = [comics[c.path] for c in found[position].comics if c.ambiguous]
+            assert not _of_two_volumes(fits), position
+            lacking = {
+                source
+                for row in fits
+                for source in _ids(row)
+                if source not in _ids(rows[position])
+                and len({_ids(one).get(source) for one in fits} - {None}) > 1
+            }
+            assert lacking, position
+
+
+def test_the_generator_gives_loose_comics_differing_ids() -> None:
+    """The id invariants are only worth having if two bare rows differ by id."""
+    assert any(
+        _ids_differ(row, mate)
+        for seed in SEEDS
+        for rl in _random_inputs(seed)
+        for row in rl[ENTRIES_KEY]
+        if _signature(row) == (None, None) and row.get("date")
+        for mate in _cover_mates(row, rl[ENTRIES_KEY])
+        if _signature(mate) == (None, None)
+    )
 
 
 def test_the_generator_gives_one_volume_number_two_start_years() -> None:
