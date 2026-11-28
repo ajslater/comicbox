@@ -134,3 +134,18 @@ def test_a_malformed_file_fails_validation_cleanly(
     assert code == 1
     assert "failed validation" in out
     assert "Traceback" not in out
+
+
+def test_a_truncated_comic_book_info_comment_fails_validation(tmp_path: Path) -> None:
+    """It names ComicBookInfo but does not parse: a broken tag, not free text."""
+    comic = make_comic(
+        tmp_path / "cbi.cbz",
+        series="Good",
+        number="1",
+        comment='{"ComicBookInfo/1.0": {"series": "X"',
+    )
+    code, out = _run_cli("--validate", str(comic))
+    assert code == 1
+    assert "ComicBookInfo: failed validation" in out
+    assert "1 file(s) failed." in out
+    assert "Traceback" not in out

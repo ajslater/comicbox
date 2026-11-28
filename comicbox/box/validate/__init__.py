@@ -9,7 +9,6 @@ from loguru import logger
 
 from comicbox.box.dump_files import ComicboxDumpToFiles
 from comicbox.box.init import SourceData
-from comicbox.box.load import is_comic_book_info
 from comicbox.box.validate.guess_format import guess_format
 from comicbox.exceptions import MetadataError, ValidationFailedError
 from comicbox.formats import FORMAT_REGISTRATIONS, MetadataFormats
@@ -65,6 +64,20 @@ def validate_source(
     return result
 
 
+def _names_comic_book_info(comment: object) -> bool:
+    """
+    Tell a comment that is, or means to be, ComicBookInfo: it holds its key.
+
+    Free text is not validated, but a comment with the ComicBookInfo key
+    that does not parse is a broken tag, and fails.
+    """
+    from comicbox.formats.comic_book_info.schema import ComicBookInfoSchema
+
+    if isinstance(comment, bytes):
+        comment = comment.decode(errors="replace")
+    return isinstance(comment, str) and ComicBookInfoSchema.ROOT_DATA_KEY in comment
+
+
 def _validated_format(
     source: MetadataSources, source_data: SourceData
 ) -> MetadataFormats | None:
@@ -72,12 +85,12 @@ def _validated_format(
     Get the format to validate a source as, or None when it is not one.
 
     -m metadata, an API string and an import whose name says no format
-    have no format to check against, and an archive comment of free text
-    is not ComicBookInfo, as the loader agrees: each is logged and passed
-    over, not failed.
+    have no format to check against, and an archive comment without the
+    ComicBookInfo key is free text: each is logged and passed over, not
+    failed.
     """
     label = source.value.label
-    if source == MetadataSources.ARCHIVE_COMMENT and not is_comic_book_info(
+    if source == MetadataSources.ARCHIVE_COMMENT and not _names_comic_book_info(
         source_data.data
     ):
         logger.info(f"{label}: not ComicBookInfo, not validated")
