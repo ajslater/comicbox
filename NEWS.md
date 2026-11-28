@@ -24,9 +24,10 @@
   counts a malformed JSON or YAML file as invalid, not a crash.
 - A failed export, page extraction or cover extraction fails its file and the
   run exits 1, instead of logging and exiting 0.
-- `-X -d FILE` fails a comic instead of writing its cover over a comic or PDF,
-  or over another comic's cover from the same run. Any other existing file is
-  still replaced.
+- `-X -d FILE` fails a comic instead of writing its cover over an archive or PDF
+  comicbox can open (a comic, but also a zip, epub, tar, 7z or rar), or over
+  another comic's cover from the same run. Any other existing file is still
+  replaced.
 - Extracting pages that share a name in two folders of a comic saves every page
   instead of overwriting: the first keeps its name, and each later one is named
   by its page index, zero-padded to the page count's digits, a hyphen and the
