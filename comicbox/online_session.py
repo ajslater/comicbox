@@ -529,12 +529,14 @@ class OnlineSession:
     @property
     def abort_reason(self) -> str | None:
         """
-        Why the session stopped itself, or None if nobody's lookup aborted.
+        Why the session's lookups stopped, or None if none was aborted.
 
-        None after a plain :meth:`cancel` — that is the caller's own doing
-        and needs no explanation. Set when a lookup raised
-        `OnlineLookupAbortedError`, most usefully when the day's API quota
-        ran out, which stops a run the caller never asked to stop.
+        Set when a lookup raised `OnlineLookupAbortedError`, most usefully
+        when the day's API quota ran out, which stops a run the caller
+        never asked to stop. A :meth:`cancel` with no lookup in flight
+        leaves it None. One that ends a lookup at a wait sets it to that
+        wait's reason, such as "online: session cancelled during retry
+        wait" or "online: cancelled while waiting for the rate limit".
         """
         return self._abort_reason
 

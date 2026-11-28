@@ -329,6 +329,33 @@ def test_a_plain_cancel_has_no_abort_reason() -> None:
     assert session.abort_reason is None
 
 
+def test_a_cancel_that_ends_a_waiting_lookup_names_the_wait(
+    tmp_path, monkeypatch
+) -> None:
+    """A cancel caught at a lookup's wait reads as that wait's abort."""
+    import threading
+
+    session = OnlineSession(sources={"metron"}, credentials=VALID_METRON)
+    waiting = threading.Event()
+
+    def wait_to_retry(self, _path):
+        waiting.set()
+        self._retry_sleep_wait(30)
+
+    monkeypatch.setattr(OnlineSession, "_run_one", wait_to_retry)
+    results = []
+    worker = threading.Thread(
+        target=lambda: results.append(session.tag(tmp_path / "f0.cbz"))
+    )
+    worker.start()
+    assert waiting.wait(10)
+    session.cancel()
+    worker.join(10)
+
+    assert results[0].cancelled
+    assert session.abort_reason == "online: session cancelled during retry wait"
+
+
 def test_retry_sleep_wait_aborts_when_cancelled() -> None:
     """The wired retry sleep aborts the in-flight lookup on cancel()."""
     from comicbox.box.online_lookup import OnlineLookupAbortedError
