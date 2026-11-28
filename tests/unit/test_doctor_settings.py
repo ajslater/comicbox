@@ -321,3 +321,15 @@ def test_doctor_quiet_holds_its_log_as_a_run_would(
     argv = [f"-{'Q' * count}"] if count else []
     doctor._hold_logging(build_parser().parse_args(argv))
     assert levels == [expected]
+
+
+@pytest.mark.parametrize("name", ["USER", "PASS"])
+def test_removed_metron_user_and_pass_env_vars_point_at_key(
+    monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    """The env form gets the same hint as the config-file form."""
+    monkeypatch.setenv(f"COMICBOX_ONLINE__AUTH__METRON__{name}", "FAKE-PASSWORD")
+    (row,) = [row for row in _config_rows(_ctx()) if row.name == "unknown key"]
+    assert row.found == f"env COMICBOX_ONLINE__AUTH__METRON__{name}"
+    assert row.fix == "put an API token in online.auth.metron.key"
+    assert "FAKE-PASSWORD" not in str(row)
