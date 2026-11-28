@@ -177,7 +177,8 @@
 - Urls made from ids found in tags or genres are written in the same order on
   every run, and an id in tags wins over one for the same database in genres.
 - A reading list downloaded as several gzip members reads them all instead of
-  only the first, and a compressed download with junk after its end is refused.
+  only the first. Zero bytes or whitespace after a compressed download are
+  ignored, and anything else after its end is refused.
 - Library: `OnlineSession.tag()` and `tag_many()` take `str` paths, and
   `preload_resolution(action="manual")` refuses an empty path.
 - `-x` with an empty, reversed, signed or three-part range is a usage error, and

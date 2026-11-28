@@ -364,6 +364,96 @@ def test_gzip_members_are_inflated_one_after_another(*, separate: bool) -> None:
     )
 
 
+_GZIP_BITS = zlib.MAX_WBITS | 16
+
+
+@pytest.mark.parametrize("separate", [False, True], ids=["same-chunk", "next-chunk"])
+@pytest.mark.parametrize(
+    ("encoding", "wbits"),
+    [("gzip", _GZIP_BITS), ("deflate", zlib.MAX_WBITS), ("deflate", -15)],
+    ids=["gzip", "zlib-deflate", "raw-deflate"],
+)
+@pytest.mark.parametrize(
+    "padding",
+    [b"\0", b"\0" * 8, b"\n", b" \r\n\t"],
+    ids=["NUL", "8NUL", "LF", "spaces"],
+)
+def test_padding_after_a_whole_compressed_body_is_ignored(
+    encoding: str, wbits: int, padding: bytes, *, separate: bool
+) -> None:
+    """Zero bytes or whitespace after the stream, as gzip(1) and Python allow."""
+    whole = _compress(_LIST, wbits)
+    body = iter([whole, padding]) if separate else whole + padding
+    with _session_with(_Streamed(body, encoding), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    assert result.reading_list["name"] == "Crimson Tide"
+
+
+def test_padding_between_gzip_members_is_ignored() -> None:
+    """Python's gzip module reads past zero bytes to the next member."""
+    half = len(_LIST) // 2
+    body = (
+        _compress(_LIST[:half], _GZIP_BITS)
+        + b"\0" * 4
+        + _compress(_LIST[half:], _GZIP_BITS)
+    )
+    with _session_with(_Streamed(body, "gzip"), 1 << 20) as session:
+        result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    with _session_with(_Streamed(_LIST), 1 << 20) as session:
+        plain = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+    assert _without_revisions(result.reading_list) == _without_revisions(
+        plain.reading_list
+    )
+
+
+@pytest.mark.parametrize(
+    ("encoding", "wbits", "refusal"),
+    [
+        ("gzip", _GZIP_BITS, "gzip body is corrupt"),
+        ("deflate", zlib.MAX_WBITS, "deflate body has data after its end"),
+    ],
+    ids=["gzip", "zlib-deflate"],
+)
+def test_junk_after_padding_is_still_refused(
+    encoding: str, wbits: int, refusal: str
+) -> None:
+    body = _compress(_LIST, wbits) + b"\0\0\n" + b"<html>proxy error</html>"
+    with (
+        _session_with(_Streamed(body, encoding), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match=refusal),
+    ):
+        session.fetch_url(f"{_BASE}/list.yaml")
+
+
+def _padded(whole: bytes, size: int) -> Iterator[bytes]:
+    """Send a whole body, then ``size`` zero bytes 64 KiB at a time."""
+    yield whole
+    block = bytes(1 << 16)
+    for _ in range(size >> 16):
+        yield block
+
+
+def test_padding_is_not_held_and_counts_against_the_cap() -> None:
+    """A megabyte of NULs after the stream is read through, not kept."""
+    whole = _compress(_LIST, _GZIP_BITS)
+    tracemalloc.start()
+    try:
+        with _session_with(
+            _Streamed(_padded(whole, 1 << 20), "gzip"), 4 << 20
+        ) as session:
+            result = session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert result.reading_list["name"] == "Crimson Tide"
+    assert peak < 1 << 20
+    with (
+        _session_with(_Streamed(_padded(whole, 1 << 20), "gzip"), 1 << 20) as session,
+        pytest.raises(ReadingListFetchError, match="download limit"),
+    ):
+        session.fetch_url(f"{_BASE}/crimson-tide.yaml")
+
+
 def _without_revisions(reading_list: Mapping[str, Any]) -> dict[str, Any]:
     """Copy a reading list with each source's fetch revision left out."""
     sources = [
