@@ -14,15 +14,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from comicbox import logger
 from comicbox.box import Comicbox
-from tests.cli.test_cli_export_extract_failures import (
-    _errors,
-    _restore_logging,  # noqa: F401  # pyright: ignore[reportUnusedImport]
-    _run_cli,
-)
+from tests.cli.test_cli_export_extract_failures import _errors, _run_cli
 from tests.const import CIX_CBZ_SOURCE_PATH
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
 _GOOD = "<ComicInfo><Series>Imported</Series></ComicInfo>"
@@ -37,6 +35,16 @@ _NO_TAGS = {
     "empty-mapping.yaml": "{}\n",
     "blank.txt": "",
 }
+
+
+@pytest.fixture(autouse=True)
+def _restore_logging() -> Iterator[None]:
+    """`cli.main` binds loguru to the swapped stdout; rebind it after."""
+    try:
+        yield
+    finally:
+        logger._initialized_key = None
+        logger.init_logging()
 
 
 def _comic(tmp_path: Path) -> Path:
