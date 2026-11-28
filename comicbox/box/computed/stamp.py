@@ -98,7 +98,12 @@ class ComicboxComputedStamp(ComicboxComputedPages):
             stamp_md[TAGGER_KEY] = self._config.general.tagger
 
         if UPDATED_AT_KEY not in delete_keys:
-            stamp_md[UPDATED_AT_KEY] = datetime.now(tz=UTC)
+            # One reading per metadata state, not per computed pass: each
+            # format reruns the pass, and the tag files one write writes
+            # must agree on when they were stamped.
+            if self._stamp_dttm is None:
+                self._stamp_dttm = datetime.now(tz=UTC)
+            stamp_md[UPDATED_AT_KEY] = self._stamp_dttm
 
         if notes := self._get_computed_notes_stamp(sub_data, stamp_md):
             stamp_md[NOTES_KEY] = notes

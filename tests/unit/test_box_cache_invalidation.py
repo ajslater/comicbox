@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import shutil
 import threading
+from argparse import Namespace
+from datetime import datetime, tzinfo
 from typing import TYPE_CHECKING
 
 import pytest
@@ -163,3 +165,44 @@ def test_cover_paths_follow_added_metadata(tmp_cbz: Path) -> None:
     assert len(before) == 1
     assert len(fresh) == 2
     assert after == fresh
+
+
+class _TickingClock(datetime):
+    """A datetime whose now() is a second later on every call."""
+
+    calls = 0
+
+    @classmethod
+    def now(cls, tz: tzinfo | None = None) -> _TickingClock:  # pyright: ignore[reportIncompatibleMethodOverride]
+        cls.calls += 1
+        return cls(2026, 1, 1, 0, 0, cls.calls, tzinfo=tz)
+
+
+def test_one_instance_stamps_every_format_alike(
+    tmp_cbz: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    Every format one Comicbox renders carries the same updated_at.
+
+    Each format switch reruns the computed pass, and the stamp took a fresh
+    clock reading every time, so tag files written together disagreed
+    whenever their writes straddled a second.
+    """
+    monkeypatch.setattr(_TickingClock, "calls", 0)
+    monkeypatch.setattr("comicbox.box.computed.stamp.datetime", _TickingClock)
+    config = get_config(Namespace(comicbox=Namespace(write=Namespace(stamp=True))))
+    stamps = []
+    with Comicbox(tmp_cbz, config=config) as cb:
+        for fmt in (
+            MetadataFormats.COMIC_INFO,
+            MetadataFormats.METRON_INFO,
+            MetadataFormats.COMIC_BOOK_INFO,
+        ):
+            cb.to_dict(fmt)
+            stamps.append(cb._metadata["comicbox"]["updated_at"])
+        cb.add_metadata({"comicbox": {"title": "Restamped"}})
+        cb.to_dict(MetadataFormats.COMIC_INFO)
+        restamped = cb._metadata["comicbox"]["updated_at"]
+    assert len(set(stamps)) == 1
+    # New metadata is a new stamp.
+    assert restamped > stamps[0]

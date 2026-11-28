@@ -77,6 +77,7 @@
   A file holds one tag id source; tag ids of the others are left out.
 - On Python 3.11, a Metron reading-list fetch error no longer prints a
   traceback.
+- Tag files written together carry the same `updated_at` and notes stamp.
 - Library: `get_cover_paths()` and `extract_covers()` follow metadata added with
   `add_metadata()` or `add_source()`.
 - `compute.pages` gives macOS resource forks no ComicInfo page entries and drops
