@@ -13,6 +13,7 @@ import sys
 from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
 
 import pytest
 from loguru import logger as loguru_logger
@@ -149,3 +150,57 @@ def test_extract_pages_to_a_good_directory_still_succeeds(tmp_path: Path) -> Non
     code, _ = _run_cli("-x", "0:2", "-d", str(out_dir), str(comic))
     assert code == 0
     assert len(list(out_dir.iterdir())) == 3
+
+
+def _short_comic(tmp_path: Path, pages: int) -> Path:
+    """Build a cbz of the first ``pages`` pages of the five-page test comic."""
+    comic = tmp_path / f"short{pages}.cbz"
+    with ZipFile(CIX_CBZ_SOURCE_PATH) as source, ZipFile(comic, "w") as dest:
+        images = [name for name in source.namelist() if name.endswith(".jpg")]
+        for name in images[:pages]:
+            dest.writestr(name, source.read(name))
+    return comic
+
+
+@pytest.mark.parametrize("pages", ["5", "7:9", "5:"])
+def test_a_range_past_the_last_page_fails_that_comic(
+    tmp_path: Path, pages: str
+) -> None:
+    """A range that matches no page of a comic fails it, exit 1."""
+    long_comic = _comic(tmp_path)
+    out_dir = _out_dir(tmp_path)
+    code, out = _run_cli("-x", pages, "-d", str(out_dir), str(long_comic))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (error,) = _errors(out)
+    assert "no page" in error
+    assert not list(out_dir.iterdir())
+
+
+def test_an_open_range_fails_only_the_comic_too_short_for_it(tmp_path: Path) -> None:
+    """`3:` extracts pages 3 and 4 of a five-page comic, and fails a three-page one."""
+    long_comic = _comic(tmp_path)
+    short = _short_comic(tmp_path, 3)
+    out_dir = _out_dir(tmp_path)
+    code, out = _run_cli("-x", "3:", "-d", str(out_dir), str(long_comic), str(short))
+    assert code == 1
+    assert "1 file(s) failed." in out
+    (error,) = _errors(out)
+    assert f"{short}: no page in --extract-pages range 3:; it has 3 pages." in error
+    assert len(list(out_dir.iterdir())) == 2
+
+
+def test_a_range_partly_past_the_end_extracts_what_it_covers(tmp_path: Path) -> None:
+    """`:2` on a one-page comic extracts its one page, as before."""
+    out_dir = _out_dir(tmp_path)
+    code, _ = _run_cli("-x", ":2", "-d", str(out_dir), str(_short_comic(tmp_path, 1)))
+    assert code == 0
+    assert len(list(out_dir.iterdir())) == 1
+
+
+def test_api_extract_pages_past_the_end_raises(tmp_path: Path) -> None:
+    with (
+        Comicbox(CIX_CBZ_SOURCE_PATH) as cb,
+        pytest.raises(ExportError, match="no page"),
+    ):
+        cb.extract_pages(5, None, _out_dir(tmp_path))

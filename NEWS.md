@@ -180,6 +180,9 @@
   only the first, and a compressed download with junk after its end is refused.
 - Library: `OnlineSession.tag()` and `tag_many()` take `str` paths, and
   `preload_resolution(action="manual")` refuses an empty path.
+- `-x` with an empty, reversed, signed or three-part range is a usage error, and
+  a range past a comic's last page fails that comic, instead of exiting 0 with
+  nothing extracted.
 
 ### 🔒 Security
 

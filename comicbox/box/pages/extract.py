@@ -23,6 +23,15 @@ def _is_pdf_by_magic(path: Path) -> bool:
         return False
 
 
+def _range_text(page_from: int | None, page_to: int | None) -> str:
+    """Show a page range as -x takes it: ``N``, ``N:M``, ``N:`` or ``:M``."""
+    if page_from is not None and page_from == page_to:
+        return str(page_from)
+    first = "" if page_from is None else str(page_from)
+    last = "" if page_to is None else str(page_to)
+    return f"{first}:{last}"
+
+
 class CoverDestinations:
     """The cover files one run has written, shared by its workers."""
 
@@ -274,8 +283,21 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         page_to: int | None = None,
         path: Path | str | None = None,
     ) -> None:
-        """Extract pages from archive and write to a path."""
+        """
+        Extract pages from archive and write to a path.
+
+        Raises ``ExportError`` when the range matches no page of the comic;
+        a range partly past the last page extracts the pages it covers.
+        """
         pagenames = self.get_pagenames_from(page_from, page_to)
+        if not pagenames:
+            count = self.get_page_count()
+            plural = "" if count == 1 else "s"
+            reason = (
+                f"{self._path}: no page in --extract-pages range"
+                f" {_range_text(page_from, page_to)}; it has {count} page{plural}."
+            )
+            raise ExportError(reason)
         if len(pagenames) > 1 and self._is_pdf_range_mode():
             self._extract_pdf_range_to_dir(pagenames, path)
         else:
