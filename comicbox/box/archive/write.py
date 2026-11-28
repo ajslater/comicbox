@@ -658,7 +658,15 @@ class ComicboxArchiveWrite(ComicboxArchiveRead):
             del pf
             raise
         pf.close()
-        keep_stat(source_stat, self._path)
+        # The new PDF is saved: a filesystem that refuses chmod or chown
+        # (vfat, CIFS) costs it its old mode, not the write.
+        try:
+            keep_stat(source_stat, self._path)
+        except OSError as exc:
+            logger.warning(
+                f"{self._path}: written, but its mode and owner could not be"
+                f" restored: {exc}"
+            )
 
     def write_archive_metadata(
         self, files: Mapping, comment: bytes | None, mupdf_metadata: Mapping

@@ -295,11 +295,11 @@ paths, e.g. `-D series,reprints.0.series`.
   they are not carried over, so a Finder tag on a comic written through a copy
   is lost. A leftover copy is removed by the next write. A directory that cannot
   hold the copy gets the in-place write, with a warning. A PDF is saved to a
-  temporary file that replaces it, keeping its mode, owner and group but not its
-  hard links or extended attributes, and a CBR, CBT or CB7 is converted through
-  `.<comic name>.comicbox.tmp` too, its CBZ keeping the original's mode and
-  flushed to disk before `delete_orig` removes the original. Where a comic's
-  name is too long for that name, a hash of it stands in.
+  temporary file that replaces it, keeping its mode, owner and group where the
+  disk allows, but not its hard links or extended attributes, and a CBR, CBT or
+  CB7 is converted through `.<comic name>.comicbox.tmp` too, its CBZ keeping the
+  original's mode and flushed to disk before `delete_orig` removes the original.
+  Where a comic's name is too long for that name, a hash of it stands in.
 
 ### Reading Lists
 

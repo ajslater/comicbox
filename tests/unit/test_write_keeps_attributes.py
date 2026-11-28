@@ -9,11 +9,14 @@ never flushed its CBZ before ``delete_orig`` unlinked the source.
 
 from __future__ import annotations
 
+import errno
 import os
 import shutil
 import stat
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger
 
 from comicbox.config import get_config
 from comicbox.write import write_metadata
@@ -88,3 +91,36 @@ def test_a_conversion_is_flushed_before_the_original_goes(
     unlinked_at = calls.index(("unlink", cbt.name))
     # replace() keeps the inode, so the CBZ's is the temporary file's.
     assert ("fsync", result.final_path.stat().st_ino) in calls[:unlinked_at]
+
+
+def test_a_saved_pdf_is_written_when_its_mode_cannot_be_put_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """
+    A27 follow-up: the PDF is already saved when its mode is restored.
+
+    On a filesystem that refuses chmod (vfat, CIFS) the write was reported
+    failed although the new PDF was on disk. Restoring is best-effort.
+    """
+    pdf = tmp_path / "issue.pdf"
+    shutil.copy(PDF_SOURCE_PATH, pdf)
+    before = pdf.read_bytes()
+
+    def chmod(self: Path, *_args: Any, **_kwargs: Any) -> None:
+        raise PermissionError(errno.EPERM, "Operation not permitted", str(self))
+
+    monkeypatch.setattr(Path, "chmod", chmod)
+    messages: list[str] = []
+    handler = logger.add(messages.append, level="WARNING", format="{message}")
+    try:
+        result = write_metadata(pdf, {"title": "x"}, formats=["PDF"])
+    finally:
+        logger.remove(handler)
+
+    assert result.error is None
+    assert result.written
+    assert pdf.read_bytes() != before
+    assert any(
+        str(pdf) in message and "mode" in message and "not permitted" in message
+        for message in messages
+    )
