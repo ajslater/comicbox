@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -273,6 +274,20 @@ class OnlineSource(ABC):
     ) -> Candidate | None:
         """One volume-scoped API call; sources without a fast path omit it."""
         raise NotImplementedError
+
+    def cancellable(
+        self,
+        abort: Callable[[], bool],  # noqa: ARG002
+    ) -> AbstractContextManager[None]:
+        """
+        Let ``abort`` end the requests this thread makes inside the block.
+
+        For a source whose requests can wait a long time before they are
+        sent, such as at a rate gate, the box passes the run's abort
+        signals here. The default does nothing: a source without such a
+        wait has nothing to cut short.
+        """
+        return nullcontext()
 
     def can_search_by_cover(self, profile: ComicProfile) -> bool:  # noqa: ARG002
         """

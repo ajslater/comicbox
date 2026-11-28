@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import sys
 import threading
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -58,7 +59,7 @@ from comicbox.exceptions import (
     OnlineLookupAbortedError as OnlineLookupAbortedError,  # noqa: PLC0414
 )
 from comicbox.formats import FORMAT_REGISTRATIONS
-from comicbox.formats.base.online import outcome_stats
+from comicbox.formats.base.online import outcome_stats, retry
 from comicbox.formats.base.online.matcher import (
     OnlineMatcher,
     Resolution,
@@ -398,6 +399,15 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
                 self._config.online.lookup
             )
         return self._online_session_state
+
+    def _lookup_cancelled(self) -> bool:
+        """
+        Whether this lookup should stop: the run aborted, or a cancel came.
+
+        Asked while a source's send waits (see `OnlineSource.cancellable`),
+        so it must be quick.
+        """
+        return retry.is_cancelled() or self._get_online_session_state().is_aborted()
 
     def _raise_if_run_aborted(self) -> None:
         """End this lookup when another box of the run has aborted it."""
@@ -1373,7 +1383,15 @@ class ComicboxOnlineLookup(ComicboxOnlineCovers):
             # can take, including the explicit-id, stored-id and
             # series-cache fast paths that never reach a SearchStarted.
             self._emit(SourceStarted(path=path, source=source.name))
-            outcome = self._lookup_one_source(source, online)
+            # Structural, as `search_skip_reason` is: most sources have no
+            # long wait before a send to cut short.
+            cancellable = getattr(source, "cancellable", None)
+            with (
+                cancellable(self._lookup_cancelled)
+                if cancellable is not None
+                else nullcontext()
+            ):
+                outcome = self._lookup_one_source(source, online)
             applied_any = applied_any or outcome.applied
             satisfied = satisfied or outcome.applied or outcome.claimed
         return applied_any

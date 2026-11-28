@@ -121,7 +121,8 @@
 - `--id` refuses a directory under `-r` that holds more than one comic, with the
   same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
-  prompts or searches, and no waiting out rate-limit retries.
+  prompts or searches, and no waiting out rate-limit retries or Metron's
+  pacing.
 - A prompt with stdin at end of input (`< /dev/null`, cron) aborts instead of
   looping forever.
 - MetronInfo no longer relabels tag ids as another database's on write, and

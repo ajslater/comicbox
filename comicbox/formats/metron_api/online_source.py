@@ -14,7 +14,7 @@ import sqlite3
 import sys
 import threading
 from collections import OrderedDict
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import replace
 from datetime import timedelta
 from functools import partial
@@ -52,7 +52,7 @@ else:
     from typing_extensions import override
 
 if TYPE_CHECKING:
-    from collections.abc import Collection, Generator, Mapping, Sequence
+    from collections.abc import Callable, Collection, Generator, Mapping, Sequence
     from pathlib import Path
 
     from mokkari.cache import Cache, CacheKind
@@ -1406,6 +1406,19 @@ class MetronOnlineSource(OnlineSource):
         params["cover_date_range_after"] = f"{year - _COVER_YEAR_TOLERANCE}-01-01"
         params["cover_date_range_before"] = f"{year + _COVER_YEAR_TOLERANCE}-12-31"
         return params
+
+    @override
+    def cancellable(self, abort: Callable[[], bool]) -> AbstractContextManager[None]:
+        """
+        Ask ``abort`` before each send and while a send waits at the gate.
+
+        A paced send can wait up to a minute for a slot; without this a
+        Ctrl-C or a run abort sat it out. The hooks belong to this thread
+        only (see `paced_session.fetch_hooks`).
+        """
+        from comicbox.formats.metron_api.paced_session import fetch_hooks
+
+        return fetch_hooks(abort=abort)
 
     @override
     def can_search_by_cover(self, profile: ComicProfile) -> bool:
