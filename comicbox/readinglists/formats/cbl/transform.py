@@ -6,6 +6,7 @@ since rejecting a whole file for one row is a standing complaint about
 other readers.
 """
 
+import codecs
 import sys
 from collections.abc import Iterator, Mapping, Sequence
 from datetime import UTC, datetime
@@ -120,6 +121,10 @@ def _volume(entry: Mapping[str, Any]) -> int | None:
     return (entry.get(VOLUME_KEY) or {}).get(NUMBER_KEY)
 
 
+# Expat reads UTF-8 and UTF-16, not UTF-32.
+_UTF32_BOMS = (codecs.BOM_UTF32_LE, codecs.BOM_UTF32_BE)
+
+
 class CblTransform(ReadingListTransform):
     """ComicRack ``.cbl``."""
 
@@ -132,8 +137,13 @@ class CblTransform(ReadingListTransform):
     def parse_data(
         self, data: str | bytes | bytearray, text: str, *, replaced: bool
     ) -> dict[str, Any]:
-        """Parse XML from its bytes, so the encoding it declares is honoured."""
-        if isinstance(data, bytes | bytearray):
+        """
+        Parse XML from its bytes, so the encoding it declares is honoured.
+
+        Expat reads no UTF-32, so UTF-32 bytes, known by their byte order
+        mark, are parsed from the text they decode to, as a string is.
+        """
+        if isinstance(data, bytes | bytearray) and not data.startswith(_UTF32_BOMS):
             try:
                 document = xmltodict.parse(bytes(data))
             except ValueError as exc:
