@@ -1,13 +1,6 @@
 """
 Pytest bootstrap and hermetic isolation for the whole suite.
 
-Importing ``comicbox.box`` first primes the module cache and avoids a
-latent circular import: ``comicbox.config`` transitively pulls in the
-full ``comicbox.box`` chain via ``comicbox.formats``, which then circles
-back to ``comicbox.config.get_config``. Loading ``comicbox.box``
-up-front sets the import order so the cycle resolves cleanly. Test
-modules can then import ``comicbox.config.*`` directly.
-
 Without the autouse fixture below, any test that exercises the config /
 credentials chain (``get_config``, ``Comicbox(config=args)``) inherits
 the developer's ``~/.config/comicbox/config.yaml`` and ``COMICBOX_*``
@@ -36,8 +29,6 @@ import tempfile
 from typing import TYPE_CHECKING
 
 import pytest
-
-import comicbox.box  # noqa: F401  # pyright: ignore[reportUnusedImport]
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

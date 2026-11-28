@@ -28,6 +28,7 @@ from typing import Any
 
 from loguru import logger
 
+from comicbox.config.online.credentials import resolve_credentials
 from comicbox.config.online.settings import (
     DEFAULT_AUTO_THRESHOLD,
     CacheMode,
@@ -46,7 +47,6 @@ from comicbox.config.settings import parse_enum
 from comicbox.exceptions import ConfigurationError
 from comicbox.formats.base.online import SOURCE_NAMES
 from comicbox.formats.base.online.cli_overrides import CliOverrides
-from comicbox.formats.base.online.credentials import resolve_credentials
 from comicbox.identifiers import PARSE_COMICVINE_RE
 
 # ComicVine resource-type prefixes.
