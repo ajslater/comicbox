@@ -106,12 +106,13 @@ class ComicboxComputedPages(ComicboxComputedUrls):
         pages = {}
         bookmark = sub_md.get(BOOKMARK_KEY)
         try:
-            index = 0
-            for info in self.infolist():
-                filename = self._get_info_fn(info)
-                if self.IMAGE_EXT_RE.search(filename) is None:
-                    continue
-                size = self._get_info_size(info)
+            # The pages page_count counts, so resource forks and dotfiles get
+            # no index. PDF pages have no stored image size and get none.
+            page_filenames = () if self._archive_is_pdf else self.get_page_filenames()
+            infos = {self._get_info_fn(info): info for info in self.infolist()}
+            for index, filename in enumerate(page_filenames):
+                info = infos.get(filename)
+                size = None if info is None else self._get_info_size(info)
                 # height & width could go here.
                 if size is not None:
                     computed_page = {}
@@ -119,7 +120,6 @@ class ComicboxComputedPages(ComicboxComputedUrls):
                         computed_page[PAGE_BOOKMARK_KEY] = True
                     computed_page[PAGE_SIZE_KEY] = size
                     pages[index] = computed_page
-                index += 1
             # Inside the guard with the scan that feeds it: merging consults
             # the archive too, and warn-and-skip is what every sibling action
             # does with a bad archive.
