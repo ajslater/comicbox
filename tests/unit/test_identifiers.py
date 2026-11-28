@@ -663,6 +663,36 @@ def test_parse_url_path_stops_the_id_at_the_path_segment() -> None:
         assert IDENTIFIER_PARTS_MAP[id_source].parse_url_path(url) == expected, url
 
 
+def test_gcd_sub_page_reads_as_its_issue_not_its_cover() -> None:
+    """
+    A GCD sub-page names the issue or series it hangs off.
+
+    The greedy type group swallowed `issue/123/cover`, so the cover
+    number 4 became the issue id and a wrong issue url was synthesized.
+    """
+    id_parts = IDENTIFIER_PARTS_MAP[IdSources.GCD]
+    cases = (
+        ("https://www.comics.org/issue/123/cover/4/", ("issue", "123")),
+        ("https://www.comics.org/issue/123/cover/4", ("issue", "123")),
+        ("https://www.comics.org/series/55/covers/", ("series", "55")),
+        ("https://www.comics.org/issue/123/", ("issue", "123")),
+        ("https://www.comics.org/issue/123", ("issue", "123")),
+    )
+    for url, expected in cases:
+        assert id_parts.parse_url_path(url) == expected, url
+
+
+def test_gcd_cover_page_web_link_adds_no_cover_number_id() -> None:
+    """End to end: a ComicInfo Web link to a GCD cover page keeps the issue."""
+    cix = """<?xml version="1.0"?><ComicInfo><Series>S</Series>
+    <Web>https://www.comics.org/issue/123/cover/4/</Web></ComicInfo>"""
+    with Comicbox() as car:
+        car.add_metadata(cix, MetadataFormats.COMIC_INFO)
+        md = car.to_dict()["comicbox"]
+    assert md["identifiers"]["grandcomicsdatabase"]["key"] == "123"
+    assert "https://comics.org/issue/4/" not in md.get("urls", [])
+
+
 # One sample key per database, shaped the way that database's url path regex
 # accepts: bare numbers, hyphenated barcodes, slugs and uuids.
 _ROUND_TRIP_ID_KEYS: MappingProxyType[IdSources, str] = MappingProxyType(

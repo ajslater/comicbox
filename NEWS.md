@@ -27,6 +27,8 @@
   `tags: 1984`, is read as one name instead of dropped silently. A mapping or
   `true` there is dropped with a warning instead of read as a name or not at
   all.
+- A link to a Grand Comics Database sub-page, such as `issue/123/cover/4/`,
+  reads as issue 123 instead of issue 4.
 - `rl write-arcs` no longer tags two volumes of an issue for one entry with no
   start year, and `combine` and `from-arcs` keep a row with only a volume number
   apart from two volumes it fits.

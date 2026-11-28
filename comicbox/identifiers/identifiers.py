@@ -191,7 +191,9 @@ IDENTIFIER_PARTS_MAP: MappingProxyType[IdSources, IdentifierParts] = MappingProx
                 publisher="indicia_publisher",
                 universe="universe",
             ),
-            url_path_regex=r"(?P<id_type>\S+)/(?P<id_key>\d+)/?",
+            # The first two segments only: a greedy type read a sub-page such
+            # as issue/123/cover/4/ as type "issue/123/cover" and key 4.
+            url_path_regex=r"^(?P<id_type>[^/]+)/(?P<id_key>\d+)(?:/|$)",
             url_path_template="{id_type}/{id_key}/",
         ),
         IdSources.ISBN: IdentifierParts(
