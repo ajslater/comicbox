@@ -197,11 +197,16 @@ class ComicboxLoad(ComicboxSources):
     def _load_unknown_metadata(
         self, source: MetadataSources, data: str | bytes | Mapping
     ) -> tuple[Mapping | None, MetadataFormats | None]:
-        """Parse import data string from file trying many different file schemas."""
+        """
+        Parse import data string from file trying many different file schemas.
+
+        The filename format reads any string, so it is never guessed: it
+        is used only when the caller names it.
+        """
         success_md = None
         fmt = None
         for fmt in source.value.formats:
-            if not fmt.value.enabled:
+            if not fmt.value.enabled or fmt == MetadataFormats.FILENAME:
                 continue
             try:
                 if (success_md := self._call_load(source, fmt, data)) and glom(
