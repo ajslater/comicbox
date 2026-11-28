@@ -483,3 +483,21 @@ def test_compute_pages_leaves_pdf_pages_alone(tmp_path: Path) -> None:
         car._dict_formats = frozenset({MetadataFormats.COMIC_INFO})
         md = dict(car.get_internal_metadata()[ComicboxSchemaMixin.ROOT_TAG])
     assert not md.get("pages")
+
+
+def test_compute_pages_drops_entries_past_the_last_page(tmp_path: Path) -> None:
+    """Page entries for pages the archive does not have are not written."""
+    archive_path = _one_image_cbz(tmp_path, 5)
+    with Comicbox(archive_path, config=PAGES_CONFIG) as car:
+        car.add_metadata(
+            {"comicbox": {"pages": {i: {"page_type": "Story"} for i in range(8)}}}
+        )
+        assert car.get_page_count() == 5
+        cix = car.to_string(MetadataFormats.COMIC_INFO)
+        car._dict_formats = frozenset({MetadataFormats.COMIC_INFO})
+        md = dict(car.get_internal_metadata()[ComicboxSchemaMixin.ROOT_TAG])
+    assert cix.count("<Page ") == 5
+    assert sorted(md["pages"]) == list(range(5))
+    # The entries for pages that exist keep what the metadata said.
+    assert md["pages"][4]["page_type"] == ComicInfoPageTypeEnum.STORY
+    assert md["pages"][4]["size"] > 0

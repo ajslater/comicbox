@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from comicbox.box import Comicbox
 from comicbox.box.computed import ComicboxComputed
-from comicbox.merge import AdditiveMerger, ReplaceMerger
+from comicbox.merge import AdditiveMerger, ReplaceMerger, UpdateMerger
 
 # The exact pipeline, in order. Every entry is a decision — see the
 # comicbox.box.computed module docstring for why each one sits where it does.
@@ -13,7 +13,7 @@ from comicbox.merge import AdditiveMerger, ReplaceMerger
 # behavior by accident.
 EXPECTED_ACTIONS = (
     ("Page Count", "_get_computed_page_count_metadata", ReplaceMerger),
-    ("Pages", "_get_computed_pages_metadata", ReplaceMerger),
+    ("Pages", "_get_computed_pages_metadata", UpdateMerger),
     ("urls from notes", "_get_computed_urls_from_notes", AdditiveMerger),
     ("identifiers from urls", "_get_computed_identifiers_from_urls", AdditiveMerger),
     ("from notes", "get_computed_from_notes", AdditiveMerger),

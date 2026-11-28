@@ -47,7 +47,7 @@ from comicbox.formats.comicbox.schema import (
     SCAN_INFO_KEY,
     ComicboxSchemaMixin,
 )
-from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger
+from comicbox.merge import AdditiveMerger, Merger, ReplaceMerger, UpdateMerger
 
 
 def _prune_empty(value: Any) -> Any:
@@ -270,7 +270,9 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
         ComputedAction(
             "Page Count", "_get_computed_page_count_metadata", ReplaceMerger
         ),
-        ComputedAction("Pages", "_get_computed_pages_metadata", ReplaceMerger),
+        # Assigned whole, not deep merged: the action has already merged the
+        # old entries it keeps, and a deep merge kept the ones it dropped.
+        ComputedAction("Pages", "_get_computed_pages_metadata", UpdateMerger),
         # Identifiers, weakest source last: a url names an id more plainly
         # than notes prose, and notes prose more plainly than a tag.
         ComputedAction("urls from notes", "_get_computed_urls_from_notes"),
@@ -340,7 +342,9 @@ class ComicboxComputed(ComicboxComputedStoriesTitle):
                 # action may change, but mergedeep never lends the source's
                 # objects to the destination: every branch of it either
                 # recurses into the destination's own mapping or assigns a
-                # deepcopy. Copying here only did that same work twice.
+                # deepcopy. Copying here only did that same work twice. The
+                # Pages action's UpdateMerger does lend its pages mapping,
+                # and no later action touches pages.
                 action.merger.merge(sub_data, sub_md)
 
             md = {ComicboxSchemaMixin.ROOT_TAG: sub_md}

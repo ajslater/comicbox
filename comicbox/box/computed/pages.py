@@ -120,11 +120,14 @@ class ComicboxComputedPages(ComicboxComputedUrls):
                         computed_page[PAGE_BOOKMARK_KEY] = True
                     computed_page[PAGE_SIZE_KEY] = size
                     pages[index] = computed_page
+            if not pages:
+                return None
             # Inside the guard with the scan that feeds it: merging consults
             # the archive too, and warn-and-skip is what every sibling action
-            # does with a bad archive.
-            if pages:
-                pages = self._get_computed_merged_pages_metadata(sub_md, pages)
+            # does with a bad archive. The result replaces the old pages
+            # whole (an UpdateMerger action), which is what drops the entries
+            # past the last page; so nothing replaces them on failure.
+            return {PAGES_KEY: self._get_computed_merged_pages_metadata(sub_md, pages)}
         except Exception as exc:
             logger.warning(f"{self._path}: Compute pages metadata: {exc}")
-        return {PAGES_KEY: pages}
+        return None
