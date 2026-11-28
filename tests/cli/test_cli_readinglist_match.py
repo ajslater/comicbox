@@ -350,11 +350,15 @@ def test_worker_warnings_honour_quiet(
     directory = str(unreadable.parent)
     rl_main("match", str(bladehawk_list), directory)
     loud = capfd.readouterr().err
+    # -QQ is WARNING, as in a comicbox run; -QQQ hides warnings.
     rl_main("-QQ", "match", str(bladehawk_list), directory)
+    warning = capfd.readouterr().err
+    rl_main("-QQQ", "match", str(bladehawk_list), directory)
     quiet = capfd.readouterr().err
 
     # Once: looking for unreadable tag files must not warn of them again.
     assert loud.count("Unable to load") == 1
+    assert warning.count("Unable to load") == 1
     assert "Unable to load" not in quiet
 
 

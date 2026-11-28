@@ -14,8 +14,8 @@ from collections import Counter
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
+from functools import cached_property
 from pathlib import Path
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from comicbox.exceptions import (
@@ -49,7 +49,6 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 EXIT_USAGE = 2
-_QUIET_LOGLEVELS = MappingProxyType({1: "WARNING", 2: "ERROR"})
 
 DEFAULT_FORMAT = ReadingListFormats.YAML
 FORMAT_TOKENS = tuple(
@@ -144,11 +143,27 @@ class Run:
         # Set by the user's Ctrl-C, so a spent quota is not taken for one.
         self.cancelled = False
 
-    @property
-    def log_level(self) -> str:
-        """Get the logging level -Q asks for."""
-        quiet = getattr(self.args, "quiet", 0)
-        return _QUIET_LOGLEVELS.get(quiet, "CRITICAL") if quiet else "INFO"
+    @cached_property
+    def log_level(self) -> str | int:
+        """
+        Get the configured ``general.loglevel``, with -Q folded in.
+
+        -Q folds as in a comicbox run, never louder than the config. The
+        config's own warnings are left to the commands that use it.
+        """
+        from loguru import logger
+
+        from comicbox.config import get_config
+
+        quiet = getattr(self.args, "quiet", 0) or None
+        logger.disable("comicbox")
+        try:
+            settings = get_config(
+                Namespace(comicbox=Namespace(**{"general.quiet": quiet}))
+            )
+        finally:
+            logger.enable("comicbox")
+        return settings.general.loglevel
 
     def fail(self, path: Path | None, error: BaseException) -> None:
         """Report one failure on stderr and carry on."""
