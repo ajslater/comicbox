@@ -78,6 +78,8 @@
 - A CBT holding one page name twice is refused instead of converted with a page
   lost.
 - `Comicbox.get_pages()` without an end page returns every page, not none.
+- A malformed `-x` page range, such as `1-3`, is a usage error instead of a
+  traceback.
 - `--id` refuses a directory under `-r` that holds more than one comic, with the
   same `comicbox: error:` message and exit status 2 as two input paths.
 - Ctrl-C or an abort under `-j N` stops the run promptly: no further files,
