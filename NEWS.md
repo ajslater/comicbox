@@ -184,6 +184,8 @@
 - `-x` with an empty, reversed, signed or three-part range is a usage error, and
   a range past a comic's last page fails that comic, instead of exiting 0 with
   nothing extracted.
+- Library: `extract_pages` reads an end below 0 as the last page, as
+  `get_pages` does, instead of extracting nothing or one page short.
 - An `-i` file that cannot be read, or is not metadata at all, fails the comic
   instead of a warning and a write without it. One that holds no tags still
   warns.

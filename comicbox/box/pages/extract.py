@@ -284,11 +284,15 @@ class ComicboxExtractPages(ComicboxPagesCovers):
         path: Path | str | None = None,
     ) -> None:
         """
-        Extract pages from archive and write to a path.
+        Extract the pages from ``page_from`` to ``page_to``, inclusive.
 
-        Raises ``ExportError`` when the range matches no page of the comic;
-        a range partly past the last page extracts the pages it covers.
+        A ``page_to`` of None, or below 0, is the last page. A ``page_from``
+        below 0 counts back from the last page, as a slice does: -1 is the
+        last page. A range partly past the last page extracts the pages it
+        covers; one that matches no page raises ``ExportError``.
         """
+        if page_to is not None and page_to < 0:
+            page_to = None
         pagenames = self.get_pagenames_from(page_from, page_to)
         if not pagenames:
             count = self.get_page_count()
