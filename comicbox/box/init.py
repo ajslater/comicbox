@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from zipremove import ZipFile, is_zipfile
 
-from comicbox._pdf import PDF_ENABLED
+from comicbox._pdf import get_pdffile, pdf_enabled
 from comicbox.enums.comicbox import FileTypeEnum
 from comicbox.exceptions import ComicNotFoundError, UnsupportedArchiveTypeError
 
@@ -21,7 +21,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
     from datetime import datetime
 
-    from pdffile import PDFFile
     from py7zr.io import BytesIOFactory
 
     from comicbox.box.archive.archiveinfo import InfoType
@@ -29,8 +28,6 @@ if TYPE_CHECKING:
     from comicbox.config.settings import ComicboxSettings
     from comicbox.formats import MetadataFormats
     from comicbox.formats.sources import MetadataSources
-else:
-    from comicbox._pdf import PDFFile
 
 
 @dataclass
@@ -166,20 +163,20 @@ class ComicboxInit:
         # Not `"pdffile" in sys.modules`: that is also true when pdffile
         # imported but comicbox's guard rejected it (an old pdffile without
         # PageFormat), or when the embedding app imported pdffile itself.
-        return PDF_ENABLED
+        return pdf_enabled()
 
     def _set_archive_cls_pdf(self) -> bool:
         """PDFFile is only optionally installed."""
-        if not PDF_ENABLED:
+        if not (pdffile_cls := get_pdffile()):
             return self._archive_is_pdf
         with suppress(OSError):
-            if PDFFile.is_pdffile(str(self._path)):
+            if pdffile_cls.is_pdffile(str(self._path)):
                 # Both attributes get unconditional defaults at the top of
                 # _set_archive_cls; the suppressions cover the documented
                 # init-in-reset-method pattern, not a real lifecycle gap.
                 self._archive_is_pdf = True  # pyright: ignore[reportUninitializedInstanceVariable]
-                self._archive_cls = PDFFile
-                self._pdf_suffix = PDFFile.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
+                self._archive_cls = pdffile_cls
+                self._pdf_suffix = pdffile_cls.SUFFIX  # pyright: ignore[reportUninitializedInstanceVariable]
         return self._archive_is_pdf
 
     def _try_detect_pdf(self, _path: Path) -> bool:

@@ -11,6 +11,8 @@ whenever pdffile imported but comicbox's guard rejected it.
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import sys
 from types import ModuleType
@@ -18,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from comicbox import _pdf
 from comicbox.box import Comicbox
+from tests.const import TEST_FILES_DIR
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -82,6 +85,95 @@ def test_is_pdf_supported_follows_the_guard(monkeypatch: pytest.MonkeyPatch) -> 
     without PageFormat leaves the module loaded while the guard says no.
     """
     assert Comicbox.is_pdf_supported() is _pdf.PDF_ENABLED
-    monkeypatch.setattr("comicbox.box.init.PDF_ENABLED", False)
+    monkeypatch.setattr("comicbox.box.init.pdf_enabled", lambda: False)
     monkeypatch.setitem(sys.modules, "pdffile", ModuleType("pdffile"))
     assert not Comicbox.is_pdf_supported()
+
+
+# -- Lazy import ------------------------------------------------------------
+#
+# Importing pdffile loads pymupdf, about half a second, and every comicbox
+# process paid it at `import comicbox.box`, PDF or not. The guard above now
+# runs at the first question about PDF support instead.
+
+_LOADED_PROBE = (
+    "import sys\n"
+    "{code}\n"
+    "print('LOADED', sorted(m for m in ('pdffile', 'pymupdf') if m in sys.modules))\n"
+)
+_CBZ = "Captain Science #001-cix.cbz"
+
+
+def _loaded_after(tmp_path: Path, code: str) -> str:
+    """Run code in a fresh interpreter and report which PDF modules it loaded."""
+    env = {
+        **os.environ,
+        "COMICBOXDIR": str(tmp_path / "config"),
+        "COMICBOX_ONLINE__CACHE__DIR": str(tmp_path / "cache"),
+    }
+    proc = subprocess.run(  # noqa: S603
+        [sys.executable, "-c", _LOADED_PROBE.format(code=code)],
+        capture_output=True,
+        check=False,
+        text=True,
+        env=env,
+    )
+    assert proc.returncode == 0, proc.stderr
+    return proc.stdout
+
+
+def _main(*args: str) -> str:
+    return (
+        "from comicbox.cli import main\n"
+        "try:\n"
+        f"    main({['comicbox', *args]!r})\n"
+        "except SystemExit as exc:\n"
+        "    assert not exc.code, exc.code\n"
+    )
+
+
+def test_importing_the_box_leaves_pdffile_unloaded(tmp_path: Path) -> None:
+    out = _loaded_after(tmp_path, "import comicbox.box")
+    assert "LOADED []" in out
+
+
+def test_version_leaves_pdffile_unloaded(tmp_path: Path) -> None:
+    out = _loaded_after(tmp_path, _main("-v"))
+    assert "LOADED []" in out
+
+
+def test_reading_a_cbz_leaves_pdffile_unloaded(tmp_path: Path) -> None:
+    path = tmp_path / _CBZ
+    shutil.copy(TEST_FILES_DIR / _CBZ, path)
+    out = _loaded_after(tmp_path, _main("-p", str(path)))
+    assert "Captain Science" in out
+    assert "LOADED []" in out
+
+
+def test_asking_about_pdf_support_loads_pdffile(tmp_path: Path) -> None:
+    """The contract codex relies on: the answer comes from a real import."""
+    code = "import comicbox.box\nprint('SUPPORTED', comicbox.box.Comicbox.is_pdf_supported())"
+    out = _loaded_after(tmp_path, code)
+    assert "SUPPORTED True" in out
+    assert "LOADED ['pdffile', 'pymupdf']" in out
+
+
+def test_page_format_values_match_pdffile() -> None:
+    """The values are written out so the config can name them without pdffile."""
+    from pdffile import PageFormat
+
+    assert tuple(e.value for e in PageFormat) == _pdf.PAGE_FORMAT_VALUES
+
+
+def test_help_without_pdffile_says_so(tmp_path: Path) -> None:
+    """The help's note is decided as help renders, not as the parser is built."""
+    code = "sys.modules['pdffile'] = None\n" + _main("-h")
+    out = _loaded_after(tmp_path, code)
+    assert "not installed with PDF support" in out
+    assert "--pdf-pages MODE" not in out
+
+
+def test_help_with_pdffile_offers_pdf_pages(tmp_path: Path) -> None:
+    out = _loaded_after(tmp_path, _main("-h"))
+    assert "not installed with PDF support" not in out
+    assert "--pdf-pages MODE" in out

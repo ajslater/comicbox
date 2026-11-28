@@ -2,13 +2,15 @@
 PDF format package (MuPDF + PDF XML).
 
 PDF and PDF_XML share schema + transform code, conditioned on the
-optional `pdffile` extra (`PDF_ENABLED`). Two separate FormatRegistrations
-since MetadataFormats treats them as distinct enum entries.
+optional `pdffile` extra being installed (`PDF_INSTALLED`, so registering
+them imports no pymupdf; whether PDFs open is `PDF_ENABLED`). Two separate
+FormatRegistrations since MetadataFormats treats them as distinct enum
+entries.
 """
 
 from types import MappingProxyType
 
-from comicbox._pdf import PDF_ENABLED
+from comicbox._pdf import PDF_INSTALLED
 from comicbox.formats._base import FormatRegistration, MetadataFormat
 from comicbox.formats.pdf.transform import MuPDFTransform, PDFXmlTransform
 
@@ -19,7 +21,7 @@ PDF_REGISTRATION = FormatRegistration(
         "mupdf.json",
         MuPDFTransform,
         lexer="json",
-        enabled=PDF_ENABLED,
+        enabled=PDF_INSTALLED,
     ),
     sources=MappingProxyType(
         {
@@ -39,7 +41,7 @@ PDF_XML_REGISTRATION = FormatRegistration(
         "pdf.xml",
         PDFXmlTransform,
         lexer="xml",
-        enabled=PDF_ENABLED,
+        enabled=PDF_INSTALLED,
     ),
     sources=MappingProxyType(
         {

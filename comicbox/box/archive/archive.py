@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from loguru import logger
 
-from comicbox._pdf import PAGE_FORMAT_IMAGE, PDF_ENABLED
+from comicbox._pdf import PAGE_FORMAT_IMAGE, is_pdffile
 from comicbox.box.archive.sniff import sniff_ext
 
 if TYPE_CHECKING:
@@ -23,8 +23,6 @@ if TYPE_CHECKING:
 
     ArchiveType = ZipFile | SevenZipFile | RarFile | TarFile | PDFFile
 else:
-    from comicbox._pdf import PDFFile
-
     ArchiveType = Any  # avoid pulling in py7zr / rarfile at module-load time
 
 
@@ -148,7 +146,7 @@ class Archive:
         props: dict | None = None,
     ) -> bytes:
         """Read one file in the archive's data."""
-        if PDF_ENABLED and isinstance(archive, PDFFile):
+        if is_pdffile(archive):
             return cls._read_pdffile(archive, filename, pdf_format, props)
         if isinstance(archive, TarFile):
             return cls._read_tarfile(archive, filename)

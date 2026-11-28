@@ -12,6 +12,8 @@
 - ComicBookInfo reads a text or fractional issue as an issue name, as other
   formats do: `1/2` is 0.5, `1.5` is 1.5 and `1a` is 1 with suffix `a`, where
   they were dropped or read as 1. A whole issue reads as before.
+- Starts about half a second faster with the PDF extra installed. A broken PDF
+  install warns when a PDF is first opened instead of on every run.
 - Extracting or reading every page of a CB7 is many times faster.
 - Library: `ReadOnlyComicError` and `DuplicateMemberError` are no longer kinds
   of `UnwritableFormatError`; they sit beside it under `ArchiveWriteError`.
